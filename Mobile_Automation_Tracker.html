@@ -513,10 +513,12 @@
 
     <div class="controls">
         <button class="btn-success" onclick="saveData()">💾 Save Changes</button>
-        <button class="btn-primary" onclick="exportData()">📤 Export Data</button>
+        <button class="btn-primary" onclick="syncFromCloud()">☁️ Sync from Cloud</button>
+        <button class="btn-warning" onclick="exportData()">📤 Export Data</button>
         <button class="btn-warning" onclick="importData()">📥 Import Data</button>
         <button class="btn-danger" onclick="resetData()">🔄 Reset to Default</button>
         <span id="saveStatus" class="save-status saved">✓ All changes saved</span>
+        <span id="syncStatus" style="padding: 10px 16px; font-size: 12px; color: rgba(255,255,255,0.8); opacity: 0.7;">☁️ Cloud sync ready</span>
     </div>
 
     <div class="instructions">
@@ -1085,6 +1087,12 @@
 </footer>
 
 <script>
+    // ========================================
+    // GOOGLE SHEETS INTEGRATION
+    // Replace this URL with your deployed Google Apps Script Web App URL
+    // ========================================
+    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw-qOJvpA3WfzKvaYS30pH5iCEx3iNUNF9MEwCmzAgg1ofP8egqxShKue-HnVq3o9UFQQ/exec';
+    
     // Configuration
     const CONFIG = {
         totalScriptsAndroid: 367,
@@ -1204,8 +1212,31 @@
         });
     }
 
-    // Load data from localStorage
-    function loadData() {
+    // Load data from Google Sheets (with localStorage fallback)
+    async function loadData() {
+        // Try Google Sheets first
+        if (GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL !== 'YOUR_GOOGLE_SCRIPT_URL_HERE') {
+            try {
+                showSyncStatus('Loading from cloud...');
+                const response = await fetch(GOOGLE_SCRIPT_URL);
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    data = result.data;
+                    initializeDefaults();
+                    // Also save to localStorage as cache
+                    localStorage.setItem('mobileAutomationTrackerDual', JSON.stringify(data));
+                    showSyncStatus('✅ Synced from cloud');
+                    updateLastUpdated();
+                    return;
+                }
+            } catch (e) {
+                console.error('Error loading from Google Sheets:', e);
+                showSyncStatus('⚠️ Cloud unavailable, using local');
+            }
+        }
+        
+        // Fallback to localStorage
         const saved = localStorage.getItem('mobileAutomationTrackerDual');
         if (saved) {
             try {
@@ -1221,13 +1252,81 @@
         updateLastUpdated();
     }
 
-    // Save data to localStorage
-    function saveData() {
+    // Save data to Google Sheets (and localStorage)
+    async function saveData() {
         data.lastUpdated = new Date().toISOString();
+        
+        // Always save to localStorage first
         localStorage.setItem('mobileAutomationTrackerDual', JSON.stringify(data));
         updateLastUpdated();
-        showSaveStatus(true);
-        alert('✅ Data saved successfully!');
+        
+        // Save to Google Sheets if configured
+        if (GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL !== 'YOUR_GOOGLE_SCRIPT_URL_HERE') {
+            try {
+                showSyncStatus('Saving to cloud...');
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        data: data,
+                        updatedBy: 'Weekly Tracker User',
+                        action: 'save'
+                    })
+                });
+                showSyncStatus('✅ Saved to cloud');
+                showSaveStatus(true);
+                alert('✅ Data saved to cloud successfully!');
+            } catch (e) {
+                console.error('Error saving to Google Sheets:', e);
+                showSyncStatus('⚠️ Saved locally only');
+                showSaveStatus(true);
+                alert('✅ Data saved locally (cloud sync failed)');
+            }
+        } else {
+            showSaveStatus(true);
+            alert('✅ Data saved locally! (Configure Google Sheets for team sync)');
+        }
+    }
+    
+    // Sync from cloud manually
+    async function syncFromCloud() {
+        if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL === 'YOUR_GOOGLE_SCRIPT_URL_HERE') {
+            alert('⚠️ Google Sheets not configured. See setup instructions.');
+            return;
+        }
+        
+        try {
+            showSyncStatus('Syncing...');
+            const response = await fetch(GOOGLE_SCRIPT_URL);
+            const result = await response.json();
+            
+            if (result.success && result.data) {
+                data = result.data;
+                initializeDefaults();
+                localStorage.setItem('mobileAutomationTrackerDual', JSON.stringify(data));
+                renderTable();
+                updateSummary();
+                showSyncStatus('✅ Synced from cloud');
+                alert('✅ Data synced from cloud!');
+            } else {
+                showSyncStatus('⚠️ No cloud data');
+                alert('⚠️ No data found in cloud storage.');
+            }
+        } catch (e) {
+            console.error('Sync error:', e);
+            showSyncStatus('❌ Sync failed');
+            alert('❌ Failed to sync from cloud: ' + e.message);
+        }
+    }
+    
+    function showSyncStatus(message) {
+        const statusEl = document.getElementById('syncStatus');
+        if (statusEl) {
+            statusEl.textContent = message;
+            statusEl.style.opacity = '1';
+            setTimeout(() => { statusEl.style.opacity = '0.7'; }, 2000);
+        }
     }
 
     // Export data as JSON
@@ -1897,8 +1996,8 @@
     }
 
     // Initialize
-    document.addEventListener('DOMContentLoaded', function() {
-        loadData();
+    document.addEventListener('DOMContentLoaded', async function() {
+        await loadData();
         renderTable();
         updateSummary();
     });

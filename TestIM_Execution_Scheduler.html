@@ -1084,6 +1084,9 @@
                         <span>📥</span> Import
                     </button>
                     <input type="file" id="importFileInput" accept=".json" style="display: none;" onchange="handleImportFile(event)">
+                    <button class="btn btn-secondary" onclick="syncFromCloud()">
+                        <span>☁️</span> Sync Cloud
+                    </button>
                     <button class="btn btn-secondary" onclick="showTodayView()">
                         <span>📅</span> Today
                     </button>
@@ -1378,6 +1381,12 @@
     </div>
 
     <script>
+        // ========================================
+        // GOOGLE SHEETS INTEGRATION
+        // Replace this URL with your deployed Google Apps Script Web App URL
+        // ========================================
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyvBlz9_8w11VatNYvLUGS71UtT1zxSr6SkvWZRGTUDzqz9lZHOWYrvhNfbXJ1lRVy4YQ/exec';
+        
         // Default Configuration
         const DEFAULT_CONFIG = {
             teams: ['CS', 'SIT', 'Enrollment'],
@@ -1408,6 +1417,96 @@
         
         let reservations = JSON.parse(localStorage.getItem('testSchedulerReservations')) || [];
         let deletionLogs = JSON.parse(localStorage.getItem('schedulerDeletionLogs')) || [];
+        
+        // Load data from Google Sheets (with localStorage fallback)
+        async function loadFromCloud() {
+            if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL === 'YOUR_GOOGLE_SCRIPT_URL_HERE') {
+                return false;
+            }
+            
+            try {
+                showToast('Loading from cloud...', true);
+                const response = await fetch(GOOGLE_SCRIPT_URL);
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    if (result.data.config) {
+                        config = {
+                            teams: result.data.config.teams || DEFAULT_CONFIG.teams,
+                            maxTestimParallels: result.data.config.maxTestimParallels || DEFAULT_CONFIG.maxTestimParallels,
+                            maxLocalParallels: result.data.config.maxLocalParallels || DEFAULT_CONFIG.maxLocalParallels,
+                            minDuration: result.data.config.minDuration || DEFAULT_CONFIG.minDuration,
+                            maxDuration: result.data.config.maxDuration || DEFAULT_CONFIG.maxDuration
+                        };
+                        localStorage.setItem('schedulerConfig', JSON.stringify(config));
+                    }
+                    if (result.data.reservations) {
+                        reservations = result.data.reservations;
+                        localStorage.setItem('testSchedulerReservations', JSON.stringify(reservations));
+                    }
+                    if (result.data.deletionLogs) {
+                        deletionLogs = result.data.deletionLogs;
+                        localStorage.setItem('schedulerDeletionLogs', JSON.stringify(deletionLogs));
+                    }
+                    return true;
+                }
+            } catch (e) {
+                console.error('Error loading from cloud:', e);
+            }
+            return false;
+        }
+        
+        // Save all data to Google Sheets
+        async function saveToCloud() {
+            if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL === 'YOUR_GOOGLE_SCRIPT_URL_HERE') {
+                return;
+            }
+            
+            try {
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        data: {
+                            config: config,
+                            reservations: reservations,
+                            deletionLogs: deletionLogs
+                        },
+                        updatedBy: 'Scheduler User',
+                        action: 'save'
+                    })
+                });
+            } catch (e) {
+                console.error('Error saving to cloud:', e);
+            }
+        }
+        
+        // Manual sync from cloud
+        async function syncFromCloud() {
+            if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL === 'YOUR_GOOGLE_SCRIPT_URL_HERE') {
+                showToast('⚠️ Google Sheets not configured', false);
+                return;
+            }
+            
+            const success = await loadFromCloud();
+            if (success) {
+                updateConfigDisplays();
+                populateTeamDropdown();
+                populateDurationDropdown();
+                populateParallelDropdown();
+                if (currentView === 'week') {
+                    renderWeekGrid();
+                } else {
+                    renderDayGrid();
+                }
+                updateStats();
+                renderTodaySchedule();
+                showToast('✅ Synced from cloud!', true);
+            } else {
+                showToast('⚠️ No cloud data found', false);
+            }
+        }
         let currentWeekStart = getWeekStart(new Date());
         let currentView = 'week';
         let selectedReservationId = null;
@@ -1415,7 +1514,10 @@
         const ADMIN_PASSWORD = 'Jcmt1107';
 
         // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Try to load from cloud first
+            await loadFromCloud();
+            
             updateConfigDisplays();
             populateTeamDropdown();
             populateDurationDropdown();
@@ -2005,7 +2107,7 @@
 
             // Delete reservation
             reservations = reservations.filter(r => r.id !== selectedReservationId);
-            saveToLocalStorage();
+            saveToLocalStorage(); // This also syncs to cloud
             closeDeleteModal();
             renderWeekGrid();
             updateStats();
@@ -2216,6 +2318,7 @@
             };
 
             localStorage.setItem('schedulerConfig', JSON.stringify(config));
+            saveToCloud(); // Sync to cloud
             
             updateConfigDisplays();
             populateTeamDropdown();
@@ -2240,6 +2343,7 @@
             if (confirm('Reset all settings to defaults?')) {
                 config = { ...DEFAULT_CONFIG };
                 localStorage.setItem('schedulerConfig', JSON.stringify(config));
+                saveToCloud(); // Sync to cloud
                 renderAdminSettings();
                 updateConfigDisplays();
                 populateTeamDropdown();
@@ -2464,6 +2568,8 @@
         // Local Storage
         function saveToLocalStorage() {
             localStorage.setItem('testSchedulerReservations', JSON.stringify(reservations));
+            // Also save to cloud
+            saveToCloud();
         }
 
         // Export
