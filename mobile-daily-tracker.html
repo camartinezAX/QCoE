@@ -1073,13 +1073,121 @@
     
     function exportData() {
         const dataStr = JSON.stringify(data, null, 2);
-        const blob = new Blob([dataStr], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `mobile-daily-tracker-${new Date().toISOString().split('T')[0]}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
+        
+        // Try clipboard first (works in iframes)
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(dataStr).then(() => {
+                showExportModal(dataStr, true);
+            }).catch(() => {
+                showExportModal(dataStr, false);
+            });
+        } else {
+            showExportModal(dataStr, false);
+        }
+    }
+    
+    function showExportModal(dataStr, copiedToClipboard) {
+        // Create modal if it doesn't exist
+        let modal = document.getElementById('exportModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'exportModal';
+            modal.innerHTML = `
+                <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10000;">
+                    <div style="background: white; border-radius: 16px; padding: 24px; width: 600px; max-width: 90%; max-height: 80vh; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <h3 style="margin: 0; color: #1E3860;">📤 Export Data</h3>
+                            <button onclick="closeExportModal()" style="background: none; border: none; font-size: 24px; cursor: pointer;">✕</button>
+                        </div>
+                        <div id="exportStatus" style="padding: 12px; border-radius: 8px; margin-bottom: 16px;"></div>
+                        <textarea id="exportTextarea" readonly style="width: 100%; height: 300px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-family: monospace; font-size: 12px; resize: none;"></textarea>
+                        <div style="display: flex; gap: 12px; margin-top: 16px;">
+                            <button onclick="copyExportData()" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #FAA74A, #F7931E); border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">📋 Copy to Clipboard</button>
+                            <button onclick="downloadExportData()" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">💾 Try Download</button>
+                            <button onclick="closeExportModal()" style="flex: 1; padding: 12px; background: #e2e8f0; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Close</button>
+                        </div>
+                        <p style="font-size: 12px; color: #64748b; margin-top: 12px; text-align: center;">💡 Tip: Copy the data above and save it to a .json file to share with your team</p>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        
+        document.getElementById('exportTextarea').value = dataStr;
+        
+        const statusEl = document.getElementById('exportStatus');
+        if (copiedToClipboard) {
+            statusEl.style.background = '#d1fae5';
+            statusEl.style.color = '#065f46';
+            statusEl.innerHTML = '✅ <strong>Copied to clipboard!</strong> You can paste this into a .json file.';
+        } else {
+            statusEl.style.background = '#fef3c7';
+            statusEl.style.color = '#92400e';
+            statusEl.innerHTML = '⚠️ <strong>Auto-copy failed.</strong> Please manually copy the data below.';
+        }
+        
+        modal.style.display = 'block';
+    }
+    
+    function closeExportModal() {
+        const modal = document.getElementById('exportModal');
+        if (modal) modal.style.display = 'none';
+    }
+    
+    function copyExportData() {
+        const textarea = document.getElementById('exportTextarea');
+        textarea.select();
+        
+        try {
+            // Try modern clipboard API
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(textarea.value).then(() => {
+                    const statusEl = document.getElementById('exportStatus');
+                    statusEl.style.background = '#d1fae5';
+                    statusEl.style.color = '#065f46';
+                    statusEl.innerHTML = '✅ <strong>Copied to clipboard!</strong> You can paste this into a .json file.';
+                });
+            } else {
+                // Fallback to execCommand
+                document.execCommand('copy');
+                const statusEl = document.getElementById('exportStatus');
+                statusEl.style.background = '#d1fae5';
+                statusEl.style.color = '#065f46';
+                statusEl.innerHTML = '✅ <strong>Copied to clipboard!</strong> You can paste this into a .json file.';
+            }
+        } catch(e) {
+            alert('Please manually select all text (Ctrl+A) and copy (Ctrl+C)');
+        }
+    }
+    
+    function downloadExportData() {
+        const dataStr = document.getElementById('exportTextarea').value;
+        
+        try {
+            // Try opening in new window for download
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            // Try window.open as fallback
+            const newWindow = window.open('', '_blank');
+            if (newWindow) {
+                newWindow.document.write('<pre>' + dataStr.replace(/</g, '&lt;') + '</pre>');
+                newWindow.document.title = 'Mobile Daily Tracker Export';
+                alert('✅ Data opened in new tab! Use Ctrl+S to save as .json file.');
+            } else {
+                // If popup blocked, try direct download
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `mobile-daily-tracker-${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+            
+            URL.revokeObjectURL(url);
+        } catch(e) {
+            alert('Download blocked. Please copy the data manually using the Copy button.');
+        }
     }
     
     function importData() {
@@ -1685,4 +1793,3 @@
 
 </body>
 </html>
-
