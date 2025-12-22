@@ -169,6 +169,11 @@
         }
         .save-status.saved { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); color: #065f46; }
         .save-status.unsaved { background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); color: #991b1b; }
+        .save-status.syncing { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); color: #1e40af; animation: pulse 1.5s infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
         
         /* Form Styles */
         .form-section {
@@ -713,6 +718,7 @@
         <!-- Controls -->
         <div class="controls">
             <button class="btn-success" onclick="saveData()">💾 Save Changes</button>
+            <button class="btn-primary" onclick="refreshFromCloud()" title="Reload data from cloud">🔄 Sync from Cloud</button>
             <button class="btn-primary" onclick="exportData()">📤 Export Data</button>
             <button class="btn-warning" onclick="importData()">📥 Import Data</button>
             <button class="btn-danger" onclick="resetData()">🔄 Reset All</button>
@@ -853,6 +859,13 @@
         <div class="container">
             <h2>📊 Test Inventory</h2>
             
+            <!-- Search Bar -->
+            <div class="search-container" style="margin-bottom: 16px;">
+                <input type="text" id="inventorySearch" placeholder="🔍 Search tests by name, owner, vertical..." 
+                       oninput="filterInventory()" 
+                       style="width: 100%; padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+            </div>
+            
             <!-- Filter Tabs -->
             <div class="person-tabs" id="personTabs">
                 <div class="person-tab active" data-filter="all" onclick="filterByPerson('all')">
@@ -979,6 +992,97 @@
     </div>
 </div>
 
+<!-- Edit Test Modal -->
+<div class="modal-overlay" id="editTestModal">
+    <div class="modal" style="width: 550px;">
+        <h3>✏️ Edit Test</h3>
+        <input type="hidden" id="editTestId">
+        <div class="form-group">
+            <label>Test Name</label>
+            <input type="text" id="editTestName" placeholder="Test name">
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Platform</label>
+                <select id="editTestPlatform" onchange="toggleEditPlatformStatuses()">
+                    <option value="android">🤖 Android</option>
+                    <option value="ios">🍎 iOS</option>
+                    <option value="both">📱 Both</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Vertical</label>
+                <select id="editTestVertical">
+                    <option value="login">🔐 Login</option>
+                    <option value="registration">📝 Registration</option>
+                    <option value="home">🏠 Home</option>
+                    <option value="bank">🏦 Bank</option>
+                    <option value="borrow">💳 Borrow</option>
+                    <option value="invest">📈 Invest</option>
+                    <option value="plan">📋 Plan</option>
+                    <option value="megamenu">☰ Mega Menu</option>
+                    <option value="evochat">💬 Evo Chat</option>
+                    <option value="other">📌 Other</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Priority</label>
+            <select id="editTestPriority">
+                <option value="P0">🔴 P0 - Critical</option>
+                <option value="P1">🟠 P1 - High</option>
+                <option value="P2">🔵 P2 - Medium</option>
+            </select>
+        </div>
+        
+        <!-- Single Status (for Android or iOS only) -->
+        <div id="editSingleStatus" class="form-group">
+            <label>Status</label>
+            <select id="editTestStatus">
+                <option value="not-started">⏳ Not Started</option>
+                <option value="in-progress">🔄 In Progress</option>
+                <option value="blocked">🚫 Blocked</option>
+                <option value="completed">✅ Completed</option>
+                <option value="unable">❌ Unable to Automate</option>
+                <option value="maintenance">🔧 Maintenance</option>
+            </select>
+        </div>
+        
+        <!-- Dual Status (for Both platforms) -->
+        <div id="editDualStatus" style="display: none;">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>🤖 Android Status</label>
+                    <select id="editAndroidStatus">
+                        <option value="not-started">⏳ Not Started</option>
+                        <option value="in-progress">🔄 In Progress</option>
+                        <option value="blocked">🚫 Blocked</option>
+                        <option value="completed">✅ Completed</option>
+                        <option value="unable">❌ Unable to Automate</option>
+                        <option value="maintenance">🔧 Maintenance</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>🍎 iOS Status</label>
+                    <select id="editIosStatus">
+                        <option value="not-started">⏳ Not Started</option>
+                        <option value="in-progress">🔄 In Progress</option>
+                        <option value="blocked">🚫 Blocked</option>
+                        <option value="completed">✅ Completed</option>
+                        <option value="unable">❌ Unable to Automate</option>
+                        <option value="maintenance">🔧 Maintenance</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-actions">
+            <button class="btn-danger" onclick="hideEditTestModal()">Cancel</button>
+            <button class="btn-success" onclick="saveTestEdit()">💾 Save Changes</button>
+        </div>
+    </div>
+</div>
+
 <!-- Hidden file input for import -->
 <input type="file" id="fileInput" accept=".json" onchange="handleFileImport(event)">
 
@@ -1013,6 +1117,20 @@
 
 <script>
     // =====================
+    // GOOGLE SHEETS CONFIGURATION
+    // =====================
+    // IMPORTANT: Replace this URL with your Google Apps Script Web App URL
+    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzIaGmLRZ1GIaWl1rUU8Em2wCXNXPVpNgU0YhOzIijjiNxXbEhHLyEiSSRbKu9owC9B/exec';
+    
+    // Set to true once you've configured your Google Script URL
+    const USE_GOOGLE_SHEETS = GOOGLE_SCRIPT_URL !== 'YOUR_GOOGLE_SCRIPT_URL_HERE';
+    
+    // Sync status
+    let isSyncing = false;
+    let lastSyncTime = null;
+    let syncError = null;
+    
+    // =====================
     // DATA STRUCTURE
     // =====================
     let data = {
@@ -1029,15 +1147,61 @@
     // Current filters
     let currentPersonFilter = 'all';
     let currentStatusFilter = 'all';
+    let currentSearchFilter = '';
     let entryType = 'new';
+    
+    // Helper: Count tests (platform "both" counts as 2)
+    function getEffectiveCount(tests) {
+        return tests.reduce((count, test) => {
+            return count + (test.platform === 'both' ? 2 : 1);
+        }, 0);
+    }
+    
+    // Helper: Get effective count for specific person
+    function getPersonEffectiveCount(personId) {
+        const personTests = data.tests.filter(t => t.ownerId === personId);
+        return getEffectiveCount(personTests);
+    }
+    
+    // Helper: Get overall status from two platform statuses (for "both" tests)
+    function getOverallStatus(androidStatus, iosStatus) {
+        // Priority order: blocked > in-progress > not-started > maintenance > unable > completed
+        const priority = ['blocked', 'in-progress', 'not-started', 'maintenance', 'unable', 'completed'];
+        const androidPriority = priority.indexOf(androidStatus);
+        const iosPriority = priority.indexOf(iosStatus);
+        return androidPriority <= iosPriority ? androidStatus : iosStatus;
+    }
+    
+    // Helper: Get status for a specific platform
+    function getTestPlatformStatus(test, platform) {
+        if (test.platform === 'both') {
+            if (platform === 'android') return test.androidStatus || test.status || 'not-started';
+            if (platform === 'ios') return test.iosStatus || test.status || 'not-started';
+        }
+        return test.status;
+    }
     
     // =====================
     // INITIALIZATION
     // =====================
-    document.addEventListener('DOMContentLoaded', function() {
-        loadData();
+    document.addEventListener('DOMContentLoaded', async function() {
+        // Show loading state
+        showSyncStatus('loading');
+        
+        // Initialize UI first (so user sees something)
         initializeUI();
+        
+        // Load data (async - will fetch from Google Sheets if configured)
+        await loadData();
+        
+        // Render with loaded data
         renderAll();
+        
+        // Show Google Sheets configuration status
+        if (!USE_GOOGLE_SHEETS) {
+            console.log('⚠️ Google Sheets not configured. Using local storage only.');
+            console.log('To enable cloud sync, set GOOGLE_SCRIPT_URL to your Google Apps Script Web App URL.');
+        }
     });
     
     function initializeUI() {
@@ -1061,32 +1225,151 @@
     // =====================
     // DATA MANAGEMENT
     // =====================
-    function loadData() {
-        const saved = localStorage.getItem('mobileDailyTracker');
-        if (saved) {
+    
+    // Load data - tries Google Sheets first, then falls back to localStorage
+    async function loadData() {
+        showSyncStatus('loading');
+        
+        // First, try to load from localStorage as cache
+        const cached = localStorage.getItem('mobileDailyTracker');
+        if (cached) {
             try {
-                data = JSON.parse(saved);
+                data = JSON.parse(cached);
             } catch (e) {
-                console.error('Error loading data:', e);
+                console.error('Error loading cached data:', e);
+            }
+        }
+        
+        // If Google Sheets is configured, fetch from there
+        if (USE_GOOGLE_SHEETS) {
+            try {
+                const response = await fetch(GOOGLE_SCRIPT_URL);
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    data = result.data;
+                    lastSyncTime = result.lastUpdated;
+                    // Update local cache
+                    localStorage.setItem('mobileDailyTracker', JSON.stringify(data));
+                    showSyncStatus('synced');
+                    console.log('✅ Data loaded from Google Sheets');
+                } else if (!result.data) {
+                    // No data on server yet, that's ok
+                    showSyncStatus('synced');
+                    console.log('📝 No data on server, using local data');
+                } else {
+                    throw new Error(result.error || 'Unknown error');
+                }
+            } catch (error) {
+                console.error('❌ Failed to load from Google Sheets:', error);
+                syncError = error.message;
+                showSyncStatus('error');
+            }
+        } else {
+            showSyncStatus('local');
+        }
+    }
+    
+    // Save data - saves to Google Sheets and localStorage
+    async function saveData() {
+        data.lastUpdated = new Date().toISOString();
+        
+        // Always save to localStorage first (instant)
+        localStorage.setItem('mobileDailyTracker', JSON.stringify(data));
+        
+        if (USE_GOOGLE_SHEETS) {
+            showSyncStatus('saving');
+            
+            try {
+                const currentPerson = document.getElementById('selectedPerson');
+                const updatedBy = currentPerson ? getPersonName(currentPerson.value) : 'Unknown';
+                
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', // Required for Google Apps Script
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        data: data,
+                        updatedBy: updatedBy,
+                        action: 'save'
+                    })
+                });
+                
+                // With no-cors, we can't read the response, but if no error, assume success
+                lastSyncTime = new Date().toISOString();
+                showSaveStatus(true);
+                showSyncStatus('synced');
+                console.log('✅ Data saved to Google Sheets');
+                
+            } catch (error) {
+                console.error('❌ Failed to save to Google Sheets:', error);
+                syncError = error.message;
+                showSyncStatus('error');
+                alert('⚠️ Saved locally, but failed to sync to cloud. Your team won\'t see these changes until sync is restored.');
+            }
+        } else {
+            showSaveStatus(true);
+            showSyncStatus('local');
+        }
+    }
+    
+    // Sync status display
+    function showSyncStatus(status) {
+        const statusEl = document.getElementById('saveStatus');
+        
+        switch(status) {
+            case 'loading':
+                statusEl.className = 'save-status syncing';
+                statusEl.innerHTML = '🔄 Loading from cloud...';
+                break;
+            case 'saving':
+                statusEl.className = 'save-status syncing';
+                statusEl.innerHTML = '☁️ Saving to cloud...';
+                break;
+            case 'synced':
+                statusEl.className = 'save-status saved';
+                statusEl.innerHTML = '☁️ Synced with team';
+                break;
+            case 'error':
+                statusEl.className = 'save-status unsaved';
+                statusEl.innerHTML = '⚠️ Sync error (local only)';
+                break;
+            case 'local':
+                statusEl.className = 'save-status saved';
+                statusEl.innerHTML = '💾 Local storage only';
+                break;
+            default:
+                statusEl.className = 'save-status saved';
+                statusEl.innerHTML = '✓ All changes saved';
+        }
+    }
+    
+    function showSaveStatus(saved) {
+        if (!USE_GOOGLE_SHEETS) {
+            const status = document.getElementById('saveStatus');
+            if (saved) {
+                status.className = 'save-status saved';
+                status.textContent = '✓ All changes saved';
+            } else {
+                status.className = 'save-status unsaved';
+                status.textContent = '⚠ Unsaved changes';
             }
         }
     }
     
-    function saveData() {
-        data.lastUpdated = new Date().toISOString();
-        localStorage.setItem('mobileDailyTracker', JSON.stringify(data));
-        showSaveStatus(true);
-        alert('✅ Data saved successfully!');
-    }
-    
-    function showSaveStatus(saved) {
-        const status = document.getElementById('saveStatus');
-        if (saved) {
-            status.className = 'save-status saved';
-            status.textContent = '✓ All changes saved';
-        } else {
-            status.className = 'save-status unsaved';
-            status.textContent = '⚠ Unsaved changes';
+    // Refresh data from cloud
+    async function refreshFromCloud() {
+        if (!USE_GOOGLE_SHEETS) {
+            alert('Google Sheets not configured. Using local storage only.');
+            return;
+        }
+        
+        if (confirm('This will reload data from the cloud. Any unsaved local changes will be lost. Continue?')) {
+            await loadData();
+            renderAll();
+            alert('✅ Data refreshed from cloud!');
         }
     }
     
@@ -1449,15 +1732,18 @@
     function renderPersonTabs() {
         const container = document.getElementById('personTabs');
         
+        // Count "both" as 2 tests
+        const totalCount = getEffectiveCount(data.tests);
+        
         let html = `
             <div class="person-tab ${currentPersonFilter === 'all' ? 'active' : ''}" 
                  data-filter="all" onclick="filterByPerson('all')">
-                All <span class="count" id="countAll">${data.tests.length}</span>
+                All <span class="count" id="countAll">${totalCount}</span>
             </div>
         `;
         
         data.people.forEach(person => {
-            const count = data.tests.filter(t => t.ownerId === person.id).length;
+            const count = getPersonEffectiveCount(person.id);
             html += `
                 <div class="person-tab ${currentPersonFilter === person.id ? 'active' : ''}" 
                      data-filter="${person.id}" onclick="filterByPerson('${person.id}')">
@@ -1484,6 +1770,17 @@
             filteredTests = filteredTests.filter(t => t.status === currentStatusFilter);
         }
         
+        // Filter by search
+        if (currentSearchFilter) {
+            const search = currentSearchFilter.toLowerCase();
+            filteredTests = filteredTests.filter(t => 
+                t.name.toLowerCase().includes(search) ||
+                getPersonName(t.ownerId).toLowerCase().includes(search) ||
+                t.vertical.toLowerCase().includes(search) ||
+                t.platform.toLowerCase().includes(search)
+            );
+        }
+        
         // Sort by date (newest first)
         filteredTests.sort((a, b) => new Date(b.dateAdded) - new Date(a.dateAdded));
         
@@ -1502,6 +1799,50 @@
             const lifetime = calculateLifetime(test.dateAdded);
             const lifetimeClass = lifetime > 7 ? 'old' : '';
             
+            // Build status column based on platform
+            let statusColumn;
+            if (test.platform === 'both') {
+                const androidStatus = test.androidStatus || test.status || 'not-started';
+                const iosStatus = test.iosStatus || test.status || 'not-started';
+                statusColumn = `
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <span style="font-size: 12px;">🤖</span>
+                            <select onchange="updateTestStatus('${test.id}', this.value, 'android')" style="padding: 4px; border-radius: 4px; border: 1px solid #e2e8f0; font-size: 11px;">
+                                <option value="not-started" ${androidStatus === 'not-started' ? 'selected' : ''}>⏳ Not Started</option>
+                                <option value="in-progress" ${androidStatus === 'in-progress' ? 'selected' : ''}>🔄 In Progress</option>
+                                <option value="blocked" ${androidStatus === 'blocked' ? 'selected' : ''}>🚫 Blocked</option>
+                                <option value="completed" ${androidStatus === 'completed' ? 'selected' : ''}>✅ Completed</option>
+                                <option value="unable" ${androidStatus === 'unable' ? 'selected' : ''}>❌ Unable</option>
+                                <option value="maintenance" ${androidStatus === 'maintenance' ? 'selected' : ''}>🔧 Maintenance</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <span style="font-size: 12px;">🍎</span>
+                            <select onchange="updateTestStatus('${test.id}', this.value, 'ios')" style="padding: 4px; border-radius: 4px; border: 1px solid #e2e8f0; font-size: 11px;">
+                                <option value="not-started" ${iosStatus === 'not-started' ? 'selected' : ''}>⏳ Not Started</option>
+                                <option value="in-progress" ${iosStatus === 'in-progress' ? 'selected' : ''}>🔄 In Progress</option>
+                                <option value="blocked" ${iosStatus === 'blocked' ? 'selected' : ''}>🚫 Blocked</option>
+                                <option value="completed" ${iosStatus === 'completed' ? 'selected' : ''}>✅ Completed</option>
+                                <option value="unable" ${iosStatus === 'unable' ? 'selected' : ''}>❌ Unable</option>
+                                <option value="maintenance" ${iosStatus === 'maintenance' ? 'selected' : ''}>🔧 Maintenance</option>
+                            </select>
+                        </div>
+                    </div>
+                `;
+            } else {
+                statusColumn = `
+                    <select onchange="updateTestStatus('${test.id}', this.value)" style="padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                        <option value="not-started" ${test.status === 'not-started' ? 'selected' : ''}>⏳ Not Started</option>
+                        <option value="in-progress" ${test.status === 'in-progress' ? 'selected' : ''}>🔄 In Progress</option>
+                        <option value="blocked" ${test.status === 'blocked' ? 'selected' : ''}>🚫 Blocked</option>
+                        <option value="completed" ${test.status === 'completed' ? 'selected' : ''}>✅ Completed</option>
+                        <option value="unable" ${test.status === 'unable' ? 'selected' : ''}>❌ Unable</option>
+                        <option value="maintenance" ${test.status === 'maintenance' ? 'selected' : ''}>🔧 Maintenance</option>
+                    </select>
+                `;
+            }
+            
             return `
                 <tr>
                     <td>
@@ -1515,24 +1856,21 @@
                         </span>
                     </td>
                     <td>${getVerticalEmoji(test.vertical)} ${capitalize(test.vertical)}</td>
-                    <td>
-                        <select onchange="updateTestStatus('${test.id}', this.value)" style="padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                            <option value="not-started" ${test.status === 'not-started' ? 'selected' : ''}>⏳ Not Started</option>
-                            <option value="in-progress" ${test.status === 'in-progress' ? 'selected' : ''}>🔄 In Progress</option>
-                            <option value="blocked" ${test.status === 'blocked' ? 'selected' : ''}>🚫 Blocked</option>
-                            <option value="completed" ${test.status === 'completed' ? 'selected' : ''}>✅ Completed</option>
-                            <option value="unable" ${test.status === 'unable' ? 'selected' : ''}>❌ Unable</option>
-                            <option value="maintenance" ${test.status === 'maintenance' ? 'selected' : ''}>🔧 Maintenance</option>
-                        </select>
-                    </td>
+                    <td>${statusColumn}</td>
                     <td>${formatDate(test.dateAdded)}</td>
                     <td><span class="lifetime ${lifetimeClass}">${lifetime} days</span></td>
                     <td>
+                        <button class="action-btn edit" onclick="openEditTestModal('${test.id}')" style="background: #3b82f6; margin-right: 4px;">✏️</button>
                         <button class="action-btn delete" onclick="deleteTest('${test.id}')">🗑️</button>
                     </td>
                 </tr>
             `;
         }).join('');
+    }
+    
+    function filterInventory() {
+        currentSearchFilter = document.getElementById('inventorySearch').value;
+        renderTestList();
     }
     
     function renderDailyEntries() {
@@ -1637,27 +1975,57 @@
             return testDate >= weekStartDate && testDate <= weekEndDate;
         });
         
-        // Calculate team stats
-        const completed = weekTests.filter(t => t.status === 'completed').length;
-        const inProgress = weekTests.filter(t => t.status === 'in-progress').length;
-        const blocked = weekTests.filter(t => t.status === 'blocked').length;
+        // Calculate team stats with platform-aware counting
+        let totalCount = 0, completedCount = 0, inProgressCount = 0, blockedCount = 0;
         
-        document.getElementById('teamWeeklyTotal').textContent = weekTests.length;
-        document.getElementById('teamCompleted').textContent = completed;
-        document.getElementById('teamInProgress').textContent = inProgress;
-        document.getElementById('teamBlocked').textContent = blocked;
+        weekTests.forEach(test => {
+            if (test.platform === 'both') {
+                // Count each platform separately
+                const androidStatus = test.androidStatus || test.status || 'not-started';
+                const iosStatus = test.iosStatus || test.status || 'not-started';
+                
+                totalCount += 2;
+                if (androidStatus === 'completed') completedCount++;
+                if (iosStatus === 'completed') completedCount++;
+                if (androidStatus === 'in-progress') inProgressCount++;
+                if (iosStatus === 'in-progress') inProgressCount++;
+                if (androidStatus === 'blocked') blockedCount++;
+                if (iosStatus === 'blocked') blockedCount++;
+            } else {
+                totalCount += 1;
+                if (test.status === 'completed') completedCount++;
+                if (test.status === 'in-progress') inProgressCount++;
+                if (test.status === 'blocked') blockedCount++;
+            }
+        });
         
-        // Individual stats
+        document.getElementById('teamWeeklyTotal').textContent = totalCount;
+        document.getElementById('teamCompleted').textContent = completedCount;
+        document.getElementById('teamInProgress').textContent = inProgressCount;
+        document.getElementById('teamBlocked').textContent = blockedCount;
+        
+        // Individual stats with platform-aware counting
         const individualStats = document.getElementById('individualStats');
         individualStats.innerHTML = data.people.map(person => {
             const personTests = weekTests.filter(t => t.ownerId === person.id);
-            const personCompleted = personTests.filter(t => t.status === 'completed').length;
+            
+            let personTotal = 0, personCompleted = 0;
+            personTests.forEach(test => {
+                if (test.platform === 'both') {
+                    personTotal += 2;
+                    if ((test.androidStatus || test.status) === 'completed') personCompleted++;
+                    if ((test.iosStatus || test.status) === 'completed') personCompleted++;
+                } else {
+                    personTotal += 1;
+                    if (test.status === 'completed') personCompleted++;
+                }
+            });
             
             return `
                 <div class="person-summary">
                     <div class="name">👤 ${person.name}</div>
                     <div class="stats-row">
-                        <span>Total: <strong>${personTests.length}</strong></span>
+                        <span>Total: <strong>${personTotal}</strong></span>
                         <span>Completed: <strong>${personCompleted}</strong></span>
                     </div>
                 </div>
@@ -1686,13 +2054,31 @@
     // =====================
     // TEST OPERATIONS
     // =====================
-    function updateTestStatus(testId, newStatus) {
+    function updateTestStatus(testId, newStatus, platform = null) {
         const test = data.tests.find(t => t.id === testId);
         if (test) {
-            test.status = newStatus;
+            if (test.platform === 'both' && platform) {
+                // Update specific platform status
+                if (platform === 'android') {
+                    test.androidStatus = newStatus;
+                } else if (platform === 'ios') {
+                    test.iosStatus = newStatus;
+                }
+                // Keep the general status in sync (use the "worst" status for overall display)
+                test.status = getOverallStatus(test.androidStatus || 'not-started', test.iosStatus || 'not-started');
+            } else {
+                test.status = newStatus;
+                // If switching from single to both, initialize both statuses
+                if (test.platform === 'both') {
+                    test.androidStatus = newStatus;
+                    test.iosStatus = newStatus;
+                }
+            }
+            test.history = test.history || [];
             test.history.push({
                 date: new Date().toISOString().split('T')[0],
                 status: newStatus,
+                platform: platform || test.platform,
                 updatedBy: document.getElementById('selectedPerson').value
             });
             showSaveStatus(false);
@@ -1707,6 +2093,88 @@
             showSaveStatus(false);
             renderAll();
         }
+    }
+    
+    // =====================
+    // EDIT TEST FUNCTIONS
+    // =====================
+    function openEditTestModal(testId) {
+        const test = data.tests.find(t => t.id === testId);
+        if (!test) return;
+        
+        document.getElementById('editTestId').value = testId;
+        document.getElementById('editTestName').value = test.name;
+        document.getElementById('editTestPlatform').value = test.platform;
+        document.getElementById('editTestVertical').value = test.vertical;
+        document.getElementById('editTestPriority').value = test.priority || 'P1';
+        document.getElementById('editTestStatus').value = test.status;
+        
+        // Set platform-specific statuses
+        if (test.platform === 'both') {
+            document.getElementById('editAndroidStatus').value = test.androidStatus || test.status || 'not-started';
+            document.getElementById('editIosStatus').value = test.iosStatus || test.status || 'not-started';
+        }
+        
+        // Show/hide appropriate status fields
+        toggleEditPlatformStatuses();
+        
+        document.getElementById('editTestModal').classList.add('show');
+    }
+    
+    function toggleEditPlatformStatuses() {
+        const platform = document.getElementById('editTestPlatform').value;
+        const singleStatus = document.getElementById('editSingleStatus');
+        const dualStatus = document.getElementById('editDualStatus');
+        
+        if (platform === 'both') {
+            singleStatus.style.display = 'none';
+            dualStatus.style.display = 'block';
+        } else {
+            singleStatus.style.display = 'block';
+            dualStatus.style.display = 'none';
+        }
+    }
+    
+    function hideEditTestModal() {
+        document.getElementById('editTestModal').classList.remove('show');
+    }
+    
+    function saveTestEdit() {
+        const testId = document.getElementById('editTestId').value;
+        const test = data.tests.find(t => t.id === testId);
+        if (!test) return;
+        
+        const oldPlatform = test.platform;
+        const newPlatform = document.getElementById('editTestPlatform').value;
+        
+        test.name = document.getElementById('editTestName').value.trim();
+        test.platform = newPlatform;
+        test.vertical = document.getElementById('editTestVertical').value;
+        test.priority = document.getElementById('editTestPriority').value;
+        
+        if (newPlatform === 'both') {
+            // Save dual statuses
+            test.androidStatus = document.getElementById('editAndroidStatus').value;
+            test.iosStatus = document.getElementById('editIosStatus').value;
+            test.status = getOverallStatus(test.androidStatus, test.iosStatus);
+        } else {
+            // Save single status
+            test.status = document.getElementById('editTestStatus').value;
+            // Clear platform-specific statuses
+            delete test.androidStatus;
+            delete test.iosStatus;
+        }
+        
+        // If changing from single platform to "both", initialize both statuses
+        if (oldPlatform !== 'both' && newPlatform === 'both') {
+            if (!test.androidStatus) test.androidStatus = test.status;
+            if (!test.iosStatus) test.iosStatus = test.status;
+        }
+        
+        hideEditTestModal();
+        showSaveStatus(false);
+        renderAll();
+        populateExistingTestsDropdown();
     }
     
     // =====================
