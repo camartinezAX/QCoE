@@ -1,0 +1,2615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Execution Scheduler | Axos QCoE</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --axos-orange: #FAA74A;
+            --axos-orange-light: #FFC078;
+            --axos-orange-dark: #E8912E;
+            --axos-blue: #1E3860;
+            --axos-blue-light: #2A4A7A;
+            --axos-blue-dark: #152844;
+            --axos-blue-darker: #0D1A2D;
+            --surface: #F8FAFC;
+            --surface-elevated: #FFFFFF;
+            --text-primary: #1E3860;
+            --text-secondary: #5A6B82;
+            --text-muted: #94A3B8;
+            --border: #E2E8F0;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --info: #3B82F6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--axos-blue-darker) 0%, var(--axos-blue) 50%, var(--axos-blue-light) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+        }
+
+        /* Animated background pattern */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(250, 167, 74, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(250, 167, 74, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 40% 40%, rgba(255, 255, 255, 0.03) 0%, transparent 30%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 1700px;
+            margin: 0 auto;
+            padding: 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 28px 36px;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .logo {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--axos-orange) 0%, var(--axos-orange-dark) 100%);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            color: white;
+            font-size: 20px;
+            box-shadow: 0 4px 12px rgba(250, 167, 74, 0.4);
+        }
+
+        .header-title h1 {
+            font-size: 26px;
+            font-weight: 700;
+            color: var(--axos-blue);
+            letter-spacing: -0.5px;
+        }
+
+        .header-title p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--axos-orange) 0%, var(--axos-orange-dark) 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(250, 167, 74, 0.35);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(250, 167, 74, 0.45);
+        }
+
+        .btn-secondary {
+            background: var(--axos-blue);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: var(--axos-blue-light);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--axos-blue);
+            border: 2px solid var(--border);
+        }
+
+        .btn-ghost:hover {
+            background: var(--surface);
+            border-color: var(--axos-orange);
+        }
+
+        .btn-admin {
+            background: linear-gradient(135deg, #6B21A8 0%, #9333EA 100%);
+            color: white;
+        }
+
+        .btn-admin:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 13px;
+        }
+
+        /* Quick Stats */
+        .quick-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, var(--axos-blue) 0%, var(--axos-blue-light) 100%);
+            padding: 20px;
+            border-radius: 16px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -20px;
+            right: -20px;
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+        }
+
+        .stat-card.orange {
+            background: linear-gradient(135deg, var(--axos-orange) 0%, var(--axos-orange-dark) 100%);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.8;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        /* Reservation Form Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(13, 26, 45, 0.8);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 24px;
+            width: 100%;
+            max-width: 640px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.3);
+            animation: modalSlide 0.3s ease;
+        }
+
+        .modal.wide {
+            max-width: 900px;
+        }
+
+        @keyframes modalSlide {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .modal-header {
+            padding: 28px 32px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--axos-blue);
+        }
+
+        .modal-close {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            border: none;
+            background: var(--surface);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            background: var(--danger);
+            color: white;
+        }
+
+        .modal-body {
+            padding: 28px 32px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group.full-width {
+            grid-column: span 2;
+        }
+
+        .form-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 14px 16px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-size: 15px;
+            font-family: inherit;
+            transition: all 0.2s;
+            background: var(--surface);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--axos-orange);
+            background: white;
+            box-shadow: 0 0 0 4px rgba(250, 167, 74, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .execution-type-selector {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .execution-type-option {
+            padding: 16px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .execution-type-option:hover {
+            border-color: var(--axos-orange);
+        }
+
+        .execution-type-option.selected {
+            border-color: var(--axos-orange);
+            background: rgba(250, 167, 74, 0.1);
+        }
+
+        .execution-type-option .icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .execution-type-option .label {
+            font-weight: 600;
+            color: var(--axos-blue);
+        }
+
+        .execution-type-option .sublabel {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .modal-footer {
+            padding: 20px 32px 28px;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        /* Calendar View */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 360px;
+            gap: 24px;
+        }
+
+        .calendar-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 28px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+            overflow-x: auto;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .calendar-nav {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .calendar-nav h3 {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--axos-blue);
+            min-width: 200px;
+            text-align: center;
+        }
+
+        .nav-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            border: 2px solid var(--border);
+            background: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: var(--axos-blue);
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            border-color: var(--axos-orange);
+            background: rgba(250, 167, 74, 0.1);
+        }
+
+        .view-toggle {
+            display: flex;
+            background: var(--surface);
+            border-radius: 10px;
+            padding: 4px;
+        }
+
+        .view-toggle button {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .view-toggle button.active {
+            background: var(--axos-blue);
+            color: white;
+        }
+
+        /* Week View */
+        .week-grid {
+            display: grid;
+            grid-template-columns: 70px repeat(7, 1fr);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            min-width: 900px;
+        }
+
+        .week-header {
+            display: contents;
+        }
+
+        .week-header-cell {
+            padding: 14px 8px;
+            text-align: center;
+            background: var(--axos-blue);
+            color: white;
+            font-weight: 600;
+            font-size: 12px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .week-header-cell.time-col {
+            background: var(--axos-blue-dark);
+        }
+
+        .week-header-cell .date {
+            font-size: 18px;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+
+        .week-header-cell.today {
+            background: var(--axos-orange);
+        }
+
+        .time-slot {
+            display: contents;
+        }
+
+        .time-label {
+            padding: 4px 8px;
+            font-size: 10px;
+            color: var(--text-muted);
+            text-align: right;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            font-weight: 500;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+        }
+
+        .time-label.current-hour {
+            background: var(--axos-orange);
+            color: white;
+            font-weight: 700;
+        }
+
+        .day-cell.current-hour {
+            background: rgba(250, 167, 74, 0.12);
+            border-left-color: var(--axos-orange);
+        }
+
+        .day-cell.current-hour.today-cell {
+            background: rgba(250, 167, 74, 0.25);
+        }
+
+        .day-cell {
+            height: 40px;
+            border-bottom: 1px solid var(--border);
+            border-left: 1px solid var(--border);
+            position: relative;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .day-cell:hover {
+            background: rgba(250, 167, 74, 0.08);
+        }
+
+        .day-cell.occupied {
+            background: rgba(250, 167, 74, 0.15);
+        }
+
+        .day-cell.occupied-testim {
+            background: rgba(30, 56, 96, 0.15);
+        }
+
+        .day-cell.occupied-local {
+            background: rgba(16, 185, 129, 0.15);
+        }
+
+        /* Reservation Cards */
+        .reservation-block {
+            position: absolute;
+            left: 2px;
+            right: 2px;
+            background: linear-gradient(135deg, var(--axos-orange) 0%, var(--axos-orange-dark) 100%);
+            color: white;
+            border-radius: 6px;
+            font-size: 10px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            overflow: hidden;
+            z-index: 5;
+            padding: 4px 6px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+
+        .reservation-block:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            z-index: 20;
+        }
+
+        .reservation-block.testim {
+            background: linear-gradient(135deg, var(--axos-blue) 0%, var(--axos-blue-light) 100%);
+        }
+
+        .reservation-block.local {
+            background: linear-gradient(135deg, #059669 0%, #10B981 100%);
+        }
+
+        .reservation-block .team {
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .reservation-block .details {
+            opacity: 0.9;
+            font-size: 9px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .reservation-block .time-range {
+            font-size: 9px;
+            opacity: 0.85;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .sidebar-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+        }
+
+        .sidebar-card h3 {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--axos-blue);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Today's Schedule */
+        .schedule-item {
+            display: flex;
+            gap: 12px;
+            padding: 14px;
+            background: var(--surface);
+            border-radius: 12px;
+            margin-bottom: 10px;
+            border-left: 4px solid var(--axos-orange);
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+
+        .schedule-item:hover {
+            transform: translateX(4px);
+        }
+
+        .schedule-item.testim {
+            border-left-color: var(--axos-blue);
+        }
+
+        .schedule-item.local {
+            border-left-color: var(--success);
+        }
+
+        .schedule-time {
+            font-weight: 600;
+            color: var(--axos-blue);
+            font-size: 12px;
+            min-width: 80px;
+        }
+
+        .schedule-info {
+            flex: 1;
+        }
+
+        .schedule-team {
+            font-weight: 600;
+            color: var(--axos-blue);
+            font-size: 14px;
+        }
+
+        .schedule-details {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+
+        .legend-color.testim {
+            background: linear-gradient(135deg, var(--axos-blue) 0%, var(--axos-blue-light) 100%);
+        }
+
+        .legend-color.local {
+            background: linear-gradient(135deg, #059669 0%, #10B981 100%);
+        }
+
+        .legend-color.release {
+            background: linear-gradient(135deg, var(--axos-orange) 0%, var(--axos-orange-dark) 100%);
+        }
+
+        /* Resource Usage */
+        .resource-bar {
+            margin-bottom: 16px;
+        }
+
+        .resource-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+
+        .resource-label {
+            font-weight: 600;
+            color: var(--axos-blue);
+        }
+
+        .resource-value {
+            color: var(--text-secondary);
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--surface);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--axos-orange) 0%, var(--axos-orange-light) 100%);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .progress-fill.high {
+            background: linear-gradient(90deg, var(--danger) 0%, #F87171 100%);
+        }
+
+        /* Reservation Details Modal */
+        .reservation-detail {
+            padding: 20px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .detail-value {
+            font-weight: 600;
+            color: var(--axos-blue);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        /* Deletion Log */
+        .deletion-log {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .log-item {
+            padding: 12px;
+            background: var(--surface);
+            border-radius: 10px;
+            margin-bottom: 8px;
+            border-left: 3px solid var(--danger);
+        }
+
+        .log-item .log-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .log-item .log-team {
+            font-weight: 600;
+            color: var(--axos-blue);
+        }
+
+        .log-item .log-reason {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 6px;
+            font-style: italic;
+        }
+
+        /* Admin Panel */
+        .admin-section {
+            margin-bottom: 24px;
+        }
+
+        .admin-section h4 {
+            font-size: 14px;
+            color: var(--axos-blue);
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .config-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .config-item:last-child {
+            border-bottom: none;
+        }
+
+        .config-item label {
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .config-item input {
+            width: 100px;
+            padding: 8px 12px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .config-item input:focus {
+            outline: none;
+            border-color: var(--axos-orange);
+        }
+
+        .team-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .team-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            background: var(--surface);
+            border-radius: 8px;
+        }
+
+        .team-item input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .team-item input:focus {
+            outline: none;
+        }
+
+        .team-item .remove-btn {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            border: none;
+            background: var(--danger);
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .add-team-btn {
+            width: 100%;
+            padding: 12px;
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .add-team-btn:hover {
+            border-color: var(--axos-orange);
+            color: var(--axos-orange);
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .quick-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-group.full-width {
+                grid-column: span 1;
+            }
+            
+            .sidebar {
+                grid-template-columns: 1fr;
+            }
+            
+            .header-top {
+                flex-direction: column;
+                gap: 16px;
+            }
+        }
+
+        /* Notification Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--axos-blue);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 2000;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            background: linear-gradient(135deg, #059669 0%, #10B981 100%);
+        }
+
+        .toast.error {
+            background: linear-gradient(135deg, #DC2626 0%, #EF4444 100%);
+        }
+
+        /* Calendar scroll container */
+        .calendar-scroll {
+            max-height: 600px;
+            overflow-y: auto;
+            border-radius: 16px;
+        }
+
+        /* Password input */
+        .password-section {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .password-section input {
+            padding: 14px 20px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-size: 16px;
+            width: 200px;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .password-section input:focus {
+            outline: none;
+            border-color: var(--axos-orange);
+        }
+
+        .password-error {
+            color: var(--danger);
+            font-size: 13px;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-top">
+                <div class="logo-section">
+                    <div class="logo">AX</div>
+                    <div class="header-title">
+                        <h1>Test Execution Scheduler</h1>
+                        <p>QCoE Resource Planning & Coordination</p>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-ghost" onclick="openLogsModal()">
+                        <span>📋</span> Deletion Logs
+                    </button>
+                    <button class="btn btn-admin" onclick="openAdminModal()">
+                        <span>⚙️</span> Admin
+                    </button>
+                    <button class="btn btn-ghost" onclick="exportSchedule()">
+                        <span>📤</span> Export
+                    </button>
+                    <button class="btn btn-ghost" onclick="importSchedule()">
+                        <span>📥</span> Import
+                    </button>
+                    <input type="file" id="importFileInput" accept=".json" style="display: none;" onchange="handleImportFile(event)">
+                    <button class="btn btn-secondary" onclick="showTodayView()">
+                        <span>📅</span> Today
+                    </button>
+                    <button class="btn btn-primary" onclick="openReservationModal()">
+                        <span>➕</span> New Reservation
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Quick Stats -->
+            <div class="quick-stats">
+                <div class="stat-card">
+                    <div class="stat-label">Today's Reservations</div>
+                    <div class="stat-value" id="todayCount">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Active Pipelines</div>
+                    <div class="stat-value" id="activePipelines">0</div>
+                </div>
+                <div class="stat-card orange">
+                    <div class="stat-label">Testim Grid Slots</div>
+                    <div class="stat-value" id="testimSlotsDisplay">0/<span id="maxTestimDisplay">40</span></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Local Executions Active</div>
+                    <div class="stat-value" id="localExecutionsActive">0</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Calendar Section -->
+            <div class="calendar-section">
+                <div class="calendar-header">
+                    <div class="calendar-nav">
+                        <button class="nav-btn" onclick="previousWeek()">◀</button>
+                        <h3 id="currentWeekLabel">December 16 - 22, 2024</h3>
+                        <button class="nav-btn" onclick="nextWeek()">▶</button>
+                    </div>
+                    <div class="view-toggle">
+                        <button class="active" onclick="setView('week')">Week</button>
+                        <button onclick="setView('day')">Day</button>
+                    </div>
+                </div>
+                
+                <!-- Week Grid -->
+                <div class="calendar-scroll">
+                    <div class="week-grid" id="weekGrid">
+                        <!-- Generated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <!-- Today's Schedule -->
+                <div class="sidebar-card">
+                    <h3>📋 Today's Schedule <span style="font-size: 11px; font-weight: 400; color: var(--text-muted);">(PT)</span></h3>
+                    <div id="todaySchedule">
+                        <div class="empty-state">
+                            <div class="icon">📭</div>
+                            <p>No reservations today</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resource Usage -->
+                <div class="sidebar-card">
+                    <h3>📊 Resource Usage (Now)</h3>
+                    <div class="resource-bar">
+                        <div class="resource-header">
+                            <span class="resource-label">Testim Grid</span>
+                            <span class="resource-value" id="testimUsage">0/40 slots</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="testimProgress" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="resource-bar">
+                        <div class="resource-header">
+                            <span class="resource-label">Local Executions</span>
+                            <span class="resource-value" id="localUsage">0 active (max 3 parallels each)</span>
+                        </div>
+                        <div id="localExecutionsList" style="margin-top: 8px; font-size: 12px;"></div>
+                    </div>
+                </div>
+
+                <!-- Legend -->
+                <div class="sidebar-card">
+                    <h3>🎨 Legend</h3>
+                    <div class="legend">
+                        <div class="legend-item">
+                            <div class="legend-color testim"></div>
+                            <span>Testim Grid (Max <span id="legendTestim">40</span> parallels)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color local"></div>
+                            <span>Local Execution (Max <span id="legendLocal">3</span> parallels per reservation)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reservation Modal -->
+    <div class="modal-overlay" id="reservationModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modalTitle">New Reservation</h2>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="reservationForm">
+                    <input type="hidden" id="reservationId">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Team Name</label>
+                            <select id="teamName" required>
+                                <option value="">Select Team...</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Reserved By</label>
+                            <input type="text" id="reservedBy" placeholder="Your name" required>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label>Execution Type</label>
+                            <div class="execution-type-selector">
+                                <div class="execution-type-option selected" data-type="testim" onclick="selectExecutionType(this)">
+                                    <div class="icon">🌐</div>
+                                    <div class="label">Testim Grid</div>
+                                    <div class="sublabel">Max <span class="testim-max">40</span> parallels</div>
+                                </div>
+                                <div class="execution-type-option" data-type="local" onclick="selectExecutionType(this)">
+                                    <div class="icon">💻</div>
+                                    <div class="label">Local Execution</div>
+                                    <div class="sublabel">Max <span class="local-max">3</span> parallels (recommended)</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="reservationDate" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Start Time (Pacific Time)</label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="time" id="startTime" required style="flex: 1;">
+                                <button type="button" class="btn btn-secondary btn-small" onclick="setTimeNow()" style="white-space: nowrap;">⏰ Now</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Duration</label>
+                            <select id="duration" required>
+                                <!-- Generated by JS based on config -->
+                            </select>
+                        </div>
+
+                        <div class="form-group" id="parallelSlotsGroup">
+                            <label>Parallel Slots Needed</label>
+                            <select id="parallelSlots" required>
+                                <!-- Generated by JS based on config -->
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Number of Pipelines</label>
+                            <input type="number" id="pipelineCount" min="1" max="20" value="1" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Execution Mode</label>
+                            <select id="executionMode" required>
+                                <option value="parallel">Parallel (all at once)</option>
+                                <option value="sequential">Sequential (one by one)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Release Version (if applicable)</label>
+                            <input type="text" id="releaseVersion" placeholder="e.g., v2.5.0">
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label>Notes</label>
+                            <textarea id="notes" placeholder="Any additional details..."></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveReservation()">Save Reservation</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Reservation Modal -->
+    <div class="modal-overlay" id="viewModal">
+        <div class="modal" style="max-width: 480px;">
+            <div class="modal-header">
+                <h2>Reservation Details</h2>
+                <button class="modal-close" onclick="closeViewModal()">✕</button>
+            </div>
+            <div class="modal-body reservation-detail" id="reservationDetails">
+                <!-- Generated by JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-danger" onclick="promptDeleteReservation()">Delete</button>
+                <button class="btn btn-ghost" onclick="downloadTicket()">📥 Ticket</button>
+                <button class="btn btn-secondary" onclick="editReservation()">Edit</button>
+                <button class="btn btn-primary" onclick="closeViewModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal" style="max-width: 480px;">
+            <div class="modal-header">
+                <h2>⚠️ Delete Reservation</h2>
+                <button class="modal-close" onclick="closeDeleteModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 20px; color: var(--text-secondary);">
+                    Please provide a reason for deleting this reservation. This will be logged for audit purposes.
+                </p>
+                <div class="form-group">
+                    <label>Deletion Reason (Required)</label>
+                    <textarea id="deleteReason" placeholder="Why is this reservation being deleted?" required style="min-height: 100px;"></textarea>
+                    <p id="deleteReasonError" style="color: var(--danger); font-size: 12px; margin-top: 8px; display: none;">
+                        Please provide a valid reason for deletion.
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeDeleteModal()">Cancel</button>
+                <button class="btn btn-danger" onclick="confirmDelete()">Delete Reservation</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Deletion Logs Modal -->
+    <div class="modal-overlay" id="logsModal">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>📋 Deletion Logs</h2>
+                <button class="modal-close" onclick="closeLogsModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="deletion-log" id="deletionLogList">
+                    <div class="empty-state">
+                        <div class="icon">📭</div>
+                        <p>No deletions recorded</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="promptClearLogs()" style="color: var(--danger);">🔒 Clear All Logs (Admin)</button>
+                <button class="btn btn-primary" onclick="closeLogsModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Modal -->
+    <div class="modal-overlay" id="adminModal">
+        <div class="modal wide">
+            <div class="modal-header">
+                <h2>⚙️ Admin Settings</h2>
+                <button class="modal-close" onclick="closeAdminModal()">✕</button>
+            </div>
+            <div class="modal-body" id="adminContent">
+                <!-- Password or Settings -->
+            </div>
+            <div class="modal-footer" id="adminFooter" style="display: none;">
+                <button class="btn btn-ghost" onclick="closeAdminModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveAdminSettings()">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <span id="toastMessage"></span>
+    </div>
+
+    <script>
+        // Default Configuration
+        const DEFAULT_CONFIG = {
+            teams: ['CS', 'SIT', 'Enrollment'],
+            maxTestimParallels: 40,
+            maxLocalParallels: 3,  // Recommended max parallel tests on local to reduce risk of tests not starting
+            minDuration: 1,
+            maxDuration: 24
+        };
+
+        // State Management
+        let config = JSON.parse(localStorage.getItem('schedulerConfig')) || { ...DEFAULT_CONFIG };
+        
+        // Migration: rename maxLocalServers to maxLocalParallels if old config exists
+        if (config.maxLocalServers !== undefined && config.maxLocalParallels === undefined) {
+            config.maxLocalParallels = config.maxLocalServers;
+            delete config.maxLocalServers;
+            localStorage.setItem('schedulerConfig', JSON.stringify(config));
+        }
+        
+        // Ensure all config properties exist with defaults
+        config = {
+            teams: config.teams || DEFAULT_CONFIG.teams,
+            maxTestimParallels: config.maxTestimParallels || DEFAULT_CONFIG.maxTestimParallels,
+            maxLocalParallels: config.maxLocalParallels || DEFAULT_CONFIG.maxLocalParallels,
+            minDuration: config.minDuration || DEFAULT_CONFIG.minDuration,
+            maxDuration: config.maxDuration || DEFAULT_CONFIG.maxDuration
+        };
+        
+        let reservations = JSON.parse(localStorage.getItem('testSchedulerReservations')) || [];
+        let deletionLogs = JSON.parse(localStorage.getItem('schedulerDeletionLogs')) || [];
+        let currentWeekStart = getWeekStart(new Date());
+        let currentView = 'week';
+        let selectedReservationId = null;
+        let isAdminAuthenticated = false;
+        const ADMIN_PASSWORD = 'Jcmt1107';
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            updateConfigDisplays();
+            populateTeamDropdown();
+            populateDurationDropdown();
+            populateParallelDropdown();
+            renderWeekGrid();
+            updateStats();
+            renderTodaySchedule();
+            
+            // Set default date to today
+            document.getElementById('reservationDate').valueAsDate = new Date();
+        });
+
+        // Update displays based on config
+        function updateConfigDisplays() {
+            const maxTestimEl = document.getElementById('maxTestimDisplay');
+            if (maxTestimEl) maxTestimEl.textContent = config.maxTestimParallels;
+            
+            const legendTestimEl = document.getElementById('legendTestim');
+            if (legendTestimEl) legendTestimEl.textContent = config.maxTestimParallels;
+            
+            const legendLocalEl = document.getElementById('legendLocal');
+            if (legendLocalEl) legendLocalEl.textContent = config.maxLocalParallels;
+            
+            document.querySelectorAll('.testim-max').forEach(el => el.textContent = config.maxTestimParallels);
+            document.querySelectorAll('.local-max').forEach(el => el.textContent = config.maxLocalParallels);
+        }
+
+        function populateTeamDropdown() {
+            const select = document.getElementById('teamName');
+            select.innerHTML = '<option value="">Select Team...</option>';
+            config.teams.forEach(team => {
+                select.innerHTML += `<option value="${team}">${team}</option>`;
+            });
+        }
+
+        function populateDurationDropdown() {
+            const select = document.getElementById('duration');
+            select.innerHTML = '';
+            for (let h = config.minDuration; h <= config.maxDuration; h++) {
+                select.innerHTML += `<option value="${h}">${h} hour${h > 1 ? 's' : ''}</option>`;
+            }
+        }
+
+        function populateParallelDropdown() {
+            const select = document.getElementById('parallelSlots');
+            if (!select) return;
+            
+            const type = getSelectedExecutionType();
+            const max = type === 'testim' ? config.maxTestimParallels : config.maxLocalParallels;
+            
+            // Build options array first, then set innerHTML once
+            let options = [];
+            for (let i = 1; i <= max; i++) {
+                const label = type === 'testim' ? `${i} parallel${i > 1 ? 's' : ''}` : `${i} parallel${i > 1 ? 's' : ''}`;
+                options.push(`<option value="${i}">${label}</option>`);
+            }
+            select.innerHTML = options.join('');
+        }
+
+        // Timezone: Los Angeles (Pacific Time)
+        const LA_TIMEZONE = 'America/Los_Angeles';
+        
+        function getLADate() {
+            return new Date(new Date().toLocaleString('en-US', { timeZone: LA_TIMEZONE }));
+        }
+        
+        function getLAHour() {
+            return parseInt(new Date().toLocaleString('en-US', { 
+                timeZone: LA_TIMEZONE, 
+                hour: 'numeric', 
+                hour12: false 
+            }));
+        }
+        
+        function getLADateString() {
+            const laDate = getLADate();
+            return laDate.toISOString().split('T')[0];
+        }
+        
+        function getLATimeString() {
+            const now = new Date();
+            const hours = now.toLocaleString('en-US', { timeZone: LA_TIMEZONE, hour: '2-digit', hour12: false });
+            const minutes = now.toLocaleString('en-US', { timeZone: LA_TIMEZONE, minute: '2-digit' });
+            return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
+        }
+        
+        function setTimeNow() {
+            document.getElementById('startTime').value = getLATimeString();
+            // Also set date to today if not already set
+            const dateInput = document.getElementById('reservationDate');
+            if (!dateInput.value) {
+                dateInput.value = getLADateString();
+            }
+        }
+
+        // Date helpers
+        function getWeekStart(date) {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            return new Date(d.setDate(diff));
+        }
+
+        function formatDate(date) {
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        function formatTime(time) {
+            const [hours, minutes] = time.split(':');
+            const h = parseInt(hours);
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            const h12 = h % 12 || 12;
+            return `${h12}:${minutes} ${ampm}`;
+        }
+
+        function formatTime24to12(hour) {
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const h12 = hour % 12 || 12;
+            return `${h12} ${ampm}`;
+        }
+
+        function isSameDay(date1, date2) {
+            return date1.toDateString() === date2.toDateString();
+        }
+
+        // Render week grid - 24 hours
+        function renderWeekGrid() {
+            const grid = document.getElementById('weekGrid');
+            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            const today = getLADate();
+            const currentHour = getLAHour();
+            const todayStr = getLADateString();
+            
+            // Update week label
+            const weekEnd = new Date(currentWeekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+            document.getElementById('currentWeekLabel').textContent = 
+                `${formatDate(currentWeekStart)} - ${formatDate(weekEnd)}, ${weekEnd.getFullYear()} (Pacific Time)`;
+
+            let html = '<div class="week-header">';
+            html += '<div class="week-header-cell time-col">Time (PT)</div>';
+            
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(currentWeekStart);
+                date.setDate(date.getDate() + i);
+                const isToday = isSameDay(date, today);
+                html += `<div class="week-header-cell ${isToday ? 'today' : ''}">
+                    ${days[i]}
+                    <div class="date">${date.getDate()}</div>
+                </div>`;
+            }
+            html += '</div>';
+
+            // Build cell map for reservations
+            const cellMap = buildCellMap();
+
+            // Time slots (0 to 23 - full 24 hours)
+            for (let hour = 0; hour < 24; hour++) {
+                const isCurrentHour = hour === currentHour;
+                html += '<div class="time-slot">';
+                html += `<div class="time-label ${isCurrentHour ? 'current-hour' : ''}">${formatTime24to12(hour)}</div>`;
+                
+                for (let day = 0; day < 7; day++) {
+                    const cellDate = new Date(currentWeekStart);
+                    cellDate.setDate(cellDate.getDate() + day);
+                    const dateStr = cellDate.toISOString().split('T')[0];
+                    const cellKey = `${dateStr}-${hour}`;
+                    const cellData = cellMap[cellKey] || { occupied: false, reservations: [] };
+                    const isTodayCell = dateStr === todayStr;
+                    
+                    let cellClasses = 'day-cell';
+                    if (cellData.occupied) {
+                        cellClasses += cellData.type === 'testim' ? ' occupied-testim' : 
+                                       cellData.type === 'local' ? ' occupied-local' : ' occupied';
+                    }
+                    if (isCurrentHour) cellClasses += ' current-hour';
+                    if (isTodayCell) cellClasses += ' today-cell';
+
+                    html += `<div class="${cellClasses}" data-date="${dateStr}" data-hour="${hour}" onclick="handleCellClick('${dateStr}', ${hour})">`;
+                    
+                    // Only render reservation block at start hour
+                    cellData.reservations.filter(r => {
+                        const startHour = parseInt(r.startTime.split(':')[0]);
+                        return startHour === hour;
+                    }).forEach(r => {
+                        const startHour = parseInt(r.startTime.split(':')[0]);
+                        const duration = parseInt(r.duration);
+                        const heightPx = duration * 40 - 4; // 40px per hour minus padding
+                        
+                        html += `
+                            <div class="reservation-block ${r.executionType}" 
+                                 style="height: ${heightPx}px; top: 2px;"
+                                 onclick="event.stopPropagation(); viewReservation('${r.id}')">
+                                <div class="team">${r.teamName}</div>
+                                <div class="time-range">${formatTime(r.startTime)} - ${getEndTime(r.startTime, r.duration)}</div>
+                                <div class="details">${r.parallelSlots} parallels • ${r.pipelineCount} pipeline(s)</div>
+                            </div>
+                        `;
+                    });
+
+                    html += '</div>';
+                }
+                html += '</div>';
+            }
+
+            grid.innerHTML = html;
+            // Reset grid styles for week view
+            grid.style.display = 'grid';
+            grid.style.gridTemplateColumns = '70px repeat(7, 1fr)';
+        }
+
+        function buildCellMap() {
+            const map = {};
+            
+            reservations.forEach(r => {
+                const startHour = parseInt(r.startTime.split(':')[0]);
+                const duration = parseInt(r.duration);
+                
+                for (let h = 0; h < duration; h++) {
+                    const hour = startHour + h;
+                    if (hour < 24) {
+                        const key = `${r.date}-${hour}`;
+                        if (!map[key]) {
+                            map[key] = { occupied: true, type: r.executionType, reservations: [] };
+                        }
+                        map[key].occupied = true;
+                        map[key].type = r.executionType;
+                        map[key].reservations.push(r);
+                    }
+                }
+            });
+            
+            return map;
+        }
+
+        function getEndTime(startTime, duration) {
+            const [hours, minutes] = startTime.split(':').map(Number);
+            let endHour = hours + parseInt(duration);
+            if (endHour >= 24) endHour = endHour - 24;
+            return formatTime(`${endHour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`);
+        }
+
+        // Handle cell click for quick add
+        function handleCellClick(date, hour) {
+            document.getElementById('reservationDate').value = date;
+            document.getElementById('startTime').value = `${hour.toString().padStart(2, '0')}:00`;
+            openReservationModal();
+        }
+
+        // Modal controls
+        function openReservationModal(id = null) {
+            const modal = document.getElementById('reservationModal');
+            const title = document.getElementById('modalTitle');
+            
+            populateParallelDropdown();
+            
+            if (id) {
+                const reservation = reservations.find(r => r.id === id);
+                if (reservation) {
+                    title.textContent = 'Edit Reservation';
+                    document.getElementById('reservationId').value = id;
+                    document.getElementById('teamName').value = reservation.teamName;
+                    document.getElementById('reservedBy').value = reservation.reservedBy;
+                    document.getElementById('reservationDate').value = reservation.date;
+                    document.getElementById('startTime').value = reservation.startTime;
+                    document.getElementById('duration').value = reservation.duration;
+                    document.getElementById('parallelSlots').value = reservation.parallelSlots;
+                    document.getElementById('pipelineCount').value = reservation.pipelineCount;
+                    document.getElementById('executionMode').value = reservation.executionMode;
+                    document.getElementById('releaseVersion').value = reservation.releaseVersion || '';
+                    document.getElementById('notes').value = reservation.notes || '';
+                    
+                    // Select execution type
+                    document.querySelectorAll('.execution-type-option').forEach(opt => {
+                        opt.classList.toggle('selected', opt.dataset.type === reservation.executionType);
+                    });
+                    populateParallelDropdown();
+                    document.getElementById('parallelSlots').value = reservation.parallelSlots;
+                }
+            } else {
+                title.textContent = 'New Reservation';
+                document.getElementById('reservationForm').reset();
+                document.getElementById('reservationId').value = '';
+                document.getElementById('reservationDate').valueAsDate = new Date();
+                document.querySelectorAll('.execution-type-option').forEach(opt => {
+                    opt.classList.toggle('selected', opt.dataset.type === 'testim');
+                });
+                populateParallelDropdown();
+            }
+            
+            modal.classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('reservationModal').classList.remove('active');
+        }
+
+        function closeViewModal() {
+            document.getElementById('viewModal').classList.remove('active');
+        }
+
+        function selectExecutionType(element) {
+            document.querySelectorAll('.execution-type-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            element.classList.add('selected');
+            populateParallelDropdown();
+        }
+
+        function getSelectedExecutionType() {
+            const selected = document.querySelector('.execution-type-option.selected');
+            return selected ? selected.dataset.type : 'testim';
+        }
+
+        // Generate reservation ticket as PNG
+        function generateTicket(reservation) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 600;
+            canvas.height = 520;  // Increased height to fit all fields
+            const ctx = canvas.getContext('2d');
+            
+            // Background gradient
+            const gradient = ctx.createLinearGradient(0, 0, 600, 520);
+            if (reservation.executionType === 'testim') {
+                gradient.addColorStop(0, '#1E3860');
+                gradient.addColorStop(1, '#2A4A7A');
+            } else {
+                gradient.addColorStop(0, '#059669');
+                gradient.addColorStop(1, '#10B981');
+            }
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 600, 520);
+            
+            // Decorative elements
+            ctx.fillStyle = 'rgba(255,255,255,0.05)';
+            ctx.beginPath();
+            ctx.arc(500, 50, 120, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(-50, 450, 150, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Header bar
+            ctx.fillStyle = '#FAA74A';
+            ctx.fillRect(0, 0, 600, 8);
+            
+            // Logo area
+            ctx.fillStyle = '#FAA74A';
+            ctx.beginPath();
+            ctx.roundRect(30, 30, 50, 50, 10);
+            ctx.fill();
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 22px Plus Jakarta Sans, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('AX', 55, 62);
+            
+            // Title
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 24px Plus Jakarta Sans, sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText('Test Execution Reservation', 100, 55);
+            ctx.font = '12px Plus Jakarta Sans, sans-serif';
+            ctx.fillStyle = 'rgba(255,255,255,0.7)';
+            ctx.fillText('QCoE Resource Reservation Ticket', 100, 72);
+            
+            // Ticket ID
+            ctx.font = '11px Plus Jakarta Sans, sans-serif';
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.textAlign = 'right';
+            ctx.fillText(`Ticket #${reservation.id.slice(-8).toUpperCase()}`, 570, 45);
+            
+            // Divider
+            ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(30, 100);
+            ctx.lineTo(570, 100);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Content
+            ctx.textAlign = 'left';
+            const date = new Date(reservation.date + 'T00:00:00');
+            const dateStr = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+            
+            const parallelCount = reservation.parallelSlots || '1';
+            const pipelineCount = reservation.pipelineCount || '1';
+            const execMode = reservation.executionMode || 'parallel';
+            
+            const fields = [
+                { label: 'TEAM', value: reservation.teamName || 'N/A' },
+                { label: 'RESERVED BY', value: reservation.reservedBy || 'N/A' },
+                { label: 'EXECUTION TYPE', value: reservation.executionType === 'testim' ? 'Testim Grid' : 'Local Execution' },
+                { label: 'DATE', value: dateStr },
+                { label: 'TIME', value: `${formatTime(reservation.startTime)} - ${getEndTime(reservation.startTime, reservation.duration)} (${reservation.duration}h)` },
+                { label: 'PARALLEL SLOTS', value: `${parallelCount} parallels` },
+                { label: 'PIPELINES', value: `${pipelineCount} (${execMode})` }
+            ];
+            
+            if (reservation.releaseVersion) {
+                fields.push({ label: 'RELEASE', value: reservation.releaseVersion });
+            }
+            
+            let y = 130;
+            fields.forEach(field => {
+                ctx.font = '10px Plus Jakarta Sans, sans-serif';
+                ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                ctx.fillText(field.label, 40, y);
+                ctx.font = 'bold 16px Plus Jakarta Sans, sans-serif';
+                ctx.fillStyle = 'white';
+                ctx.fillText(field.value, 40, y + 20);
+                y += 45;
+            });
+            
+            // Footer
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.font = '10px Plus Jakarta Sans, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`Generated: ${new Date().toLocaleString()}`, 300, 500);
+            
+            // Download
+            const link = document.createElement('a');
+            link.download = `reservation-${reservation.teamName}-${reservation.date}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        // Save reservation
+        function saveReservation() {
+            const id = document.getElementById('reservationId').value;
+            const reservation = {
+                id: id || Date.now().toString(),
+                teamName: document.getElementById('teamName').value,
+                reservedBy: document.getElementById('reservedBy').value,
+                executionType: getSelectedExecutionType(),
+                date: document.getElementById('reservationDate').value,
+                startTime: document.getElementById('startTime').value,
+                duration: document.getElementById('duration').value || '1',
+                parallelSlots: document.getElementById('parallelSlots').value || '1',
+                pipelineCount: document.getElementById('pipelineCount').value || '1',
+                executionMode: document.getElementById('executionMode').value || 'parallel',
+                releaseVersion: document.getElementById('releaseVersion').value,
+                notes: document.getElementById('notes').value,
+                createdAt: id ? reservations.find(r => r.id === id)?.createdAt : new Date().toISOString()
+            };
+
+            // Validation
+            if (!reservation.teamName || !reservation.reservedBy || !reservation.date || !reservation.startTime) {
+                showToast('Please fill in all required fields', false);
+                return;
+            }
+
+            if (id) {
+                const index = reservations.findIndex(r => r.id === id);
+                if (index !== -1) {
+                    reservations[index] = reservation;
+                }
+            } else {
+                reservations.push(reservation);
+            }
+
+            saveToLocalStorage();
+            closeModal();
+            renderWeekGrid();
+            updateStats();
+            renderTodaySchedule();
+            
+            // Generate ticket for new reservations
+            if (!id) {
+                setTimeout(() => {
+                    generateTicket(reservation);
+                }, 500);
+            }
+            
+            showToast(id ? 'Reservation updated!' : 'Reservation created! Downloading ticket...', true);
+        }
+
+        // View reservation
+        function viewReservation(id) {
+            selectedReservationId = id;
+            const reservation = reservations.find(r => r.id === id);
+            if (!reservation) return;
+
+            const details = document.getElementById('reservationDetails');
+            const date = new Date(reservation.date + 'T00:00:00');
+            
+            details.innerHTML = `
+                <div class="detail-row">
+                    <span class="detail-label">Team</span>
+                    <span class="detail-value">${reservation.teamName}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Reserved By</span>
+                    <span class="detail-value">${reservation.reservedBy}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Execution Type</span>
+                    <span class="detail-value">${reservation.executionType === 'testim' ? 'Testim Grid' : 'Local Server'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Date</span>
+                    <span class="detail-value">${date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Time</span>
+                    <span class="detail-value">${formatTime(reservation.startTime)} - ${getEndTime(reservation.startTime, reservation.duration)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Duration</span>
+                    <span class="detail-value">${reservation.duration} hour${reservation.duration > 1 ? 's' : ''}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Parallel Slots</span>
+                    <span class="detail-value">${reservation.parallelSlots}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Pipelines</span>
+                    <span class="detail-value">${reservation.pipelineCount} (${reservation.executionMode})</span>
+                </div>
+                ${reservation.releaseVersion ? `
+                <div class="detail-row">
+                    <span class="detail-label">Release</span>
+                    <span class="detail-value">${reservation.releaseVersion}</span>
+                </div>
+                ` : ''}
+                ${reservation.notes ? `
+                <div class="detail-row">
+                    <span class="detail-label">Notes</span>
+                    <span class="detail-value">${reservation.notes}</span>
+                </div>
+                ` : ''}
+            `;
+
+            document.getElementById('viewModal').classList.add('active');
+        }
+
+        function editReservation() {
+            closeViewModal();
+            openReservationModal(selectedReservationId);
+        }
+
+        function downloadTicket() {
+            const reservation = reservations.find(r => r.id === selectedReservationId);
+            if (reservation) {
+                generateTicket(reservation);
+                showToast('Downloading ticket...', true);
+            }
+        }
+
+        // Delete with reason
+        function promptDeleteReservation() {
+            closeViewModal();
+            document.getElementById('deleteReason').value = '';
+            document.getElementById('deleteReasonError').style.display = 'none';
+            document.getElementById('deleteModal').classList.add('active');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.remove('active');
+        }
+
+        function confirmDelete() {
+            const reason = document.getElementById('deleteReason').value.trim();
+            const errorEl = document.getElementById('deleteReasonError');
+            
+            // Validate reason
+            const invalidReasons = ['', 'n/a', 'na', 'null', 'none', '-', '.', '..', '...'];
+            if (invalidReasons.includes(reason.toLowerCase()) || reason.length < 5) {
+                errorEl.textContent = 'Please provide a valid reason (at least 5 characters).';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            // Get reservation details before deleting
+            const reservation = reservations.find(r => r.id === selectedReservationId);
+            if (reservation) {
+                // Log the deletion
+                const logEntry = {
+                    id: Date.now().toString(),
+                    deletedAt: new Date().toISOString(),
+                    reservation: { ...reservation },
+                    reason: reason
+                };
+                deletionLogs.unshift(logEntry);
+                localStorage.setItem('schedulerDeletionLogs', JSON.stringify(deletionLogs));
+            }
+
+            // Delete reservation
+            reservations = reservations.filter(r => r.id !== selectedReservationId);
+            saveToLocalStorage();
+            closeDeleteModal();
+            renderWeekGrid();
+            updateStats();
+            renderTodaySchedule();
+            showToast('Reservation deleted and logged', true);
+        }
+
+        // Deletion Logs Modal
+        function openLogsModal() {
+            const container = document.getElementById('deletionLogList');
+            
+            if (deletionLogs.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">📭</div>
+                        <p>No deletions recorded</p>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = deletionLogs.map(log => {
+                    const deletedAt = new Date(log.deletedAt);
+                    const resDate = new Date(log.reservation.date + 'T00:00:00');
+                    return `
+                        <div class="log-item">
+                            <div class="log-header">
+                                <span>${deletedAt.toLocaleDateString()} ${deletedAt.toLocaleTimeString()}</span>
+                                <span>${log.reservation.executionType === 'testim' ? '🌐 Testim' : '💻 Local'}</span>
+                            </div>
+                            <div class="log-team">${log.reservation.teamName} - ${log.reservation.reservedBy}</div>
+                            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+                                Was scheduled: ${resDate.toLocaleDateString()} at ${formatTime(log.reservation.startTime)} (${log.reservation.duration}h)
+                            </div>
+                            <div class="log-reason">"${log.reason}"</div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            
+            document.getElementById('logsModal').classList.add('active');
+        }
+
+        function closeLogsModal() {
+            document.getElementById('logsModal').classList.remove('active');
+        }
+
+        function promptClearLogs() {
+            const password = prompt('Enter admin password to clear logs:');
+            if (password === ADMIN_PASSWORD) {
+                if (confirm('Are you sure you want to clear all deletion logs? This cannot be undone.')) {
+                    deletionLogs = [];
+                    localStorage.setItem('schedulerDeletionLogs', JSON.stringify(deletionLogs));
+                    openLogsModal();
+                    showToast('Logs cleared', true);
+                }
+            } else if (password !== null) {
+                showToast('Incorrect password', false);
+            }
+        }
+
+        // Admin Panel
+        function openAdminModal() {
+            const content = document.getElementById('adminContent');
+            const footer = document.getElementById('adminFooter');
+            
+            if (!isAdminAuthenticated) {
+                content.innerHTML = `
+                    <div class="password-section">
+                        <h3 style="margin-bottom: 20px; color: var(--axos-blue);">🔐 Admin Authentication</h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 24px;">Enter the admin password to access settings.</p>
+                        <input type="password" id="adminPassword" placeholder="Password" onkeyup="if(event.key === 'Enter') authenticateAdmin()">
+                        <br>
+                        <button class="btn btn-primary" onclick="authenticateAdmin()">Unlock Settings</button>
+                        <p class="password-error" id="passwordError"></p>
+                    </div>
+                `;
+                footer.style.display = 'none';
+            } else {
+                renderAdminSettings();
+                footer.style.display = 'flex';
+            }
+            
+            document.getElementById('adminModal').classList.add('active');
+        }
+
+        function authenticateAdmin() {
+            const password = document.getElementById('adminPassword').value;
+            const errorEl = document.getElementById('passwordError');
+            
+            if (password === ADMIN_PASSWORD) {
+                isAdminAuthenticated = true;
+                renderAdminSettings();
+                document.getElementById('adminFooter').style.display = 'flex';
+            } else {
+                errorEl.textContent = 'Incorrect password. Please try again.';
+            }
+        }
+
+        function renderAdminSettings() {
+            const content = document.getElementById('adminContent');
+            
+            content.innerHTML = `
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <div class="admin-section">
+                            <h4>👥 Teams</h4>
+                            <div class="team-list" id="teamList">
+                                ${config.teams.map((team, idx) => `
+                                    <div class="team-item">
+                                        <span style="font-size: 18px;">👥</span>
+                                        <input type="text" value="${team}" class="team-input" data-idx="${idx}">
+                                        <button class="remove-btn" onclick="removeTeam(${idx})">✕</button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <button class="add-team-btn" onclick="addTeam()">+ Add Team</button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="admin-section">
+                            <h4>🌐 Testim Grid Settings</h4>
+                            <div class="config-item">
+                                <label>Maximum Parallel Slots</label>
+                                <input type="number" id="configTestimMax" value="${config.maxTestimParallels}" min="1" max="100">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="admin-section">
+                            <h4>💻 Local Execution Settings</h4>
+                            <div class="config-item">
+                                <label>Max Recommended Parallels</label>
+                                <input type="number" id="configLocalMax" value="${config.maxLocalParallels}" min="1" max="20">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="admin-section">
+                            <h4>⏱️ Duration Settings</h4>
+                            <div class="config-item">
+                                <label>Minimum Duration (hours)</label>
+                                <input type="number" id="configMinDuration" value="${config.minDuration}" min="1" max="24">
+                            </div>
+                            <div class="config-item">
+                                <label>Maximum Duration (hours)</label>
+                                <input type="number" id="configMaxDuration" value="${config.maxDuration}" min="1" max="24">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="admin-section">
+                            <h4>🔧 Data Management</h4>
+                            <div class="config-item">
+                                <label>Clear All Reservations</label>
+                                <button class="btn btn-danger btn-small" onclick="clearAllReservations()">Clear All</button>
+                            </div>
+                            <div class="config-item">
+                                <label>Reset to Defaults</label>
+                                <button class="btn btn-ghost btn-small" onclick="resetToDefaults()">Reset</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function addTeam() {
+            const list = document.getElementById('teamList');
+            const idx = list.children.length;
+            const div = document.createElement('div');
+            div.className = 'team-item';
+            div.innerHTML = `
+                <span style="font-size: 18px;">👥</span>
+                <input type="text" value="" class="team-input" data-idx="${idx}" placeholder="New Team Name">
+                <button class="remove-btn" onclick="this.parentElement.remove()">✕</button>
+            `;
+            list.appendChild(div);
+        }
+
+        function removeTeam(idx) {
+            if (config.teams.length <= 1) {
+                showToast('Must have at least one team', false);
+                return;
+            }
+            const items = document.querySelectorAll('.team-item');
+            items[idx].remove();
+        }
+
+        function saveAdminSettings() {
+            // Gather teams
+            const teamInputs = document.querySelectorAll('.team-input');
+            const teams = Array.from(teamInputs).map(input => input.value.trim()).filter(t => t.length > 0);
+            
+            if (teams.length === 0) {
+                showToast('Must have at least one team', false);
+                return;
+            }
+
+            config = {
+                teams: teams,
+                maxTestimParallels: parseInt(document.getElementById('configTestimMax').value) || 40,
+                maxLocalParallels: parseInt(document.getElementById('configLocalMax').value) || 3,
+                minDuration: parseInt(document.getElementById('configMinDuration').value) || 1,
+                maxDuration: parseInt(document.getElementById('configMaxDuration').value) || 24
+            };
+
+            localStorage.setItem('schedulerConfig', JSON.stringify(config));
+            
+            updateConfigDisplays();
+            populateTeamDropdown();
+            populateDurationDropdown();
+            
+            closeAdminModal();
+            showToast('Settings saved!', true);
+        }
+
+        function clearAllReservations() {
+            if (confirm('Are you sure you want to delete ALL reservations? This cannot be undone.')) {
+                reservations = [];
+                saveToLocalStorage();
+                renderWeekGrid();
+                updateStats();
+                renderTodaySchedule();
+                showToast('All reservations cleared', true);
+            }
+        }
+
+        function resetToDefaults() {
+            if (confirm('Reset all settings to defaults?')) {
+                config = { ...DEFAULT_CONFIG };
+                localStorage.setItem('schedulerConfig', JSON.stringify(config));
+                renderAdminSettings();
+                updateConfigDisplays();
+                populateTeamDropdown();
+                populateDurationDropdown();
+                showToast('Settings reset to defaults', true);
+            }
+        }
+
+        function closeAdminModal() {
+            document.getElementById('adminModal').classList.remove('active');
+        }
+
+        // Navigation
+        function previousWeek() {
+            if (currentView === 'week') {
+                currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+                renderWeekGrid();
+            } else {
+                // Day view - go back one day
+                if (!window.currentDayDate) window.currentDayDate = getLADate();
+                window.currentDayDate.setDate(window.currentDayDate.getDate() - 1);
+                renderDayGrid();
+            }
+        }
+
+        function nextWeek() {
+            if (currentView === 'week') {
+                currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+                renderWeekGrid();
+            } else {
+                // Day view - go forward one day
+                if (!window.currentDayDate) window.currentDayDate = getLADate();
+                window.currentDayDate.setDate(window.currentDayDate.getDate() + 1);
+                renderDayGrid();
+            }
+        }
+
+        function showTodayView() {
+            currentWeekStart = getWeekStart(getLADate());
+            window.currentDayDate = getLADate();
+            if (currentView === 'week') {
+                renderWeekGrid();
+            } else {
+                renderDayGrid();
+            }
+        }
+
+        function setView(view) {
+            currentView = view;
+            document.querySelectorAll('.view-toggle button').forEach(btn => {
+                btn.classList.toggle('active', btn.textContent.toLowerCase() === view);
+            });
+            
+            if (view === 'week') {
+                renderWeekGrid();
+            } else if (view === 'day') {
+                renderDayGrid();
+            }
+        }
+        
+        function renderDayGrid() {
+            const grid = document.getElementById('weekGrid');
+            const today = getLADate();
+            const currentHour = getLAHour();
+            const todayStr = getLADateString();
+            
+            // Use currentDayView date or default to today
+            if (!window.currentDayDate) {
+                window.currentDayDate = new Date(currentWeekStart);
+            }
+            
+            const viewDate = window.currentDayDate;
+            const dateStr = viewDate.toISOString().split('T')[0];
+            const isToday = dateStr === todayStr;
+            const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            
+            // Update week label for day view
+            document.getElementById('currentWeekLabel').textContent = 
+                `${dayNames[viewDate.getDay()]}, ${formatDate(viewDate)}, ${viewDate.getFullYear()} (Pacific Time)`;
+            
+            // Build cell map for reservations
+            const cellMap = buildCellMap();
+            
+            let html = '<div class="week-header">';
+            html += '<div class="week-header-cell time-col">Time (PT)</div>';
+            html += `<div class="week-header-cell ${isToday ? 'today' : ''}" style="flex: 1;">
+                ${dayNames[viewDate.getDay()]}
+                <div class="date">${viewDate.getDate()}</div>
+            </div>`;
+            html += '</div>';
+            
+            // Time slots
+            for (let hour = 0; hour < 24; hour++) {
+                const isCurrentHour = hour === currentHour && isToday;
+                // Time label
+                html += `<div class="time-label ${isCurrentHour ? 'current-hour' : ''}">${formatTime24to12(hour)}</div>`;
+                
+                const cellKey = `${dateStr}-${hour}`;
+                const cellData = cellMap[cellKey] || { occupied: false, reservations: [] };
+                
+                let cellClasses = 'day-cell';
+                if (cellData.occupied) {
+                    cellClasses += cellData.type === 'testim' ? ' occupied-testim' : 
+                                   cellData.type === 'local' ? ' occupied-local' : ' occupied';
+                }
+                if (isCurrentHour) cellClasses += ' current-hour';
+                if (isToday) cellClasses += ' today-cell';
+                
+                html += `<div class="${cellClasses}" style="min-height: 50px;" data-date="${dateStr}" data-hour="${hour}" onclick="handleCellClick('${dateStr}', ${hour})">`;
+                
+                // Render reservations
+                cellData.reservations.filter(r => {
+                    const startHour = parseInt(r.startTime.split(':')[0]);
+                    return startHour === hour;
+                }).forEach(r => {
+                    const duration = parseInt(r.duration);
+                    const heightPx = duration * 50 - 4;
+                    
+                    html += `
+                        <div class="reservation-block ${r.executionType}" 
+                             style="height: ${heightPx}px; top: 2px; position: relative;"
+                             onclick="event.stopPropagation(); viewReservation('${r.id}')">
+                            <div class="team">${r.teamName}</div>
+                            <div class="time-range">${formatTime(r.startTime)} - ${getEndTime(r.startTime, r.duration)}</div>
+                            <div class="details">${r.parallelSlots} parallels • ${r.pipelineCount} pipeline(s) • ${r.reservedBy}</div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>'; // Close day-cell
+            }
+
+            grid.innerHTML = html;
+            // Set grid styles for day view (2 columns: time + 1 day)
+            grid.style.display = 'grid';
+            grid.style.gridTemplateColumns = '70px 1fr';
+        }
+
+        // Update stats
+        function updateStats() {
+            const today = getLADateString();
+            const currentHour = getLAHour();
+            
+            const todayReservations = reservations.filter(r => r.date === today);
+            
+            // Today's count
+            document.getElementById('todayCount').textContent = todayReservations.length;
+            
+            // Active pipelines (currently running)
+            const activeNow = todayReservations.filter(r => {
+                const startHour = parseInt(r.startTime.split(':')[0]);
+                const endHour = startHour + parseInt(r.duration);
+                return currentHour >= startHour && currentHour < endHour;
+            });
+            
+            const activePipelines = activeNow.reduce((sum, r) => sum + parseInt(r.pipelineCount), 0);
+            document.getElementById('activePipelines').textContent = activePipelines;
+
+            // Resource usage for currently active
+            const testimSlots = activeNow.filter(r => r.executionType === 'testim')
+                .reduce((sum, r) => sum + parseInt(r.parallelSlots), 0);
+            const activeLocalExecutions = activeNow.filter(r => r.executionType === 'local');
+            const localExecutionCount = activeLocalExecutions.length;
+            
+            document.getElementById('testimSlotsDisplay').innerHTML = `${testimSlots}/<span id="maxTestimDisplay">${config.maxTestimParallels}</span>`;
+            document.getElementById('localExecutionsActive').textContent = localExecutionCount;
+            
+            document.getElementById('testimUsage').textContent = `${testimSlots}/${config.maxTestimParallels} slots`;
+            document.getElementById('localUsage').textContent = `${localExecutionCount} active (max ${config.maxLocalParallels} parallels each)`;
+            
+            // Show individual local executions
+            const localListEl = document.getElementById('localExecutionsList');
+            if (activeLocalExecutions.length > 0) {
+                localListEl.innerHTML = activeLocalExecutions.map(r => `
+                    <div style="display: flex; justify-content: space-between; padding: 4px 8px; background: rgba(16, 185, 129, 0.1); border-radius: 6px; margin-bottom: 4px;">
+                        <span style="color: var(--axos-blue); font-weight: 600;">${r.teamName}</span>
+                        <span style="color: var(--success); font-weight: 600;">${r.parallelSlots}/${config.maxLocalParallels} parallels</span>
+                    </div>
+                `).join('');
+            } else {
+                localListEl.innerHTML = '<span style="color: var(--text-muted);">No active local executions</span>';
+            }
+            
+            const testimPct = (testimSlots / config.maxTestimParallels) * 100;
+            
+            document.getElementById('testimProgress').style.width = `${Math.min(testimPct, 100)}%`;
+            document.getElementById('testimProgress').classList.toggle('high', testimPct > 80);
+        }
+
+        // Render today's schedule
+        function renderTodaySchedule() {
+            const today = getLADateString();
+            const todayReservations = reservations
+                .filter(r => r.date === today)
+                .sort((a, b) => a.startTime.localeCompare(b.startTime));
+            
+            const container = document.getElementById('todaySchedule');
+            
+            if (todayReservations.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">📭</div>
+                        <p>No reservations today</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = todayReservations.map(r => `
+                <div class="schedule-item ${r.executionType}" onclick="viewReservation('${r.id}')">
+                    <div class="schedule-time">${formatTime(r.startTime)}<br><span style="font-size: 10px; color: var(--text-muted);">${r.duration}h</span></div>
+                    <div class="schedule-info">
+                        <div class="schedule-team">${r.teamName}</div>
+                        <div class="schedule-details">
+                            ${r.parallelSlots} parallels • ${r.pipelineCount} pipeline(s)
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Local Storage
+        function saveToLocalStorage() {
+            localStorage.setItem('testSchedulerReservations', JSON.stringify(reservations));
+        }
+
+        // Export
+        function exportSchedule() {
+            const exportData = {
+                config: config,
+                reservations: reservations,
+                deletionLogs: deletionLogs,
+                exportedAt: new Date().toISOString()
+            };
+            const data = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `test-schedule-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Schedule exported!', true);
+        }
+
+        function importSchedule() {
+            document.getElementById('importFileInput').click();
+        }
+
+        function handleImportFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importData = JSON.parse(e.target.result);
+                    
+                    // Validate the data structure
+                    if (!importData.reservations && !importData.config) {
+                        throw new Error('Invalid file format');
+                    }
+                    
+                    // Ask user what to import
+                    const importOptions = [];
+                    if (importData.reservations) importOptions.push('reservations');
+                    if (importData.config) importOptions.push('config');
+                    if (importData.deletionLogs) importOptions.push('logs');
+                    
+                    const message = `Found: ${importData.reservations?.length || 0} reservations, ` +
+                                    `${importData.deletionLogs?.length || 0} logs.\n\n` +
+                                    `Choose import mode:\n` +
+                                    `- "Merge" to add to existing data\n` +
+                                    `- "Replace" to overwrite all data\n` +
+                                    `- "Cancel" to abort`;
+                    
+                    const choice = prompt(message + '\n\nType "merge" or "replace":');
+                    
+                    if (!choice) {
+                        showToast('Import cancelled', false);
+                        return;
+                    }
+                    
+                    if (choice.toLowerCase() === 'merge') {
+                        // Merge reservations (avoid duplicates by ID)
+                        if (importData.reservations) {
+                            const existingIds = new Set(reservations.map(r => r.id));
+                            const newReservations = importData.reservations.filter(r => !existingIds.has(r.id));
+                            reservations = [...reservations, ...newReservations];
+                            saveToLocalStorage();
+                        }
+                        
+                        if (importData.deletionLogs) {
+                            const existingLogIds = new Set(deletionLogs.map(l => l.id));
+                            const newLogs = importData.deletionLogs.filter(l => !existingLogIds.has(l.id));
+                            deletionLogs = [...deletionLogs, ...newLogs];
+                            localStorage.setItem('schedulerDeletionLogs', JSON.stringify(deletionLogs));
+                        }
+                        
+                        showToast('Data merged successfully!', true);
+                    } else if (choice.toLowerCase() === 'replace') {
+                        if (confirm('This will REPLACE all existing data. Are you sure?')) {
+                            if (importData.config) {
+                                config = {
+                                    teams: importData.config.teams || DEFAULT_CONFIG.teams,
+                                    maxTestimParallels: importData.config.maxTestimParallels || DEFAULT_CONFIG.maxTestimParallels,
+                                    maxLocalParallels: importData.config.maxLocalParallels || importData.config.maxLocalServers || DEFAULT_CONFIG.maxLocalParallels,
+                                    minDuration: importData.config.minDuration || DEFAULT_CONFIG.minDuration,
+                                    maxDuration: importData.config.maxDuration || DEFAULT_CONFIG.maxDuration
+                                };
+                                localStorage.setItem('schedulerConfig', JSON.stringify(config));
+                            }
+                            
+                            if (importData.reservations) {
+                                reservations = importData.reservations;
+                                saveToLocalStorage();
+                            }
+                            
+                            if (importData.deletionLogs) {
+                                deletionLogs = importData.deletionLogs;
+                                localStorage.setItem('schedulerDeletionLogs', JSON.stringify(deletionLogs));
+                            }
+                            
+                            showToast('Data replaced successfully!', true);
+                        } else {
+                            showToast('Import cancelled', false);
+                            return;
+                        }
+                    } else {
+                        showToast('Invalid choice. Import cancelled.', false);
+                        return;
+                    }
+                    
+                    // Refresh everything
+                    updateConfigDisplays();
+                    populateTeamDropdown();
+                    populateDurationDropdown();
+                    if (currentView === 'week') {
+                        renderWeekGrid();
+                    } else {
+                        renderDayGrid();
+                    }
+                    updateStats();
+                    renderTodaySchedule();
+                    
+                } catch (error) {
+                    console.error('Import error:', error);
+                    showToast('Failed to import: Invalid file format', false);
+                }
+            };
+            
+            reader.readAsText(file);
+            
+            // Reset file input so same file can be selected again
+            event.target.value = '';
+        }
+
+        // Toast notification
+        function showToast(message, success = true) {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            toastMessage.textContent = message;
+            toast.classList.remove('success', 'error');
+            toast.classList.add(success ? 'success' : 'error');
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
