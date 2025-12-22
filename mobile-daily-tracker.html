@@ -1,0 +1,1688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mobile Daily Tracker - Xebia</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --axos-orange: #FAA74A;
+            --axos-orange-light: #FFF4E6;
+            --axos-orange-dark: #E8922E;
+            --axos-navy: #1E3860;
+            --axos-navy-light: #2A4A7A;
+            --axos-navy-dark: #152844;
+            --android-green: #3ddc84;
+            --ios-black: #000000;
+            --gradient-orange: linear-gradient(135deg, #FAA74A 0%, #F7931E 100%);
+            --gradient-navy: linear-gradient(135deg, #1E3860 0%, #2A4A7A 100%);
+            --shadow-sm: 0 2px 4px rgba(30, 56, 96, 0.08);
+            --shadow-md: 0 4px 12px rgba(30, 56, 96, 0.12);
+            --shadow-lg: 0 8px 24px rgba(30, 56, 96, 0.16);
+            --shadow-glow: 0 0 20px rgba(250, 167, 74, 0.3);
+            
+            /* Status colors */
+            --status-not-started: #94a3b8;
+            --status-in-progress: #3b82f6;
+            --status-blocked: #ef4444;
+            --status-completed: #10b981;
+            --status-unable: #8b5cf6;
+            --status-maintenance: #f59e0b;
+        }
+        
+        * { box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            padding: 0; 
+            margin: 0; 
+            line-height: 1.6; 
+            background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+            min-height: 100vh;
+        }
+        
+        .page-header {
+            background: var(--gradient-navy);
+            padding: 40px 24px;
+            margin-bottom: 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .page-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(250, 167, 74, 0.2) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        
+        .page-header h1 {
+            color: white;
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .page-header h1 span {
+            color: var(--axos-orange);
+        }
+        
+        .page-header p {
+            color: rgba(255,255,255,0.8);
+            margin: 8px 0 0 0;
+            font-size: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .main-layout {
+            display: flex;
+            gap: 24px;
+            padding: 24px;
+            margin-top: -20px;
+        }
+        
+        .main-content {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .sidebar {
+            width: 320px;
+            flex-shrink: 0;
+        }
+        
+        .container { 
+            background: white; 
+            padding: 24px; 
+            border-radius: 16px; 
+            box-shadow: var(--shadow-lg);
+            margin-bottom: 24px;
+        }
+        
+        h2 { 
+            color: var(--axos-navy); 
+            font-size: 1.3rem; 
+            font-weight: 700; 
+            display: flex; 
+            align-items: center; 
+            gap: 12px;
+            padding-bottom: 12px;
+            border-bottom: 3px solid var(--axos-orange);
+            margin: 0 0 20px 0;
+        }
+        
+        h3 { 
+            color: var(--axos-navy);
+            font-size: 1rem; 
+            font-weight: 600; 
+            margin: 0 0 16px 0;
+        }
+        
+        /* Controls */
+        .controls { 
+            display: flex; 
+            gap: 12px; 
+            padding: 20px;
+            background: linear-gradient(135deg, var(--axos-navy) 0%, var(--axos-navy-light) 100%);
+            border-radius: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+            box-shadow: var(--shadow-md);
+            margin-bottom: 24px;
+        }
+        
+        .controls button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .controls button:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .btn-primary { background: var(--gradient-orange); color: var(--axos-navy); }
+        .btn-success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; }
+        .btn-warning { background: var(--gradient-orange); color: var(--axos-navy); }
+        .btn-danger { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; }
+        
+        .save-status {
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-left: auto;
+        }
+        .save-status.saved { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); color: #065f46; }
+        .save-status.unsaved { background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); color: #991b1b; }
+        
+        /* Form Styles */
+        .form-section {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .form-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--axos-navy);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            background: white;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--axos-orange);
+            box-shadow: var(--shadow-glow);
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        /* Entry Type Toggle */
+        .entry-type-toggle {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .toggle-btn {
+            flex: 1;
+            padding: 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            background: white;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+        
+        .toggle-btn:hover {
+            border-color: var(--axos-orange);
+        }
+        
+        .toggle-btn.active {
+            border-color: var(--axos-orange);
+            background: var(--axos-orange-light);
+            color: var(--axos-navy);
+        }
+        
+        .toggle-btn .icon {
+            font-size: 24px;
+            display: block;
+            margin-bottom: 8px;
+        }
+        
+        /* Search Input */
+        .search-container {
+            position: relative;
+            margin-bottom: 16px;
+        }
+        
+        .search-container input {
+            width: 100%;
+            padding: 12px 16px 12px 44px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+        
+        .search-container::before {
+            content: '🔍';
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px;
+        }
+        
+        .search-results {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            background: white;
+            display: none;
+        }
+        
+        .search-results.show {
+            display: block;
+        }
+        
+        .search-result-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f5f9;
+            transition: background 0.2s;
+        }
+        
+        .search-result-item:hover {
+            background: var(--axos-orange-light);
+        }
+        
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+        
+        .search-result-item .test-name {
+            font-weight: 600;
+            color: var(--axos-navy);
+        }
+        
+        .search-result-item .test-meta {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 4px;
+        }
+        
+        /* Status Badge */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .status-not-started { background: #f1f5f9; color: var(--status-not-started); }
+        .status-in-progress { background: #dbeafe; color: var(--status-in-progress); }
+        .status-blocked { background: #fee2e2; color: var(--status-blocked); }
+        .status-completed { background: #d1fae5; color: var(--status-completed); }
+        .status-unable { background: #ede9fe; color: var(--status-unable); }
+        .status-maintenance { background: #fef3c7; color: var(--status-maintenance); }
+        
+        /* Test List Table */
+        .test-list-container {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+        
+        .test-list {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .test-list th,
+        .test-list td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .test-list th {
+            background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+            font-weight: 600;
+            color: var(--axos-navy);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
+        }
+        
+        .test-list tr:hover {
+            background: #f8fafc;
+        }
+        
+        .test-list .duplicate-indicator {
+            background: #fef3c7;
+            color: #92400e;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: 8px;
+        }
+        
+        .test-list .lifetime {
+            font-size: 12px;
+            color: #64748b;
+        }
+        
+        .test-list .lifetime.old {
+            color: #ef4444;
+            font-weight: 600;
+        }
+        
+        /* Person filter tabs */
+        .person-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .person-tab {
+            padding: 8px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 20px;
+            background: white;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .person-tab:hover {
+            border-color: var(--axos-orange);
+        }
+        
+        .person-tab.active {
+            background: var(--axos-navy);
+            color: white;
+            border-color: var(--axos-navy);
+        }
+        
+        .person-tab .count {
+            background: rgba(255,255,255,0.2);
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: 6px;
+            font-size: 11px;
+        }
+        
+        .person-tab.active .count {
+            background: var(--axos-orange);
+            color: var(--axos-navy);
+        }
+        
+        /* Sidebar Stats */
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .stat-card .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .stat-card .stat-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .stat-card .stat-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--axos-navy);
+        }
+        
+        .stat-card .stat-breakdown {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+        
+        .stat-card .mini-stat {
+            background: #f8fafc;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+        }
+        
+        .stat-card .mini-stat strong {
+            color: var(--axos-navy);
+        }
+        
+        /* Person Summary Card */
+        .person-summary {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border-left: 4px solid var(--axos-orange);
+        }
+        
+        .person-summary .name {
+            font-weight: 700;
+            color: var(--axos-navy);
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        
+        .person-summary .stats-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #64748b;
+        }
+        
+        .person-summary .stats-row strong {
+            color: var(--axos-navy);
+        }
+        
+        /* Daily Entry Card */
+        .daily-entry-card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border-left: 4px solid var(--axos-orange);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .daily-entry-card .entry-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .daily-entry-card .entry-date {
+            font-weight: 700;
+            color: var(--axos-navy);
+        }
+        
+        .daily-entry-card .entry-person {
+            font-size: 12px;
+            color: #64748b;
+        }
+        
+        .daily-entry-card .entry-content {
+            font-size: 13px;
+            color: #475569;
+        }
+        
+        .daily-entry-card .entry-content strong {
+            color: var(--axos-navy);
+        }
+        
+        /* Add Person Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            width: 400px;
+            max-width: 90%;
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-20px);
+            transition: transform 0.3s ease;
+        }
+        
+        .modal-overlay.show .modal {
+            transform: translateY(0);
+        }
+        
+        .modal h3 {
+            margin-top: 0;
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        
+        .modal-actions button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        /* Action buttons in table */
+        .action-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        
+        .action-btn.edit {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+        
+        .action-btn.delete {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        
+        .action-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--axos-navy);
+            border-radius: 4px;
+        }
+        
+        /* Hidden file input */
+        #fileInput {
+            display: none;
+        }
+        
+        /* Date picker styling */
+        input[type="date"] {
+            cursor: pointer;
+        }
+        
+        /* Platform badges */
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        .platform-badge.android {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .platform-badge.ios {
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+        
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .main-layout {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+            }
+        }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .container {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+    </style>
+</head>
+<body>
+
+<div class="page-header">
+    <h1>📅 Daily <span>Tracker</span></h1>
+    <p><strong>Xebia Mobile Team</strong> — Individual Progress & Test Tracking | <span id="currentDate"></span></p>
+</div>
+
+<div class="main-layout">
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Controls -->
+        <div class="controls">
+            <button class="btn-success" onclick="saveData()">💾 Save Changes</button>
+            <button class="btn-primary" onclick="exportData()">📤 Export Data</button>
+            <button class="btn-warning" onclick="importData()">📥 Import Data</button>
+            <button class="btn-danger" onclick="resetData()">🔄 Reset All</button>
+            <span id="saveStatus" class="save-status saved">✓ All changes saved</span>
+        </div>
+        
+        <!-- Daily Entry Form -->
+        <div class="container">
+            <h2>📝 Add Daily Entry</h2>
+            
+            <!-- Select Person -->
+            <div class="form-section">
+                <div class="form-row">
+                    <div class="form-group" style="flex: 2;">
+                        <label>Engineer</label>
+                        <select id="selectedPerson" onchange="updatePersonSelection()">
+                            <!-- Options populated by JS -->
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>&nbsp;</label>
+                        <button class="btn-primary" style="width: 100%; padding: 12px;" onclick="showAddPersonModal()">
+                            ➕ Add Person
+                        </button>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Date</label>
+                        <input type="date" id="entryDate" value="">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Entry Type Toggle -->
+            <div class="entry-type-toggle">
+                <div class="toggle-btn active" id="toggleNew" onclick="setEntryType('new')">
+                    <span class="icon">🆕</span>
+                    New Test
+                </div>
+                <div class="toggle-btn" id="toggleExisting" onclick="setEntryType('existing')">
+                    <span class="icon">🔧</span>
+                    Existing Test (Maintenance)
+                </div>
+            </div>
+            
+            <!-- New Test Form -->
+            <div id="newTestForm" class="form-section">
+                <h3>📋 New Test Details</h3>
+                <div class="form-row">
+                    <div class="form-group" style="flex: 2;">
+                        <label>Test Name / Description</label>
+                        <input type="text" id="testName" placeholder="e.g., Login - Biometric Authentication Flow">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Platform</label>
+                        <select id="testPlatform">
+                            <option value="android">🤖 Android</option>
+                            <option value="ios">🍎 iOS</option>
+                            <option value="both">📱 Both</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Vertical</label>
+                        <select id="testVertical">
+                            <option value="login">🔐 Login</option>
+                            <option value="registration">📝 Registration</option>
+                            <option value="home">🏠 Home</option>
+                            <option value="bank">🏦 Bank</option>
+                            <option value="borrow">💳 Borrow</option>
+                            <option value="invest">📈 Invest</option>
+                            <option value="plan">📋 Plan</option>
+                            <option value="mega-menu">☰ Mega Menu</option>
+                            <option value="evo-chat">💬 Evo Chat</option>
+                            <option value="other">📌 Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Priority</label>
+                        <select id="testPriority">
+                            <option value="P0">🔴 P0 - Critical</option>
+                            <option value="P1" selected>🟠 P1 - High</option>
+                            <option value="P2">🔵 P2 - Medium</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Status</label>
+                        <select id="testStatus">
+                            <option value="not-started">⏳ Not Started</option>
+                            <option value="in-progress" selected>🔄 In Progress</option>
+                            <option value="blocked">🚫 Blocked</option>
+                            <option value="completed">✅ Completed</option>
+                            <option value="unable">❌ Unable to Automate</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Existing Test Form (for Maintenance) -->
+            <div id="existingTestForm" class="form-section" style="display: none;">
+                <h3>🔧 Select Existing Test for Maintenance</h3>
+                <div class="search-container">
+                    <input type="text" id="existingTestSearch" placeholder="Search existing tests..." oninput="filterExistingTests()">
+                </div>
+                <div class="search-results" id="searchResults">
+                    <!-- Populated by JS -->
+                </div>
+                <input type="hidden" id="selectedExistingTestId">
+                <div id="selectedTestDisplay" style="margin-top: 16px; padding: 16px; background: var(--axos-orange-light); border-radius: 10px; display: none;">
+                    <strong>Selected:</strong> <span id="selectedTestName"></span>
+                </div>
+            </div>
+            
+            <!-- Blockers / Notes -->
+            <div class="form-section">
+                <h3>📝 Additional Information</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Blockers / Issues (What can Axos team do to unblock?)</label>
+                        <textarea id="blockers" placeholder="Describe any blockers or issues..."></textarea>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Plan for Tomorrow</label>
+                        <textarea id="tomorrowPlan" placeholder="What's the plan for tomorrow?"></textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Submit Button -->
+            <button class="btn-success" style="width: 100%; padding: 16px; font-size: 16px;" onclick="addEntry()">
+                ✅ Add Entry
+            </button>
+        </div>
+        
+        <!-- Test List -->
+        <div class="container">
+            <h2>📊 Test Inventory</h2>
+            
+            <!-- Filter Tabs -->
+            <div class="person-tabs" id="personTabs">
+                <div class="person-tab active" data-filter="all" onclick="filterByPerson('all')">
+                    All <span class="count" id="countAll">0</span>
+                </div>
+                <!-- Person tabs populated by JS -->
+            </div>
+            
+            <!-- Status Filter -->
+            <div class="person-tabs" style="margin-bottom: 16px;">
+                <div class="person-tab active" data-status="all" onclick="filterByStatus('all')">All</div>
+                <div class="person-tab" data-status="not-started" onclick="filterByStatus('not-started')">⏳ Not Started</div>
+                <div class="person-tab" data-status="in-progress" onclick="filterByStatus('in-progress')">🔄 In Progress</div>
+                <div class="person-tab" data-status="blocked" onclick="filterByStatus('blocked')">🚫 Blocked</div>
+                <div class="person-tab" data-status="completed" onclick="filterByStatus('completed')">✅ Completed</div>
+                <div class="person-tab" data-status="unable" onclick="filterByStatus('unable')">❌ Unable</div>
+                <div class="person-tab" data-status="maintenance" onclick="filterByStatus('maintenance')">🔧 Maintenance</div>
+            </div>
+            
+            <!-- Test List Table -->
+            <div class="test-list-container" style="max-height: 500px; overflow-y: auto;">
+                <table class="test-list" id="testListTable">
+                    <thead>
+                        <tr>
+                            <th>Test Name</th>
+                            <th>Owner</th>
+                            <th>Platform</th>
+                            <th>Vertical</th>
+                            <th>Status</th>
+                            <th>Date Added</th>
+                            <th>Lifetime</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="testListBody">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Daily Entries Log -->
+        <div class="container">
+            <h2>📋 Daily Log</h2>
+            <div id="dailyEntriesLog">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="container" style="position: sticky; top: 24px;">
+            <h2>📈 Weekly Summary</h2>
+            
+            <!-- Week Selector -->
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label>Week</label>
+                <select id="weekSelector" onchange="updateWeeklySummary()">
+                    <!-- Populated by JS -->
+                </select>
+            </div>
+            
+            <!-- Team Stats -->
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-title">Team Total (This Week)</span>
+                    <span class="status-badge status-completed">Active</span>
+                </div>
+                <div class="stat-value" id="teamWeeklyTotal">0</div>
+                <div class="stat-breakdown">
+                    <div class="mini-stat">✅ Completed: <strong id="teamCompleted">0</strong></div>
+                    <div class="mini-stat">🔄 In Progress: <strong id="teamInProgress">0</strong></div>
+                    <div class="mini-stat">🚫 Blocked: <strong id="teamBlocked">0</strong></div>
+                </div>
+            </div>
+            
+            <!-- Individual Stats -->
+            <h3>👥 Individual Progress</h3>
+            <div id="individualStats">
+                <!-- Populated by JS -->
+            </div>
+            
+            <!-- Blockers Summary -->
+            <h3 style="margin-top: 20px;">⚠️ Active Blockers</h3>
+            <div id="blockersSummary">
+                <p style="color: #64748b; font-size: 13px;">No blockers reported</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Person Modal -->
+<div class="modal-overlay" id="addPersonModal">
+    <div class="modal">
+        <h3>➕ Add New Team Member</h3>
+        <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" id="newPersonName" placeholder="e.g., John Doe">
+        </div>
+        <div class="modal-actions">
+            <button class="btn-danger" onclick="hideAddPersonModal()">Cancel</button>
+            <button class="btn-success" onclick="addNewPerson()">Add Person</button>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden file input for import -->
+<input type="file" id="fileInput" accept=".json" onchange="handleFileImport(event)">
+
+<!-- Signature Footer -->
+<footer style="
+    background: linear-gradient(135deg, var(--axos-navy) 0%, var(--axos-navy-dark) 100%);
+    padding: 32px 24px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+">
+    <div style="position: relative; z-index: 1;">
+        <div style="
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(255,255,255,0.05);
+            padding: 16px 28px;
+            border-radius: 50px;
+            border: 1px solid rgba(250, 167, 74, 0.3);
+        ">
+            <span style="font-size: 24px;">🧠💻</span>
+            <span style="color: rgba(255,255,255,0.9); font-size: 14px; font-weight: 500;">
+                Crafted in <span style="color: var(--axos-orange); font-weight: 700;">Cursor AI</span>
+            </span>
+        </div>
+        <p style="color: rgba(255,255,255,0.4); font-size: 11px; margin-top: 16px; letter-spacing: 1px;">
+            XEBIA × AXOS BANK • MOBILE AUTOMATION TEAM • 2025-2026
+        </p>
+    </div>
+</footer>
+
+<script>
+    // =====================
+    // DATA STRUCTURE
+    // =====================
+    let data = {
+        people: [
+            { id: 'rishabh', name: 'Rishabh Srivastava' },
+            { id: 'vijay', name: 'Vijay Lachwani' },
+            { id: 'jai', name: 'Jai Saxena' }
+        ],
+        tests: [],
+        dailyEntries: [],
+        lastUpdated: new Date().toISOString()
+    };
+    
+    // Current filters
+    let currentPersonFilter = 'all';
+    let currentStatusFilter = 'all';
+    let entryType = 'new';
+    
+    // =====================
+    // INITIALIZATION
+    // =====================
+    document.addEventListener('DOMContentLoaded', function() {
+        loadData();
+        initializeUI();
+        renderAll();
+    });
+    
+    function initializeUI() {
+        // Set current date
+        const today = new Date();
+        document.getElementById('currentDate').textContent = today.toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+        
+        // Set default entry date
+        document.getElementById('entryDate').value = today.toISOString().split('T')[0];
+        
+        // Populate dropdowns
+        populatePeopleDropdown();
+        populateWeekSelector();
+    }
+    
+    // =====================
+    // DATA MANAGEMENT
+    // =====================
+    function loadData() {
+        const saved = localStorage.getItem('mobileDailyTracker');
+        if (saved) {
+            try {
+                data = JSON.parse(saved);
+            } catch (e) {
+                console.error('Error loading data:', e);
+            }
+        }
+    }
+    
+    function saveData() {
+        data.lastUpdated = new Date().toISOString();
+        localStorage.setItem('mobileDailyTracker', JSON.stringify(data));
+        showSaveStatus(true);
+        alert('✅ Data saved successfully!');
+    }
+    
+    function showSaveStatus(saved) {
+        const status = document.getElementById('saveStatus');
+        if (saved) {
+            status.className = 'save-status saved';
+            status.textContent = '✓ All changes saved';
+        } else {
+            status.className = 'save-status unsaved';
+            status.textContent = '⚠ Unsaved changes';
+        }
+    }
+    
+    function exportData() {
+        const dataStr = JSON.stringify(data, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `mobile-daily-tracker-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+    
+    function importData() {
+        document.getElementById('fileInput').click();
+    }
+    
+    function handleFileImport(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    data = imported;
+                    localStorage.setItem('mobileDailyTracker', JSON.stringify(data));
+                    renderAll();
+                    populatePeopleDropdown();
+                    alert('✅ Data imported successfully!');
+                } catch (err) {
+                    alert('❌ Error importing data: Invalid JSON file');
+                }
+            };
+            reader.readAsText(file);
+        }
+        event.target.value = '';
+    }
+    
+    function resetData() {
+        if (confirm('⚠️ Are you sure you want to reset all data? This cannot be undone.')) {
+            localStorage.removeItem('mobileDailyTracker');
+            data = {
+                people: [
+                    { id: 'rishabh', name: 'Rishabh Srivastava' },
+                    { id: 'vijay', name: 'Vijay Lachwani' },
+                    { id: 'jai', name: 'Jai Saxena' }
+                ],
+                tests: [],
+                dailyEntries: [],
+                lastUpdated: new Date().toISOString()
+            };
+            localStorage.setItem('mobileDailyTracker', JSON.stringify(data));
+            renderAll();
+            populatePeopleDropdown();
+            alert('✅ Data reset successfully!');
+        }
+    }
+    
+    // =====================
+    // PEOPLE MANAGEMENT
+    // =====================
+    function populatePeopleDropdown() {
+        const select = document.getElementById('selectedPerson');
+        select.innerHTML = data.people.map(p => 
+            `<option value="${p.id}">${p.name}</option>`
+        ).join('');
+    }
+    
+    function showAddPersonModal() {
+        document.getElementById('addPersonModal').classList.add('show');
+        document.getElementById('newPersonName').focus();
+    }
+    
+    function hideAddPersonModal() {
+        document.getElementById('addPersonModal').classList.remove('show');
+        document.getElementById('newPersonName').value = '';
+    }
+    
+    function addNewPerson() {
+        const name = document.getElementById('newPersonName').value.trim();
+        if (!name) {
+            alert('Please enter a name');
+            return;
+        }
+        
+        const id = name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
+        data.people.push({ id, name });
+        
+        populatePeopleDropdown();
+        document.getElementById('selectedPerson').value = id;
+        hideAddPersonModal();
+        showSaveStatus(false);
+        renderPersonTabs();
+    }
+    
+    // =====================
+    // ENTRY TYPE TOGGLE
+    // =====================
+    function setEntryType(type) {
+        entryType = type;
+        
+        document.getElementById('toggleNew').classList.toggle('active', type === 'new');
+        document.getElementById('toggleExisting').classList.toggle('active', type === 'existing');
+        
+        document.getElementById('newTestForm').style.display = type === 'new' ? 'block' : 'none';
+        document.getElementById('existingTestForm').style.display = type === 'existing' ? 'block' : 'none';
+        
+        // Reset selected existing test
+        document.getElementById('selectedExistingTestId').value = '';
+        document.getElementById('selectedTestDisplay').style.display = 'none';
+    }
+    
+    // =====================
+    // EXISTING TEST SEARCH
+    // =====================
+    function filterExistingTests() {
+        const searchTerm = document.getElementById('existingTestSearch').value.toLowerCase();
+        const resultsContainer = document.getElementById('searchResults');
+        
+        if (searchTerm.length < 2) {
+            resultsContainer.classList.remove('show');
+            return;
+        }
+        
+        // Filter tests that are completed (eligible for maintenance)
+        const eligibleTests = data.tests.filter(t => 
+            t.status === 'completed' && 
+            t.name.toLowerCase().includes(searchTerm)
+        );
+        
+        if (eligibleTests.length === 0) {
+            resultsContainer.innerHTML = '<div class="search-result-item">No matching tests found</div>';
+        } else {
+            resultsContainer.innerHTML = eligibleTests.map(t => `
+                <div class="search-result-item" onclick="selectExistingTest('${t.id}')">
+                    <div class="test-name">${t.name}</div>
+                    <div class="test-meta">${getPersonName(t.ownerId)} • ${t.vertical} • ${t.platform}</div>
+                </div>
+            `).join('');
+        }
+        
+        resultsContainer.classList.add('show');
+    }
+    
+    function selectExistingTest(testId) {
+        const test = data.tests.find(t => t.id === testId);
+        if (test) {
+            document.getElementById('selectedExistingTestId').value = testId;
+            document.getElementById('selectedTestName').textContent = test.name;
+            document.getElementById('selectedTestDisplay').style.display = 'block';
+            document.getElementById('searchResults').classList.remove('show');
+            document.getElementById('existingTestSearch').value = '';
+        }
+    }
+    
+    // =====================
+    // ADD ENTRY
+    // =====================
+    function addEntry() {
+        const personId = document.getElementById('selectedPerson').value;
+        const entryDate = document.getElementById('entryDate').value;
+        const blockers = document.getElementById('blockers').value.trim();
+        const tomorrowPlan = document.getElementById('tomorrowPlan').value.trim();
+        
+        if (!personId || !entryDate) {
+            alert('Please select a person and date');
+            return;
+        }
+        
+        let testEntry = null;
+        
+        if (entryType === 'new') {
+            // New test entry
+            const testName = document.getElementById('testName').value.trim();
+            const platform = document.getElementById('testPlatform').value;
+            const vertical = document.getElementById('testVertical').value;
+            const priority = document.getElementById('testPriority').value;
+            const status = document.getElementById('testStatus').value;
+            
+            if (!testName) {
+                alert('Please enter a test name');
+                return;
+            }
+            
+            // Check for duplicates
+            const isDuplicate = data.tests.some(t => 
+                t.name.toLowerCase() === testName.toLowerCase() &&
+                t.platform === platform
+            );
+            
+            testEntry = {
+                id: 'test-' + Date.now(),
+                name: testName,
+                platform,
+                vertical,
+                priority,
+                status,
+                ownerId: personId,
+                dateAdded: entryDate,
+                isDuplicate,
+                history: [{
+                    date: entryDate,
+                    status,
+                    updatedBy: personId
+                }]
+            };
+            
+            data.tests.push(testEntry);
+            
+            // Clear form
+            document.getElementById('testName').value = '';
+            
+        } else {
+            // Existing test (maintenance)
+            const existingTestId = document.getElementById('selectedExistingTestId').value;
+            
+            if (!existingTestId) {
+                alert('Please select an existing test');
+                return;
+            }
+            
+            const existingTest = data.tests.find(t => t.id === existingTestId);
+            if (existingTest) {
+                existingTest.status = 'maintenance';
+                existingTest.history.push({
+                    date: entryDate,
+                    status: 'maintenance',
+                    updatedBy: personId,
+                    note: 'Maintenance update'
+                });
+                testEntry = existingTest;
+            }
+            
+            // Clear selection
+            document.getElementById('selectedExistingTestId').value = '';
+            document.getElementById('selectedTestDisplay').style.display = 'none';
+        }
+        
+        // Add daily entry
+        const dailyEntry = {
+            id: 'entry-' + Date.now(),
+            date: entryDate,
+            personId,
+            testId: testEntry ? testEntry.id : null,
+            blockers,
+            tomorrowPlan,
+            entryType,
+            timestamp: new Date().toISOString()
+        };
+        
+        data.dailyEntries.push(dailyEntry);
+        
+        // Clear blockers and plan
+        document.getElementById('blockers').value = '';
+        document.getElementById('tomorrowPlan').value = '';
+        
+        showSaveStatus(false);
+        renderAll();
+        
+        alert('✅ Entry added successfully!');
+    }
+    
+    // =====================
+    // FILTERING
+    // =====================
+    function filterByPerson(personId) {
+        currentPersonFilter = personId;
+        
+        // Update tab styles
+        document.querySelectorAll('.person-tabs .person-tab[data-filter]').forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.filter === personId);
+        });
+        
+        renderTestList();
+    }
+    
+    function filterByStatus(status) {
+        currentStatusFilter = status;
+        
+        // Update tab styles
+        document.querySelectorAll('.person-tabs .person-tab[data-status]').forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.status === status);
+        });
+        
+        renderTestList();
+    }
+    
+    // =====================
+    // RENDERING
+    // =====================
+    function renderAll() {
+        renderPersonTabs();
+        renderTestList();
+        renderDailyEntries();
+        updateWeeklySummary();
+    }
+    
+    function renderPersonTabs() {
+        const container = document.getElementById('personTabs');
+        
+        let html = `
+            <div class="person-tab ${currentPersonFilter === 'all' ? 'active' : ''}" 
+                 data-filter="all" onclick="filterByPerson('all')">
+                All <span class="count" id="countAll">${data.tests.length}</span>
+            </div>
+        `;
+        
+        data.people.forEach(person => {
+            const count = data.tests.filter(t => t.ownerId === person.id).length;
+            html += `
+                <div class="person-tab ${currentPersonFilter === person.id ? 'active' : ''}" 
+                     data-filter="${person.id}" onclick="filterByPerson('${person.id}')">
+                    ${person.name.split(' ')[0]} <span class="count">${count}</span>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    function renderTestList() {
+        const tbody = document.getElementById('testListBody');
+        
+        let filteredTests = data.tests;
+        
+        // Filter by person
+        if (currentPersonFilter !== 'all') {
+            filteredTests = filteredTests.filter(t => t.ownerId === currentPersonFilter);
+        }
+        
+        // Filter by status
+        if (currentStatusFilter !== 'all') {
+            filteredTests = filteredTests.filter(t => t.status === currentStatusFilter);
+        }
+        
+        // Sort by date (newest first)
+        filteredTests.sort((a, b) => new Date(b.dateAdded) - new Date(a.dateAdded));
+        
+        if (filteredTests.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 40px; color: #64748b;">
+                        No tests found matching the current filters
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = filteredTests.map(test => {
+            const lifetime = calculateLifetime(test.dateAdded);
+            const lifetimeClass = lifetime > 7 ? 'old' : '';
+            
+            return `
+                <tr>
+                    <td>
+                        <strong>${test.name}</strong>
+                        ${test.isDuplicate ? '<span class="duplicate-indicator">⚠️ Duplicate</span>' : ''}
+                    </td>
+                    <td>${getPersonName(test.ownerId)}</td>
+                    <td>
+                        <span class="platform-badge ${test.platform}">
+                            ${getPlatformIcon(test.platform)} ${test.platform.toUpperCase()}
+                        </span>
+                    </td>
+                    <td>${getVerticalEmoji(test.vertical)} ${capitalize(test.vertical)}</td>
+                    <td>
+                        <select onchange="updateTestStatus('${test.id}', this.value)" style="padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                            <option value="not-started" ${test.status === 'not-started' ? 'selected' : ''}>⏳ Not Started</option>
+                            <option value="in-progress" ${test.status === 'in-progress' ? 'selected' : ''}>🔄 In Progress</option>
+                            <option value="blocked" ${test.status === 'blocked' ? 'selected' : ''}>🚫 Blocked</option>
+                            <option value="completed" ${test.status === 'completed' ? 'selected' : ''}>✅ Completed</option>
+                            <option value="unable" ${test.status === 'unable' ? 'selected' : ''}>❌ Unable</option>
+                            <option value="maintenance" ${test.status === 'maintenance' ? 'selected' : ''}>🔧 Maintenance</option>
+                        </select>
+                    </td>
+                    <td>${formatDate(test.dateAdded)}</td>
+                    <td><span class="lifetime ${lifetimeClass}">${lifetime} days</span></td>
+                    <td>
+                        <button class="action-btn delete" onclick="deleteTest('${test.id}')">🗑️</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+    
+    function renderDailyEntries() {
+        const container = document.getElementById('dailyEntriesLog');
+        
+        // Group entries by date
+        const entriesByDate = {};
+        data.dailyEntries.forEach(entry => {
+            if (!entriesByDate[entry.date]) {
+                entriesByDate[entry.date] = [];
+            }
+            entriesByDate[entry.date].push(entry);
+        });
+        
+        // Sort dates (newest first)
+        const sortedDates = Object.keys(entriesByDate).sort((a, b) => new Date(b) - new Date(a));
+        
+        if (sortedDates.length === 0) {
+            container.innerHTML = '<p style="color: #64748b; text-align: center; padding: 40px;">No daily entries yet. Add your first entry above!</p>';
+            return;
+        }
+        
+        container.innerHTML = sortedDates.slice(0, 10).map(date => {
+            const entries = entriesByDate[date];
+            
+            return `
+                <div style="margin-bottom: 24px;">
+                    <h3 style="color: var(--axos-navy); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0;">
+                        📅 ${formatDate(date)}
+                    </h3>
+                    ${entries.map(entry => {
+                        const test = data.tests.find(t => t.id === entry.testId);
+                        return `
+                            <div class="daily-entry-card">
+                                <div class="entry-header">
+                                    <span class="entry-person">👤 ${getPersonName(entry.personId)}</span>
+                                    <span class="status-badge status-${entry.entryType === 'new' ? 'in-progress' : 'maintenance'}">
+                                        ${entry.entryType === 'new' ? '🆕 New Test' : '🔧 Maintenance'}
+                                    </span>
+                                </div>
+                                ${test ? `
+                                    <div class="entry-content" style="margin-bottom: 8px;">
+                                        <strong>Test:</strong> ${test.name}
+                                        <span class="platform-badge ${test.platform}" style="margin-left: 8px;">
+                                            ${getPlatformIcon(test.platform)} ${test.platform}
+                                        </span>
+                                    </div>
+                                ` : ''}
+                                ${entry.blockers ? `
+                                    <div class="entry-content" style="margin-bottom: 8px; padding: 8px; background: #fee2e2; border-radius: 6px;">
+                                        <strong>🚫 Blockers:</strong> ${entry.blockers}
+                                    </div>
+                                ` : ''}
+                                ${entry.tomorrowPlan ? `
+                                    <div class="entry-content" style="padding: 8px; background: #dbeafe; border-radius: 6px;">
+                                        <strong>📋 Tomorrow:</strong> ${entry.tomorrowPlan}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }).join('');
+    }
+    
+    // =====================
+    // WEEKLY SUMMARY
+    // =====================
+    function populateWeekSelector() {
+        const select = document.getElementById('weekSelector');
+        const today = new Date();
+        const weeks = [];
+        
+        // Generate last 8 weeks
+        for (let i = 0; i < 8; i++) {
+            const weekStart = new Date(today);
+            weekStart.setDate(today.getDate() - today.getDay() - (i * 7));
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6);
+            
+            const label = `${formatDate(weekStart.toISOString().split('T')[0])} - ${formatDate(weekEnd.toISOString().split('T')[0])}`;
+            const value = weekStart.toISOString().split('T')[0];
+            
+            weeks.push({ label, value, start: weekStart, end: weekEnd });
+        }
+        
+        select.innerHTML = weeks.map((w, i) => 
+            `<option value="${w.value}" ${i === 0 ? 'selected' : ''}>${i === 0 ? 'This Week: ' : ''}${w.label}</option>`
+        ).join('');
+    }
+    
+    function updateWeeklySummary() {
+        const weekStart = document.getElementById('weekSelector').value;
+        const weekStartDate = new Date(weekStart);
+        const weekEndDate = new Date(weekStartDate);
+        weekEndDate.setDate(weekStartDate.getDate() + 6);
+        
+        // Filter tests added this week
+        const weekTests = data.tests.filter(t => {
+            const testDate = new Date(t.dateAdded);
+            return testDate >= weekStartDate && testDate <= weekEndDate;
+        });
+        
+        // Calculate team stats
+        const completed = weekTests.filter(t => t.status === 'completed').length;
+        const inProgress = weekTests.filter(t => t.status === 'in-progress').length;
+        const blocked = weekTests.filter(t => t.status === 'blocked').length;
+        
+        document.getElementById('teamWeeklyTotal').textContent = weekTests.length;
+        document.getElementById('teamCompleted').textContent = completed;
+        document.getElementById('teamInProgress').textContent = inProgress;
+        document.getElementById('teamBlocked').textContent = blocked;
+        
+        // Individual stats
+        const individualStats = document.getElementById('individualStats');
+        individualStats.innerHTML = data.people.map(person => {
+            const personTests = weekTests.filter(t => t.ownerId === person.id);
+            const personCompleted = personTests.filter(t => t.status === 'completed').length;
+            
+            return `
+                <div class="person-summary">
+                    <div class="name">👤 ${person.name}</div>
+                    <div class="stats-row">
+                        <span>Total: <strong>${personTests.length}</strong></span>
+                        <span>Completed: <strong>${personCompleted}</strong></span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        // Blockers summary
+        const blockersContainer = document.getElementById('blockersSummary');
+        const weekEntries = data.dailyEntries.filter(e => {
+            const entryDate = new Date(e.date);
+            return entryDate >= weekStartDate && entryDate <= weekEndDate && e.blockers;
+        });
+        
+        if (weekEntries.length === 0) {
+            blockersContainer.innerHTML = '<p style="color: #64748b; font-size: 13px;">No blockers reported this week 🎉</p>';
+        } else {
+            blockersContainer.innerHTML = weekEntries.map(e => `
+                <div style="background: #fee2e2; padding: 12px; border-radius: 8px; margin-bottom: 8px; font-size: 13px;">
+                    <strong>${getPersonName(e.personId)}</strong> (${formatDate(e.date)})<br>
+                    ${e.blockers}
+                </div>
+            `).join('');
+        }
+    }
+    
+    // =====================
+    // TEST OPERATIONS
+    // =====================
+    function updateTestStatus(testId, newStatus) {
+        const test = data.tests.find(t => t.id === testId);
+        if (test) {
+            test.status = newStatus;
+            test.history.push({
+                date: new Date().toISOString().split('T')[0],
+                status: newStatus,
+                updatedBy: document.getElementById('selectedPerson').value
+            });
+            showSaveStatus(false);
+            renderAll();
+        }
+    }
+    
+    function deleteTest(testId) {
+        if (confirm('Are you sure you want to delete this test?')) {
+            data.tests = data.tests.filter(t => t.id !== testId);
+            data.dailyEntries = data.dailyEntries.filter(e => e.testId !== testId);
+            showSaveStatus(false);
+            renderAll();
+        }
+    }
+    
+    // =====================
+    // UTILITY FUNCTIONS
+    // =====================
+    function getPersonName(personId) {
+        const person = data.people.find(p => p.id === personId);
+        return person ? person.name : 'Unknown';
+    }
+    
+    function calculateLifetime(dateAdded) {
+        const added = new Date(dateAdded);
+        const today = new Date();
+        const diffTime = Math.abs(today - added);
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    }
+    
+    function formatDate(dateStr) {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    
+    function capitalize(str) {
+        return str.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+    
+    function getPlatformIcon(platform) {
+        const icons = {
+            'android': '🤖',
+            'ios': '🍎',
+            'both': '📱'
+        };
+        return icons[platform] || '📱';
+    }
+    
+    function getVerticalEmoji(vertical) {
+        const emojis = {
+            'login': '🔐',
+            'registration': '📝',
+            'home': '🏠',
+            'bank': '🏦',
+            'borrow': '💳',
+            'invest': '📈',
+            'plan': '📋',
+            'mega-menu': '☰',
+            'evo-chat': '💬',
+            'other': '📌'
+        };
+        return emojis[vertical] || '📌';
+    }
+    
+    function updatePersonSelection() {
+        // Could add additional logic here if needed
+    }
+</script>
+
+</body>
+</html>
+
