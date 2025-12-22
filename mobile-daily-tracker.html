@@ -1163,6 +1163,19 @@
         return getEffectiveCount(personTests);
     }
     
+    // Helper: Get PST (Los Angeles) date string (YYYY-MM-DD)
+    function getPSTDateString(date = new Date()) {
+        const pstDate = new Date(date.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+        return pstDate.getFullYear() + '-' + 
+            String(pstDate.getMonth() + 1).padStart(2, '0') + '-' + 
+            String(pstDate.getDate()).padStart(2, '0');
+    }
+    
+    // Helper: Get PST date object
+    function getPSTDate() {
+        return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+    }
+    
     // Helper: Get overall status from two platform statuses (for "both" tests)
     function getOverallStatus(androidStatus, iosStatus) {
         // Priority order: blocked > in-progress > not-started > maintenance > unable > completed
@@ -1205,17 +1218,18 @@
     });
     
     function initializeUI() {
-        // Set current date
-        const today = new Date();
+        // Set current date (PST)
+        const today = getPSTDate();
         document.getElementById('currentDate').textContent = today.toLocaleDateString('en-US', { 
+            timeZone: 'America/Los_Angeles',
             weekday: 'long', 
             year: 'numeric', 
             month: 'long', 
             day: 'numeric' 
         });
         
-        // Set default entry date
-        document.getElementById('entryDate').value = today.toISOString().split('T')[0];
+        // Set default entry date (using PST timezone)
+        document.getElementById('entryDate').value = getPSTDateString();
         
         // Populate dropdowns
         populatePeopleDropdown();
@@ -1429,7 +1443,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'mobile-daily-tracker-' + new Date().toISOString().split('T')[0] + '.json';
+            a.download = 'mobile-daily-tracker-' + getPSTDateString() + '.json';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -1942,20 +1956,21 @@
     // =====================
     function populateWeekSelector() {
         const select = document.getElementById('weekSelector');
-        const today = new Date();
+        const today = getPSTDate();
         const weeks = [];
         
-        // Generate last 8 weeks
+        // Generate last 8 weeks (using PST)
         for (let i = 0; i < 8; i++) {
             const weekStart = new Date(today);
             weekStart.setDate(today.getDate() - today.getDay() - (i * 7));
             const weekEnd = new Date(weekStart);
             weekEnd.setDate(weekStart.getDate() + 6);
             
-            const label = `${formatDate(weekStart.toISOString().split('T')[0])} - ${formatDate(weekEnd.toISOString().split('T')[0])}`;
-            const value = weekStart.toISOString().split('T')[0];
+            const startStr = getPSTDateString(weekStart);
+            const endStr = getPSTDateString(weekEnd);
+            const label = `${formatDate(startStr)} - ${formatDate(endStr)}`;
             
-            weeks.push({ label, value, start: weekStart, end: weekEnd });
+            weeks.push({ label, value: startStr, start: weekStart, end: weekEnd });
         }
         
         select.innerHTML = weeks.map((w, i) => 
@@ -2076,7 +2091,7 @@
             }
             test.history = test.history || [];
             test.history.push({
-                date: new Date().toISOString().split('T')[0],
+                date: getPSTDateString(),
                 status: newStatus,
                 platform: platform || test.platform,
                 updatedBy: document.getElementById('selectedPerson').value
@@ -2193,8 +2208,13 @@
     }
     
     function formatDate(dateStr) {
-        const date = new Date(dateStr);
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const date = new Date(dateStr + 'T12:00:00'); // Add noon time to avoid timezone shifts
+        return date.toLocaleDateString('en-US', { 
+            timeZone: 'America/Los_Angeles',
+            month: 'short', 
+            day: 'numeric', 
+            year: 'numeric' 
+        });
     }
     
     function capitalize(str) {
