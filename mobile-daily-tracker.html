@@ -773,10 +773,8 @@
                     </div>
                     <div class="form-group" style="flex: 1;">
                         <label>Platform</label>
-                        <select id="testPlatform">
-                            <option value="android">🤖 Android</option>
-                            <option value="ios">🍎 iOS</option>
-                            <option value="both">📱 Both</option>
+                        <select id="testPlatform" disabled style="background: #f1f5f9; cursor: not-allowed;">
+                            <option value="both" selected>📱 Both</option>
                         </select>
                     </div>
                 </div>
@@ -804,9 +802,37 @@
                             <option value="P2">🔵 P2 - Medium</option>
                         </select>
                     </div>
+                </div>
+                
+                <!-- Single Status (hidden - platform is always "both") -->
+                <div id="newSingleStatus" class="form-row" style="display: none;">
                     <div class="form-group" style="flex: 1;">
                         <label>Status</label>
                         <select id="testStatus">
+                            <option value="not-started">⏳ Not Started</option>
+                            <option value="in-progress" selected>🔄 In Progress</option>
+                            <option value="blocked">🚫 Blocked</option>
+                            <option value="completed">✅ Completed</option>
+                            <option value="unable">❌ Unable to Automate</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Dual Status (for Both platforms - default) -->
+                <div id="newDualStatus" class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label>🤖 Android Status</label>
+                        <select id="testAndroidStatus">
+                            <option value="not-started">⏳ Not Started</option>
+                            <option value="in-progress" selected>🔄 In Progress</option>
+                            <option value="blocked">🚫 Blocked</option>
+                            <option value="completed">✅ Completed</option>
+                            <option value="unable">❌ Unable to Automate</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>🍎 iOS Status</label>
+                        <select id="testIosStatus">
                             <option value="not-started">⏳ Not Started</option>
                             <option value="in-progress" selected>🔄 In Progress</option>
                             <option value="blocked">🚫 Blocked</option>
@@ -836,6 +862,16 @@
             <div class="form-section">
                 <h3>📝 Additional Information</h3>
                 <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label>ADO Task Link</label>
+                        <input type="url" id="adoTaskLink" placeholder="https://bofaz.visualstudio.com/.../_queries/edit/12345...">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>ADO Bug Link(s)</label>
+                        <input type="text" id="adoBugLinks" placeholder="Comma-separated ADO bug URLs">
+                    </div>
+                </div>
+                <div class="form-row">
                     <div class="form-group">
                         <label>Blockers / Issues (What can Axos team do to unblock?)</label>
                         <textarea id="blockers" placeholder="Describe any blockers or issues..."></textarea>
@@ -843,8 +879,8 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Plan for Tomorrow</label>
-                        <textarea id="tomorrowPlan" placeholder="What's the plan for tomorrow?"></textarea>
+                        <label>Comments / Notes</label>
+                        <textarea id="commentsNotes" placeholder="Any additional comments or notes..."></textarea>
                     </div>
                 </div>
             </div>
@@ -1074,6 +1110,20 @@
                         <option value="maintenance">🔧 Maintenance</option>
                     </select>
                 </div>
+            </div>
+        </div>
+        
+        <!-- ADO Links -->
+        <div class="form-row">
+            <div class="form-group">
+                <label>ADO Task Link</label>
+                <input type="url" id="editAdoTaskLink" placeholder="https://bofaz.visualstudio.com/...">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>ADO Bug Link(s)</label>
+                <input type="text" id="editAdoBugLinks" placeholder="Comma-separated ADO bug URLs">
             </div>
         </div>
         
@@ -1609,7 +1659,9 @@
         const personId = document.getElementById('selectedPerson').value;
         const entryDate = document.getElementById('entryDate').value;
         const blockers = document.getElementById('blockers').value.trim();
-        const tomorrowPlan = document.getElementById('tomorrowPlan').value.trim();
+        const commentsNotes = document.getElementById('commentsNotes').value.trim();
+        const adoTaskLink = document.getElementById('adoTaskLink').value.trim();
+        const adoBugLinks = document.getElementById('adoBugLinks').value.trim();
         
         if (!personId || !entryDate) {
             alert('Please select a person and date');
@@ -1624,11 +1676,22 @@
             const platform = document.getElementById('testPlatform').value;
             const vertical = document.getElementById('testVertical').value;
             const priority = document.getElementById('testPriority').value;
-            const status = document.getElementById('testStatus').value;
             
             if (!testName) {
                 alert('Please enter a test name');
                 return;
+            }
+            
+            // Handle status based on platform
+            let status, androidStatus, iosStatus;
+            if (platform === 'both') {
+                androidStatus = document.getElementById('testAndroidStatus').value;
+                iosStatus = document.getElementById('testIosStatus').value;
+                status = getOverallStatus(androidStatus, iosStatus);
+            } else {
+                status = document.getElementById('testStatus').value;
+                androidStatus = null;
+                iosStatus = null;
             }
             
             // Check for duplicates
@@ -1647,6 +1710,8 @@
                 ownerId: personId,
                 dateAdded: entryDate,
                 isDuplicate,
+                adoTaskLink: adoTaskLink || null,
+                adoBugLinks: adoBugLinks || null,
                 history: [{
                     date: entryDate,
                     status,
@@ -1654,10 +1719,18 @@
                 }]
             };
             
+            // Add platform-specific statuses if "both"
+            if (platform === 'both') {
+                testEntry.androidStatus = androidStatus;
+                testEntry.iosStatus = iosStatus;
+            }
+            
             data.tests.push(testEntry);
             
             // Clear form
             document.getElementById('testName').value = '';
+            document.getElementById('adoTaskLink').value = '';
+            document.getElementById('adoBugLinks').value = '';
             
         } else {
             // Existing test (maintenance)
@@ -1671,6 +1744,10 @@
             const existingTest = data.tests.find(t => t.id === existingTestId);
             if (existingTest) {
                 existingTest.status = 'maintenance';
+                if (existingTest.platform === 'both') {
+                    existingTest.androidStatus = 'maintenance';
+                    existingTest.iosStatus = 'maintenance';
+                }
                 existingTest.history.push({
                     date: entryDate,
                     status: 'maintenance',
@@ -1692,16 +1769,20 @@
             personId,
             testId: testEntry ? testEntry.id : null,
             blockers,
-            tomorrowPlan,
+            commentsNotes,
+            adoTaskLink: adoTaskLink || null,
+            adoBugLinks: adoBugLinks || null,
             entryType,
             timestamp: new Date().toISOString()
         };
         
         data.dailyEntries.push(dailyEntry);
         
-        // Clear blockers and plan
+        // Clear blockers and notes
         document.getElementById('blockers').value = '';
-        document.getElementById('tomorrowPlan').value = '';
+        document.getElementById('commentsNotes').value = '';
+        document.getElementById('adoTaskLink').value = '';
+        document.getElementById('adoBugLinks').value = '';
         
         showSaveStatus(false);
         renderAll();
@@ -1817,8 +1898,17 @@
             // Build status column based on platform
             let statusColumn;
             if (test.platform === 'both') {
-                const androidStatus = test.androidStatus || test.status || 'not-started';
-                const iosStatus = test.iosStatus || test.status || 'not-started';
+                // Initialize platform statuses if not set (for legacy data)
+                // This happens during render, we'll also check in updateTestStatus
+                const androidStatus = test.androidStatus ? test.androidStatus : (test.status || 'not-started');
+                const iosStatus = test.iosStatus ? test.iosStatus : (test.status || 'not-started');
+                
+                // Store initialized values back to test object if they weren't set
+                if (!test.androidStatus && !test.iosStatus) {
+                    test.androidStatus = androidStatus;
+                    test.iosStatus = iosStatus;
+                }
+                
                 statusColumn = `
                     <div style="display: flex; flex-direction: column; gap: 4px;">
                         <div style="display: flex; align-items: center; gap: 4px;">
@@ -1863,6 +1953,8 @@
                     <td>
                         <strong>${test.name}</strong>
                         ${test.isDuplicate ? '<span class="duplicate-indicator">⚠️ Duplicate</span>' : ''}
+                        ${test.adoTaskLink ? `<br><span style="font-size: 11px;">${renderAdoLink(test.adoTaskLink, 'Task')}</span>` : ''}
+                        ${test.adoBugLinks ? `<br><span style="font-size: 11px;">🐛 ${renderAdoBugLinks(test.adoBugLinks)}</span>` : ''}
                     </td>
                     <td>${getPersonName(test.ownerId)}</td>
                     <td>
@@ -1934,14 +2026,24 @@
                                         </span>
                                     </div>
                                 ` : ''}
+                                ${entry.adoTaskLink || (test && test.adoTaskLink) ? `
+                                    <div class="entry-content" style="margin-bottom: 8px; padding: 8px; background: #ede9fe; border-radius: 6px;">
+                                        <strong>🔗 </strong>${renderAdoLink(entry.adoTaskLink || test.adoTaskLink, 'Task')}
+                                    </div>
+                                ` : ''}
+                                ${entry.adoBugLinks || (test && test.adoBugLinks) ? `
+                                    <div class="entry-content" style="margin-bottom: 8px; padding: 8px; background: #fef3c7; border-radius: 6px;">
+                                        <strong>🐛 Bug(s):</strong> ${renderAdoBugLinks(entry.adoBugLinks || test.adoBugLinks)}
+                                    </div>
+                                ` : ''}
                                 ${entry.blockers ? `
                                     <div class="entry-content" style="margin-bottom: 8px; padding: 8px; background: #fee2e2; border-radius: 6px;">
                                         <strong>🚫 Blockers:</strong> ${entry.blockers}
                                     </div>
                                 ` : ''}
-                                ${entry.tomorrowPlan ? `
+                                ${entry.commentsNotes || entry.tomorrowPlan ? `
                                     <div class="entry-content" style="padding: 8px; background: #dbeafe; border-radius: 6px;">
-                                        <strong>📋 Tomorrow:</strong> ${entry.tomorrowPlan}
+                                        <strong>📝 Notes:</strong> ${entry.commentsNotes || entry.tomorrowPlan}
                                     </div>
                                 ` : ''}
                             </div>
@@ -2074,17 +2176,25 @@
         const test = data.tests.find(t => t.id === testId);
         if (test) {
             if (test.platform === 'both' && platform) {
-                // Update specific platform status
+                // Initialize platform statuses if not already set (for legacy data)
+                if (!test.androidStatus) {
+                    test.androidStatus = test.status || 'not-started';
+                }
+                if (!test.iosStatus) {
+                    test.iosStatus = test.status || 'not-started';
+                }
+                
+                // Update only the specified platform status
                 if (platform === 'android') {
                     test.androidStatus = newStatus;
                 } else if (platform === 'ios') {
                     test.iosStatus = newStatus;
                 }
                 // Keep the general status in sync (use the "worst" status for overall display)
-                test.status = getOverallStatus(test.androidStatus || 'not-started', test.iosStatus || 'not-started');
+                test.status = getOverallStatus(test.androidStatus, test.iosStatus);
             } else {
                 test.status = newStatus;
-                // If switching from single to both, initialize both statuses
+                // If platform is "both" but no specific platform was passed, update both
                 if (test.platform === 'both') {
                     test.androidStatus = newStatus;
                     test.iosStatus = newStatus;
@@ -2124,6 +2234,10 @@
         document.getElementById('editTestVertical').value = test.vertical;
         document.getElementById('editTestPriority').value = test.priority || 'P1';
         document.getElementById('editTestStatus').value = test.status;
+        
+        // Set ADO links
+        document.getElementById('editAdoTaskLink').value = test.adoTaskLink || '';
+        document.getElementById('editAdoBugLinks').value = test.adoBugLinks || '';
         
         // Set platform-specific statuses
         if (test.platform === 'both') {
@@ -2168,6 +2282,10 @@
         test.vertical = document.getElementById('editTestVertical').value;
         test.priority = document.getElementById('editTestPriority').value;
         
+        // Save ADO links
+        test.adoTaskLink = document.getElementById('editAdoTaskLink').value.trim() || null;
+        test.adoBugLinks = document.getElementById('editAdoBugLinks').value.trim() || null;
+        
         if (newPlatform === 'both') {
             // Save dual statuses
             test.androidStatus = document.getElementById('editAndroidStatus').value;
@@ -2190,7 +2308,6 @@
         hideEditTestModal();
         showSaveStatus(false);
         renderAll();
-        populateExistingTestsDropdown();
     }
     
     // =====================
@@ -2249,6 +2366,52 @@
     
     function updatePersonSelection() {
         // Could add additional logic here if needed
+    }
+    
+    // Toggle platform status fields in new test form
+    function toggleNewTestPlatformStatuses() {
+        const platform = document.getElementById('testPlatform').value;
+        const singleStatus = document.getElementById('newSingleStatus');
+        const dualStatus = document.getElementById('newDualStatus');
+        
+        if (platform === 'both') {
+            singleStatus.style.display = 'none';
+            dualStatus.style.display = 'flex';
+        } else {
+            singleStatus.style.display = 'flex';
+            dualStatus.style.display = 'none';
+        }
+    }
+    
+    // Parse ADO URL to extract task/bug ID
+    function parseAdoId(url) {
+        if (!url) return null;
+        // Match patterns like /_queries/edit/12345 or /_workitems/edit/12345
+        const match = url.match(/\/(?:_queries|_workitems)\/edit\/(\d+)/);
+        return match ? match[1] : null;
+    }
+    
+    // Format ADO link for display
+    function formatAdoLink(url, type = 'Task') {
+        const id = parseAdoId(url);
+        if (!id) return url; // Return original if can't parse
+        return `ADO ${type} #${id}`;
+    }
+    
+    // Render ADO link as clickable element
+    function renderAdoLink(url, type = 'Task') {
+        if (!url) return '';
+        const displayText = formatAdoLink(url, type);
+        return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #3b82f6; text-decoration: none; font-weight: 500;">${displayText}</a>`;
+    }
+    
+    // Parse multiple ADO bug links (comma-separated)
+    function renderAdoBugLinks(bugLinksStr) {
+        if (!bugLinksStr) return '';
+        const links = bugLinksStr.split(',').map(l => l.trim()).filter(l => l);
+        if (links.length === 0) return '';
+        
+        return links.map(url => renderAdoLink(url, 'Bug')).join(', ');
     }
 </script>
 
