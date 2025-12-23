@@ -694,6 +694,107 @@
             }
         }
         
+        /* Day Filter Buttons */
+        .day-filter-btn {
+            padding: 8px 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            transition: all 0.2s ease;
+        }
+        
+        .day-filter-btn:hover {
+            border-color: var(--axos-orange);
+            color: var(--axos-navy);
+        }
+        
+        .day-filter-btn.active {
+            background: var(--axos-navy);
+            color: white;
+            border-color: var(--axos-navy);
+        }
+        
+        .day-filter-btn.today-btn {
+            background: var(--axos-orange-light);
+            border-color: var(--axos-orange);
+            color: var(--axos-navy);
+        }
+        
+        .day-filter-btn.today-btn.active {
+            background: var(--axos-orange);
+            color: var(--axos-navy);
+            border-color: var(--axos-orange-dark);
+        }
+        
+        .day-filter-btn.has-entries::after {
+            content: '•';
+            margin-left: 4px;
+            color: var(--axos-orange);
+        }
+        
+        .day-filter-btn.active.has-entries::after {
+            color: white;
+        }
+        
+        /* Collapsible Entry */
+        .log-day-section {
+            margin-bottom: 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .log-day-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .log-day-header:hover {
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+        }
+        
+        .log-day-header .day-title {
+            font-weight: 700;
+            color: var(--axos-navy);
+            font-size: 14px;
+        }
+        
+        .log-day-header .entry-count {
+            background: var(--axos-orange);
+            color: var(--axos-navy);
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        
+        .log-day-header .collapse-icon {
+            font-size: 12px;
+            transition: transform 0.2s;
+        }
+        
+        .log-day-section.collapsed .collapse-icon {
+            transform: rotate(-90deg);
+        }
+        
+        .log-day-content {
+            padding: 12px;
+            background: white;
+        }
+        
+        .log-day-section.collapsed .log-day-content {
+            display: none;
+        }
+        
         /* Animations */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
@@ -895,59 +996,155 @@
         <div class="container">
             <h2>📊 Test Inventory</h2>
             
-            <!-- Search Bar -->
-            <div class="search-container" style="margin-bottom: 16px; position: relative;">
-                <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 16px; pointer-events: none;">🔍</span>
-                <input type="text" id="inventorySearch" placeholder="Search tests by name, owner, vertical..." 
-                       oninput="filterInventory()" 
-                       style="width: 100%; padding: 12px 16px 12px 42px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-            </div>
-            
-            <!-- Filter Tabs -->
-            <div class="person-tabs" id="personTabs">
-                <div class="person-tab active" data-filter="all" onclick="filterByPerson('all')">
-                    All <span class="count" id="countAll">0</span>
+            <div id="inventoryContent">
+                <!-- Date Range Filter -->
+                <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                        <span style="font-weight: 700; color: var(--axos-navy); font-size: 13px;">📅 Date Range:</span>
+                        <span id="inventoryDateRangeLabel" style="font-size: 12px; color: #64748b;"></span>
+                    </div>
+                    
+                    <!-- Date Preset Buttons -->
+                    <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
+                        <button class="day-filter-btn active" data-preset="week" onclick="setInventoryDatePreset('week')">📆 This Week</button>
+                        <button class="day-filter-btn" data-preset="month" onclick="setInventoryDatePreset('month')">📅 This Month</button>
+                        <button class="day-filter-btn" data-preset="year" onclick="setInventoryDatePreset('year')">📆 This Year</button>
+                        <button class="day-filter-btn" data-preset="today" onclick="setInventoryDatePreset('today')">⭐ Today</button>
+                        <button class="day-filter-btn" data-preset="all" onclick="setInventoryDatePreset('all')">🗂️ All Time</button>
+                    </div>
+                    
+                    <!-- Custom Date Range -->
+                    <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label style="font-size: 12px; font-weight: 600; color: var(--axos-navy);">From:</label>
+                            <input type="date" id="inventoryStartDate" onchange="applyCustomDateRange()" 
+                                   style="padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 12px;">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label style="font-size: 12px; font-weight: 600; color: var(--axos-navy);">To:</label>
+                            <input type="date" id="inventoryEndDate" onchange="applyCustomDateRange()" 
+                                   style="padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 12px;">
+                        </div>
+                        <button onclick="clearDateFilter()" style="padding: 8px 12px; border: none; border-radius: 8px; background: #fee2e2; color: #dc2626; cursor: pointer; font-size: 12px; font-weight: 600;">
+                            ✕ Clear
+                        </button>
+                    </div>
                 </div>
-                <!-- Person tabs populated by JS -->
-            </div>
-            
-            <!-- Status Filter -->
-            <div class="person-tabs" style="margin-bottom: 16px;">
-                <div class="person-tab active" data-status="all" onclick="filterByStatus('all')">All</div>
-                <div class="person-tab" data-status="not-started" onclick="filterByStatus('not-started')">⏳ Not Started</div>
-                <div class="person-tab" data-status="in-progress" onclick="filterByStatus('in-progress')">🔄 In Progress</div>
-                <div class="person-tab" data-status="blocked" onclick="filterByStatus('blocked')">🚫 Blocked</div>
-                <div class="person-tab" data-status="completed" onclick="filterByStatus('completed')">✅ Completed</div>
-                <div class="person-tab" data-status="unable" onclick="filterByStatus('unable')">❌ Unable</div>
-                <div class="person-tab" data-status="maintenance" onclick="filterByStatus('maintenance')">🔧 Maintenance</div>
-            </div>
-            
-            <!-- Test List Table -->
-            <div class="test-list-container" style="max-height: 500px; overflow-y: auto;">
-                <table class="test-list" id="testListTable">
-                    <thead>
-                        <tr>
-                            <th>Test Name</th>
-                            <th>Owner</th>
-                            <th>Platform</th>
-                            <th>Vertical</th>
-                            <th>Status</th>
-                            <th>Date Added</th>
-                            <th>Lifetime</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="testListBody">
-                        <!-- Populated by JS -->
-                    </tbody>
-                </table>
+                
+                <!-- Search Bar -->
+                <div class="search-container" style="margin-bottom: 16px; position: relative;">
+                    <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 16px; pointer-events: none;">🔍</span>
+                    <input type="text" id="inventorySearch" placeholder="Search tests by name, owner, vertical..." 
+                           oninput="filterInventory()" 
+                           style="width: 100%; padding: 12px 16px 12px 42px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                </div>
+                
+                <!-- Filter Tabs -->
+                <div class="person-tabs" id="personTabs">
+                    <div class="person-tab active" data-filter="all" onclick="filterByPerson('all')">
+                        All <span class="count" id="countAll">0</span>
+                    </div>
+                    <!-- Person tabs populated by JS -->
+                </div>
+                
+                <!-- Status Filter -->
+                <div class="person-tabs" style="margin-bottom: 16px;">
+                    <div class="person-tab active" data-status="all" onclick="filterByStatus('all')">All</div>
+                    <div class="person-tab" data-status="not-started" onclick="filterByStatus('not-started')">⏳ Not Started</div>
+                    <div class="person-tab" data-status="in-progress" onclick="filterByStatus('in-progress')">🔄 In Progress</div>
+                    <div class="person-tab" data-status="blocked" onclick="filterByStatus('blocked')">🚫 Blocked</div>
+                    <div class="person-tab" data-status="completed" onclick="filterByStatus('completed')">✅ Completed</div>
+                    <div class="person-tab" data-status="unable" onclick="filterByStatus('unable')">❌ Unable</div>
+                    <div class="person-tab" data-status="maintenance" onclick="filterByStatus('maintenance')">🔧 Maintenance</div>
+                </div>
+                
+                <!-- Test Count Summary with Toggle -->
+                <div id="inventorySummary" style="display: flex; gap: 16px; margin-bottom: 12px; padding: 12px; background: #f8fafc; border-radius: 8px; font-size: 13px; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; gap: 16px; align-items: center;">
+                        <span><strong id="filteredTestCount">0</strong> tests shown</span>
+                        <span style="color: #64748b;">|</span>
+                        <span>🤖 Android: <strong id="androidCount">0</strong></span>
+                        <span>🍎 iOS: <strong id="iosCount">0</strong></span>
+                    </div>
+                    <button onclick="toggleInventoryTable()" id="tableToggleBtn" 
+                            style="padding: 8px 16px; border: none; border-radius: 8px; background: var(--axos-navy); color: white; cursor: pointer; font-weight: 600; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+                        <span id="tableToggleIcon">▼</span> Show Table
+                    </button>
+                </div>
+                
+                <!-- Test List Table (Collapsed by default) -->
+                <div id="testTableContainer" class="test-list-container" style="max-height: 500px; overflow-y: auto; display: none;">
+                    <table class="test-list" id="testListTable">
+                        <thead>
+                            <tr>
+                                <th>Test Name</th>
+                                <th>Owner</th>
+                                <th>Platform</th>
+                                <th>Vertical</th>
+                                <th>Status</th>
+                                <th>Date Added</th>
+                                <th>Lifetime</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="testListBody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
         
         <!-- Daily Entries Log -->
         <div class="container">
             <h2>📋 Daily Log</h2>
-            <div id="dailyEntriesLog">
+            
+            <!-- Week Navigation -->
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding: 12px; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius: 10px;">
+                <button onclick="navigateLogWeek(-1)" style="padding: 8px 16px; border: none; border-radius: 8px; background: var(--axos-navy); color: white; cursor: pointer; font-weight: 600;">
+                    ◀ Prev Week
+                </button>
+                <div style="text-align: center;">
+                    <span id="logWeekLabel" style="font-weight: 700; color: var(--axos-navy); font-size: 14px;">This Week</span>
+                    <div id="logWeekDates" style="font-size: 12px; color: #64748b;"></div>
+                </div>
+                <button onclick="navigateLogWeek(1)" style="padding: 8px 16px; border: none; border-radius: 8px; background: var(--axos-navy); color: white; cursor: pointer; font-weight: 600;">
+                    Next Week ▶
+                </button>
+            </div>
+            
+            <!-- Day Filter Buttons -->
+            <div id="dayFilterButtons" style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
+                <button class="day-filter-btn active" data-day="all" onclick="filterLogByDay('all')">
+                    📅 All Week
+                </button>
+                <button class="day-filter-btn today-btn" data-day="today" onclick="filterLogByDay('today')">
+                    ⭐ Today
+                </button>
+                <!-- Day buttons populated by JS -->
+            </div>
+            
+            <!-- Additional Filters: Owner and Entry Type -->
+            <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <label style="font-size: 12px; font-weight: 600; color: var(--axos-navy);">👤 Owner:</label>
+                    <select id="logOwnerFilter" onchange="applyLogFilters()" style="padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 12px;">
+                        <option value="all">All Team</option>
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <label style="font-size: 12px; font-weight: 600; color: var(--axos-navy);">📋 Type:</label>
+                    <select id="logEntryTypeFilter" onchange="applyLogFilters()" style="padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 12px;">
+                        <option value="all">All Types</option>
+                        <option value="new">🆕 New Test</option>
+                        <option value="existing">🔧 Maintenance</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Collapsible Log Container -->
+            <div id="dailyEntriesLog" style="max-height: 600px; overflow-y: auto;">
                 <!-- Populated by JS -->
             </div>
         </div>
@@ -1201,6 +1398,18 @@
     let currentSearchFilter = '';
     let entryType = 'new';
     
+    // Daily Log filters
+    let logWeekOffset = 0; // 0 = current week, -1 = last week, etc.
+    let logDayFilter = 'today'; // 'all', 'today', or specific date string
+    let logOwnerFilter = 'all'; // 'all' or person id
+    let logEntryTypeFilter = 'all'; // 'all', 'new', or 'existing'
+    
+    // Test Inventory date filters
+    let inventoryStartDate = null;
+    let inventoryEndDate = null;
+    let inventoryDatePreset = 'week'; // 'today', 'week', 'month', 'year', 'all', 'custom'
+    let isInventoryCollapsed = true; // Table is collapsed by default
+    
     // Helper: Count tests (platform "both" counts as 2)
     function getEffectiveCount(tests) {
         return tests.reduce((count, test) => {
@@ -1285,6 +1494,12 @@
         // Populate dropdowns
         populatePeopleDropdown();
         populateWeekSelector();
+        
+        // Initialize inventory date filter to current week
+        setInventoryDatePreset('week');
+        
+        // Populate log owner filter dropdown
+        populateLogOwnerFilter();
     }
     
     // =====================
@@ -1856,6 +2071,16 @@
         
         let filteredTests = data.tests;
         
+        // Filter by date range
+        if (inventoryStartDate || inventoryEndDate) {
+            filteredTests = filteredTests.filter(t => {
+                const testDate = t.dateAdded;
+                if (inventoryStartDate && testDate < inventoryStartDate) return false;
+                if (inventoryEndDate && testDate > inventoryEndDate) return false;
+                return true;
+            });
+        }
+        
         // Filter by person
         if (currentPersonFilter !== 'all') {
             filteredTests = filteredTests.filter(t => t.ownerId === currentPersonFilter);
@@ -1879,6 +2104,9 @@
         
         // Sort by date (newest first)
         filteredTests.sort((a, b) => new Date(b.dateAdded) - new Date(a.dateAdded));
+        
+        // Update summary counts
+        updateInventorySummary(filteredTests);
         
         if (filteredTests.length === 0) {
             tbody.innerHTML = `
@@ -1983,9 +2211,48 @@
     function renderDailyEntries() {
         const container = document.getElementById('dailyEntriesLog');
         
+        // Calculate week boundaries based on offset
+        const today = getPSTDate();
+        const weekStart = new Date(today);
+        weekStart.setDate(today.getDate() - today.getDay() + (logWeekOffset * 7)); // Sunday start
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6); // Saturday end
+        
+        // Update week label
+        updateLogWeekLabel(weekStart, weekEnd);
+        
+        // Generate day buttons for the week
+        renderDayFilterButtons(weekStart, weekEnd);
+        
+        // Filter entries for the current week
+        const weekEntries = data.dailyEntries.filter(entry => {
+            const entryDate = new Date(entry.date + 'T12:00:00');
+            return entryDate >= weekStart && entryDate <= weekEnd;
+        });
+        
+        // Further filter by day if needed
+        let filteredEntries = weekEntries;
+        const todayStr = getPSTDateString();
+        
+        if (logDayFilter === 'today') {
+            filteredEntries = weekEntries.filter(e => e.date === todayStr);
+        } else if (logDayFilter !== 'all') {
+            filteredEntries = weekEntries.filter(e => e.date === logDayFilter);
+        }
+        
+        // Filter by owner
+        if (logOwnerFilter !== 'all') {
+            filteredEntries = filteredEntries.filter(e => e.personId === logOwnerFilter);
+        }
+        
+        // Filter by entry type
+        if (logEntryTypeFilter !== 'all') {
+            filteredEntries = filteredEntries.filter(e => e.entryType === logEntryTypeFilter);
+        }
+        
         // Group entries by date
         const entriesByDate = {};
-        data.dailyEntries.forEach(entry => {
+        filteredEntries.forEach(entry => {
             if (!entriesByDate[entry.date]) {
                 entriesByDate[entry.date] = [];
             }
@@ -1996,62 +2263,307 @@
         const sortedDates = Object.keys(entriesByDate).sort((a, b) => new Date(b) - new Date(a));
         
         if (sortedDates.length === 0) {
-            container.innerHTML = '<p style="color: #64748b; text-align: center; padding: 40px;">No daily entries yet. Add your first entry above!</p>';
+            const message = logDayFilter === 'today' 
+                ? 'No entries for today yet. Add your first entry above!'
+                : logDayFilter === 'all'
+                    ? 'No entries for this week yet.'
+                    : 'No entries for the selected day.';
+            container.innerHTML = `<p style="color: #64748b; text-align: center; padding: 40px;">${message}</p>`;
             return;
         }
         
-        container.innerHTML = sortedDates.slice(0, 10).map(date => {
+        container.innerHTML = sortedDates.map((date, index) => {
             const entries = entriesByDate[date];
+            const isToday = date === todayStr;
+            const isCollapsed = !isToday && index > 0; // Collapse all except today and first
             
             return `
-                <div style="margin-bottom: 24px;">
-                    <h3 style="color: var(--axos-navy); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0;">
-                        📅 ${formatDate(date)}
-                    </h3>
-                    ${entries.map(entry => {
-                        const test = data.tests.find(t => t.id === entry.testId);
-                        return `
-                            <div class="daily-entry-card">
-                                <div class="entry-header">
-                                    <span class="entry-person">👤 ${getPersonName(entry.personId)}</span>
-                                    <span class="status-badge status-${entry.entryType === 'new' ? 'in-progress' : 'maintenance'}">
-                                        ${entry.entryType === 'new' ? '🆕 New Test' : '🔧 Maintenance'}
-                                    </span>
-                                </div>
-                                ${test ? `
-                                    <div class="entry-content" style="margin-bottom: 8px;">
-                                        <strong>Test:</strong> ${test.name}
-                                        <span class="platform-badge ${test.platform}" style="margin-left: 8px;">
-                                            ${getPlatformIcon(test.platform)} ${test.platform}
+                <div class="log-day-section ${isCollapsed ? 'collapsed' : ''}" data-date="${date}">
+                    <div class="log-day-header" onclick="toggleLogDay(this)">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span class="day-title">${isToday ? '⭐ Today - ' : '📅 '}${formatDate(date)}</span>
+                            <span class="entry-count">${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}</span>
+                        </div>
+                        <span class="collapse-icon">▼</span>
+                    </div>
+                    <div class="log-day-content">
+                        ${entries.map(entry => {
+                            const test = data.tests.find(t => t.id === entry.testId);
+                            return `
+                                <div class="daily-entry-card">
+                                    <div class="entry-header">
+                                        <span class="entry-person">👤 ${getPersonName(entry.personId)}</span>
+                                        <span class="status-badge status-${entry.entryType === 'new' ? 'in-progress' : 'maintenance'}">
+                                            ${entry.entryType === 'new' ? '🆕 New Test' : '🔧 Maintenance'}
                                         </span>
                                     </div>
-                                ` : ''}
-                                ${entry.adoTaskLink || (test && test.adoTaskLink) ? `
-                                    <div class="entry-content" style="margin-bottom: 8px; padding: 8px; background: #ede9fe; border-radius: 6px;">
-                                        <strong>🔗 </strong>${renderAdoLink(entry.adoTaskLink || test.adoTaskLink, 'Task')}
-                                    </div>
-                                ` : ''}
-                                ${entry.adoBugLinks || (test && test.adoBugLinks) ? `
-                                    <div class="entry-content" style="margin-bottom: 8px; padding: 8px; background: #fef3c7; border-radius: 6px;">
-                                        <strong>🐛 Bug(s):</strong> ${renderAdoBugLinks(entry.adoBugLinks || test.adoBugLinks)}
-                                    </div>
-                                ` : ''}
-                                ${entry.blockers ? `
-                                    <div class="entry-content" style="margin-bottom: 8px; padding: 8px; background: #fee2e2; border-radius: 6px;">
-                                        <strong>🚫 Blockers:</strong> ${entry.blockers}
-                                    </div>
-                                ` : ''}
-                                ${entry.commentsNotes || entry.tomorrowPlan ? `
-                                    <div class="entry-content" style="padding: 8px; background: #dbeafe; border-radius: 6px;">
-                                        <strong>📝 Notes:</strong> ${entry.commentsNotes || entry.tomorrowPlan}
-                                    </div>
-                                ` : ''}
-                            </div>
-                        `;
-                    }).join('')}
+                                    ${test ? `
+                                        <div class="entry-content" style="margin-bottom: 8px;">
+                                            <strong>Test:</strong> ${test.name}
+                                            <span class="platform-badge ${test.platform}" style="margin-left: 8px;">
+                                                ${getPlatformIcon(test.platform)} ${test.platform}
+                                            </span>
+                                        </div>
+                                    ` : ''}
+                                    ${entry.adoTaskLink || (test && test.adoTaskLink) ? `
+                                        <div class="entry-content" style="margin-bottom: 8px; padding: 8px; background: #ede9fe; border-radius: 6px;">
+                                            <strong>🔗 </strong>${renderAdoLink(entry.adoTaskLink || test.adoTaskLink, 'Task')}
+                                        </div>
+                                    ` : ''}
+                                    ${entry.adoBugLinks || (test && test.adoBugLinks) ? `
+                                        <div class="entry-content" style="margin-bottom: 8px; padding: 8px; background: #fef3c7; border-radius: 6px;">
+                                            <strong>🐛 Bug(s):</strong> ${renderAdoBugLinks(entry.adoBugLinks || test.adoBugLinks)}
+                                        </div>
+                                    ` : ''}
+                                    ${entry.blockers ? `
+                                        <div class="entry-content" style="margin-bottom: 8px; padding: 8px; background: #fee2e2; border-radius: 6px;">
+                                            <strong>🚫 Blockers:</strong> ${entry.blockers}
+                                        </div>
+                                    ` : ''}
+                                    ${entry.commentsNotes || entry.tomorrowPlan ? `
+                                        <div class="entry-content" style="padding: 8px; background: #dbeafe; border-radius: 6px;">
+                                            <strong>📝 Notes:</strong> ${entry.commentsNotes || entry.tomorrowPlan}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
                 </div>
             `;
         }).join('');
+    }
+    
+    // Update week label in the Daily Log section
+    function updateLogWeekLabel(weekStart, weekEnd) {
+        const labelEl = document.getElementById('logWeekLabel');
+        const datesEl = document.getElementById('logWeekDates');
+        
+        if (logWeekOffset === 0) {
+            labelEl.textContent = '📆 This Week';
+        } else if (logWeekOffset === -1) {
+            labelEl.textContent = '📆 Last Week';
+        } else if (logWeekOffset === 1) {
+            labelEl.textContent = '📆 Next Week';
+        } else {
+            labelEl.textContent = `📆 ${Math.abs(logWeekOffset)} weeks ${logWeekOffset < 0 ? 'ago' : 'ahead'}`;
+        }
+        
+        datesEl.textContent = `${formatDate(getPSTDateString(weekStart))} - ${formatDate(getPSTDateString(weekEnd))}`;
+    }
+    
+    // Render day filter buttons
+    function renderDayFilterButtons(weekStart, weekEnd) {
+        const container = document.getElementById('dayFilterButtons');
+        const todayStr = getPSTDateString();
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        
+        // Check which days have entries
+        const daysWithEntries = new Set();
+        data.dailyEntries.forEach(entry => {
+            const entryDate = new Date(entry.date + 'T12:00:00');
+            if (entryDate >= weekStart && entryDate <= weekEnd) {
+                daysWithEntries.add(entry.date);
+            }
+        });
+        
+        let buttonsHtml = `
+            <button class="day-filter-btn ${logDayFilter === 'all' ? 'active' : ''}" data-day="all" onclick="filterLogByDay('all')">
+                📅 All Week
+            </button>
+            <button class="day-filter-btn today-btn ${logDayFilter === 'today' ? 'active' : ''}" data-day="today" onclick="filterLogByDay('today')">
+                ⭐ Today
+            </button>
+        `;
+        
+        // Generate buttons for each day of the week
+        for (let i = 0; i < 7; i++) {
+            const dayDate = new Date(weekStart);
+            dayDate.setDate(weekStart.getDate() + i);
+            const dateStr = getPSTDateString(dayDate);
+            const hasEntries = daysWithEntries.has(dateStr);
+            const isToday = dateStr === todayStr;
+            const isActive = logDayFilter === dateStr;
+            
+            buttonsHtml += `
+                <button class="day-filter-btn ${isActive ? 'active' : ''} ${hasEntries ? 'has-entries' : ''}" 
+                        data-day="${dateStr}" 
+                        onclick="filterLogByDay('${dateStr}')"
+                        title="${formatDate(dateStr)}">
+                    ${dayNames[i]} ${dayDate.getDate()}${isToday ? ' ⭐' : ''}
+                </button>
+            `;
+        }
+        
+        container.innerHTML = buttonsHtml;
+    }
+    
+    // Navigate week in Daily Log
+    function navigateLogWeek(direction) {
+        logWeekOffset += direction;
+        logDayFilter = 'all'; // Reset to all when changing weeks
+        renderDailyEntries();
+    }
+    
+    // Filter by specific day
+    function filterLogByDay(day) {
+        logDayFilter = day;
+        
+        // Update button states
+        document.querySelectorAll('.day-filter-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.day === day);
+        });
+        
+        renderDailyEntries();
+    }
+    
+    // Toggle collapsible day section
+    function toggleLogDay(headerEl) {
+        const section = headerEl.closest('.log-day-section');
+        section.classList.toggle('collapsed');
+    }
+    
+    // Populate log owner filter dropdown
+    function populateLogOwnerFilter() {
+        const select = document.getElementById('logOwnerFilter');
+        select.innerHTML = '<option value="all">All Team</option>' + 
+            data.people.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+    }
+    
+    // Apply log filters (owner and entry type)
+    function applyLogFilters() {
+        logOwnerFilter = document.getElementById('logOwnerFilter').value;
+        logEntryTypeFilter = document.getElementById('logEntryTypeFilter').value;
+        renderDailyEntries();
+    }
+    
+    // =====================
+    // INVENTORY DATE FILTERS
+    // =====================
+    
+    // Toggle inventory table collapse
+    function toggleInventoryTable() {
+        isInventoryCollapsed = !isInventoryCollapsed;
+        const tableContainer = document.getElementById('testTableContainer');
+        const icon = document.getElementById('tableToggleIcon');
+        const btn = document.getElementById('tableToggleBtn');
+        
+        if (isInventoryCollapsed) {
+            tableContainer.style.display = 'none';
+            icon.textContent = '▼';
+            btn.innerHTML = '<span id="tableToggleIcon">▼</span> Show Table';
+        } else {
+            tableContainer.style.display = 'block';
+            icon.textContent = '▲';
+            btn.innerHTML = '<span id="tableToggleIcon">▲</span> Hide Table';
+        }
+    }
+    
+    // Set inventory date preset
+    function setInventoryDatePreset(preset) {
+        inventoryDatePreset = preset;
+        const today = getPSTDate();
+        
+        // Update button states
+        document.querySelectorAll('[data-preset]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.preset === preset);
+        });
+        
+        switch (preset) {
+            case 'today':
+                inventoryStartDate = getPSTDateString(today);
+                inventoryEndDate = getPSTDateString(today);
+                break;
+            case 'week':
+                const weekStart = new Date(today);
+                weekStart.setDate(today.getDate() - today.getDay()); // Sunday
+                const weekEnd = new Date(weekStart);
+                weekEnd.setDate(weekStart.getDate() + 6); // Saturday
+                inventoryStartDate = getPSTDateString(weekStart);
+                inventoryEndDate = getPSTDateString(weekEnd);
+                break;
+            case 'month':
+                const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+                const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                inventoryStartDate = getPSTDateString(monthStart);
+                inventoryEndDate = getPSTDateString(monthEnd);
+                break;
+            case 'year':
+                inventoryStartDate = `${today.getFullYear()}-01-01`;
+                inventoryEndDate = `${today.getFullYear()}-12-31`;
+                break;
+            case 'all':
+                inventoryStartDate = null;
+                inventoryEndDate = null;
+                break;
+        }
+        
+        // Update date inputs
+        document.getElementById('inventoryStartDate').value = inventoryStartDate || '';
+        document.getElementById('inventoryEndDate').value = inventoryEndDate || '';
+        
+        updateInventoryDateLabel();
+        renderTestList();
+    }
+    
+    // Apply custom date range
+    function applyCustomDateRange() {
+        inventoryStartDate = document.getElementById('inventoryStartDate').value || null;
+        inventoryEndDate = document.getElementById('inventoryEndDate').value || null;
+        inventoryDatePreset = 'custom';
+        
+        // Deactivate preset buttons
+        document.querySelectorAll('[data-preset]').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        updateInventoryDateLabel();
+        renderTestList();
+    }
+    
+    // Clear date filter
+    function clearDateFilter() {
+        setInventoryDatePreset('all');
+    }
+    
+    // Update inventory date range label
+    function updateInventoryDateLabel() {
+        const label = document.getElementById('inventoryDateRangeLabel');
+        
+        if (!inventoryStartDate && !inventoryEndDate) {
+            label.textContent = 'Showing all tests';
+        } else if (inventoryStartDate === inventoryEndDate) {
+            label.textContent = formatDate(inventoryStartDate);
+        } else {
+            const startFormatted = inventoryStartDate ? formatDate(inventoryStartDate) : 'Beginning';
+            const endFormatted = inventoryEndDate ? formatDate(inventoryEndDate) : 'Now';
+            label.textContent = `${startFormatted} → ${endFormatted}`;
+        }
+    }
+    
+    // Update inventory summary counts
+    function updateInventorySummary(filteredTests) {
+        let totalCount = 0;
+        let androidCount = 0;
+        let iosCount = 0;
+        
+        filteredTests.forEach(test => {
+            if (test.platform === 'both') {
+                totalCount += 2;
+                androidCount += 1;
+                iosCount += 1;
+            } else if (test.platform === 'android') {
+                totalCount += 1;
+                androidCount += 1;
+            } else if (test.platform === 'ios') {
+                totalCount += 1;
+                iosCount += 1;
+            }
+        });
+        
+        document.getElementById('filteredTestCount').textContent = totalCount;
+        document.getElementById('androidCount').textContent = androidCount;
+        document.getElementById('iosCount').textContent = iosCount;
     }
     
     // =====================
