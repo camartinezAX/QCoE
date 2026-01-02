@@ -1043,8 +1043,11 @@
             <button onclick="navigateWeeklyLog(-1)" style="padding: 8px 16px; border: none; border-radius: 8px; background: var(--axos-navy); color: white; cursor: pointer; font-weight: 600;">
                 ◀ Prev Week
             </button>
-            <div style="text-align: center;">
+            <div style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px;">
                 <span id="weeklyLogLabel" style="font-weight: 700; color: var(--axos-navy); font-size: 14px;">Current Week</span>
+                <button id="goToCurrentWeekBtn" onclick="goToCurrentWeek()" style="padding: 4px 12px; border: none; border-radius: 6px; background: #10b981; color: white; cursor: pointer; font-weight: 600; font-size: 11px; display: none;">
+                    📍 Go to Current Week
+                </button>
             </div>
             <button onclick="navigateWeeklyLog(1)" style="padding: 8px 16px; border: none; border-radius: 8px; background: var(--axos-navy); color: white; cursor: pointer; font-weight: 600;">
                 Next Week ▶
@@ -1481,6 +1484,94 @@
     // Weekly log state
     let weeklyLogWeekIdx = 0; // Index into WEEKS array
     let weeklyLogPlatform = 'android';
+    let currentWeekIdx = 0; // The actual current week index based on today's date
+    
+    // Find the current week index based on today's date
+    function findCurrentWeekIndex() {
+        const today = new Date();
+        today.setHours(12, 0, 0, 0); // Normalize to noon to avoid timezone issues
+        
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        
+        for (let i = 0; i < WEEKS.length; i++) {
+            const week = WEEKS[i];
+            const weekYear = week.year;
+            const weekMonthName = week.month.split(' ')[0];
+            const weekMonthIdx = monthNames.indexOf(weekMonthName);
+            
+            // Parse the dates (e.g., "22-26" or "29-2")
+            const dateParts = week.dates.split('-');
+            const startDay = parseInt(dateParts[0]);
+            const endDay = parseInt(dateParts[1]);
+            
+            // Handle week spanning two months (e.g., "29-2" means prev month 29 to current month 2)
+            let weekStartDate, weekEndDate;
+            
+            if (endDay < startDay) {
+                // Week spans two months - the month label is for the END of the week
+                // So start is in the PREVIOUS month
+                const prevMonth = weekMonthIdx - 1;
+                const prevYear = prevMonth < 0 ? weekYear - 1 : weekYear;
+                const actualPrevMonth = prevMonth < 0 ? 11 : prevMonth;
+                
+                weekStartDate = new Date(prevYear, actualPrevMonth, startDay);
+                weekEndDate = new Date(weekYear, weekMonthIdx, endDay);
+            } else {
+                weekStartDate = new Date(weekYear, weekMonthIdx, startDay);
+                weekEndDate = new Date(weekYear, weekMonthIdx, endDay);
+            }
+            
+            // Extend end date to end of day
+            weekEndDate.setHours(23, 59, 59, 999);
+            weekStartDate.setHours(0, 0, 0, 0);
+            
+            // Check if today falls within this week
+            if (today >= weekStartDate && today <= weekEndDate) {
+                return i;
+            }
+        }
+        
+        // If no exact match, find the closest week
+        // First check if we're before the first week
+        const firstWeek = WEEKS[0];
+        const firstWeekMonth = monthNames.indexOf(firstWeek.month.split(' ')[0]);
+        const firstDates = firstWeek.dates.split('-');
+        const firstStartDay = parseInt(firstDates[0]);
+        const firstEndDay = parseInt(firstDates[1]);
+        
+        let firstWeekStart;
+        if (firstEndDay < firstStartDay) {
+            // First week spans months
+            const prevMonth = firstWeekMonth - 1;
+            const prevYear = prevMonth < 0 ? firstWeek.year - 1 : firstWeek.year;
+            firstWeekStart = new Date(prevYear, prevMonth < 0 ? 11 : prevMonth, firstStartDay);
+        } else {
+            firstWeekStart = new Date(firstWeek.year, firstWeekMonth, firstStartDay);
+        }
+        
+        if (today < firstWeekStart) {
+            return 0; // Before timeline starts, show first week
+        }
+        
+        // We're past the last week, return the last one
+        return WEEKS.length - 1;
+    }
+    
+    // Go to the current week
+    function goToCurrentWeek() {
+        weeklyLogWeekIdx = currentWeekIdx;
+        renderWeeklyLog();
+        updateGoToCurrentWeekButton();
+    }
+    
+    // Update the visibility of the "Go to Current Week" button
+    function updateGoToCurrentWeekButton() {
+        const btn = document.getElementById('goToCurrentWeekBtn');
+        if (btn) {
+            // Show button only if we're not on the current week
+            btn.style.display = weeklyLogWeekIdx !== currentWeekIdx ? 'inline-block' : 'none';
+        }
+    }
 
     // Initialize default values
     function initializeDefaults() {
@@ -2924,6 +3015,7 @@
     function navigateWeeklyLog(direction) {
         weeklyLogWeekIdx = Math.max(0, Math.min(WEEKS.length - 1, weeklyLogWeekIdx + direction));
         renderWeeklyLog();
+        updateGoToCurrentWeekButton();
     }
     
     function setLogPlatform(platform) {
@@ -2960,7 +3052,14 @@
         
         const week = WEEKS[weeklyLogWeekIdx];
         const weekKey = `${week.year}-W${week.week}`;
-        labelEl.textContent = `W${week.week} - ${week.month} (${week.dates})`;
+        
+        // Show current week indicator
+        const isCurrentWeek = weeklyLogWeekIdx === currentWeekIdx;
+        const currentBadge = isCurrentWeek ? '<span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-left: 8px;">📍 Current</span>' : '';
+        labelEl.innerHTML = `W${week.week} - ${week.month} (${week.dates})${currentBadge}`;
+        
+        // Update the "Go to Current Week" button visibility
+        updateGoToCurrentWeekButton();
         
         // Get all entries for this week (stored in android.weeklyEntries as the main store)
         const allWeekEntries = data.android.weeklyEntries[weekKey] || [];
@@ -3629,10 +3728,16 @@
     // Initialize
     document.addEventListener('DOMContentLoaded', async function() {
         await loadData();
+        
+        // Set the weekly log to the current week
+        currentWeekIdx = findCurrentWeekIndex();
+        weeklyLogWeekIdx = currentWeekIdx;
+        
         renderTable();
         updateSummary();
         renderWeeklyLog();
         updateBacklogBreakdown();
+        updateGoToCurrentWeekButton();
     });
 </script>
 
