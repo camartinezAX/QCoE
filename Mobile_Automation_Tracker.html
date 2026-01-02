@@ -2784,37 +2784,48 @@
     // ========================================
     
     function calculateCompletedByVertical() {
-        const completed = {
-            android: {},
-            ios: {}
-        };
+        // For backlog breakdown, we count UNIQUE tests (not platform instances)
+        // A test marked "Both" counts as 1 test, not 2
+        // Tests added separately for Android and iOS with same ADO ID or test name are also counted once
+        const completed = {};
         
         // Initialize
         Object.keys(BACKLOG_BASELINE).forEach(vertical => {
-            completed.android[vertical] = { P0: 0, P1: 0, P2: 0, total: 0 };
-            completed.ios[vertical] = { P0: 0, P1: 0, P2: 0, total: 0 };
+            completed[vertical] = { P0: 0, P1: 0, P2: 0, total: 0 };
         });
         
-        // All entries are now in android.weeklyEntries, use platform field to count
-        Object.values(data.android.weeklyEntries || {}).forEach(entries => {
+        // Track unique tests to prevent double counting
+        // Tests may appear in both android and ios stores, or be marked for "both" platforms
+        // We want to count each unique TEST CASE only once, not platform implementations
+        const countedTests = new Set();
+        
+        // Process entries from both stores to ensure we don't miss any
+        const allWeeklyEntries = [
+            ...Object.values(data.android.weeklyEntries || {}),
+            ...Object.values(data.ios.weeklyEntries || {})
+        ];
+        
+        allWeeklyEntries.forEach(entries => {
+            if (!Array.isArray(entries)) return;
+            
             entries.forEach(entry => {
                 const vertical = entry.vertical;
                 const priority = entry.priority;
-                const platform = entry.platform || 'both';
                 
-                if (!completed.android[vertical]) return;
+                if (!completed[vertical]) return;
                 
-                // Count for Android if platform is 'android' or 'both'
-                if (platform === 'android' || platform === 'both') {
-                    completed.android[vertical][priority]++;
-                    completed.android[vertical].total++;
-                }
+                // Create a unique key - prefer ADO ID, fall back to test name + vertical
+                // This ensures each test case is counted only once regardless of platform
+                const uniqueKey = entry.adoId 
+                    ? `ado-${entry.adoId}` 
+                    : `name-${(entry.testName || '').toLowerCase().trim()}-${vertical}`;
                 
-                // Count for iOS if platform is 'ios' or 'both'
-                if (platform === 'ios' || platform === 'both') {
-                    completed.ios[vertical][priority]++;
-                    completed.ios[vertical].total++;
-                }
+                // Skip if we've already counted this test
+                if (countedTests.has(uniqueKey)) return;
+                countedTests.add(uniqueKey);
+                
+                completed[vertical][priority]++;
+                completed[vertical].total++;
             });
         });
         
@@ -2831,8 +2842,7 @@
             if (!verticalKey || !BACKLOG_BASELINE[verticalKey]) return;
             
             const baseline = BACKLOG_BASELINE[verticalKey];
-            const androidCompleted = completed.android[verticalKey] || { P0: 0, P1: 0, P2: 0, total: 0 };
-            const iosCompleted = completed.ios[verticalKey] || { P0: 0, P1: 0, P2: 0, total: 0 };
+            const verticalCompleted = completed[verticalKey] || { P0: 0, P1: 0, P2: 0, total: 0 };
             
             // Update P0, P1, P2, Total cells with completion info
             const p0Cell = row.querySelector('.p0-cell');
@@ -2841,30 +2851,26 @@
             const totalCell = row.querySelector('.total-cell');
             
             if (p0Cell) {
-                const completedP0 = androidCompleted.P0 + iosCompleted.P0;
-                p0Cell.innerHTML = completedP0 > 0 
-                    ? `${baseline.P0} <span style="color: #10b981; font-size: 11px;">(${completedP0} ✓)</span>`
+                p0Cell.innerHTML = verticalCompleted.P0 > 0 
+                    ? `${baseline.P0} <span style="color: #10b981; font-size: 11px;">(${verticalCompleted.P0} ✓)</span>`
                     : baseline.P0;
             }
             
             if (p1Cell) {
-                const completedP1 = androidCompleted.P1 + iosCompleted.P1;
-                p1Cell.innerHTML = completedP1 > 0 
-                    ? `${baseline.P1} <span style="color: #10b981; font-size: 11px;">(${completedP1} ✓)</span>`
+                p1Cell.innerHTML = verticalCompleted.P1 > 0 
+                    ? `${baseline.P1} <span style="color: #10b981; font-size: 11px;">(${verticalCompleted.P1} ✓)</span>`
                     : baseline.P1;
             }
             
             if (p2Cell) {
-                const completedP2 = androidCompleted.P2 + iosCompleted.P2;
-                p2Cell.innerHTML = completedP2 > 0 
-                    ? `${baseline.P2} <span style="color: #10b981; font-size: 11px;">(${completedP2} ✓)</span>`
+                p2Cell.innerHTML = verticalCompleted.P2 > 0 
+                    ? `${baseline.P2} <span style="color: #10b981; font-size: 11px;">(${verticalCompleted.P2} ✓)</span>`
                     : baseline.P2;
             }
             
             if (totalCell) {
-                const completedTotal = androidCompleted.total + iosCompleted.total;
-                totalCell.innerHTML = completedTotal > 0 
-                    ? `${baseline.total} <span style="color: #10b981; font-size: 11px;">(${completedTotal} ✓)</span>`
+                totalCell.innerHTML = verticalCompleted.total > 0 
+                    ? `${baseline.total} <span style="color: #10b981; font-size: 11px;">(${verticalCompleted.total} ✓)</span>`
                     : baseline.total;
             }
         });
@@ -2882,10 +2888,10 @@
                 totalP2 += baseline.P2;
                 grandTotal += baseline.total;
                 
-                completedP0 += (completed.android[key]?.P0 || 0) + (completed.ios[key]?.P0 || 0);
-                completedP1 += (completed.android[key]?.P1 || 0) + (completed.ios[key]?.P1 || 0);
-                completedP2 += (completed.android[key]?.P2 || 0) + (completed.ios[key]?.P2 || 0);
-                completedTotal += (completed.android[key]?.total || 0) + (completed.ios[key]?.total || 0);
+                completedP0 += completed[key]?.P0 || 0;
+                completedP1 += completed[key]?.P1 || 0;
+                completedP2 += completed[key]?.P2 || 0;
+                completedTotal += completed[key]?.total || 0;
             });
             
             const p0Total = totalsRow.querySelector('.p0-total');
