@@ -124,6 +124,18 @@
             box-shadow: 0 4px 20px rgba(250, 167, 74, 0.4);
         }
 
+        .header-btn.save-highlight {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            border-color: #fbbf24;
+            color: var(--axos-navy);
+            animation: save-pulse 1.5s infinite;
+        }
+
+        @keyframes save-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(251, 191, 36, 0); }
+        }
+
         /* Sync Status Badge */
         .sync-status {
             padding: 10px 16px;
@@ -155,6 +167,12 @@
         .sync-status.local {
             background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
             color: #475569;
+        }
+
+        .sync-status.unsaved {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            color: #92400e;
+            animation: pulse 2s infinite;
         }
 
         @keyframes pulse {
@@ -1514,6 +1532,7 @@
         let isSyncing = false;
         let lastSyncTime = null;
         let syncError = null;
+        let hasUnsavedChanges = false;
 
         // Data storage
         let tasks = {
@@ -1522,6 +1541,7 @@
         };
 
         const STORAGE_KEY = 'qcoeTaskTracker';
+        const OLD_STORAGE_KEY = 'personalTaskTracker'; // For migration
 
         // Calendar state
         let currentCalendarDate = new Date();
@@ -1529,6 +1549,10 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
             showSyncStatus('loading');
+            
+            // Migrate data from old storage key if it exists
+            migrateOldData();
+            
             await loadData();
             renderTasks();
             updateStats();
@@ -1544,6 +1568,36 @@
         // =====================
         // DATA PERSISTENCE
         // =====================
+        
+        // Migrate data from old 'personalTaskTracker' key to new 'qcoeTaskTracker' key
+        function migrateOldData() {
+            const oldData = localStorage.getItem(OLD_STORAGE_KEY);
+            const newData = localStorage.getItem(STORAGE_KEY);
+            
+            // If old data exists and new data doesn't, migrate it
+            if (oldData && !newData) {
+                console.log('🔄 Migrating data from old storage key...');
+                localStorage.setItem(STORAGE_KEY, oldData);
+                console.log('✅ Data migrated successfully!');
+            }
+            // If old data exists and new data also exists, keep both but prefer old if it has more tasks
+            else if (oldData && newData) {
+                try {
+                    const oldTasks = JSON.parse(oldData);
+                    const newTasks = JSON.parse(newData);
+                    const oldCount = (oldTasks.open?.length || 0) + (oldTasks.closed?.length || 0);
+                    const newCount = (newTasks.open?.length || 0) + (newTasks.closed?.length || 0);
+                    
+                    if (oldCount > newCount) {
+                        console.log('🔄 Old storage has more data, migrating...');
+                        localStorage.setItem(STORAGE_KEY, oldData);
+                        console.log('✅ Data migrated from old storage!');
+                    }
+                } catch (e) {
+                    console.error('Migration check failed:', e);
+                }
+            }
+        }
         
         // Load data - tries Google Sheets first, then falls back to localStorage
         async function loadData() {
@@ -1594,6 +1648,10 @@
             // Always save to localStorage first (instant)
             localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
             
+            // Clear unsaved flag and indicator
+            hasUnsavedChanges = false;
+            clearUnsavedIndicator();
+            
             if (USE_GOOGLE_SHEETS) {
                 showSyncStatus('syncing');
                 
@@ -1614,6 +1672,7 @@
                     // With no-cors, we can't read the response, but if no error, assume success
                     lastSyncTime = new Date().toISOString();
                     showSyncStatus('synced');
+                    showToast('✅ Changes saved!', 'success');
                     console.log('✅ Data saved to Google Sheets');
                     
                 } catch (error) {
@@ -1624,6 +1683,7 @@
                 }
             } else {
                 showSyncStatus('local');
+                showToast('✅ Changes saved locally!', 'success');
             }
         }
         
@@ -1649,11 +1709,36 @@
                     statusEl.className = 'sync-status error';
                     statusEl.innerHTML = '⚠️ Sync Error';
                     break;
+                case 'unsaved':
+                    statusEl.className = 'sync-status unsaved';
+                    statusEl.innerHTML = '⚠️ Unsaved Changes';
+                    break;
                 case 'local':
                 default:
                     statusEl.className = 'sync-status local';
                     statusEl.innerHTML = '💾 Local Only';
                     break;
+            }
+        }
+        
+        // Mark data as changed (unsaved)
+        function markAsChanged() {
+            hasUnsavedChanges = true;
+            showSyncStatus('unsaved');
+            // Highlight save button
+            const saveBtn = document.getElementById('saveBtn');
+            if (saveBtn) {
+                saveBtn.classList.add('save-highlight');
+                saveBtn.innerHTML = '💾 Save Changes*';
+            }
+        }
+        
+        // Clear unsaved indicator
+        function clearUnsavedIndicator() {
+            const saveBtn = document.getElementById('saveBtn');
+            if (saveBtn) {
+                saveBtn.classList.remove('save-highlight');
+                saveBtn.innerHTML = '💾 Save Changes';
             }
         }
         
@@ -1664,13 +1749,20 @@
                 return;
             }
             
-            if (confirm('This will reload data from the cloud. Any unsaved local changes will be lost. Continue?')) {
-                await loadData();
-                renderTasks();
-                updateStats();
-                renderCalendar();
-                showToast('✅ Data refreshed from cloud!', 'success');
+            // Warn if there are unsaved changes
+            if (hasUnsavedChanges) {
+                if (!confirm('⚠️ You have unsaved changes!\n\nThis will reload data from the cloud and discard your local changes.\n\nContinue?')) {
+                    return;
+                }
             }
+            
+            await loadData();
+            hasUnsavedChanges = false;
+            clearUnsavedIndicator();
+            renderTasks();
+            updateStats();
+            renderCalendar();
+            showToast('✅ Data refreshed from cloud!', 'success');
         }
 
         // Add new task
@@ -1699,7 +1791,7 @@
             };
 
             tasks.open.push(task);
-            saveData();
+            markAsChanged();
             renderTasks();
             updateStats();
 
@@ -1710,7 +1802,7 @@
             responsibleInput.value = 'Me';
             nameInput.focus();
 
-            showToast('Task added successfully!', 'success');
+            showToast('Task added! Remember to save.', 'success');
         }
 
         // Complete task
@@ -1725,11 +1817,11 @@
             tasks.closed.unshift(task);
             tasks.open.splice(taskIndex, 1);
 
-            saveData();
+            markAsChanged();
             renderTasks();
             updateStats();
 
-            showToast('Task completed! 🎉', 'success');
+            showToast('Task completed! 🎉 Remember to save.', 'success');
         }
 
         // Delete task
@@ -1740,10 +1832,10 @@
 
             if (confirm('Are you sure you want to delete this task?')) {
                 list.splice(taskIndex, 1);
-                saveData();
+                markAsChanged();
                 renderTasks();
                 updateStats();
-                showToast('Task deleted', 'success');
+                showToast('Task deleted. Remember to save.', 'success');
             }
         }
 
@@ -1760,11 +1852,11 @@
             tasks.open.push(task);
             tasks.closed.splice(taskIndex, 1);
 
-            saveData();
+            markAsChanged();
             renderTasks();
             updateStats();
 
-            showToast('Task reopened', 'success');
+            showToast('Task reopened. Remember to save.', 'success');
         }
 
         // Update task
@@ -1772,7 +1864,7 @@
             const task = tasks.open.find(t => t.id === id);
             if (task) {
                 task[field] = value;
-                saveData();
+                markAsChanged();
                 if (field === 'priority') {
                     renderTasks();
                 }
@@ -2003,7 +2095,7 @@
                     break;
             }
 
-            saveData();
+            markAsChanged();
             renderTasks();
             showToast(`Sorted by ${by}`, 'success');
         }
@@ -2317,12 +2409,21 @@
             document.getElementById('dayDetailOverlay').classList.remove('open');
         }
 
-        // Update calendar when tasks change
-        const originalSaveData = saveData;
-        saveData = async function() {
-            await originalSaveData();
+        // Update calendar when data changes
+        const originalMarkAsChanged = markAsChanged;
+        markAsChanged = function() {
+            originalMarkAsChanged();
             renderCalendar();
         };
+        
+        // Warn before leaving with unsaved changes
+        window.addEventListener('beforeunload', function(e) {
+            if (hasUnsavedChanges) {
+                e.preventDefault();
+                e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+                return e.returnValue;
+            }
+        });
     </script>
 </body>
 </html>
