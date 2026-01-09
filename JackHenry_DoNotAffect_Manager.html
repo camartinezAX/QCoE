@@ -1,0 +1,2469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔒 JackHenry Refresh - Protected Accounts | Axos QA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            /* Axos Brand Colors */
+            --axos-orange: #FAA74A;
+            --axos-orange-light: #FFF4E6;
+            --axos-orange-dark: #E8922E;
+            --axos-navy: #1E3860;
+            --axos-navy-light: #2A4A7A;
+            --axos-navy-dark: #152844;
+            --gradient-orange: linear-gradient(135deg, #FAA74A 0%, #f59e0b 100%);
+            --gradient-navy: linear-gradient(135deg, #1E3860 0%, #2A4A7A 100%);
+            
+            /* UI Colors */
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-card: #ffffff;
+            --border-color: #e2e8f0;
+            --border-hover: #cbd5e1;
+            
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            
+            /* Status Colors */
+            --success: #10b981;
+            --success-bg: #ecfdf5;
+            --warning: #f59e0b;
+            --warning-bg: #fffbeb;
+            --error: #ef4444;
+            --error-bg: #fef2f2;
+            --info: #3b82f6;
+            --info-bg: #eff6ff;
+            
+            /* Team Colors Palette */
+            --team-colors: #3b82f6, #10b981, #8b5cf6, #f59e0b, #ef4444, #06b6d4, #ec4899, #84cc16, #f97316, #6366f1;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--axos-navy) 0%, var(--axos-navy-light) 100%);
+            padding: 32px 40px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(250, 167, 74, 0.15) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: -60%;
+            left: 10%;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(250, 167, 74, 0.1) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header h1 .highlight {
+            background: var(--gradient-orange);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-subtitle {
+            margin-top: 8px;
+            opacity: 0.8;
+            font-size: 14px;
+        }
+
+        /* Main Container */
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 40px;
+        }
+
+        /* Stats Bar */
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .stat-icon.teams { background: var(--info-bg); }
+        .stat-icon.total { background: var(--success-bg); }
+        .stat-icon.duplicates { background: var(--error-bg); }
+        .stat-icon.unique { background: linear-gradient(135deg, var(--axos-orange-light), #fef3c7); }
+
+        .stat-content h3 {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        .stat-content p {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        /* Grid Layout */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 1024px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-header h2 {
+            font-size: 16px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-body {
+            padding: 24px;
+        }
+
+        /* Team Management */
+        .team-input-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .team-input-group input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+
+        .team-input-group input:focus {
+            outline: none;
+            border-color: var(--axos-orange);
+            box-shadow: 0 0 0 3px rgba(250, 167, 74, 0.2);
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--gradient-orange);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(250, 167, 74, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--axos-navy);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: var(--axos-navy-light);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--axos-navy);
+            background: var(--axos-navy);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--error);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-sm {
+            padding: 8px 14px;
+            font-size: 12px;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* Teams List */
+        .teams-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .team-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: var(--bg-primary);
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .team-item:hover {
+            border-color: var(--border-hover);
+        }
+
+        .team-item.active {
+            border-color: var(--axos-orange);
+            background: var(--axos-orange-light);
+        }
+
+        .team-color {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .team-name {
+            flex: 1;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .team-count {
+            font-size: 12px;
+            color: var(--text-secondary);
+            background: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .team-delete {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .team-delete:hover {
+            background: var(--error-bg);
+            color: var(--error);
+        }
+
+        /* Import Section */
+        .import-section {
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 24px;
+            margin-bottom: 24px;
+        }
+
+        .file-drop-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: var(--bg-primary);
+        }
+
+        .file-drop-zone:hover,
+        .file-drop-zone.dragover {
+            border-color: var(--axos-orange);
+            background: var(--axos-orange-light);
+        }
+
+        .file-drop-zone .icon {
+            font-size: 40px;
+            margin-bottom: 12px;
+        }
+
+        .file-drop-zone h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .file-drop-zone p {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .file-drop-zone input[type="file"] {
+            display: none;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            background: var(--success-bg);
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .file-info .file-icon {
+            font-size: 24px;
+        }
+
+        .file-info .file-details {
+            flex: 1;
+        }
+
+        .file-info .file-name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .file-info .file-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .file-info .file-remove {
+            background: none;
+            border: none;
+            color: var(--error);
+            cursor: pointer;
+            font-size: 18px;
+            padding: 4px;
+        }
+
+        /* Sheet Selector */
+        .sheets-container {
+            margin-top: 20px;
+        }
+
+        .sheets-header {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sheets-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .sheet-card {
+            background: var(--bg-primary);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .sheet-card.selected {
+            border-color: var(--axos-orange);
+            box-shadow: 0 4px 12px rgba(250, 167, 74, 0.2);
+        }
+
+        .sheet-header {
+            padding: 14px 16px;
+            background: white;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+        }
+
+        .sheet-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .sheet-card.selected .sheet-checkbox {
+            background: var(--axos-orange);
+            border-color: var(--axos-orange);
+            color: white;
+        }
+
+        .sheet-name {
+            flex: 1;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .sheet-rows {
+            font-size: 12px;
+            color: var(--text-secondary);
+            padding: 4px 10px;
+            background: var(--bg-primary);
+            border-radius: 20px;
+        }
+
+        .sheet-columns {
+            padding: 16px;
+            display: none;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .sheet-card.selected .sheet-columns {
+            display: block;
+        }
+
+        .columns-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .columns-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .column-chip {
+            padding: 8px 14px;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .column-chip:hover {
+            border-color: var(--axos-navy);
+        }
+
+        .column-chip.selected {
+            background: var(--axos-navy);
+            border-color: var(--axos-navy);
+            color: white;
+        }
+
+        .column-chip .col-letter {
+            font-weight: 700;
+            opacity: 0.7;
+        }
+
+        .column-chip .col-name {
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .column-preview {
+            margin-top: 12px;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .column-preview-header {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .column-preview-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .column-preview-item {
+            padding: 4px 10px;
+            background: var(--bg-primary);
+            border-radius: 4px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .column-preview-more {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        /* Team Assignment */
+        .team-assignment {
+            margin-top: 20px;
+            padding: 16px;
+            background: var(--info-bg);
+            border-radius: 10px;
+        }
+
+        .team-assignment-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--axos-navy);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .team-assignment select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: inherit;
+            background: white;
+            cursor: pointer;
+        }
+
+        .team-assignment select:focus {
+            outline: none;
+            border-color: var(--axos-orange);
+        }
+
+        /* Import Actions */
+        .import-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        /* Items List */
+        .items-container {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .items-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .item-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: var(--bg-primary);
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .item-row:hover {
+            border-color: var(--border-hover);
+        }
+
+        .item-row.duplicate {
+            background: var(--error-bg);
+            border-color: var(--error);
+        }
+
+        .item-team-color {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .item-value {
+            flex: 1;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .item-team {
+            font-size: 12px;
+            color: var(--text-secondary);
+            padding: 4px 10px;
+            background: white;
+            border-radius: 20px;
+        }
+
+        .item-badge {
+            font-size: 10px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .item-badge.duplicate {
+            background: var(--error);
+            color: white;
+        }
+
+        .item-delete {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .item-delete:hover {
+            background: var(--error-bg);
+            color: var(--error);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .empty-state p {
+            font-size: 13px;
+        }
+
+        /* Duplicates Section */
+        .duplicates-section {
+            margin-top: 24px;
+        }
+
+        .duplicates-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .duplicates-header h3 {
+            font-size: 16px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--error);
+        }
+
+        .duplicates-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        /* Export Actions */
+        .export-section {
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+            margin-top: 20px;
+        }
+
+        .export-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            padding: 16px 24px;
+            border-radius: 12px;
+            background: white;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.3s ease;
+            min-width: 300px;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .toast.success { border-left: 4px solid var(--success); }
+        .toast.error { border-left: 4px solid var(--error); }
+        .toast.warning { border-left: 4px solid var(--warning); }
+        .toast.info { border-left: 4px solid var(--info); }
+
+        .toast-icon {
+            font-size: 20px;
+        }
+
+        .toast-content {
+            flex: 1;
+        }
+
+        .toast-title {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .toast-message {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .toast-close {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 18px;
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--border-hover);
+        }
+
+        /* Filter tabs */
+        .filter-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .filter-tab {
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .filter-tab:hover {
+            border-color: var(--axos-orange);
+        }
+
+        .filter-tab.active {
+            background: var(--axos-navy);
+            border-color: var(--axos-navy);
+            color: white;
+        }
+
+        .filter-tab .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        /* Animations */
+        .fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Sync Status */
+        .sync-status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .sync-status.synced {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+        
+        .sync-status.syncing {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+            animation: pulse 1.5s infinite;
+        }
+        
+        .sync-status.error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+        
+        .sync-status.local {
+            background: rgba(250, 167, 74, 0.2);
+            color: #FAA74A;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal {
+            background: white;
+            border-radius: 16px;
+            padding: 28px;
+            width: 600px;
+            max-width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            transform: translateY(-20px);
+            transition: transform 0.3s ease;
+        }
+        
+        .modal-overlay.show .modal {
+            transform: translateY(0);
+        }
+        
+        .modal h3 {
+            margin: 0 0 16px 0;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--axos-navy);
+        }
+
+        /* Search Box */
+        .search-box {
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 16px 12px 44px;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--axos-orange);
+        }
+
+        .search-box .search-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+
+        /* Summary panel */
+        .import-summary {
+            margin-top: 20px;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--axos-navy) 0%, var(--axos-navy-light) 100%);
+            border-radius: 12px;
+            color: white;
+        }
+
+        .import-summary h4 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .summary-stat {
+            text-align: center;
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+        }
+
+        .summary-stat .value {
+            font-size: 20px;
+            font-weight: 800;
+        }
+
+        .summary-stat .label {
+            font-size: 11px;
+            opacity: 0.8;
+            text-transform: uppercase;
+        }
+
+        .summary-stat.warning .value {
+            color: var(--axos-orange);
+        }
+    </style>
+</head>
+<body>
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                <div>
+                    <h1>🔒 JackHenry Refresh <span class="highlight">Protected Accounts</span></h1>
+                    <p class="header-subtitle">Manage protected account lists by team • Export individual or combined lists • Duplicate detection</p>
+                </div>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <span id="syncStatus" class="sync-status synced">☁️ Local Only</span>
+                    <button class="btn btn-outline" style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); color: white;" onclick="syncFromCloud()" title="Sync from Cloud">🔄 Sync</button>
+                    <button class="btn btn-outline" style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); color: white;" onclick="saveToCloud()">💾 Save</button>
+                    <button class="btn btn-outline" style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); color: white;" onclick="showExportModal()">📤 Backup</button>
+                    <button class="btn btn-outline" style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); color: white;" onclick="showImportModal()">📥 Restore</button>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Export Modal -->
+    <div class="modal-overlay" id="exportModal">
+        <div class="modal">
+            <h3>📤 Export Backup Data</h3>
+            <p style="margin-bottom: 16px; color: var(--text-secondary); font-size: 13px;">Copy this data and save it to a .json file for backup purposes.</p>
+            <textarea id="exportTextarea" readonly style="width: 100%; height: 250px; padding: 12px; border: 2px solid var(--border-color); border-radius: 8px; font-family: monospace; font-size: 11px; resize: none; background: var(--bg-primary);"></textarea>
+            <div class="modal-actions" style="display: flex; gap: 12px; margin-top: 16px;">
+                <button class="btn btn-primary" onclick="copyExportData()">📋 Copy to Clipboard</button>
+                <button class="btn btn-success" onclick="downloadBackup()">💾 Download File</button>
+                <button class="btn btn-outline" onclick="hideExportModal()">Close</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Import Modal -->
+    <div class="modal-overlay" id="importModal">
+        <div class="modal">
+            <h3>📥 Import Backup Data</h3>
+            <p style="margin-bottom: 16px; color: var(--text-secondary); font-size: 13px;">Paste your previously exported JSON data or upload a backup file.</p>
+            <div style="margin-bottom: 16px;">
+                <input type="file" id="importFileInput" accept=".json" onchange="handleImportFile(event)" style="display: none;">
+                <button class="btn btn-outline" onclick="document.getElementById('importFileInput').click()" style="width: 100%; padding: 16px; border-style: dashed;">
+                    📁 Click to upload .json file
+                </button>
+            </div>
+            <textarea id="importTextarea" placeholder="Or paste JSON data here..." style="width: 100%; height: 200px; padding: 12px; border: 2px solid var(--border-color); border-radius: 8px; font-family: monospace; font-size: 11px; resize: none;"></textarea>
+            <div class="modal-actions" style="display: flex; gap: 12px; margin-top: 16px;">
+                <button class="btn btn-success" onclick="importData()">✅ Import Data</button>
+                <button class="btn btn-outline" onclick="hideImportModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Stats Bar -->
+        <div class="stats-bar">
+            <div class="stat-card">
+                <div class="stat-icon teams">🏷️</div>
+                <div class="stat-content">
+                    <h3 id="statTeams">0</h3>
+                    <p>Categories</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon total">📊</div>
+                <div class="stat-content">
+                    <h3 id="statTotal">0</h3>
+                    <p>Total Accounts</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon unique">✨</div>
+                <div class="stat-content">
+                    <h3 id="statUnique">0</h3>
+                    <p>Unique Accounts</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon duplicates">⚠️</div>
+                <div class="stat-content">
+                    <h3 id="statDuplicates">0</h3>
+                    <p>Duplicates Found</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Grid -->
+        <div class="content-grid">
+            <!-- Left Panel: Teams Management -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>🏷️ Categories</h2>
+                </div>
+                <div class="card-body">
+                    <div class="team-input-group">
+                        <input type="text" id="newTeamName" placeholder="Enter category name..." onkeypress="if(event.key==='Enter') addTeam()">
+                        <button class="btn btn-primary" onclick="addTeam()">
+                            <span>+</span> Add
+                        </button>
+                    </div>
+                    <div class="teams-list" id="teamsList">
+                        <div class="empty-state">
+                            <div class="icon">🏷️</div>
+                            <h3>No categories yet</h3>
+                            <p>Add a category to organize accounts</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Import & List -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>📥 Import & Manage</h2>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-outline btn-sm" onclick="clearAllItems()">🗑️ Clear All</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Import Section -->
+                    <div class="import-section" id="importSection">
+                        <!-- File Drop Zone -->
+                        <div id="dropZoneContainer">
+                            <div class="file-drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                                <div class="icon">📁</div>
+                                <h3>Drop XLS/XLSX file here</h3>
+                                <p>or click to browse</p>
+                                <input type="file" id="fileInput" accept=".xls,.xlsx" onchange="handleFileSelect(event)">
+                            </div>
+                        </div>
+
+                        <!-- File Info (shown after upload) -->
+                        <div class="file-info" id="fileInfo" style="display: none;">
+                            <span class="file-icon">📊</span>
+                            <div class="file-details">
+                                <div class="file-name" id="fileName">-</div>
+                                <div class="file-meta" id="fileMeta">-</div>
+                            </div>
+                            <button class="file-remove" onclick="clearFile()" title="Remove file">✕</button>
+                        </div>
+
+                        <!-- Sheets Container -->
+                        <div class="sheets-container" id="sheetsContainer" style="display: none;">
+                            <div class="sheets-header">
+                                📑 Select sheets and columns containing accounts
+                            </div>
+                            <div class="sheets-grid" id="sheetsGrid"></div>
+
+                            <!-- Team Assignment -->
+                            <div class="team-assignment">
+                                <div class="team-assignment-label">
+                                    👥 Assign accounts to team/category:
+                                </div>
+                                <select id="teamSelect">
+                                    <option value="">Select a category...</option>
+                                </select>
+                            </div>
+
+                            <!-- Import Summary -->
+                            <div class="import-summary" id="importSummary" style="display: none;">
+                                <h4>📊 Import Preview</h4>
+                                <div class="summary-stats">
+                                    <div class="summary-stat">
+                                        <div class="value" id="summaryTotal">0</div>
+                                        <div class="label">Total</div>
+                                    </div>
+                                    <div class="summary-stat">
+                                        <div class="value" id="summaryUnique">0</div>
+                                        <div class="label">Unique</div>
+                                    </div>
+                                    <div class="summary-stat warning">
+                                        <div class="value" id="summaryDuplicates">0</div>
+                                        <div class="label">Duplicates</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Import Actions -->
+                            <div class="import-actions">
+                                <button class="btn btn-success" id="btnImport" onclick="confirmImport()" disabled>
+                                    ✅ Import Selected
+                                </button>
+                                <button class="btn btn-outline" onclick="clearFile()">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filter Tabs -->
+                    <div class="filter-tabs" id="filterTabs">
+                        <button class="filter-tab active" data-filter="all" onclick="filterItems('all')">
+                            All
+                        </button>
+                        <button class="filter-tab" data-filter="duplicates" onclick="filterItems('duplicates')">
+                            ⚠️ Duplicates Only
+                        </button>
+                    </div>
+
+                    <!-- Search -->
+                    <div class="search-box">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="searchInput" placeholder="Search items..." oninput="filterBySearch()">
+                    </div>
+
+                    <!-- Items List -->
+                    <div class="items-container">
+                        <div class="items-list" id="itemsList">
+                            <div class="empty-state">
+                                <div class="icon">🔒</div>
+                                <h3>No accounts yet</h3>
+                                <p>Import an XLS file to add accounts to the Do Not Affect list</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Duplicates Section -->
+                    <div class="duplicates-section" id="duplicatesSection" style="display: none;">
+                        <div class="duplicates-header">
+                            <h3>⚠️ Duplicates Found (<span id="duplicateCount">0</span>)</h3>
+                            <button class="btn btn-danger btn-sm" onclick="removeAllDuplicates()">🗑️ Remove All Duplicates</button>
+                        </div>
+                        <div class="duplicates-list" id="duplicatesList"></div>
+                    </div>
+
+                    <!-- Export Section -->
+                    <div class="export-section">
+                        <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 16px; color: var(--text-secondary);">📤 Export Options</h3>
+                        
+                        <!-- Combined Export -->
+                        <div style="margin-bottom: 16px;">
+                            <div style="font-size: 12px; font-weight: 600; color: var(--axos-navy); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Combined Export (All Teams)</div>
+                            <div class="export-actions">
+                                <button class="btn btn-secondary" onclick="exportAllTeamsToExcel()">📊 Export All (Multi-Sheet XLS)</button>
+                                <button class="btn btn-outline" onclick="exportToText()">📄 Export as Text</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Individual Team Export -->
+                        <div>
+                            <div style="font-size: 12px; font-weight: 600; color: var(--axos-navy); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Export Individual Team</div>
+                            <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                                <select id="exportTeamSelect" style="padding: 10px 14px; border: 2px solid var(--border-color); border-radius: 8px; font-size: 14px; min-width: 200px;">
+                                    <option value="">Select a team...</option>
+                                </select>
+                                <button class="btn btn-outline" onclick="exportSingleTeamToExcel()">📊 Export Team XLS</button>
+                                <button class="btn btn-outline" onclick="exportSingleTeamToText()">📄 Export Team TXT</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =====================
+        // GOOGLE SHEETS CONFIGURATION
+        // =====================
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx3MCFIhtxwhVKWE9SvPgsJjBBlOt_jl_pRdMGjsb8PkwyLvWiT686Qlg7Fy5VfCOuV/exec';
+        
+        // Set to true once you've configured your Google Script URL
+        const USE_GOOGLE_SHEETS = GOOGLE_SCRIPT_URL !== 'YOUR_GOOGLE_SCRIPT_URL_HERE';
+        
+        // Sync state
+        let isSyncing = false;
+        let lastSyncTime = null;
+        
+        // App State
+        const state = {
+            teams: [],
+            items: [],
+            workbookData: null,
+            parsedSheets: {},
+            selectedSheets: {},  // { sheetName: selectedColumnIndex }
+            currentFilter: 'all',
+            searchQuery: '',
+            lastUpdated: null
+        };
+
+        // Team Colors Palette
+        const teamColors = [
+            '#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444',
+            '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#6366f1',
+            '#14b8a6', '#f43f5e', '#a855f7', '#22c55e', '#eab308'
+        ];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            showSyncStatus('loading');
+            await loadData();
+            setupDragAndDrop();
+            updateStats();
+            renderTeams();
+            renderItems();
+            updateExportTeamSelect();
+            
+            if (!USE_GOOGLE_SHEETS) {
+                console.log('⚠️ Google Sheets not configured. Using local storage only.');
+                console.log('To enable cloud sync, set GOOGLE_SCRIPT_URL to your Google Apps Script Web App URL.');
+            }
+        });
+
+        // =====================
+        // SYNC STATUS
+        // =====================
+        function showSyncStatus(status) {
+            const el = document.getElementById('syncStatus');
+            switch(status) {
+                case 'loading':
+                    el.className = 'sync-status syncing';
+                    el.textContent = '🔄 Loading...';
+                    break;
+                case 'syncing':
+                    el.className = 'sync-status syncing';
+                    el.textContent = '☁️ Syncing...';
+                    break;
+                case 'synced':
+                    el.className = 'sync-status synced';
+                    el.textContent = '☁️ Synced';
+                    break;
+                case 'error':
+                    el.className = 'sync-status error';
+                    el.textContent = '⚠️ Sync Error';
+                    break;
+                case 'local':
+                default:
+                    el.className = 'sync-status local';
+                    el.textContent = '💾 Local Only';
+            }
+        }
+
+        // =====================
+        // DATA MANAGEMENT
+        // =====================
+        async function loadData() {
+            // First, load from localStorage as cache
+            const cached = localStorage.getItem('jackHenryDoNotAffect');
+            if (cached) {
+                try {
+                    const data = JSON.parse(cached);
+                    state.teams = data.teams || [];
+                    state.items = data.items || [];
+                    state.lastUpdated = data.lastUpdated || null;
+                } catch (e) {
+                    console.error('Error loading cached data:', e);
+                }
+            }
+            
+            // If Google Sheets is configured, fetch from there
+            if (USE_GOOGLE_SHEETS) {
+                try {
+                    const response = await fetch(GOOGLE_SCRIPT_URL);
+                    const result = await response.json();
+                    
+                    if (result.success && result.data) {
+                        state.teams = result.data.teams || [];
+                        state.items = result.data.items || [];
+                        state.lastUpdated = result.data.lastUpdated || new Date().toISOString();
+                        
+                        // Update local cache
+                        localStorage.setItem('jackHenryDoNotAffect', JSON.stringify({
+                            teams: state.teams,
+                            items: state.items,
+                            lastUpdated: state.lastUpdated
+                        }));
+                        
+                        showSyncStatus('synced');
+                        console.log('✅ Data loaded from Google Sheets');
+                    } else if (!result.data) {
+                        showSyncStatus('synced');
+                        console.log('📝 No data on server, using local data');
+                    } else {
+                        throw new Error(result.error || 'Unknown error');
+                    }
+                } catch (error) {
+                    console.error('❌ Failed to load from Google Sheets:', error);
+                    showSyncStatus('error');
+                }
+            } else {
+                showSyncStatus('local');
+            }
+        }
+
+        // Save to localStorage (local cache)
+        function saveToStorage() {
+            state.lastUpdated = new Date().toISOString();
+            localStorage.setItem('jackHenryDoNotAffect', JSON.stringify({
+                teams: state.teams,
+                items: state.items,
+                lastUpdated: state.lastUpdated
+            }));
+        }
+
+        // Save to Google Sheets (cloud)
+        async function saveToCloud() {
+            saveToStorage(); // Always save locally first
+            
+            if (!USE_GOOGLE_SHEETS) {
+                showToast('Local Only', 'Google Sheets not configured. Data saved locally.', 'info');
+                return;
+            }
+            
+            showSyncStatus('syncing');
+            
+            try {
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'save',
+                        data: {
+                            teams: state.teams,
+                            items: state.items,
+                            lastUpdated: state.lastUpdated
+                        },
+                        updatedBy: 'JackHenry Manager'
+                    })
+                });
+                
+                lastSyncTime = new Date().toISOString();
+                showSyncStatus('synced');
+                showToast('Saved', 'Data synced to cloud', 'success');
+                console.log('✅ Data saved to Google Sheets');
+            } catch (error) {
+                console.error('❌ Failed to save to Google Sheets:', error);
+                showSyncStatus('error');
+                showToast('Error', 'Failed to sync to cloud. Data saved locally.', 'error');
+            }
+        }
+
+        // Sync from cloud
+        async function syncFromCloud() {
+            if (!USE_GOOGLE_SHEETS) {
+                showToast('Local Only', 'Google Sheets not configured. Using local storage only.', 'info');
+                return;
+            }
+            
+            if (!confirm('This will reload data from the cloud. Any unsaved local changes will be lost. Continue?')) {
+                return;
+            }
+            
+            showSyncStatus('syncing');
+            await loadData();
+            updateStats();
+            renderTeams();
+            renderItems();
+            updateExportTeamSelect();
+            showToast('Synced', 'Data refreshed from cloud', 'success');
+        }
+
+        // =====================
+        // EXPORT/IMPORT (LOCAL BACKUP)
+        // =====================
+        function showExportModal() {
+            const data = {
+                teams: state.teams,
+                items: state.items,
+                lastUpdated: state.lastUpdated || new Date().toISOString(),
+                exportedAt: new Date().toISOString()
+            };
+            document.getElementById('exportTextarea').value = JSON.stringify(data, null, 2);
+            document.getElementById('exportModal').classList.add('show');
+        }
+        
+        function hideExportModal() {
+            document.getElementById('exportModal').classList.remove('show');
+        }
+        
+        function copyExportData() {
+            const textarea = document.getElementById('exportTextarea');
+            textarea.select();
+            textarea.setSelectionRange(0, 99999);
+            
+            try {
+                document.execCommand('copy');
+                showToast('Copied', 'Data copied to clipboard', 'success');
+            } catch (e) {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(textarea.value).then(() => {
+                        showToast('Copied', 'Data copied to clipboard', 'success');
+                    }).catch(() => {
+                        showToast('Error', 'Failed to copy. Please select and copy manually.', 'error');
+                    });
+                }
+            }
+        }
+        
+        function downloadBackup() {
+            const data = document.getElementById('exportTextarea').value;
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `JackHenry_Protected_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Downloaded', 'Backup file downloaded', 'success');
+        }
+        
+        function showImportModal() {
+            document.getElementById('importTextarea').value = '';
+            document.getElementById('importModal').classList.add('show');
+        }
+        
+        function hideImportModal() {
+            document.getElementById('importModal').classList.remove('show');
+        }
+        
+        function handleImportFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('importTextarea').value = e.target.result;
+                showToast('File Loaded', 'Backup file loaded. Click Import to restore.', 'success');
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+        
+        function importData() {
+            const jsonStr = document.getElementById('importTextarea').value.trim();
+            if (!jsonStr) {
+                showToast('Error', 'Please paste JSON data or upload a file', 'error');
+                return;
+            }
+            
+            try {
+                const data = JSON.parse(jsonStr);
+                
+                if (!data.teams || !data.items) {
+                    throw new Error('Invalid backup format');
+                }
+                
+                state.teams = data.teams || [];
+                state.items = data.items || [];
+                state.lastUpdated = new Date().toISOString();
+                
+                saveToStorage();
+                updateStats();
+                renderTeams();
+                renderItems();
+                updateExportTeamSelect();
+                
+                hideImportModal();
+                showToast('Imported', `Restored ${state.teams.length} teams and ${state.items.length} accounts`, 'success');
+            } catch (e) {
+                console.error('Import error:', e);
+                showToast('Error', 'Invalid JSON format. Please check your backup data.', 'error');
+            }
+        }
+
+        // Toast Notifications
+        function showToast(title, message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const icons = {
+                success: '✅',
+                error: '❌',
+                warning: '⚠️',
+                info: 'ℹ️'
+            };
+            
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <span class="toast-icon">${icons[type]}</span>
+                <div class="toast-content">
+                    <div class="toast-title">${title}</div>
+                    <div class="toast-message">${message}</div>
+                </div>
+                <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+            `;
+            
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+
+        // Team Management
+        function addTeam() {
+            const input = document.getElementById('newTeamName');
+            const name = input.value.trim();
+            
+            if (!name) {
+                showToast('Error', 'Please enter a category name', 'error');
+                return;
+            }
+            
+            if (state.teams.find(t => t.name.toLowerCase() === name.toLowerCase())) {
+                showToast('Error', 'Category already exists', 'error');
+                return;
+            }
+            
+            const color = teamColors[state.teams.length % teamColors.length];
+            state.teams.push({ id: Date.now(), name, color });
+            
+            input.value = '';
+            saveToStorage();
+            renderTeams();
+            updateTeamSelect();
+            updateExportTeamSelect();
+            updateStats();
+            showToast('Success', `Category "${name}" added`, 'success');
+        }
+
+        function deleteTeam(id) {
+            const team = state.teams.find(t => t.id === id);
+            if (!team) return;
+            
+            // Remove all items from this team
+            state.items = state.items.filter(item => item.teamId !== id);
+            state.teams = state.teams.filter(t => t.id !== id);
+            
+            saveToStorage();
+            renderTeams();
+            renderItems();
+            updateTeamSelect();
+            updateExportTeamSelect();
+            updateStats();
+            showToast('Removed', `Category "${team.name}" and its accounts removed`, 'warning');
+        }
+
+        function renderTeams() {
+            const container = document.getElementById('teamsList');
+            
+            if (state.teams.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">🏷️</div>
+                        <h3>No categories yet</h3>
+                        <p>Add a category to organize accounts</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = state.teams.map(team => {
+                const itemCount = state.items.filter(i => i.teamId === team.id).length;
+                return `
+                    <div class="team-item fade-in">
+                        <div class="team-color" style="background: ${team.color}"></div>
+                        <span class="team-name">${team.name}</span>
+                        <span class="team-count">${itemCount} accounts</span>
+                        <button class="team-delete" onclick="deleteTeam(${team.id})" title="Delete team">🗑️</button>
+                    </div>
+                `;
+            }).join('');
+            
+            updateFilterTabs();
+        }
+
+        function updateTeamSelect() {
+            const select = document.getElementById('teamSelect');
+            select.innerHTML = '<option value="">Select a category...</option>';
+            state.teams.forEach(team => {
+                select.innerHTML += `<option value="${team.id}">${team.name}</option>`;
+            });
+        }
+
+        function updateFilterTabs() {
+            const container = document.getElementById('filterTabs');
+            const existingTeamTabs = container.querySelectorAll('.filter-tab[data-team]');
+            existingTeamTabs.forEach(tab => tab.remove());
+            
+            state.teams.forEach(team => {
+                const tab = document.createElement('button');
+                tab.className = 'filter-tab';
+                tab.dataset.filter = `team-${team.id}`;
+                tab.dataset.team = team.id;
+                tab.onclick = () => filterItems(`team-${team.id}`);
+                tab.innerHTML = `<span class="dot" style="background: ${team.color}"></span>${team.name}`;
+                container.appendChild(tab);
+            });
+        }
+
+        // File Import
+        function setupDragAndDrop() {
+            const dropZone = document.getElementById('dropZone');
+            
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                });
+            });
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'));
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'));
+            });
+            
+            dropZone.addEventListener('drop', (e) => {
+                const file = e.dataTransfer.files[0];
+                if (file) processFile(file);
+            });
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) processFile(file);
+        }
+
+        function processFile(file) {
+            if (!file.name.match(/\.(xls|xlsx)$/i)) {
+                showToast('Error', 'Please select an Excel file (.xls or .xlsx)', 'error');
+                return;
+            }
+            
+            const reader = new FileReader();
+            
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    state.workbookData = workbook;
+                    state.parsedSheets = {};
+                    state.selectedSheets = {};
+                    
+                    // Parse all sheets
+                    workbook.SheetNames.forEach(sheetName => {
+                        const sheet = workbook.Sheets[sheetName];
+                        const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                        state.parsedSheets[sheetName] = json;
+                    });
+                    
+                    // Update UI
+                    document.getElementById('dropZoneContainer').style.display = 'none';
+                    document.getElementById('fileInfo').style.display = 'flex';
+                    document.getElementById('fileName').textContent = file.name;
+                    document.getElementById('fileMeta').textContent = `${workbook.SheetNames.length} sheet(s) found`;
+                    document.getElementById('sheetsContainer').style.display = 'block';
+                    
+                    updateTeamSelect();
+                    renderSheets();
+                    
+                    showToast('File Loaded', `${file.name} - Ready to import`, 'success');
+                } catch (err) {
+                    showToast('Error', 'Failed to parse Excel file', 'error');
+                    console.error(err);
+                }
+            };
+            
+            reader.readAsArrayBuffer(file);
+        }
+
+        function clearFile() {
+            state.workbookData = null;
+            state.parsedSheets = {};
+            state.selectedSheets = {};
+            
+            document.getElementById('dropZoneContainer').style.display = 'block';
+            document.getElementById('fileInfo').style.display = 'none';
+            document.getElementById('sheetsContainer').style.display = 'none';
+            document.getElementById('fileInput').value = '';
+            document.getElementById('importSummary').style.display = 'none';
+        }
+
+        function renderSheets() {
+            const container = document.getElementById('sheetsGrid');
+            container.innerHTML = '';
+            
+            Object.keys(state.parsedSheets).forEach(sheetName => {
+                const sheetData = state.parsedSheets[sheetName];
+                const rowCount = sheetData.length;
+                const headers = sheetData[0] || [];
+                
+                const sheetCard = document.createElement('div');
+                sheetCard.className = 'sheet-card';
+                sheetCard.id = `sheet-${sheetName.replace(/\s+/g, '-')}`;
+                
+                // Build columns HTML
+                let columnsHtml = '';
+                headers.forEach((header, index) => {
+                    const colLetter = XLSX.utils.encode_col(index);
+                    const displayName = header ? String(header).substring(0, 30) : `Column ${colLetter}`;
+                    columnsHtml += `
+                        <div class="column-chip" data-sheet="${sheetName}" data-col="${index}" onclick="toggleColumn('${sheetName}', ${index}, this)">
+                            <span class="col-letter">${colLetter}</span>
+                            <span class="col-name">${displayName}</span>
+                        </div>
+                    `;
+                });
+                
+                sheetCard.innerHTML = `
+                    <div class="sheet-header" onclick="toggleSheet('${sheetName}', this.parentElement)">
+                        <div class="sheet-checkbox">✓</div>
+                        <span class="sheet-name">${sheetName}</span>
+                        <span class="sheet-rows">${rowCount} rows</span>
+                    </div>
+                    <div class="sheet-columns">
+                        <div class="columns-label">Select column with account numbers:</div>
+                        <div class="columns-grid">${columnsHtml}</div>
+                        <div class="column-preview" id="preview-${sheetName.replace(/\s+/g, '-')}" style="display: none;">
+                            <div class="column-preview-header">Preview (first 5 values)</div>
+                            <div class="column-preview-items"></div>
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(sheetCard);
+            });
+        }
+
+        function toggleSheet(sheetName, cardElement) {
+            const isSelected = cardElement.classList.contains('selected');
+            
+            if (isSelected) {
+                // Deselect
+                cardElement.classList.remove('selected');
+                delete state.selectedSheets[sheetName];
+                
+                // Clear column selections
+                cardElement.querySelectorAll('.column-chip.selected').forEach(chip => {
+                    chip.classList.remove('selected');
+                });
+                
+                // Hide preview
+                const previewId = `preview-${sheetName.replace(/\s+/g, '-')}`;
+                document.getElementById(previewId).style.display = 'none';
+            } else {
+                // Select
+                cardElement.classList.add('selected');
+            }
+            
+            updateImportSummary();
+            updateImportButton();
+        }
+
+        function toggleColumn(sheetName, colIndex, chipElement) {
+            const sheetCard = chipElement.closest('.sheet-card');
+            
+            // Ensure sheet is selected
+            if (!sheetCard.classList.contains('selected')) {
+                sheetCard.classList.add('selected');
+            }
+            
+            // Deselect other columns in this sheet
+            sheetCard.querySelectorAll('.column-chip.selected').forEach(chip => {
+                chip.classList.remove('selected');
+            });
+            
+            // Select this column
+            chipElement.classList.add('selected');
+            state.selectedSheets[sheetName] = colIndex;
+            
+            // Show preview
+            showColumnPreview(sheetName, colIndex);
+            updateImportSummary();
+            updateImportButton();
+        }
+
+        function showColumnPreview(sheetName, colIndex) {
+            const previewId = `preview-${sheetName.replace(/\s+/g, '-')}`;
+            const preview = document.getElementById(previewId);
+            const sheetData = state.parsedSheets[sheetName];
+            
+            // Get first 5 non-empty values (skip header)
+            const values = [];
+            for (let i = 1; i < sheetData.length && values.length < 5; i++) {
+                const row = sheetData[i];
+                if (row && row[colIndex] !== undefined && row[colIndex] !== null && String(row[colIndex]).trim()) {
+                    values.push(String(row[colIndex]).trim());
+                }
+            }
+            
+            const remainingCount = getColumnValues(sheetName, colIndex).length - values.length;
+            
+            preview.querySelector('.column-preview-items').innerHTML = values.length > 0 
+                ? values.map(v => `<span class="column-preview-item">${v}</span>`).join('') +
+                  (remainingCount > 0 ? `<span class="column-preview-more">+${remainingCount} more</span>` : '')
+                : '<span class="column-preview-item" style="color: var(--error);">No values found</span>';
+            
+            preview.style.display = 'block';
+        }
+
+        function getColumnValues(sheetName, colIndex) {
+            const sheetData = state.parsedSheets[sheetName];
+            const values = [];
+            
+            // Skip header row (index 0)
+            for (let i = 1; i < sheetData.length; i++) {
+                const row = sheetData[i];
+                if (row && row[colIndex] !== undefined && row[colIndex] !== null && String(row[colIndex]).trim()) {
+                    values.push(String(row[colIndex]).trim());
+                }
+            }
+            
+            return values;
+        }
+
+        function updateImportSummary() {
+            const summary = document.getElementById('importSummary');
+            
+            // Collect all values from selected sheets/columns
+            let allValues = [];
+            Object.entries(state.selectedSheets).forEach(([sheetName, colIndex]) => {
+                const values = getColumnValues(sheetName, colIndex);
+                allValues = allValues.concat(values);
+            });
+            
+            if (allValues.length === 0) {
+                summary.style.display = 'none';
+                return;
+            }
+            
+            // Count duplicates
+            const existingValues = state.items.map(i => i.value.toLowerCase());
+            const valueCounts = {};
+            let duplicateCount = 0;
+            
+            allValues.forEach(v => {
+                const lower = v.toLowerCase();
+                valueCounts[lower] = (valueCounts[lower] || 0) + 1;
+                if (existingValues.includes(lower) || valueCounts[lower] > 1) {
+                    if (valueCounts[lower] === 1 || (valueCounts[lower] === 2 && !existingValues.includes(lower))) {
+                        duplicateCount++;
+                    }
+                }
+            });
+            
+            // Update summary UI
+            document.getElementById('summaryTotal').textContent = allValues.length;
+            document.getElementById('summaryUnique').textContent = new Set(allValues.map(v => v.toLowerCase())).size;
+            document.getElementById('summaryDuplicates').textContent = duplicateCount;
+            
+            summary.style.display = 'block';
+        }
+
+        function updateImportButton() {
+            const btn = document.getElementById('btnImport');
+            const teamId = document.getElementById('teamSelect').value;
+            const hasSelections = Object.keys(state.selectedSheets).length > 0;
+            
+            btn.disabled = !hasSelections || !teamId;
+        }
+
+        // Listen for team selection changes
+        document.getElementById('teamSelect').addEventListener('change', updateImportButton);
+
+        function confirmImport() {
+            const teamId = parseInt(document.getElementById('teamSelect').value);
+            if (!teamId) {
+                showToast('Error', 'Please select a category first', 'error');
+                return;
+            }
+            
+            if (Object.keys(state.selectedSheets).length === 0) {
+                showToast('Error', 'Please select at least one column to import', 'error');
+                return;
+            }
+            
+            // Collect all values
+            let allValues = [];
+            Object.entries(state.selectedSheets).forEach(([sheetName, colIndex]) => {
+                const values = getColumnValues(sheetName, colIndex);
+                allValues = allValues.concat(values);
+            });
+            
+            if (allValues.length === 0) {
+                showToast('Warning', 'No values found in selected columns', 'warning');
+                return;
+            }
+            
+            // Add to items
+            let added = 0;
+            let duplicates = 0;
+            
+            allValues.forEach(value => {
+                const exists = state.items.some(i => i.value.toLowerCase() === value.toLowerCase());
+                state.items.push({
+                    id: Date.now() + Math.random(),
+                    value,
+                    teamId,
+                    isDuplicate: exists
+                });
+                if (exists) duplicates++;
+                else added++;
+            });
+            
+            // Mark all duplicates
+            markDuplicates();
+            
+            saveToStorage();
+            renderItems();
+            renderTeams();
+            updateStats();
+            updateExportTeamSelect();
+            clearFile();
+            
+            if (duplicates > 0) {
+                showToast('Import Complete', `Added ${allValues.length} accounts, ${duplicates} duplicates found`, 'warning');
+            } else {
+                showToast('Import Complete', `Successfully added ${allValues.length} accounts to Do Not Affect list`, 'success');
+            }
+        }
+
+        // Items Management
+        function markDuplicates() {
+            const valueCounts = {};
+            
+            // Count occurrences
+            state.items.forEach(item => {
+                const lower = item.value.toLowerCase();
+                valueCounts[lower] = (valueCounts[lower] || 0) + 1;
+            });
+            
+            // Mark duplicates
+            state.items.forEach(item => {
+                const lower = item.value.toLowerCase();
+                item.isDuplicate = valueCounts[lower] > 1;
+            });
+        }
+
+        function renderItems() {
+            const container = document.getElementById('itemsList');
+            let filteredItems = [...state.items];
+            
+            // Apply filter
+            if (state.currentFilter === 'duplicates') {
+                filteredItems = filteredItems.filter(i => i.isDuplicate);
+            } else if (state.currentFilter.startsWith('team-')) {
+                const teamId = parseInt(state.currentFilter.replace('team-', ''));
+                filteredItems = filteredItems.filter(i => i.teamId === teamId);
+            }
+            
+            // Apply search
+            if (state.searchQuery) {
+                filteredItems = filteredItems.filter(i => 
+                    i.value.toLowerCase().includes(state.searchQuery.toLowerCase())
+                );
+            }
+            
+            if (filteredItems.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">🔒</div>
+                        <h3>No accounts found</h3>
+                        <p>${state.items.length > 0 ? 'Try adjusting your filters' : 'Import an XLS file to add accounts'}</p>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = filteredItems.map(item => {
+                    const team = state.teams.find(t => t.id === item.teamId);
+                    return `
+                        <div class="item-row fade-in ${item.isDuplicate ? 'duplicate' : ''}">
+                            <div class="item-team-color" style="background: ${team?.color || '#ccc'}"></div>
+                            <span class="item-value">${item.value}</span>
+                            <span class="item-team">${team?.name || 'Unknown'}</span>
+                            ${item.isDuplicate ? '<span class="item-badge duplicate">Duplicate</span>' : ''}
+                            <button class="item-delete" onclick="deleteItem(${item.id})" title="Delete item">×</button>
+                        </div>
+                    `;
+                }).join('');
+            }
+            
+            renderDuplicates();
+        }
+
+        function renderDuplicates() {
+            const duplicates = state.items.filter(i => i.isDuplicate);
+            const section = document.getElementById('duplicatesSection');
+            const list = document.getElementById('duplicatesList');
+            const count = document.getElementById('duplicateCount');
+            
+            if (duplicates.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+            
+            section.style.display = 'block';
+            count.textContent = duplicates.length;
+            
+            // Group duplicates by value
+            const grouped = {};
+            duplicates.forEach(item => {
+                const lower = item.value.toLowerCase();
+                if (!grouped[lower]) grouped[lower] = [];
+                grouped[lower].push(item);
+            });
+            
+            list.innerHTML = Object.entries(grouped).map(([value, items]) => {
+                const teams = items.map(i => {
+                    const team = state.teams.find(t => t.id === i.teamId);
+                    return `<span style="color: ${team?.color || '#666'}">${team?.name || 'Unknown'}</span>`;
+                }).join(', ');
+                
+                return `
+                    <div class="item-row duplicate">
+                        <span class="item-value">${items[0].value}</span>
+                        <span class="item-badge duplicate">${items.length}x</span>
+                        <span style="font-size: 12px; color: var(--text-secondary);">in ${teams}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function deleteItem(id) {
+            state.items = state.items.filter(i => i.id !== id);
+            markDuplicates();
+            saveToStorage();
+            renderItems();
+            renderTeams();
+            updateStats();
+            updateExportTeamSelect();
+        }
+
+        function removeAllDuplicates() {
+            // Keep only the first occurrence of each value
+            const seen = new Set();
+            state.items = state.items.filter(item => {
+                const lower = item.value.toLowerCase();
+                if (seen.has(lower)) return false;
+                seen.add(lower);
+                return true;
+            });
+            
+            markDuplicates();
+            saveToStorage();
+            renderItems();
+            renderTeams();
+            updateStats();
+            updateExportTeamSelect();
+            showToast('Success', 'All duplicates removed', 'success');
+        }
+
+        function clearAllItems() {
+            if (!confirm('Are you sure you want to clear all accounts from the Do Not Affect list?')) return;
+            
+            state.items = [];
+            saveToStorage();
+            renderItems();
+            renderTeams();
+            updateStats();
+            updateExportTeamSelect();
+            showToast('Cleared', 'All accounts removed from Do Not Affect list', 'warning');
+        }
+
+        function filterItems(filter) {
+            state.currentFilter = filter;
+            
+            // Update tab states
+            document.querySelectorAll('.filter-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.filter === filter);
+            });
+            
+            renderItems();
+        }
+
+        function filterBySearch() {
+            state.searchQuery = document.getElementById('searchInput').value;
+            renderItems();
+        }
+
+        // Stats
+        function updateStats() {
+            const totalItems = state.items.length;
+            const duplicates = state.items.filter(i => i.isDuplicate).length;
+            const uniqueValues = new Set(state.items.map(i => i.value.toLowerCase())).size;
+            
+            document.getElementById('statTeams').textContent = state.teams.length;
+            document.getElementById('statTotal').textContent = totalItems;
+            document.getElementById('statDuplicates').textContent = duplicates;
+            document.getElementById('statUnique').textContent = uniqueValues;
+        }
+
+        // Export Functions
+        // Export all teams to a single Excel file with one sheet per team
+        function exportAllTeamsToExcel() {
+            if (state.items.length === 0) {
+                showToast('Error', 'No accounts to export', 'error');
+                return;
+            }
+            
+            if (state.teams.length === 0) {
+                showToast('Error', 'No teams defined', 'error');
+                return;
+            }
+            
+            const wb = XLSX.utils.book_new();
+            let totalExported = 0;
+            
+            // Create a sheet for each team
+            state.teams.forEach(team => {
+                const teamItems = state.items.filter(i => i.teamId === team.id);
+                if (teamItems.length === 0) return;
+                
+                // Get unique values only for this team
+                const seen = new Set();
+                const uniqueValues = teamItems.filter(item => {
+                    const lower = item.value.toLowerCase();
+                    if (seen.has(lower)) return false;
+                    seen.add(lower);
+                    return true;
+                }).map(item => [item.value]);
+                
+                // Create sheet with just one column (Account)
+                const ws = XLSX.utils.aoa_to_array ? 
+                    XLSX.utils.aoa_to_sheet([['Account'], ...uniqueValues]) :
+                    XLSX.utils.aoa_to_sheet([['Account'], ...uniqueValues]);
+                
+                // Sanitize sheet name (Excel has 31 char limit and no special chars)
+                const sheetName = team.name.substring(0, 31).replace(/[\\\/\?\*\[\]]/g, '_');
+                XLSX.utils.book_append_sheet(wb, ws, sheetName);
+                totalExported += uniqueValues.length;
+            });
+            
+            if (totalExported === 0) {
+                showToast('Error', 'No accounts to export', 'error');
+                return;
+            }
+            
+            XLSX.writeFile(wb, `JackHenry_Protected_AllTeams_${new Date().toISOString().slice(0,10)}.xlsx`);
+            showToast('Exported', `${totalExported} accounts across ${state.teams.length} teams exported`, 'success');
+        }
+
+        // Export all items as text (simple format)
+        function exportToText() {
+            if (state.items.length === 0) {
+                showToast('Error', 'No accounts to export', 'error');
+                return;
+            }
+            
+            let text = '';
+            
+            state.teams.forEach(team => {
+                const teamItems = state.items.filter(i => i.teamId === team.id);
+                if (teamItems.length === 0) return;
+                
+                // Get unique values
+                const seen = new Set();
+                const uniqueValues = teamItems.filter(item => {
+                    const lower = item.value.toLowerCase();
+                    if (seen.has(lower)) return false;
+                    seen.add(lower);
+                    return true;
+                });
+                
+                text += `\n=== ${team.name} (${uniqueValues.length} accounts) ===\n`;
+                uniqueValues.forEach(item => {
+                    text += `${item.value}\n`;
+                });
+            });
+            
+            const blob = new Blob([text.trim()], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `JackHenry_Protected_AllTeams_${new Date().toISOString().slice(0,10)}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showToast('Exported', 'Text file downloaded', 'success');
+        }
+
+        // Export a single team to Excel
+        function exportSingleTeamToExcel() {
+            const teamId = parseInt(document.getElementById('exportTeamSelect').value);
+            if (!teamId) {
+                showToast('Error', 'Please select a team to export', 'error');
+                return;
+            }
+            
+            const team = state.teams.find(t => t.id === teamId);
+            const teamItems = state.items.filter(i => i.teamId === teamId);
+            
+            if (teamItems.length === 0) {
+                showToast('Error', 'No accounts in this team', 'error');
+                return;
+            }
+            
+            // Get unique values only
+            const seen = new Set();
+            const uniqueValues = teamItems.filter(item => {
+                const lower = item.value.toLowerCase();
+                if (seen.has(lower)) return false;
+                seen.add(lower);
+                return true;
+            }).map(item => [item.value]);
+            
+            // Create sheet with just one column (Account)
+            const ws = XLSX.utils.aoa_to_sheet([['Account'], ...uniqueValues]);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Accounts');
+            
+            const fileName = `JackHenry_Protected_${team.name.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0,10)}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+            
+            showToast('Exported', `${uniqueValues.length} accounts from "${team.name}" exported`, 'success');
+        }
+
+        // Export a single team to Text
+        function exportSingleTeamToText() {
+            const teamId = parseInt(document.getElementById('exportTeamSelect').value);
+            if (!teamId) {
+                showToast('Error', 'Please select a team to export', 'error');
+                return;
+            }
+            
+            const team = state.teams.find(t => t.id === teamId);
+            const teamItems = state.items.filter(i => i.teamId === teamId);
+            
+            if (teamItems.length === 0) {
+                showToast('Error', 'No accounts in this team', 'error');
+                return;
+            }
+            
+            // Get unique values only
+            const seen = new Set();
+            const uniqueValues = teamItems.filter(item => {
+                const lower = item.value.toLowerCase();
+                if (seen.has(lower)) return false;
+                seen.add(lower);
+                return true;
+            });
+            
+            const text = uniqueValues.map(item => item.value).join('\n');
+            
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `JackHenry_Protected_${team.name.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0,10)}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showToast('Exported', `${uniqueValues.length} accounts from "${team.name}" exported`, 'success');
+        }
+
+        // Update export team select when teams change
+        function updateExportTeamSelect() {
+            const select = document.getElementById('exportTeamSelect');
+            select.innerHTML = '<option value="">Select a team...</option>';
+            state.teams.forEach(team => {
+                const count = state.items.filter(i => i.teamId === team.id).length;
+                select.innerHTML += `<option value="${team.id}">${team.name} (${count})</option>`;
+            });
+        }
+    </script>
+</body>
+</html>
