@@ -1056,6 +1056,201 @@
             font-size: 13px;
             margin-top: 8px;
         }
+
+        /* Recurring Reservation Styles */
+        .recurring-toggle {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: var(--surface);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .recurring-toggle:hover {
+            background: rgba(250, 167, 74, 0.1);
+        }
+
+        .recurring-toggle input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--axos-orange);
+            cursor: pointer;
+        }
+
+        .recurring-toggle label {
+            cursor: pointer;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .recurring-days-section {
+            display: none;
+            padding: 16px;
+            background: rgba(250, 167, 74, 0.05);
+            border: 2px solid rgba(250, 167, 74, 0.2);
+            border-radius: 12px;
+            margin-top: 12px;
+        }
+
+        .recurring-days-section.active {
+            display: block;
+        }
+
+        .recurring-days-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .recurring-days-grid {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .day-checkbox {
+            position: relative;
+        }
+
+        .day-checkbox input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .day-checkbox label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 48px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            background: white;
+        }
+
+        .day-checkbox label:hover {
+            border-color: var(--axos-orange);
+            color: var(--axos-orange);
+        }
+
+        .day-checkbox input:checked + label {
+            background: linear-gradient(135deg, var(--axos-orange) 0%, var(--axos-orange-dark) 100%);
+            border-color: var(--axos-orange);
+            color: white;
+            box-shadow: 0 4px 12px rgba(250, 167, 74, 0.35);
+        }
+
+        .recurring-description {
+            margin-top: 12px;
+            padding: 10px 14px;
+            background: white;
+            border-radius: 8px;
+            font-size: 14px;
+            color: var(--axos-blue);
+            font-weight: 500;
+            display: none;
+        }
+
+        .recurring-description.active {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .recurring-description .icon {
+            font-size: 16px;
+        }
+
+        .recurring-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            background: rgba(250, 167, 74, 0.15);
+            color: var(--axos-orange-dark);
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 6px;
+        }
+
+        /* Custom Team Section Styles */
+        .custom-team-section {
+            margin-top: 12px;
+            padding: 16px;
+            background: rgba(250, 167, 74, 0.05);
+            border: 2px solid rgba(250, 167, 74, 0.2);
+            border-radius: 12px;
+            animation: slideDown 0.2s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .custom-team-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 15px;
+            font-family: inherit;
+            transition: all 0.2s;
+            background: white;
+        }
+
+        .custom-team-input:focus {
+            outline: none;
+            border-color: var(--axos-orange);
+            box-shadow: 0 0 0 4px rgba(250, 167, 74, 0.1);
+        }
+
+        .save-team-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+            padding: 10px 12px;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .save-team-option:hover {
+            background: rgba(250, 167, 74, 0.1);
+        }
+
+        .save-team-option input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--axos-orange);
+            cursor: pointer;
+        }
+
+        .save-team-option label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
@@ -1206,9 +1401,16 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label>Team Name</label>
-                            <select id="teamName" required>
+                            <select id="teamName" required onchange="handleTeamSelection()">
                                 <option value="">Select Team...</option>
                             </select>
+                            <div id="customTeamSection" class="custom-team-section" style="display: none;">
+                                <input type="text" id="customTeamName" placeholder="Enter your team name..." class="custom-team-input">
+                                <div class="save-team-option">
+                                    <input type="checkbox" id="saveNewTeam">
+                                    <label for="saveNewTeam">Save this team for future reservations</label>
+                                </div>
+                            </div>
                         </div>
                         
                         <div class="form-group">
@@ -1235,6 +1437,50 @@
                         <div class="form-group">
                             <label>Date</label>
                             <input type="date" id="reservationDate" required>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <div class="recurring-toggle" onclick="toggleRecurringCheckbox(event)">
+                                <input type="checkbox" id="isRecurring" onchange="toggleRecurringSection()">
+                                <label for="isRecurring">🔄 Make this a recurring reservation</label>
+                            </div>
+                            <div class="recurring-days-section" id="recurringDaysSection">
+                                <span class="recurring-days-label">Select days for recurring execution:</span>
+                                <div class="recurring-days-grid">
+                                    <div class="day-checkbox">
+                                        <input type="checkbox" id="dayMon" value="1" onchange="updateRecurringDescription()">
+                                        <label for="dayMon">Mon</label>
+                                    </div>
+                                    <div class="day-checkbox">
+                                        <input type="checkbox" id="dayTue" value="2" onchange="updateRecurringDescription()">
+                                        <label for="dayTue">Tue</label>
+                                    </div>
+                                    <div class="day-checkbox">
+                                        <input type="checkbox" id="dayWed" value="3" onchange="updateRecurringDescription()">
+                                        <label for="dayWed">Wed</label>
+                                    </div>
+                                    <div class="day-checkbox">
+                                        <input type="checkbox" id="dayThu" value="4" onchange="updateRecurringDescription()">
+                                        <label for="dayThu">Thu</label>
+                                    </div>
+                                    <div class="day-checkbox">
+                                        <input type="checkbox" id="dayFri" value="5" onchange="updateRecurringDescription()">
+                                        <label for="dayFri">Fri</label>
+                                    </div>
+                                    <div class="day-checkbox">
+                                        <input type="checkbox" id="daySat" value="6" onchange="updateRecurringDescription()">
+                                        <label for="daySat">Sat</label>
+                                    </div>
+                                    <div class="day-checkbox">
+                                        <input type="checkbox" id="daySun" value="0" onchange="updateRecurringDescription()">
+                                        <label for="daySun">Sun</label>
+                                    </div>
+                                </div>
+                                <div class="recurring-description" id="recurringDescription">
+                                    <span class="icon">📅</span>
+                                    <span id="recurringDescriptionText"></span>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="form-group">
@@ -1551,6 +1797,51 @@
             config.teams.forEach(team => {
                 select.innerHTML += `<option value="${team}">${team}</option>`;
             });
+            // Add "Other" option for custom team
+            select.innerHTML += '<option value="__other__">➕ Other - Add New Team...</option>';
+        }
+
+        function handleTeamSelection() {
+            const select = document.getElementById('teamName');
+            const customSection = document.getElementById('customTeamSection');
+            const customInput = document.getElementById('customTeamName');
+            
+            if (select.value === '__other__') {
+                customSection.style.display = 'block';
+                customInput.focus();
+                customInput.required = true;
+            } else {
+                customSection.style.display = 'none';
+                customInput.value = '';
+                customInput.required = false;
+                document.getElementById('saveNewTeam').checked = false;
+            }
+        }
+
+        function getSelectedTeamName() {
+            const select = document.getElementById('teamName');
+            if (select.value === '__other__') {
+                return document.getElementById('customTeamName').value.trim();
+            }
+            return select.value;
+        }
+
+        function saveNewTeamIfNeeded(teamName) {
+            const shouldSave = document.getElementById('saveNewTeam').checked;
+            const select = document.getElementById('teamName');
+            
+            if (shouldSave && select.value === '__other__' && teamName) {
+                // Check if team already exists (case-insensitive)
+                const exists = config.teams.some(t => t.toLowerCase() === teamName.toLowerCase());
+                if (!exists) {
+                    config.teams.push(teamName);
+                    config.teams.sort((a, b) => a.localeCompare(b));
+                    localStorage.setItem('schedulerConfig', JSON.stringify(config));
+                    saveToCloud(); // Sync to cloud
+                    populateTeamDropdown();
+                    showToast(`Team "${teamName}" saved for future use!`, true);
+                }
+            }
         }
 
         function populateDurationDropdown() {
@@ -1706,12 +1997,13 @@
                         const startHour = parseInt(r.startTime.split(':')[0]);
                         const duration = parseInt(r.duration);
                         const heightPx = duration * 40 - 4; // 40px per hour minus padding
+                        const recurringIcon = r.isRecurring ? '<span style="margin-left: 4px; font-size: 10px;">🔄</span>' : '';
                         
                         html += `
                             <div class="reservation-block ${r.executionType}" 
                                  style="height: ${heightPx}px; top: 2px;"
                                  onclick="event.stopPropagation(); viewReservation('${r.id}')">
-                                <div class="team">${r.teamName}</div>
+                                <div class="team">${r.teamName}${recurringIcon}</div>
                                 <div class="time-range">${formatTime(r.startTime)} - ${getEndTime(r.startTime, r.duration)}</div>
                                 <div class="details">${r.parallelSlots} parallels • ${r.pipelineCount} pipeline(s)</div>
                             </div>
@@ -1732,25 +2024,73 @@
         function buildCellMap() {
             const map = {};
             
+            // Get the date range for the current week view
+            const weekStart = new Date(currentWeekStart);
+            const weekEnd = new Date(currentWeekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+            
             reservations.forEach(r => {
                 const startHour = parseInt(r.startTime.split(':')[0]);
                 const duration = parseInt(r.duration);
                 
-                for (let h = 0; h < duration; h++) {
-                    const hour = startHour + h;
-                    if (hour < 24) {
-                        const key = `${r.date}-${hour}`;
-                        if (!map[key]) {
-                            map[key] = { occupied: true, type: r.executionType, reservations: [] };
+                // Get all dates this reservation should appear on
+                const datesToShow = getReservationDates(r, weekStart, weekEnd);
+                
+                datesToShow.forEach(dateStr => {
+                    // Create a virtual reservation object for recurring instances
+                    const displayReservation = r.isRecurring ? {
+                        ...r,
+                        date: dateStr, // Override date for display
+                        isRecurringInstance: true
+                    } : r;
+                    
+                    for (let h = 0; h < duration; h++) {
+                        const hour = startHour + h;
+                        if (hour < 24) {
+                            const key = `${dateStr}-${hour}`;
+                            if (!map[key]) {
+                                map[key] = { occupied: true, type: r.executionType, reservations: [] };
+                            }
+                            map[key].occupied = true;
+                            map[key].type = r.executionType;
+                            map[key].reservations.push(displayReservation);
                         }
-                        map[key].occupied = true;
-                        map[key].type = r.executionType;
-                        map[key].reservations.push(r);
                     }
-                }
+                });
             });
             
             return map;
+        }
+
+        // Get all dates a reservation should appear on within a date range
+        function getReservationDates(reservation, weekStart, weekEnd) {
+            const dates = [];
+            
+            if (!reservation.isRecurring || !reservation.recurringDays || reservation.recurringDays.length === 0) {
+                // Non-recurring: check if the single date is in range
+                const resDate = new Date(reservation.date + 'T00:00:00');
+                if (resDate >= weekStart && resDate <= weekEnd) {
+                    dates.push(reservation.date);
+                }
+                return dates;
+            }
+            
+            // Recurring: find all matching days in the week range
+            const recurringStartDate = new Date(reservation.date + 'T00:00:00');
+            
+            for (let d = new Date(weekStart); d <= weekEnd; d.setDate(d.getDate() + 1)) {
+                const dayOfWeek = d.getDay(); // 0 = Sunday, 1 = Monday, etc.
+                
+                // Check if this day is in the recurring days
+                if (reservation.recurringDays.includes(dayOfWeek)) {
+                    // Only show recurring reservations from their start date onwards
+                    if (d >= recurringStartDate) {
+                        dates.push(d.toISOString().split('T')[0]);
+                    }
+                }
+            }
+            
+            return dates;
         }
 
         function getEndTime(startTime, duration) {
@@ -1779,7 +2119,24 @@
                 if (reservation) {
                     title.textContent = 'Edit Reservation';
                     document.getElementById('reservationId').value = id;
-                    document.getElementById('teamName').value = reservation.teamName;
+                    
+                    // Handle team name - check if it exists in config
+                    const teamSelect = document.getElementById('teamName');
+                    const teamExists = config.teams.includes(reservation.teamName);
+                    if (teamExists) {
+                        teamSelect.value = reservation.teamName;
+                        document.getElementById('customTeamSection').style.display = 'none';
+                        document.getElementById('customTeamName').value = '';
+                        document.getElementById('customTeamName').required = false;
+                    } else {
+                        // Team doesn't exist in config, use "Other" option
+                        teamSelect.value = '__other__';
+                        document.getElementById('customTeamSection').style.display = 'block';
+                        document.getElementById('customTeamName').value = reservation.teamName;
+                        document.getElementById('customTeamName').required = true;
+                    }
+                    document.getElementById('saveNewTeam').checked = false;
+                    
                     document.getElementById('reservedBy').value = reservation.reservedBy;
                     document.getElementById('reservationDate').value = reservation.date;
                     document.getElementById('startTime').value = reservation.startTime;
@@ -1796,6 +2153,17 @@
                     });
                     populateParallelDropdown();
                     document.getElementById('parallelSlots').value = reservation.parallelSlots;
+
+                    // Handle recurring data
+                    const isRecurring = reservation.isRecurring || false;
+                    document.getElementById('isRecurring').checked = isRecurring;
+                    if (isRecurring) {
+                        document.getElementById('recurringDaysSection').classList.add('active');
+                        setRecurringDays(reservation.recurringDays || []);
+                    } else {
+                        document.getElementById('recurringDaysSection').classList.remove('active');
+                        clearRecurringDays();
+                    }
                 }
             } else {
                 title.textContent = 'New Reservation';
@@ -1806,6 +2174,17 @@
                     opt.classList.toggle('selected', opt.dataset.type === 'testim');
                 });
                 populateParallelDropdown();
+
+                // Reset custom team section for new reservation
+                document.getElementById('customTeamSection').style.display = 'none';
+                document.getElementById('customTeamName').value = '';
+                document.getElementById('customTeamName').required = false;
+                document.getElementById('saveNewTeam').checked = false;
+
+                // Reset recurring options for new reservation
+                document.getElementById('isRecurring').checked = false;
+                document.getElementById('recurringDaysSection').classList.remove('active');
+                clearRecurringDays();
             }
             
             modal.classList.add('active');
@@ -1830,6 +2209,128 @@
         function getSelectedExecutionType() {
             const selected = document.querySelector('.execution-type-option.selected');
             return selected ? selected.dataset.type : 'testim';
+        }
+
+        // Recurring reservation functions
+        function toggleRecurringCheckbox(event) {
+            // Prevent double-toggle when clicking directly on the checkbox
+            if (event.target.type === 'checkbox') return;
+            const checkbox = document.getElementById('isRecurring');
+            checkbox.checked = !checkbox.checked;
+            toggleRecurringSection();
+        }
+
+        function toggleRecurringSection() {
+            const isRecurring = document.getElementById('isRecurring').checked;
+            const section = document.getElementById('recurringDaysSection');
+            
+            if (isRecurring) {
+                section.classList.add('active');
+            } else {
+                section.classList.remove('active');
+                // Clear all day selections when unchecking
+                clearRecurringDays();
+            }
+        }
+
+        function clearRecurringDays() {
+            const dayCheckboxes = document.querySelectorAll('.day-checkbox input[type="checkbox"]');
+            dayCheckboxes.forEach(cb => cb.checked = false);
+            document.getElementById('recurringDescription').classList.remove('active');
+        }
+
+        function getSelectedDays() {
+            const dayCheckboxes = document.querySelectorAll('.day-checkbox input[type="checkbox"]:checked');
+            const days = [];
+            dayCheckboxes.forEach(cb => {
+                days.push(parseInt(cb.value));
+            });
+            return days.sort((a, b) => {
+                // Sort: Monday(1) to Sunday(0), with Sunday last
+                const aVal = a === 0 ? 7 : a;
+                const bVal = b === 0 ? 7 : b;
+                return aVal - bVal;
+            });
+        }
+
+        function getRecurringDescription(selectedDays) {
+            if (selectedDays.length === 0) return '';
+
+            const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const shortDayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+            // Check for special patterns
+            const weekdays = [1, 2, 3, 4, 5]; // Mon-Fri
+            const weekends = [0, 6]; // Sat, Sun
+            const allDays = [0, 1, 2, 3, 4, 5, 6];
+
+            const sortedForComparison = [...selectedDays].sort((a, b) => a - b);
+
+            // Daily (all 7 days)
+            if (selectedDays.length === 7) {
+                return 'Daily';
+            }
+
+            // Weekdays (Mon-Fri)
+            if (selectedDays.length === 5 && 
+                weekdays.every(d => selectedDays.includes(d)) && 
+                !selectedDays.includes(0) && !selectedDays.includes(6)) {
+                return 'Weekdays (Mon-Fri)';
+            }
+
+            // Weekends (Sat-Sun)
+            if (selectedDays.length === 2 && 
+                selectedDays.includes(0) && selectedDays.includes(6)) {
+                return 'Weekends (Sat-Sun)';
+            }
+
+            // Single day - Weekly on [day]
+            if (selectedDays.length === 1) {
+                return `Weekly on ${dayNames[selectedDays[0]]}`;
+            }
+
+            // Two days
+            if (selectedDays.length === 2) {
+                const day1 = dayNames[selectedDays[0]];
+                const day2 = dayNames[selectedDays[1]];
+                return `Every ${day1} and ${day2}`;
+            }
+
+            // Multiple days - list them
+            const daysList = selectedDays.map(d => shortDayNames[d]);
+            if (daysList.length <= 3) {
+                return `Every ${daysList.slice(0, -1).join(', ')} and ${daysList.slice(-1)}`;
+            }
+            return `${daysList.length} days per week (${daysList.join(', ')})`;
+        }
+
+        function updateRecurringDescription() {
+            const selectedDays = getSelectedDays();
+            const descriptionEl = document.getElementById('recurringDescription');
+            const textEl = document.getElementById('recurringDescriptionText');
+
+            if (selectedDays.length > 0) {
+                descriptionEl.classList.add('active');
+                textEl.textContent = getRecurringDescription(selectedDays);
+            } else {
+                descriptionEl.classList.remove('active');
+            }
+        }
+
+        function setRecurringDays(days) {
+            // Clear all first
+            const dayCheckboxes = document.querySelectorAll('.day-checkbox input[type="checkbox"]');
+            dayCheckboxes.forEach(cb => cb.checked = false);
+
+            // Set the specified days
+            if (days && days.length > 0) {
+                days.forEach(day => {
+                    const dayNames = ['daySun', 'dayMon', 'dayTue', 'dayWed', 'dayThu', 'dayFri', 'daySat'];
+                    const checkbox = document.getElementById(dayNames[day]);
+                    if (checkbox) checkbox.checked = true;
+                });
+                updateRecurringDescription();
+            }
         }
 
         // Generate reservation ticket as PNG
@@ -1948,9 +2449,21 @@
         // Save reservation
         function saveReservation() {
             const id = document.getElementById('reservationId').value;
+            const isRecurring = document.getElementById('isRecurring').checked;
+            const recurringDays = isRecurring ? getSelectedDays() : [];
+            const teamName = getSelectedTeamName();
+
+            // Validate custom team name if "Other" is selected
+            const teamSelect = document.getElementById('teamName');
+            if (teamSelect.value === '__other__' && !teamName) {
+                showToast('Please enter a team name', false);
+                document.getElementById('customTeamName').focus();
+                return;
+            }
+
             const reservation = {
                 id: id || Date.now().toString(),
-                teamName: document.getElementById('teamName').value,
+                teamName: teamName,
                 reservedBy: document.getElementById('reservedBy').value,
                 executionType: getSelectedExecutionType(),
                 date: document.getElementById('reservationDate').value,
@@ -1961,12 +2474,24 @@
                 executionMode: document.getElementById('executionMode').value || 'parallel',
                 releaseVersion: document.getElementById('releaseVersion').value,
                 notes: document.getElementById('notes').value,
+                isRecurring: isRecurring,
+                recurringDays: recurringDays,
+                recurringDescription: isRecurring ? getRecurringDescription(recurringDays) : '',
                 createdAt: id ? reservations.find(r => r.id === id)?.createdAt : new Date().toISOString()
             };
+
+            // Save new team if checkbox is checked
+            saveNewTeamIfNeeded(teamName);
 
             // Validation
             if (!reservation.teamName || !reservation.reservedBy || !reservation.date || !reservation.startTime) {
                 showToast('Please fill in all required fields', false);
+                return;
+            }
+
+            // Validation for recurring reservations
+            if (isRecurring && recurringDays.length === 0) {
+                showToast('Please select at least one day for recurring reservation', false);
                 return;
             }
 
@@ -2004,6 +2529,25 @@
             const details = document.getElementById('reservationDetails');
             const date = new Date(reservation.date + 'T00:00:00');
             
+            // Build recurring info HTML
+            let recurringHtml = '';
+            if (reservation.isRecurring && reservation.recurringDays && reservation.recurringDays.length > 0) {
+                const description = reservation.recurringDescription || getRecurringDescription(reservation.recurringDays);
+                recurringHtml = `
+                <div class="detail-row">
+                    <span class="detail-label">Schedule</span>
+                    <span class="detail-value">
+                        <span class="recurring-badge">🔄 Recurring</span>
+                        ${description}
+                    </span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Starting From</span>
+                    <span class="detail-value">${date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+                </div>
+                `;
+            }
+            
             details.innerHTML = `
                 <div class="detail-row">
                     <span class="detail-label">Team</span>
@@ -2017,10 +2561,12 @@
                     <span class="detail-label">Execution Type</span>
                     <span class="detail-value">${reservation.executionType === 'testim' ? 'Testim Grid' : 'Local Server'}</span>
                 </div>
+                ${reservation.isRecurring ? recurringHtml : `
                 <div class="detail-row">
                     <span class="detail-label">Date</span>
                     <span class="detail-value">${date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
                 </div>
+                `}
                 <div class="detail-row">
                     <span class="detail-label">Time</span>
                     <span class="detail-value">${formatTime(reservation.startTime)} - ${getEndTime(reservation.startTime, reservation.duration)}</span>
@@ -2486,8 +3032,20 @@
         function updateStats() {
             const today = getLADateString();
             const currentHour = getLAHour();
+            const todayDate = new Date(today + 'T00:00:00');
+            const dayOfWeek = todayDate.getDay();
             
-            const todayReservations = reservations.filter(r => r.date === today);
+            // Get all reservations that apply today (including recurring)
+            const todayReservations = reservations.filter(r => {
+                if (!r.isRecurring) {
+                    return r.date === today;
+                }
+                // Recurring: check if today's day of week matches and today is >= start date
+                const startDate = new Date(r.date + 'T00:00:00');
+                return r.recurringDays && 
+                       r.recurringDays.includes(dayOfWeek) && 
+                       todayDate >= startDate;
+            });
             
             // Today's count
             document.getElementById('todayCount').textContent = todayReservations.length;
@@ -2536,8 +3094,23 @@
         // Render today's schedule
         function renderTodaySchedule() {
             const today = getLADateString();
+            const todayDate = new Date(today + 'T00:00:00');
+            const dayOfWeek = todayDate.getDay();
+            
+            // Get all reservations that should appear today (including recurring)
             const todayReservations = reservations
-                .filter(r => r.date === today)
+                .filter(r => {
+                    // Non-recurring: exact date match
+                    if (!r.isRecurring) {
+                        return r.date === today;
+                    }
+                    // Recurring: check if today's day of week is in the recurring days
+                    // and if today is on or after the start date
+                    const startDate = new Date(r.date + 'T00:00:00');
+                    return r.recurringDays && 
+                           r.recurringDays.includes(dayOfWeek) && 
+                           todayDate >= startDate;
+                })
                 .sort((a, b) => a.startTime.localeCompare(b.startTime));
             
             const container = document.getElementById('todaySchedule');
@@ -2552,17 +3125,19 @@
                 return;
             }
 
-            container.innerHTML = todayReservations.map(r => `
+            container.innerHTML = todayReservations.map(r => {
+                const recurringIcon = r.isRecurring ? '<span style="margin-left: 4px; font-size: 10px;">🔄</span>' : '';
+                return `
                 <div class="schedule-item ${r.executionType}" onclick="viewReservation('${r.id}')">
                     <div class="schedule-time">${formatTime(r.startTime)}<br><span style="font-size: 10px; color: var(--text-muted);">${r.duration}h</span></div>
                     <div class="schedule-info">
-                        <div class="schedule-team">${r.teamName}</div>
+                        <div class="schedule-team">${r.teamName}${recurringIcon}</div>
                         <div class="schedule-details">
                             ${r.parallelSlots} parallels • ${r.pipelineCount} pipeline(s)
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
         // Local Storage
