@@ -1550,9 +1550,11 @@
         
         // First, try to load from localStorage as cache
         const cached = localStorage.getItem('mobileDailyTracker');
+        let localData = null;
         if (cached) {
             try {
-                data = JSON.parse(cached);
+                localData = JSON.parse(cached);
+                data = localData;
             } catch (e) {
                 console.error('Error loading cached data:', e);
             }
@@ -1565,14 +1567,29 @@
                 const result = await response.json();
                 
                 if (result.success && result.data) {
-                    data = result.data;
-                    lastSyncTime = result.lastUpdated;
-                    // Update local cache
-                    localStorage.setItem('mobileDailyTracker', JSON.stringify(data));
-                    showSyncStatus('synced');
-                    console.log('✅ Data loaded from Google Sheets');
+                    const serverData = result.data;
+                    
+                    // Compare timestamps - only use server data if it's newer than local
+                    const localTimestamp = localData?.lastUpdated ? new Date(localData.lastUpdated).getTime() : 0;
+                    const serverTimestamp = serverData?.lastUpdated ? new Date(serverData.lastUpdated).getTime() : 0;
+                    
+                    if (serverTimestamp >= localTimestamp) {
+                        data = serverData;
+                        lastSyncTime = result.lastUpdated;
+                        // Update local cache
+                        localStorage.setItem('mobileDailyTracker', JSON.stringify(data));
+                        showSyncStatus('synced');
+                        console.log('✅ Data loaded from Google Sheets (server is newer or equal)');
+                    } else {
+                        // Local data is newer - keep it and try to sync to server
+                        console.log('⚠️ Local data is newer than server. Keeping local data.');
+                        console.log('   Local:', localData.lastUpdated, '| Server:', serverData.lastUpdated);
+                        showSyncStatus('synced');
+                        // Optionally auto-save local to server
+                        // await saveData();
+                    }
                 } else if (!result.data) {
-                    // No data on server yet, that's ok
+                    // No data on server yet, that's ok - use local data
                     showSyncStatus('synced');
                     console.log('📝 No data on server, using local data');
                 } else {
@@ -1582,6 +1599,8 @@
                 console.error('❌ Failed to load from Google Sheets:', error);
                 syncError = error.message;
                 showSyncStatus('error');
+                // Keep using local data on error
+                console.log('📝 Using local cached data due to sync error');
             }
         } else {
             showSyncStatus('local');
@@ -1602,24 +1621,79 @@
                 const currentPerson = document.getElementById('selectedPerson');
                 const updatedBy = currentPerson ? getPersonName(currentPerson.value) : 'Unknown';
                 
-                const response = await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors', // Required for Google Apps Script
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        data: data,
-                        updatedBy: updatedBy,
-                        action: 'save'
-                    })
-                });
+                const payload = {
+                    data: data,
+                    updatedBy: updatedBy,
+                    action: 'save'
+                };
                 
-                // With no-cors, we can't read the response, but if no error, assume success
-                lastSyncTime = new Date().toISOString();
-                showSaveStatus(true);
-                showSyncStatus('synced');
-                console.log('✅ Data saved to Google Sheets');
+                // Try proper CORS first (Google Apps Script supports this when deployed correctly)
+                // Google Apps Script redirects on POST, so we need to handle that
+                let saveSuccess = false;
+                let saveError = null;
+                
+                try {
+                    // Method 1: Standard fetch with CORS
+                    const response = await fetch(GOOGLE_SCRIPT_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'text/plain', // Use text/plain to avoid preflight
+                        },
+                        body: JSON.stringify(payload),
+                        redirect: 'follow'
+                    });
+                    
+                    // Try to parse response (may fail if redirected to HTML)
+                    const text = await response.text();
+                    try {
+                        const result = JSON.parse(text);
+                        if (result.success) {
+                            saveSuccess = true;
+                            console.log('✅ Data saved to Google Sheets (verified)');
+                        } else {
+                            saveError = result.error || 'Server returned success: false';
+                            console.warn('⚠️ Server rejected save:', saveError);
+                        }
+                    } catch (parseError) {
+                        // Response wasn't JSON - might be a redirect to HTML page
+                        // This can happen with Google Apps Script, check if response was OK
+                        if (response.ok || response.type === 'opaqueredirect') {
+                            saveSuccess = true;
+                            console.log('✅ Data saved to Google Sheets (assumed - non-JSON response)');
+                        } else {
+                            saveError = 'Unexpected response format';
+                        }
+                    }
+                } catch (corsError) {
+                    console.warn('⚠️ CORS request failed, trying no-cors fallback:', corsError.message);
+                    
+                    // Method 2: Fallback to no-cors (blind save)
+                    try {
+                        await fetch(GOOGLE_SCRIPT_URL, {
+                            method: 'POST',
+                            mode: 'no-cors',
+                            headers: {
+                                'Content-Type': 'text/plain',
+                            },
+                            body: JSON.stringify(payload)
+                        });
+                        // With no-cors we can't verify, but request was sent
+                        saveSuccess = true;
+                        console.log('⚠️ Data sent to Google Sheets (no-cors, unverified)');
+                    } catch (noCorsError) {
+                        saveError = noCorsError.message;
+                    }
+                }
+                
+                if (saveSuccess) {
+                    lastSyncTime = new Date().toISOString();
+                    showSaveStatus(true);
+                    showSyncStatus('synced');
+                    console.log('   Tests count:', data.tests?.length || 0, '| Entries count:', data.dailyEntries?.length || 0);
+                    console.log('   Timestamp:', data.lastUpdated);
+                } else {
+                    throw new Error(saveError || 'Unknown save error');
+                }
                 
             } catch (error) {
                 console.error('❌ Failed to save to Google Sheets:', error);
@@ -1688,6 +1762,101 @@
             await loadData();
             renderAll();
             alert('✅ Data refreshed from cloud!');
+        }
+    }
+    
+    // Force push local data to cloud (useful for recovery)
+    async function forcePushToCloud() {
+        if (!USE_GOOGLE_SHEETS) {
+            alert('Google Sheets not configured. Using local storage only.');
+            return;
+        }
+        
+        const testsCount = data.tests?.length || 0;
+        const entriesCount = data.dailyEntries?.length || 0;
+        
+        if (!confirm(`This will OVERWRITE cloud data with your local data.\n\nLocal data:\n- ${testsCount} tests\n- ${entriesCount} daily entries\n- Last updated: ${data.lastUpdated}\n\nContinue?`)) {
+            return;
+        }
+        
+        showSyncStatus('saving');
+        console.log('🚀 Force pushing local data to cloud...');
+        console.log('   Tests:', testsCount, '| Entries:', entriesCount);
+        
+        try {
+            const currentPerson = document.getElementById('selectedPerson');
+            const updatedBy = currentPerson ? getPersonName(currentPerson.value) : 'Unknown';
+            
+            data.lastUpdated = new Date().toISOString();
+            localStorage.setItem('mobileDailyTracker', JSON.stringify(data));
+            
+            const payload = {
+                data: data,
+                updatedBy: updatedBy + ' (force push)',
+                action: 'force_save'
+            };
+            
+            // Try multiple methods to ensure data gets through
+            let success = false;
+            let errorMsg = '';
+            
+            // Method 1: Standard fetch
+            try {
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify(payload),
+                    redirect: 'follow'
+                });
+                
+                const text = await response.text();
+                console.log('Response:', text);
+                
+                try {
+                    const result = JSON.parse(text);
+                    if (result.success) {
+                        success = true;
+                        console.log('✅ Force push successful (verified)');
+                    } else {
+                        errorMsg = result.error || 'Server returned success: false';
+                    }
+                } catch (e) {
+                    if (response.ok) {
+                        success = true;
+                        console.log('✅ Force push completed (response OK)');
+                    }
+                }
+            } catch (fetchError) {
+                console.warn('Standard fetch failed:', fetchError.message);
+                errorMsg = fetchError.message;
+                
+                // Method 2: no-cors fallback
+                try {
+                    await fetch(GOOGLE_SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'text/plain' },
+                        body: JSON.stringify(payload)
+                    });
+                    success = true;
+                    console.log('⚠️ Force push sent (no-cors, unverified)');
+                } catch (noCorsError) {
+                    errorMsg = noCorsError.message;
+                }
+            }
+            
+            if (success) {
+                lastSyncTime = new Date().toISOString();
+                showSyncStatus('synced');
+                alert('✅ Data pushed to cloud!\n\nPlease verify by refreshing the page on another device or browser.');
+            } else {
+                throw new Error(errorMsg);
+            }
+            
+        } catch (error) {
+            console.error('❌ Force push failed:', error);
+            showSyncStatus('error');
+            alert('❌ Failed to push to cloud: ' + error.message + '\n\nYour data is safe locally. Try exporting as backup.');
         }
     }
     
