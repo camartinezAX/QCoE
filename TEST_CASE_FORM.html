@@ -1,0 +1,1536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Test Case Generator - Axos QA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Axos Brand Colors */
+            --axos-navy: #1E3860;
+            --axos-navy-dark: #152844;
+            --axos-navy-light: #2a4a7a;
+            --axos-orange: #FAA74A;
+            --axos-orange-light: #fdd9a8;
+            --axos-orange-dark: #e8922a;
+            --axos-blue: #1E3860;
+            --axos-light-blue: #e6eef8;
+            
+            /* Test Case Theme - Axos Orange/Navy accent */
+            --accent-primary: var(--axos-orange);
+            --accent-light: var(--axos-orange-light);
+            --accent-dark: var(--axos-orange-dark);
+            --accent-bg: rgba(250, 167, 74, 0.1);
+            
+            /* UI Colors */
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-tertiary: #1f2937;
+            --bg-card: #161d2e;
+            --border-color: #2d3748;
+            --border-focus: var(--axos-blue);
+            
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            
+            /* Status Colors */
+            --success: #10b981;
+            --success-bg: rgba(16, 185, 129, 0.1);
+            --warning: #f59e0b;
+            --warning-bg: rgba(245, 158, 11, 0.1);
+            --error: #ef4444;
+            --error-bg: rgba(239, 68, 68, 0.1);
+            --info: #3b82f6;
+            --info-bg: rgba(59, 130, 246, 0.1);
+            
+            /* Section Colors */
+            --section-required: var(--axos-orange);
+            --section-optional: #8b5cf6;
+            --section-links: #06b6d4;
+            --section-automation: #10b981;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        
+        /* Animated Background */
+        .bg-pattern {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(ellipse at 20% 20%, rgba(30, 56, 96, 0.2) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(30, 56, 96, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(250, 167, 74, 0.08) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 30px 20px 60px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 40px 30px;
+            background: linear-gradient(135deg, var(--axos-navy) 0%, var(--axos-navy-dark) 50%, #0a1628 100%);
+            border-radius: 20px;
+            border: 1px solid rgba(250, 167, 74, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(250, 167, 74, 0.15) 0%, transparent 60%);
+            animation: shimmer 15s ease-in-out infinite;
+        }
+        
+        @keyframes shimmer {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(30%, 30%); }
+        }
+        
+        .logo {
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            color: var(--axos-orange);
+            text-transform: uppercase;
+            margin-bottom: 16px;
+            position: relative;
+        }
+        
+        .header h1 {
+            font-size: 36px;
+            font-weight: 800;
+            margin-bottom: 12px;
+            position: relative;
+            background: linear-gradient(135deg, #fff 0%, var(--axos-orange-light) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header p {
+            font-size: 16px;
+            color: var(--text-secondary);
+            position: relative;
+        }
+        
+        
+        /* Command Preview */
+        .command-preview {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 20px 24px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .command-preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .command-preview-title {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--accent-light);
+        }
+        
+        .command-box {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 16px 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--text-primary);
+            word-break: break-all;
+            white-space: pre-wrap;
+        }
+        
+        .command-box .cmd-prefix {
+            color: var(--accent-primary);
+            font-weight: 600;
+        }
+        
+        .command-box .cmd-required {
+            color: var(--axos-orange);
+        }
+        
+        .command-box .cmd-optional {
+            color: var(--text-muted);
+        }
+        
+        .command-box .cmd-instructions {
+            color: #22d3ee;
+            font-size: 11px;
+            display: block;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed var(--border-color);
+        }
+        
+        .instructions-preview {
+            margin-top: 12px;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+        }
+        
+        .instructions-preview-header {
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            font-size: 12px;
+            color: var(--text-muted);
+            transition: all 0.2s ease;
+        }
+        
+        .instructions-preview-header:hover {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-secondary);
+        }
+        
+        .instructions-toggle {
+            font-size: 10px;
+            transition: transform 0.3s ease;
+        }
+        
+        .instructions-preview.collapsed .instructions-toggle {
+            transform: rotate(-90deg);
+        }
+        
+        .instructions-preview-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        
+        .instructions-preview:not(.collapsed) .instructions-preview-content {
+            max-height: 200px;
+        }
+        
+        .instructions-box {
+            padding: 12px 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            background: var(--bg-primary);
+            border-top: 1px solid var(--border-color);
+            white-space: pre-wrap;
+        }
+        
+        .instructions-box strong {
+            color: #22d3ee;
+        }
+        
+        /* Section */
+        .section {
+            background: var(--bg-card);
+            border-radius: 16px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .section:hover {
+            border-color: rgba(250, 167, 74, 0.4);
+        }
+        
+        .section-header {
+            padding: 18px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            border-left: 4px solid;
+        }
+        
+        .section-header:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        
+        .section.required .section-header { border-left-color: var(--section-required); }
+        .section.optional .section-header { border-left-color: var(--section-optional); }
+        
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .section-icon {
+            font-size: 20px;
+        }
+        
+        .section-badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .section.required .section-badge {
+            background: var(--success-bg);
+            color: var(--success);
+        }
+        
+        .section.optional .section-badge {
+            background: rgba(139, 92, 246, 0.1);
+            color: #a78bfa;
+        }
+        
+        .section-toggle {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+        
+        .section.collapsed .section-toggle {
+            transform: rotate(-90deg);
+        }
+        
+        .section-content {
+            padding: 0 24px 24px;
+            display: grid;
+            gap: 20px;
+            max-height: 2000px;
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+        
+        .section.collapsed .section-content {
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            opacity: 0;
+        }
+        
+        /* Form Elements */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .form-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .form-label .required-mark {
+            color: var(--success);
+            font-weight: 700;
+        }
+        
+        .form-label .optional-mark {
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 400;
+        }
+        
+        /* Inputs */
+        input, select, textarea {
+            font-family: inherit;
+            font-size: 14px;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-primary);
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--axos-orange);
+            box-shadow: 0 0 0 3px rgba(250, 167, 74, 0.15);
+            background: var(--bg-secondary);
+        }
+        
+        input::placeholder, textarea::placeholder {
+            color: var(--text-muted);
+        }
+        
+        .field-help {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: -4px;
+        }
+        
+        /* Action Buttons */
+        .action-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, var(--bg-primary) 0%, rgba(10, 14, 26, 0.95) 100%);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-top: 1px solid var(--border-color);
+            z-index: 100;
+        }
+        
+        .action-bar-inner {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .action-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            animation: pulse 2s infinite;
+        }
+        
+        .status-indicator.ready {
+            background: var(--success);
+            animation: none;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+        }
+        
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--bg-secondary);
+            border-color: var(--text-muted);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--axos-navy) 0%, var(--axos-blue) 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(30, 56, 96, 0.4);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+        
+        .modal-overlay.show {
+            display: flex;
+        }
+        
+        .modal {
+            background: var(--bg-card);
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            width: 100%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .modal-close {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: var(--bg-tertiary);
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        
+        .modal-close:hover {
+            background: var(--error-bg);
+            color: var(--error);
+        }
+        
+        .modal-body {
+            padding: 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        
+        .output-box {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+        
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            transform: translateX(120%);
+            transition: transform 0.3s ease;
+            z-index: 1001;
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
+        
+        .toast.success {
+            border-left: 4px solid var(--success);
+        }
+        
+        /* Error Banner */
+        .error-banner {
+            background: var(--error-bg);
+            border: 1px solid var(--error);
+            border-left: 4px solid var(--error);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            animation: shake 0.5s ease-in-out;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+        
+        .error-banner .error-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+        
+        .error-banner .error-content strong {
+            color: var(--error);
+            font-size: 14px;
+            display: block;
+            margin-bottom: 4px;
+        }
+        
+        .error-banner .error-content p {
+            color: var(--text-secondary);
+            font-size: 13px;
+            margin: 0;
+        }
+        
+        /* Task Option Cards */
+        .task-option-card {
+            flex: 1;
+            min-width: 180px;
+            padding: 16px;
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+            border: 2px solid var(--border-color);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .task-option-card:hover {
+            border-color: var(--axos-orange);
+        }
+        
+        .task-option-card.selected {
+            background: rgba(250, 167, 74, 0.1);
+            border-color: var(--axos-orange);
+        }
+        
+        .task-option-card input {
+            display: none;
+        }
+        
+        .task-option-icon {
+            font-size: 24px;
+            width: 40px;
+            height: 40px;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .task-option-card.selected .task-option-icon {
+            background: var(--axos-orange);
+        }
+        
+        .task-option-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+        
+        .task-option-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        
+        /* Info Box */
+        .info-box {
+            background: rgba(6, 182, 212, 0.1);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+        }
+        
+        .info-box-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+        
+        .info-box-content p {
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        
+        .info-box-content strong {
+            color: #22d3ee;
+        }
+        
+        
+        /* Responsive */
+        @media (max-width: 640px) {
+            .header h1 {
+                font-size: 28px;
+            }
+            
+            .action-bar-inner {
+                flex-direction: column;
+            }
+            
+            .action-buttons {
+                width: 100%;
+            }
+            
+            .btn {
+                flex: 1;
+                justify-content: center;
+            }
+        }
+        
+        /* Animations */
+        .section {
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--border-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-pattern"></div>
+    
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">Axos Bank • QCoE</div>
+            <h1>🧪 Test Case Generator</h1>
+            <p>Generate comprehensive QA test cases for any PBI with AI assistance</p>
+        </div>
+        
+        <!-- Request Preview -->
+        <div class="command-preview">
+            <div class="command-preview-header">
+                <div class="command-preview-title">
+                    ⚡ Generated Request Preview
+                </div>
+            </div>
+            <div class="command-box" id="commandPreview">
+                <span class="cmd-instructions">📋 Execution Instructions (READ FIRST!) + ---</span>
+                <span class="cmd-prefix">🎯 Generate test cases for PBI</span> <span class="cmd-required">[PBI_URL]</span>
+            </div>
+            <div class="instructions-preview collapsed" onclick="toggleInstructionsPreview(this)">
+                <div class="instructions-preview-header">
+                    <span>👁️ View pre-pended instructions (sent FIRST)</span>
+                    <span class="instructions-toggle">▼</span>
+                </div>
+                <div class="instructions-preview-content">
+                    <div class="instructions-box">
+📋 <strong>EXECUTION INSTRUCTIONS (READ FIRST!)</strong>:
+1. Read the ENTIRE markdown workflow file first - process every section thoroughly before starting
+2. Take all the time needed to understand each guideline and requirement
+3. Display ALL outputs with beautiful formatting:
+   • Use proper markdown tables with clean alignment
+   • Include clear section headers and dividers
+   • Show organized, visually appealing summaries
+   • Follow ALL formatting guidelines specified in the markdown exactly
+
+---
+
+🎯 <strong>REQUEST</strong>:
+[Your test case generation request follows here...]
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section 1: Required - PBI ID -->
+        <div class="section required" data-section="pbi">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title">
+                    <span class="section-icon">🎯</span>
+                    Source PBI
+                    <span class="section-badge">Required</span>
+                </div>
+                <div class="section-toggle">▼</div>
+            </div>
+            <div class="section-content">
+                <div class="info-box">
+                    <span class="info-box-icon">💡</span>
+                    <div class="info-box-content">
+                        <p>Enter the <strong>PBI URL</strong> you want to generate test cases for. The AI will analyze the PBI's title, description, acceptance criteria, parent Feature/Epic, linked PRs, and existing tests to create comprehensive coverage using <strong>freestyle AI generation</strong>.</p>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        PBI URL <span class="required-mark">*</span>
+                    </label>
+                    <input type="url" id="pbiId" placeholder="https://bofaz.visualstudio.com/UDB/_workitems/edit/2056344" oninput="updateCommandPreview()">
+                    <span class="field-help">Paste the full Azure DevOps work item URL</span>
+                </div>
+                
+                <div id="pbiParsedInfo" style="background: var(--bg-tertiary); border-radius: 10px; padding: 14px 16px; margin-top: 8px; display: none;">
+                    <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">URL parsed successfully:</div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 13px;">
+                        <div><span style="color: var(--text-muted);">Project:</span> <span id="parsedPbiProject" style="color: var(--accent-light);">-</span></div>
+                        <div><span style="color: var(--text-muted);">PBI ID:</span> <span id="parsedPbiId" style="color: var(--axos-orange); font-weight: 600;">-</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section 2: Task Linking (Required) -->
+        <div class="section required" data-section="tasks">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title">
+                    <span class="section-icon">📝</span>
+                    Task Linking
+                    <span class="section-badge">Required</span>
+                </div>
+                <div class="section-toggle">▼</div>
+            </div>
+            <div class="section-content">
+                <div class="info-box">
+                    <span class="info-box-icon">⚡</span>
+                    <div class="info-box-content">
+                        <p>Link to a <strong>Test Case Creation</strong> task. You can either provide an <strong>existing task URL</strong> (if you already created one) or provide a <strong>Parent Work Item URL</strong> to create a new task automatically. Hours are auto-calculated based on test case count.</p>
+                    </div>
+                </div>
+                
+                <!-- Toggle between existing task or create new -->
+                <div class="form-group">
+                    <label class="form-label" style="margin-bottom: 12px;">
+                        How do you want to link the task? <span class="required-mark">*</span>
+                    </label>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        <label class="task-option-card selected" onclick="selectTaskOption('existing')">
+                            <input type="radio" name="taskOption" id="taskOptionExisting" value="existing" checked onchange="updateTaskOption()">
+                            <div class="task-option-icon">🔗</div>
+                            <div class="task-option-content">
+                                <div class="task-option-title">Use Existing Task</div>
+                                <div class="task-option-desc">I already have a task created</div>
+                            </div>
+                        </label>
+                        <label class="task-option-card" onclick="selectTaskOption('create')">
+                            <input type="radio" name="taskOption" id="taskOptionCreate" value="create" onchange="updateTaskOption()">
+                            <div class="task-option-icon">➕</div>
+                            <div class="task-option-content">
+                                <div class="task-option-title">Create New Task</div>
+                                <div class="task-option-desc">Auto-create from parent item</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Existing Task URL Input -->
+                <div class="form-group" id="existingTaskGroup">
+                    <label class="form-label">
+                        Existing Task URL <span class="required-mark">*</span>
+                    </label>
+                    <input type="url" id="existingTaskUrl" placeholder="https://bofaz.visualstudio.com/UDB/_workitems/edit/2173099" oninput="updateCommandPreview()">
+                    <span class="field-help">Paste the direct URL of your existing "Test Case Creation" task</span>
+                </div>
+                
+                <!-- Parent Work Item URL Input (hidden by default) -->
+                <div class="form-group" id="parentUrlGroup" style="display: none;">
+                    <label class="form-label">
+                        Parent Work Item URL <span class="required-mark">*</span>
+                    </label>
+                    <input type="url" id="parentUrl" placeholder="https://bofaz.visualstudio.com/UDB/_workitems/edit/2173078" oninput="updateCommandPreview()">
+                    <span class="field-help">A new "Test Case Creation" task will be created as a child of this work item</span>
+                    
+                    <div style="background: var(--bg-tertiary); border-radius: 10px; padding: 14px 16px; margin-top: 12px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 18px;">📝</span>
+                            <div>
+                                <div style="font-weight: 600; font-size: 13px; color: var(--accent-light);">Test Case Creation Task</div>
+                                <div style="font-size: 12px; color: var(--text-muted);">1 hour (fixed) — AI creates, human reviews</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="taskParsedInfo" style="background: var(--bg-tertiary); border-radius: 10px; padding: 14px 16px; margin-top: 8px; display: none;">
+                    <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">URL parsed successfully:</div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 13px;">
+                        <div><span style="color: var(--text-muted);">Project:</span> <span id="parsedTaskProject" style="color: var(--accent-light);">-</span></div>
+                        <div><span style="color: var(--text-muted);">Work Item ID:</span> <span id="parsedTaskId" style="color: var(--axos-orange); font-weight: 600;">-</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section 3: Test Plan Linking (Optional) -->
+        <div class="section optional collapsed" data-section="testplan">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title">
+                    <span class="section-icon">📁</span>
+                    Test Plan Linking
+                    <span class="section-badge">Optional</span>
+                </div>
+                <div class="section-toggle">▼</div>
+            </div>
+            <div class="section-content">
+                <div class="info-box">
+                    <span class="info-box-icon">📋</span>
+                    <div class="info-box-content">
+                        <p>Provide a <strong>Test Plan URL</strong> to automatically add generated test cases to a specific test suite. If not provided, test cases are created but not added to any test plan.</p>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        Test Plan URL <span class="optional-mark">(Optional)</span>
+                    </label>
+                    <input type="url" id="testPlanUrl" placeholder="https://bofaz.visualstudio.com/UDB/_testPlans/define?planId=2215562&suiteId=2220008" oninput="updateCommandPreview()">
+                    <span class="field-help">Format: https://bofaz.visualstudio.com/[Project]/_testPlans/define?planId=[ID]&suiteId=[ID]</span>
+                </div>
+                
+                <div style="background: var(--bg-tertiary); border-radius: 10px; padding: 14px 16px; margin-top: 8px;">
+                    <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">URL will be parsed to extract:</div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 13px;">
+                        <div><span style="color: var(--text-muted);">Project:</span> <span id="parsedProject" style="color: var(--accent-light);">-</span></div>
+                        <div><span style="color: var(--text-muted);">Plan ID:</span> <span id="parsedPlanId" style="color: var(--accent-light);">-</span></div>
+                        <div><span style="color: var(--text-muted);">Suite ID:</span> <span id="parsedSuiteId" style="color: var(--accent-light);">-</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Spacer -->
+        <div style="height: 100px;"></div>
+    </div>
+    
+    <!-- Action Bar -->
+    <div class="action-bar">
+        <div class="action-bar-inner">
+            <div class="action-status">
+                <div class="status-indicator" id="statusIndicator"></div>
+                <span id="statusText">Enter PBI ID to generate command</span>
+            </div>
+            <div class="action-buttons">
+                <button class="btn btn-secondary" onclick="resetForm()">
+                    🔄 Reset
+                </button>
+                <button class="btn btn-primary" onclick="generateCommand()" id="generateBtn">
+                    📋 Copy Request
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Output Modal -->
+    <div class="modal-overlay" id="outputModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">
+                    🧪 Generated Request
+                </div>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <!-- Usage Instructions Box -->
+                <div style="background: linear-gradient(135deg, rgba(250, 167, 74, 0.15) 0%, rgba(30, 56, 96, 0.2) 100%); border: 1px solid rgba(250, 167, 74, 0.4); border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 14px;">
+                    <span style="font-size: 24px;">📌</span>
+                    <div>
+                        <p style="color: #FAA74A; font-weight: 700; margin-bottom: 8px; font-size: 14px;">How to Use</p>
+                        <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.8;">
+                            1. Copy this content to your clipboard<br>
+                            2. In Cursor, call <code style="background: rgba(250, 167, 74, 0.25); padding: 3px 8px; border-radius: 4px; color: #FAA74A; font-weight: 600;">/Admin-Generate-QA-Test</code><br>
+                            3. Paste the request when prompted
+                        </p>
+                    </div>
+                </div>
+                <div class="output-box" id="outputBox"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+                <button class="btn btn-primary" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast -->
+    <div class="toast" id="toast">
+        <span id="toastIcon">✅</span>
+        <span id="toastMessage">Copied to clipboard!</span>
+    </div>
+    
+    <script>
+        // Toggle section
+        function toggleSection(header) {
+            const section = header.closest('.section');
+            section.classList.toggle('collapsed');
+        }
+        
+        // Toggle instructions preview
+        function toggleInstructionsPreview(element) {
+            element.classList.toggle('collapsed');
+        }
+        
+        // Select task option (existing or create new)
+        function selectTaskOption(option) {
+            const cards = document.querySelectorAll('.task-option-card');
+            cards.forEach(card => card.classList.remove('selected'));
+            
+            const selectedCard = document.querySelector(`input[value="${option}"]`).closest('.task-option-card');
+            selectedCard.classList.add('selected');
+            
+            document.getElementById(`taskOption${option === 'existing' ? 'Existing' : 'Create'}`).checked = true;
+            updateTaskOption();
+        }
+        
+        // Update task option visibility
+        function updateTaskOption() {
+            const isExisting = document.getElementById('taskOptionExisting').checked;
+            const existingGroup = document.getElementById('existingTaskGroup');
+            const parentGroup = document.getElementById('parentUrlGroup');
+            
+            if (isExisting) {
+                existingGroup.style.display = 'flex';
+                parentGroup.style.display = 'none';
+            } else {
+                existingGroup.style.display = 'none';
+                parentGroup.style.display = 'flex';
+            }
+            
+            updateCommandPreview();
+        }
+        
+        // Parse Work Item URL
+        function parseWorkItemUrl(url) {
+            if (!url) return null;
+            
+            const patterns = [
+                // https://bofaz.visualstudio.com/UDB/_workitems/edit/2056344
+                /https?:\/\/([^.]+)\.visualstudio\.com\/([^\/]+)\/_workitems\/edit\/(\d+)/i,
+                // https://dev.azure.com/bofaz/UDB/_workitems/edit/2056344
+                /https?:\/\/dev\.azure\.com\/([^\/]+)\/([^\/]+)\/_workitems\/edit\/(\d+)/i
+            ];
+            
+            for (const pattern of patterns) {
+                const match = url.match(pattern);
+                if (match) {
+                    return {
+                        organization: match[1],
+                        project: decodeURIComponent(match[2]),
+                        workItemId: match[3]
+                    };
+                }
+            }
+            return null;
+        }
+        
+        // Parse Test Plan URL
+        function parseTestPlanUrl(url) {
+            if (!url) return null;
+            
+            const patterns = [
+                /https?:\/\/([^.]+)\.visualstudio\.com\/([^\/]+)\/_testPlans\/define\?planId=(\d+)(?:&suiteId=(\d+))?/i,
+                /https?:\/\/dev\.azure\.com\/([^\/]+)\/([^\/]+)\/_testPlans\/define\?planId=(\d+)(?:&suiteId=(\d+))?/i
+            ];
+            
+            for (const pattern of patterns) {
+                const match = url.match(pattern);
+                if (match) {
+                    return {
+                        project: decodeURIComponent(match[2]),
+                        planId: match[3],
+                        suiteId: match[4] || null
+                    };
+                }
+            }
+            return null;
+        }
+        
+        // Parse PBI URL or extract ID
+        function parsePbiInput(input) {
+            if (!input) return null;
+            
+            // Check if it's just a number
+            if (/^\d+$/.test(input.trim())) {
+                return {
+                    pbiId: input.trim(),
+                    project: null,
+                    isUrl: false
+                };
+            }
+            
+            // Try to parse as URL
+            const patterns = [
+                // https://bofaz.visualstudio.com/UDB/_workitems/edit/2056344
+                /https?:\/\/([^.]+)\.visualstudio\.com\/([^\/]+)\/_workitems\/edit\/(\d+)/i,
+                // https://dev.azure.com/bofaz/UDB/_workitems/edit/2056344
+                /https?:\/\/dev\.azure\.com\/([^\/]+)\/([^\/]+)\/_workitems\/edit\/(\d+)/i,
+                // Query parameter format: ...?workitem=2056344
+                /https?:\/\/[^?]+\?.*workitem=(\d+)/i
+            ];
+            
+            for (let i = 0; i < patterns.length; i++) {
+                const match = input.match(patterns[i]);
+                if (match) {
+                    if (i < 2) {
+                        // URL with project info
+                        return {
+                            pbiId: match[3],
+                            project: decodeURIComponent(match[2]),
+                            organization: match[1],
+                            isUrl: true
+                        };
+                    } else {
+                        // Query param format
+                        return {
+                            pbiId: match[1],
+                            project: null,
+                            isUrl: true
+                        };
+                    }
+                }
+            }
+            
+            // Try to extract any number from the input as fallback
+            const numberMatch = input.match(/(\d{5,})/);
+            if (numberMatch) {
+                return {
+                    pbiId: numberMatch[1],
+                    project: null,
+                    isUrl: false
+                };
+            }
+            
+            return null;
+        }
+        
+        // Update request preview
+        function updateCommandPreview() {
+            const pbiInput = document.getElementById('pbiId').value.trim();
+            const testPlanUrl = document.getElementById('testPlanUrl').value.trim();
+            const isExistingTask = document.getElementById('taskOptionExisting').checked;
+            const existingTaskUrl = document.getElementById('existingTaskUrl').value.trim();
+            const parentUrl = document.getElementById('parentUrl').value.trim();
+            
+            // Parse PBI URL
+            const parsedPbi = parsePbiInput(pbiInput);
+            const pbiParsedInfo = document.getElementById('pbiParsedInfo');
+            
+            if (parsedPbi && parsedPbi.pbiId && parsedPbi.isUrl) {
+                pbiParsedInfo.style.display = 'block';
+                document.getElementById('parsedPbiProject').textContent = parsedPbi.project || '-';
+                document.getElementById('parsedPbiId').textContent = parsedPbi.pbiId;
+            } else {
+                pbiParsedInfo.style.display = 'none';
+            }
+            
+            // Parse task URL (existing or parent)
+            const taskUrl = isExistingTask ? existingTaskUrl : parentUrl;
+            const parsedTask = parseWorkItemUrl(taskUrl);
+            const taskParsedInfo = document.getElementById('taskParsedInfo');
+            
+            if (parsedTask) {
+                taskParsedInfo.style.display = 'block';
+                document.getElementById('parsedTaskProject').textContent = parsedTask.project || '-';
+                document.getElementById('parsedTaskId').textContent = parsedTask.workItemId || '-';
+            } else {
+                taskParsedInfo.style.display = 'none';
+            }
+            
+            // Parse test plan URL
+            const parsedPlan = parseTestPlanUrl(testPlanUrl);
+            document.getElementById('parsedProject').textContent = parsedPlan?.project || '-';
+            document.getElementById('parsedPlanId').textContent = parsedPlan?.planId || '-';
+            document.getElementById('parsedSuiteId').textContent = parsedPlan?.suiteId || '-';
+            
+            // Build preview - Instructions indicator first, then request
+            let request = '📋 Execution Instructions (READ FIRST!) + ---\n\n🎯 Generate test cases for PBI';
+            
+            if (pbiInput && parsedPbi && parsedPbi.isUrl) {
+                request += ` ${pbiInput}`;
+            } else {
+                request += ' [PBI_URL]';
+            }
+            
+            // Add task linking
+            if (isExistingTask && existingTaskUrl) {
+                request += ` and link to existing task: ${existingTaskUrl}`;
+            } else if (!isExistingTask && parentUrl) {
+                request += ` and create test case creation task with parent: ${parentUrl}`;
+            }
+            
+            if (testPlanUrl) {
+                request += ` and add to test plan: ${testPlanUrl}`;
+            }
+            
+            // Update preview
+            const preview = document.getElementById('commandPreview');
+            const pbiUrl = (parsedPbi && parsedPbi.isUrl) ? pbiInput : null;
+            preview.innerHTML = formatRequest(request, pbiUrl, isExistingTask);
+            
+            // Update status
+            const statusIndicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            
+            const hasValidPbiUrl = parsedPbi && parsedPbi.isUrl && parsedPbi.pbiId;
+            const hasTaskUrl = isExistingTask ? existingTaskUrl : parentUrl;
+            
+            if (hasValidPbiUrl && hasTaskUrl) {
+                statusIndicator.classList.add('ready');
+                statusText.textContent = '✨ Ready to generate!';
+            } else if (hasValidPbiUrl && !hasTaskUrl) {
+                statusIndicator.classList.remove('ready');
+                statusText.textContent = 'Enter Task URL to continue';
+            } else {
+                statusIndicator.classList.remove('ready');
+                statusText.textContent = 'Enter PBI URL to generate request';
+            }
+        }
+        
+        // Format request for display
+        function formatRequest(request, pbiUrl, isExistingTask) {
+            let formatted = request
+                .replace('📋 Execution Instructions (READ FIRST!) + ---', '<span class="cmd-instructions">📋 Execution Instructions (READ FIRST!) + ---</span>')
+                .replace('🎯 Generate test cases for PBI', '<span class="cmd-prefix">🎯 Generate test cases for PBI</span>')
+                .replace('[PBI_URL]', '<span class="cmd-required">[PBI_URL]</span>');
+            
+            if (pbiUrl) {
+                // Escape the URL for regex and highlight it
+                const escapedUrl = pbiUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                formatted = formatted.replace(new RegExp(` ${escapedUrl}`), ` <span class="cmd-required">${pbiUrl}</span>`);
+            }
+            
+            // Highlight task linking (required)
+            formatted = formatted
+                .replace(/and link to existing task: ([^\s]+)/g, '<span class="cmd-required">and link to existing task: $1</span>')
+                .replace(/and create test case creation task with parent: ([^\s]+)/g, '<span class="cmd-required">and create test case creation task with parent: $1</span>');
+            
+            // Highlight optional parts
+            formatted = formatted
+                .replace(/and add to test plan: ([^\s]+)/g, '<span class="cmd-optional">and add to test plan: $1</span>');
+            
+            return formatted;
+        }
+        
+        // Generate request
+        function generateCommand() {
+            const pbiInput = document.getElementById('pbiId').value.trim();
+            
+            if (!pbiInput) {
+                showToast('⚠️', 'Please enter a PBI URL', 'warning');
+                return;
+            }
+            
+            const parsedPbi = parsePbiInput(pbiInput);
+            
+            if (!parsedPbi || !parsedPbi.pbiId || !parsedPbi.isUrl) {
+                showToast('⚠️', 'Please enter a valid Azure DevOps URL', 'warning');
+                return;
+            }
+            
+            const pbiUrl = pbiInput;
+            const isExistingTask = document.getElementById('taskOptionExisting').checked;
+            const existingTaskUrl = document.getElementById('existingTaskUrl').value.trim();
+            const parentUrl = document.getElementById('parentUrl').value.trim();
+            const testPlanUrl = document.getElementById('testPlanUrl').value.trim();
+            
+            // Validate task URL is provided
+            if (isExistingTask && !existingTaskUrl) {
+                showToast('⚠️', 'Please enter an existing task URL', 'warning');
+                return;
+            }
+            
+            if (!isExistingTask && !parentUrl) {
+                showToast('⚠️', 'Please enter a parent work item URL', 'warning');
+                return;
+            }
+            
+            // Build request - Instructions FIRST, then the request
+            let request = `📋 **EXECUTION INSTRUCTIONS** (READ FIRST!):
+1. Read the ENTIRE markdown workflow file first - process every section thoroughly before starting
+2. Take all the time needed to understand each guideline and requirement
+3. Display ALL outputs with beautiful formatting:
+   • Use proper markdown tables with clean alignment
+   • Include clear section headers and dividers
+   • Show organized, visually appealing summaries
+   • Follow ALL formatting guidelines specified in the markdown exactly
+
+---
+
+🎯 **REQUEST**:
+Generate test cases for PBI ${pbiUrl}`;
+            
+            // Add task linking
+            if (isExistingTask) {
+                request += ` and link to existing task: ${existingTaskUrl}`;
+            } else {
+                request += ` and create test case creation task with parent: ${parentUrl}`;
+            }
+            
+            if (testPlanUrl) {
+                request += ` and add to test plan: ${testPlanUrl}`;
+            }
+            
+            document.getElementById('outputBox').textContent = request;
+            document.getElementById('outputModal').classList.add('show');
+        }
+        
+        // Copy to clipboard
+        function copyToClipboard() {
+            const text = document.getElementById('outputBox').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('✅', 'Copied to clipboard!', 'success');
+                closeModal();
+            });
+        }
+        
+        // Close modal
+        function closeModal() {
+            document.getElementById('outputModal').classList.remove('show');
+        }
+        
+        // Reset form
+        function resetForm() {
+            document.getElementById('pbiId').value = '';
+            document.getElementById('existingTaskUrl').value = '';
+            document.getElementById('parentUrl').value = '';
+            document.getElementById('testPlanUrl').value = '';
+            
+            // Reset to "existing task" option
+            selectTaskOption('existing');
+            
+            updateCommandPreview();
+            showToast('🔄', 'Form reset!', 'success');
+        }
+        
+        // Show toast
+        function showToast(icon, message, type) {
+            const toast = document.getElementById('toast');
+            const toastIcon = document.getElementById('toastIcon');
+            const toastMessage = document.getElementById('toastMessage');
+            
+            toastIcon.textContent = icon;
+            toastMessage.textContent = message;
+            toast.className = 'toast ' + type + ' show';
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Close modal on escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+        
+        // Close modal on backdrop click
+        document.getElementById('outputModal').addEventListener('click', (e) => {
+            if (e.target.id === 'outputModal') {
+                closeModal();
+            }
+        });
+        
+        // Initialize
+        updateCommandPreview();
+    </script>
+    
+    <!-- Footer -->
+    <style>
+        @keyframes borderGlow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .animated-border-box {
+            position: relative;
+            max-width: 650px;
+            margin: 0 auto;
+            padding: 3px;
+            border-radius: 16px;
+            background: linear-gradient(90deg, #1E3860, #FAA74A, #1E3860, #FAA74A, #1E3860);
+            background-size: 300% 100%;
+            animation: borderGlow 4s ease infinite;
+        }
+        
+        .animated-border-content {
+            background: #0f0f1a;
+            border-radius: 14px;
+            padding: 24px;
+        }
+    </style>
+    
+    <footer style="
+        margin-top: 40px;
+        padding: 30px 20px 120px;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+        border-top: 1px solid #333;
+        text-align: center;
+        font-size: 12px;
+        color: #888;
+    ">
+        <!-- Confidentiality Notice -->
+        <div style="
+            max-width: 800px;
+            margin: 0 auto 30px;
+            padding: 15px 20px;
+            background: rgba(250, 167, 74, 0.1);
+            border: 1px solid rgba(250, 167, 74, 0.3);
+            border-radius: 8px;
+            color: #FAA74A;
+        ">
+            <span style="font-size: 14px;">🔒</span>
+            <strong>CONFIDENTIAL</strong> — This tool is proprietary to Axos Bank. 
+            Do not share outside the organization without authorization.
+        </div>
+
+        <!-- Credits Section -->
+        <div class="animated-border-box">
+            <div class="animated-border-content">
+                <div style="font-size: 13px; color: #666; margin-bottom: 8px; letter-spacing: 2px; text-transform: uppercase;">
+                    Powered by
+                </div>
+                <div style="font-size: 22px; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap;">
+                    <span style="color: #F7941D; font-weight: 700;">QCoE</span>
+                    <span style="color: #444; font-size: 18px;">×</span>
+                    <span style="background: linear-gradient(90deg, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 600;">Cursor AI</span>
+                    <span style="color: #444; font-size: 18px;">×</span>
+                    <span style="color: #10b981; font-weight: 600;">TestGennie</span>
+                </div>
+                <div style="
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: center; 
+                    gap: 8px; 
+                    padding: 12px 20px; 
+                    background: rgba(30, 56, 96, 0.2); 
+                    border-radius: 8px;
+                    margin-bottom: 16px;
+                ">
+                    <span style="font-size: 20px;">🧪</span>
+                    <span style="color: #888;">AI-Powered Test Generation</span>
+                    <span style="color: #FAA74A; font-size: 16px;">→</span>
+                    <span style="font-size: 20px;">✨</span>
+                    <span style="color: #888;">Streamlined workflow</span>
+                </div>
+                <div style="font-style: italic; color: #555; font-size: 12px; line-height: 1.5;">
+                    "Efficient test case creation with AI assistance" 🧞‍♂️
+                </div>
+            </div>
+        </div>
+
+        <!-- Copyright -->
+        <div style="margin-top: 24px; color: #555; font-size: 11px;">
+            © 2025-2026 Axos Bank. All rights reserved. | Test Case Generator v1.1
+        </div>
+    </footer>
+</body>
+</html>
+

@@ -1,0 +1,2523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐛 Bug Report Form - Axos QA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Axos Brand Colors */
+            --axos-navy: #1E3860;
+            --axos-navy-dark: #152844;
+            --axos-navy-light: #2a4a7a;
+            --axos-orange: #FAA74A;
+            --axos-orange-light: #fdd9a8;
+            --axos-orange-dark: #e8922a;
+            --axos-blue: #1E3860;
+            --axos-light-blue: #e6eef8;
+            
+            /* UI Colors */
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-tertiary: #1f2937;
+            --bg-card: #161d2e;
+            --border-color: #2d3748;
+            --border-focus: var(--axos-blue);
+            
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            
+            /* Status Colors */
+            --success: #10b981;
+            --success-bg: rgba(16, 185, 129, 0.1);
+            --warning: #f59e0b;
+            --warning-bg: rgba(245, 158, 11, 0.1);
+            --error: #ef4444;
+            --error-bg: rgba(239, 68, 68, 0.1);
+            --info: #3b82f6;
+            --info-bg: rgba(59, 130, 246, 0.1);
+            
+            /* Section Colors */
+            --section-required: #ef4444;
+            --section-optional: #8b5cf6;
+            --section-links: #06b6d4;
+            --section-automation: #10b981;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        
+        /* Animated Background */
+        .bg-pattern {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(ellipse at 20% 20%, rgba(30, 56, 96, 0.2) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(30, 56, 96, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(250, 167, 74, 0.08) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 30px 20px 60px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 40px 30px;
+            background: linear-gradient(135deg, var(--axos-navy) 0%, var(--axos-navy-dark) 50%, #0a1628 100%);
+            border-radius: 20px;
+            border: 1px solid rgba(250, 167, 74, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(250, 167, 74, 0.15) 0%, transparent 60%);
+            animation: shimmer 15s ease-in-out infinite;
+        }
+        
+        @keyframes shimmer {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(30%, 30%); }
+        }
+        
+        .logo {
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            color: var(--axos-orange);
+            text-transform: uppercase;
+            margin-bottom: 16px;
+            position: relative;
+        }
+        
+        .header h1 {
+            font-size: 36px;
+            font-weight: 800;
+            margin-bottom: 12px;
+            position: relative;
+            background: linear-gradient(135deg, #fff 0%, var(--axos-orange-light) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header p {
+            font-size: 16px;
+            color: var(--text-secondary);
+            position: relative;
+        }
+        
+        /* Progress Bar */
+        .progress-container {
+            margin-bottom: 30px;
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 20px 24px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .progress-title {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .progress-percentage {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--axos-orange);
+        }
+        
+        .progress-bar {
+            height: 8px;
+            background: var(--bg-tertiary);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--axos-navy) 0%, var(--axos-navy-light) 50%, var(--axos-orange) 100%);
+            border-radius: 10px;
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 0%;
+        }
+        
+        .progress-stats {
+            display: flex;
+            gap: 20px;
+            margin-top: 12px;
+            font-size: 13px;
+        }
+        
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .stat-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        
+        .stat-dot.required { background: var(--error); }
+        .stat-dot.optional { background: var(--section-optional); }
+        .stat-dot.filled { background: var(--success); }
+        
+        /* Section */
+        .section {
+            background: var(--bg-card);
+            border-radius: 16px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .section:hover {
+            border-color: rgba(250, 167, 74, 0.4);
+        }
+        
+        .section-header {
+            padding: 18px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            border-left: 4px solid;
+        }
+        
+        .section-header:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        
+        .section.required .section-header { border-left-color: var(--section-required); }
+        .section.optional .section-header { border-left-color: var(--section-optional); }
+        .section.links .section-header { border-left-color: var(--section-links); }
+        .section.automation .section-header { border-left-color: var(--section-automation); }
+        
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .section-icon {
+            font-size: 20px;
+        }
+        
+        .section-badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .section.required .section-badge {
+            background: var(--error-bg);
+            color: var(--error);
+        }
+        
+        .section.optional .section-badge {
+            background: rgba(139, 92, 246, 0.1);
+            color: #a78bfa;
+        }
+        
+        .section.links .section-badge {
+            background: rgba(6, 182, 212, 0.1);
+            color: #22d3ee;
+        }
+        
+        .section.automation .section-badge {
+            background: var(--success-bg);
+            color: var(--success);
+        }
+        
+        .section-toggle {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+        
+        .section.collapsed .section-toggle {
+            transform: rotate(-90deg);
+        }
+        
+        .section-content {
+            padding: 0 24px 24px;
+            display: grid;
+            gap: 20px;
+            max-height: 2000px;
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+        
+        .section.collapsed .section-content {
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            opacity: 0;
+        }
+        
+        /* Form Grid */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .form-grid.full {
+            grid-template-columns: 1fr;
+        }
+        
+        /* Form Group */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+        
+        .form-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .form-label .required-mark {
+            color: var(--error);
+            font-weight: 700;
+        }
+        
+        .form-label .optional-mark {
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 400;
+        }
+        
+        /* Inputs */
+        input, select, textarea {
+            font-family: inherit;
+            font-size: 14px;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-primary);
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--axos-orange);
+            box-shadow: 0 0 0 3px rgba(250, 167, 74, 0.15);
+            background: var(--bg-secondary);
+        }
+        
+        input::placeholder, textarea::placeholder {
+            color: var(--text-muted);
+        }
+        
+        input.error, select.error, textarea.error {
+            border-color: var(--error);
+            box-shadow: 0 0 0 3px var(--error-bg);
+        }
+        
+        input.valid, select.valid, textarea.valid {
+            border-color: var(--success);
+        }
+        
+        select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%239ca3af' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 40px;
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+        
+        /* Field Help */
+        .field-help {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: -4px;
+        }
+        
+        .field-error {
+            font-size: 12px;
+            color: var(--error);
+            display: none;
+        }
+        
+        .field-error.show {
+            display: block;
+        }
+        
+        /* Steps Builder */
+        .steps-builder {
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .steps-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        
+        .step-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--bg-secondary);
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .step-number {
+            width: 28px;
+            height: 28px;
+            background: var(--axos-navy);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        
+        .step-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 0;
+            font-size: 14px;
+        }
+        
+        .step-input:focus {
+            outline: none;
+            box-shadow: none;
+        }
+        
+        .step-remove {
+            width: 28px;
+            height: 28px;
+            background: var(--error-bg);
+            color: var(--error);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+        
+        .step-remove:hover {
+            background: var(--error);
+            color: white;
+        }
+        
+        .add-step-btn {
+            width: 100%;
+            padding: 12px;
+            background: transparent;
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .add-step-btn:hover {
+            border-color: var(--axos-orange);
+            color: var(--axos-orange);
+            background: rgba(250, 167, 74, 0.1);
+        }
+        
+        /* Evidence Builder */
+        .evidence-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .evidence-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--bg-secondary);
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .evidence-icon {
+            font-size: 20px;
+        }
+        
+        .evidence-inputs {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .evidence-inputs input {
+            padding: 8px 12px;
+            font-size: 13px;
+        }
+        
+        /* Action Buttons */
+        .action-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, var(--bg-primary) 0%, rgba(10, 14, 26, 0.95) 100%);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-top: 1px solid var(--border-color);
+            z-index: 100;
+        }
+        
+        .action-bar-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .action-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--error);
+            animation: pulse 2s infinite;
+        }
+        
+        .status-indicator.complete {
+            background: var(--success);
+            animation: none;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+        }
+        
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--bg-secondary);
+            border-color: var(--text-muted);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--axos-navy) 0%, var(--axos-blue) 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(30, 56, 96, 0.4);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .btn-orange {
+            background: linear-gradient(135deg, var(--axos-orange) 0%, var(--axos-orange-dark) 100%);
+            color: var(--axos-navy-dark);
+        }
+        
+        .btn-orange:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(250, 167, 74, 0.3);
+        }
+        
+        /* Output Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+        
+        .modal-overlay.show {
+            display: flex;
+        }
+        
+        .modal {
+            background: var(--bg-card);
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            width: 100%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .modal-close {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: var(--bg-tertiary);
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        
+        .modal-close:hover {
+            background: var(--error-bg);
+            color: var(--error);
+        }
+        
+        .modal-body {
+            padding: 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        
+        .output-box {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+        
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            transform: translateX(120%);
+            transition: transform 0.3s ease;
+            z-index: 1001;
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
+        
+        .toast.success {
+            border-left: 4px solid var(--success);
+        }
+        
+        .toast.error {
+            border-left: 4px solid var(--error);
+        }
+        
+        /* Responsive */
+        @media (max-width: 640px) {
+            .header h1 {
+                font-size: 28px;
+            }
+            
+            .action-bar-inner {
+                flex-direction: column;
+            }
+            
+            .action-buttons {
+                width: 100%;
+            }
+            
+            .btn {
+                flex: 1;
+                justify-content: center;
+            }
+        }
+        
+        /* Animations */
+        .section {
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--border-color);
+        }
+        
+        /* Instructions Preview */
+        .instructions-preview:hover > div:first-child {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-secondary);
+        }
+        
+        .instructions-preview.collapsed .instructions-toggle {
+            transform: rotate(-90deg);
+        }
+        
+        .instructions-preview:not(.collapsed) .instructions-preview-content {
+            max-height: 250px;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-pattern"></div>
+    
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">Axos Bank • QCoE</div>
+            <h1>🐛 Bug Report Form</h1>
+            <p>Fill in the fields below to generate a bug report for Azure DevOps</p>
+        </div>
+        
+        <!-- Project Compatibility Notice -->
+        <div style="background: linear-gradient(135deg, rgba(250, 167, 74, 0.15) 0%, rgba(30, 56, 96, 0.2) 100%); border: 1px solid rgba(250, 167, 74, 0.4); border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; display: flex; align-items: flex-start; gap: 14px;">
+            <span style="font-size: 24px;">⚠️</span>
+            <div>
+                <p style="color: #FAA74A; font-weight: 700; margin-bottom: 6px; font-size: 14px;">Project Field Compatibility Notice</p>
+                <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.6;">
+                    <strong>Not all fields are available in all projects.</strong> Different Azure DevOps projects (OnLine Banking, UDB, Automation Architecture, etc.) may have different field configurations. 
+                    If a field doesn't exist in your target project, the AI will automatically skip it and notify you which fields were omitted.
+                    <br><br>
+                    <span style="color: #10b981;">✅ Core fields (Title, Environment, App Type, Steps, Results)</span> are available in all projects.
+                </p>
+            </div>
+        </div>
+        
+        <!-- Progress -->
+        <div class="progress-container">
+            <div class="progress-header">
+                <div class="progress-title">
+                    📊 Form Completion
+                </div>
+                <div class="progress-percentage" id="progressPercent">0%</div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-stats">
+                <div class="stat">
+                    <div class="stat-dot required"></div>
+                    <span>Required: <strong id="requiredCount">0/8</strong></span>
+                </div>
+                <div class="stat">
+                    <div class="stat-dot optional"></div>
+                    <span>Optional: <strong id="optionalCount">0</strong> filled</span>
+                </div>
+            </div>
+            
+            <!-- Instructions Preview (Collapsible) -->
+            <div class="instructions-preview collapsed" onclick="toggleInstructionsPreview(this)" style="margin-top: 16px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border-color); background: var(--bg-tertiary);">
+                <div style="padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 12px; color: var(--text-muted); transition: all 0.2s ease;">
+                    <span>👁️ View pre-pended instructions (sent FIRST to AI)</span>
+                    <span class="instructions-toggle" style="font-size: 10px; transition: transform 0.3s ease;">▼</span>
+                </div>
+                <div class="instructions-preview-content" style="max-height: 0; overflow: hidden; transition: max-height 0.3s ease;">
+                    <div style="padding: 12px 16px; font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.6; color: var(--text-secondary); background: var(--bg-primary); border-top: 1px solid var(--border-color); white-space: pre-wrap;">
+📋 <strong style="color: #22d3ee;">EXECUTION INSTRUCTIONS (READ FIRST!)</strong>:
+1. Read the ENTIRE markdown workflow file first - process every section thoroughly before starting
+2. Take all the time needed to understand each guideline and requirement
+3. Display ALL outputs with beautiful formatting:
+   • Use proper markdown tables with clean alignment
+   • Include clear section headers and dividers
+   • Show organized, visually appealing summaries
+   • Follow ALL formatting guidelines specified in the markdown exactly
+
+---
+
+🎯 <strong style="color: #22d3ee;">REQUEST</strong>:
+File the following bug in Azure DevOps:
+[Your bug details follow here...]
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section 0: Parent Work Item (Start Here) -->
+        <div class="section required" data-section="parent" style="border: 2px solid var(--axos-orange);">
+            <div class="section-header" onclick="toggleSection(this)" style="border-left-color: var(--axos-orange);">
+                <div class="section-title">
+                    <span class="section-icon">🎯</span>
+                    Start Here - Parent Work Item
+                    <span class="section-badge" style="background: rgba(250, 167, 74, 0.15); color: #FAA74A;">Recommended First</span>
+                </div>
+                <div class="section-toggle">▼</div>
+            </div>
+            <div class="section-content">
+                <div style="background: linear-gradient(135deg, rgba(250, 167, 74, 0.1) 0%, rgba(30, 56, 96, 0.15) 100%); border: 1px solid rgba(250, 167, 74, 0.3); border-radius: 10px; padding: 14px 18px; margin-bottom: 16px;">
+                    <p style="color: #FAA74A; font-weight: 600; margin-bottom: 6px;">💡 Pro Tip: Start with Parent Work Item</p>
+                    <p style="color: var(--text-secondary); font-size: 13px;">Enter the PBI, Feature, or Epic this bug belongs to. The project will be <strong>auto-detected</strong> and fields will be pre-filled!</p>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label class="form-label">
+                            Parent Work Item <span class="optional-mark">(ID or URL)</span>
+                        </label>
+                        <input type="text" id="parentWorkItem" placeholder="e.g., 2173081 or https://bofaz.visualstudio.com/UDB/_workitems/edit/2173081" oninput="parseParentWorkItem()">
+                        <span class="field-help">Enter the work item ID or paste the full Azure DevOps URL</span>
+                        <!-- Parsed info display -->
+                        <div id="parentParsedInfo" style="display: none; margin-top: 10px; padding: 12px 16px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                <span style="color: #10b981; font-weight: 600;">✅ Work Item Detected</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 13px;">
+                                <div><span style="color: var(--text-muted);">Project:</span> <strong id="parsedParentProject" style="color: #10b981;">-</strong></div>
+                                <div><span style="color: var(--text-muted);">Work Item ID:</span> <strong id="parsedParentId" style="color: #10b981;">-</strong></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">
+                            Reference Work Item <span class="optional-mark">(Optional)</span>
+                        </label>
+                        <input type="text" id="referenceWorkItem" placeholder="Bug/PBI ID or URL to copy settings from" oninput="parseReferenceWorkItem()">
+                        <span class="field-help">AI auto-fills fields + links as Related item</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section 1: Project Info (Required) -->
+        <div class="section required" data-section="project">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title">
+                    <span class="section-icon">📁</span>
+                    Project Information
+                    <span class="section-badge">Required</span>
+                </div>
+                <div class="section-toggle">▼</div>
+            </div>
+            <div class="section-content">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">
+                            Project <span class="required-mark">*</span>
+                        </label>
+                        <select id="project" required onchange="toggleOtherProject(this); updateTitlePrefix();">
+                            <option value="">Select project...</option>
+                            <option value="OnLine Banking">OnLine Banking</option>
+                            <option value="UDB">UDB</option>
+                            <option value="Automation Architecture">Automation Architecture</option>
+                            <option value="other">[Other]</option>
+                        </select>
+                        <div id="otherProjectContainer" style="display: none; margin-top: 10px;">
+                            <input type="text" id="otherProject" placeholder="Enter exact project name from bofaz">
+                            <span class="field-help" style="color: #FAA74A;">⚠️ Make sure this is a valid project in Azure DevOps (bofaz organization)</span>
+                        </div>
+                        <div id="projectAutoFilled" style="display: none; margin-top: 8px; padding: 8px 12px; background: rgba(16, 185, 129, 0.1); border-radius: 6px; font-size: 12px; color: #10b981;">
+                            ✨ Auto-filled from Parent Work Item
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">
+                            Project Number <span class="required-mark">*</span>
+                        </label>
+                        <input type="number" id="projectNumber" value="28" placeholder="28" oninput="updateTitlePrefix()">
+                        <span class="field-help">Default: 28</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section 2: Environment & App (Required) -->
+        <div class="section required" data-section="environment">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title">
+                    <span class="section-icon">🖥️</span>
+                    Environment & Application
+                    <span class="section-badge">Required</span>
+                </div>
+                <div class="section-toggle">▼</div>
+            </div>
+            <div class="section-content">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">
+                            Environment <span class="required-mark">*</span>
+                        </label>
+                        <select id="environment" required onchange="updateTitlePrefix()">
+                            <option value="">Select environment...</option>
+                            <option value="0 - DEV">0 - DEV</option>
+                            <option value="1 - QA">1 - QA</option>
+                            <option value="2 - UAT">2 - UAT</option>
+                            <option value="3 - STG">3 - STG</option>
+                            <option value="3.5 - BETA">3.5 - BETA</option>
+                            <option value="4 - PROD">4 - PROD</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">
+                            Application Type <span class="required-mark">*</span>
+                        </label>
+                        <select id="appType" required onchange="updateTitlePrefix()">
+                            <option value="">Select app type...</option>
+                            <option value="API">API</option>
+                            <option value="API and Mobile">API and Mobile</option>
+                            <option value="API and Web">API and Web</option>
+                            <option value="API, Web and Mobile">API, Web and Mobile</option>
+                            <option value="Mobile">Mobile</option>
+                            <option value="Web">Web</option>
+                            <option value="Web and Mobile">Web and Mobile</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group full-width">
+                    <label class="form-label">
+                        Environment URL <span class="optional-mark">(Optional)</span>
+                    </label>
+                    <input type="url" id="envUrl" placeholder="https://secure.uat.axosbank.com/login">
+                </div>
+                
+                <!-- Web Testing Info -->
+                <div class="form-grid" style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 10px; padding: 16px; margin-top: 8px;">
+                    <div style="grid-column: 1 / -1; margin-bottom: 8px;">
+                        <span style="color: #60a5fa; font-weight: 600; font-size: 13px;">🌐 Web Testing</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">
+                            Browser <span class="optional-mark">(Optional)</span>
+                        </label>
+                        <input type="text" id="browser" placeholder="Chrome, Safari, Firefox, Edge">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">
+                            Web Version <span class="optional-mark">(Deployed)</span>
+                        </label>
+                        <input type="text" id="webVersion" placeholder="1.144.5">
+                        <span class="field-help">Deployed web app version, not browser version</span>
+                    </div>
+                </div>
+                
+                <!-- Mobile Testing Info -->
+                <div class="form-grid" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 10px; padding: 16px; margin-top: 8px;">
+                    <div style="grid-column: 1 / -1; margin-bottom: 8px;">
+                        <span style="color: #10b981; font-weight: 600; font-size: 13px;">📱 Mobile Testing</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">
+                            Device <span class="optional-mark">(Optional)</span>
+                        </label>
+                        <input type="text" id="device" placeholder="Samsung Galaxy S24, iPhone 15 Pro">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">
+                            Mobile App Version <span class="optional-mark">(Installed)</span>
+                        </label>
+                        <input type="text" id="mobileAppVersion" placeholder="1.233.27">
+                        <span class="field-help">Installed mobile app version</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section 2.5: Title & Description (Required) - Now after Environment -->
+        <div class="section required" data-section="title">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title">
+                    <span class="section-icon">📝</span>
+                    Bug Title & Description
+                    <span class="section-badge">Required</span>
+                </div>
+                <div class="section-toggle">▼</div>
+            </div>
+            <div class="section-content">
+                <div class="form-group full-width">
+                    <label class="form-label">
+                        Title <span class="required-mark">*</span>
+                    </label>
+                    <div style="display: flex; gap: 0; align-items: stretch;">
+                        <div id="titlePrefixBox" style="background: var(--axos-navy); color: var(--axos-orange); padding: 12px 16px; border-radius: 10px 0 0 10px; border: 1px solid var(--axos-navy); font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600; white-space: nowrap; display: flex; align-items: center;">
+                            <span id="titlePrefixInput">[#] - [ENV] - [App] - </span>
+                        </div>
+                        <input type="text" id="titleDescription" placeholder="Brief description of the bug..." style="border-radius: 0 10px 10px 0; border-left: none; flex: 1;" oninput="updateFullTitle()">
+                    </div>
+                    <input type="hidden" id="title">
+                    <span class="field-help">💡 The prefix is auto-generated from Project Number, Environment, and App Type above. Just add a brief description here! Example: Login button not responding on click</span>
+                </div>
+                <div class="form-group full-width">
+                    <label class="form-label">
+                        Description <span class="required-mark">*</span>
+                    </label>
+                    <textarea id="description" placeholder="Brief summary of the bug issue. What's happening? What component/feature is affected?&#10;&#10;Example: The transfer button remains disabled after filling all required fields in the Move Money form. Users cannot complete internal transfers." style="min-height: 100px;"></textarea>
+                    <span class="field-help">A concise summary of the bug (1-3 sentences). This appears at the top of the bug report.</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section 3: Test Data (Required) -->
+        <div class="section required" data-section="testdata">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title">
+                    <span class="section-icon">💾</span>
+                    Test Data / Credentials
+                    <span class="section-badge">Required</span>
+                </div>
+                <div class="section-toggle">▼</div>
+            </div>
+            <div class="section-content">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">
+                            Username <span class="required-mark">*</span>
+                        </label>
+                        <input type="text" id="username" placeholder="testuser01">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">
+                            Password <span class="required-mark">*</span>
+                        </label>
+                        <input type="text" id="password" placeholder="Bank1234#">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        Additional Test Data <span class="optional-mark">(Optional)</span>
+                    </label>
+                    <textarea id="additionalTestData" placeholder="Account numbers, API payloads, specific configurations...&#10;&#10;💡 Also note if the issue occurs in other environments (e.g., 'Also reproduced in STG', 'Works fine in QA')"></textarea>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section 4: Steps to Reproduce (Required) -->
+        <div class="section required" data-section="steps">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title">
+                    <span class="section-icon">🔢</span>
+                    Steps to Reproduce
+                    <span class="section-badge">Required</span>
+                </div>
+                <div class="section-toggle">▼</div>
+            </div>
+            <div class="section-content">
+                <div class="form-group full-width">
+                    <label class="form-label">
+                        Reproduction Steps <span class="required-mark">*</span>
+                    </label>
+                    <div class="steps-builder">
+                        <div class="steps-list" id="stepsList">
+                            <div class="step-item">
+                                <div class="step-number">1</div>
+                                <input type="text" class="step-input" placeholder="Navigate to..." data-step="1">
+                                <button type="button" class="step-remove" onclick="removeStep(this)">×</button>
+                            </div>
+                            <div class="step-item">
+                                <div class="step-number">2</div>
+                                <input type="text" class="step-input" placeholder="Enter..." data-step="2">
+                                <button type="button" class="step-remove" onclick="removeStep(this)">×</button>
+                            </div>
+                            <div class="step-item">
+                                <div class="step-number">3</div>
+                                <input type="text" class="step-input" placeholder="Click..." data-step="3">
+                                <button type="button" class="step-remove" onclick="removeStep(this)">×</button>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button type="button" class="add-step-btn" onclick="addStep()" style="flex: 1;">
+                                ➕ Add Step
+                            </button>
+                            <button type="button" class="add-step-btn" onclick="openBulkEditor()" style="flex: 1; border-color: var(--axos-orange); color: var(--axos-orange);">
+                                📝 Bulk Add (Text Editor)
+                            </button>
+                        </div>
+                        
+                        <!-- Bulk Editor Section -->
+                        <div id="bulkEditorSection" style="display: none; margin-top: 16px; animation: fadeIn 0.3s ease;">
+                            <div style="background: var(--bg-secondary); border: 2px solid var(--axos-orange); border-radius: 12px; padding: 16px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="font-size: 18px;">📝</span>
+                                        <span style="font-weight: 600; color: var(--axos-orange);">Bulk Step Editor</span>
+                                    </div>
+                                    <button type="button" onclick="closeBulkEditor()" style="background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 20px; padding: 4px 8px;">×</button>
+                                </div>
+                                <p style="color: var(--text-muted); font-size: 12px; margin-bottom: 12px;">
+                                    ✏️ Type or paste steps below — <strong>each line becomes a step</strong>. Empty lines are ignored.
+                                </p>
+                                <textarea id="bulkStepsInput" placeholder="Navigate to login page&#10;Enter username 'testuser01'&#10;Enter password 'Bank1234#'&#10;Click the Login button&#10;Observe the error message" style="min-height: 180px; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.8; background: var(--bg-primary); border: 1px solid var(--border-color);"></textarea>
+                                <div style="display: flex; gap: 10px; margin-top: 12px;">
+                                    <button type="button" onclick="closeBulkEditor()" class="btn btn-secondary" style="flex: 1;">
+                                        Cancel
+                                    </button>
+                                    <button type="button" onclick="applyBulkSteps()" class="btn btn-orange" style="flex: 1;">
+                                        ✅ Apply Steps
+                                    </button>
+                                </div>
+                                <div id="bulkPreview" style="margin-top: 12px; display: none;">
+                                    <p style="color: var(--text-muted); font-size: 11px; margin-bottom: 8px;">Preview:</p>
+                                    <div id="bulkPreviewContent" style="background: var(--bg-tertiary); border-radius: 8px; padding: 12px; font-size: 12px; color: var(--text-secondary); max-height: 120px; overflow-y: auto;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section 5: Results (Required) -->
+        <div class="section required" data-section="results">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title">
+                    <span class="section-icon">🎯</span>
+                    Expected & Actual Results
+                    <span class="section-badge">Required</span>
+                </div>
+                <div class="section-toggle">▼</div>
+            </div>
+            <div class="section-content">
+                <div class="form-group full-width">
+                    <label class="form-label">
+                        ✅ Expected Result <span class="required-mark">*</span>
+                    </label>
+                    <textarea id="expectedResult" placeholder="What should have happened? Reference AC if available..."></textarea>
+                </div>
+                <div class="form-group full-width">
+                    <label class="form-label">
+                        🚨 Actual Result <span class="required-mark">*</span>
+                    </label>
+                    <textarea id="actualResult" placeholder="What happened? Include error messages, console errors, network errors..."></textarea>
+                </div>
+                
+                <!-- Evidence Reminder Info Box -->
+                <div style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(30, 56, 96, 0.15) 100%); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 10px; padding: 14px 18px; margin-top: 8px; display: flex; align-items: flex-start; gap: 12px;">
+                    <span style="font-size: 20px;">📎</span>
+                    <div>
+                        <p style="color: #60a5fa; font-weight: 600; margin-bottom: 6px; font-size: 14px;">ℹ️ Evidence Must Be Added After Bug Creation</p>
+                        <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.6;">
+                            Screenshots, videos, and logs are <strong>critical</strong> for bug investigation. 
+                            The AI will add placeholder notes in the Expected/Actual Result sections as reminders.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section 6: Priority & Severity (Optional - AI Determines) -->
+        <div class="section optional collapsed" data-section="priority">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title">
+                    <span class="section-icon">⚡</span>
+                    Priority & Severity
+                    <span class="section-badge">Optional</span>
+                </div>
+                <div class="section-toggle">▼</div>
+            </div>
+            <div class="section-content">
+                <p style="color: var(--text-muted); margin-bottom: 16px; font-size: 13px;">
+                    💡 Leave blank and AI will determine based on bug description. Or set manually:
+                </p>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">Priority</label>
+                        <select id="priority">
+                            <option value="">AI will determine...</option>
+                            <option value="1">1 - Critical (Production down, blocking)</option>
+                            <option value="2">2 - High (Major issue) ⭐ Default</option>
+                            <option value="3">3 - Medium (Moderate impact)</option>
+                            <option value="4">4 - Low (Minor issue)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Severity</label>
+                        <select id="severity">
+                            <option value="">AI will determine...</option>
+                            <option value="0 - Not Triaged">0 - Not Triaged</option>
+                            <option value="1 - Critical">1 - Critical (System crash, data loss)</option>
+                            <option value="2 - High">2 - High (Major feature broken)</option>
+                            <option value="3 - Medium">3 - Medium (Partial functionality)</option>
+                            <option value="4 - Low">4 - Low (Cosmetic) ⭐ Default</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Tags</label>
+                    <input type="text" id="tags" placeholder="PRIORITYHELP, Blocker, Regression, #1.144.2">
+                    <span class="field-help">Comma-separated. AI adds AI_USED_BUG_FILING automatically</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section 8: Bug Information (Optional) -->
+        <div class="section optional collapsed" data-section="buginfo">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title">
+                    <span class="section-icon">📊</span>
+                    Bug Information
+                    <span class="section-badge">Optional</span>
+                </div>
+                <div class="section-toggle">▼</div>
+            </div>
+            <div class="section-content">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">System</label>
+                        <select id="system">
+                            <option value="">Select system...</option>
+                            <option value="Admin Portal">Admin Portal</option>
+                            <option value="ARMS">ARMS</option>
+                            <option value="Auditing/Monitoring">Auditing/Monitoring</option>
+                            <option value="Auto">Auto</option>
+                            <option value="Clearing">Clearing</option>
+                            <option value="Documents">Documents</option>
+                            <option value="Enrollment">Enrollment</option>
+                            <option value="EVO">EVO</option>
+                            <option value="Identity">Identity</option>
+                            <option value="Managed Portfolio">Managed Portfolio</option>
+                            <option value="Messaging">Messaging</option>
+                            <option value="Mobile App">Mobile App</option>
+                            <option value="Mortgage">Mortgage</option>
+                            <option value="Online Banking">Online Banking</option>
+                            <option value="Personalization">Personalization</option>
+                            <option value="SBB">SBB</option>
+                            <option value="SBLOC">SBLOC</option>
+                            <option value="Security">Security</option>
+                            <option value="Self-Directed Trading">Self-Directed Trading</option>
+                            <option value="Web App">Web App</option>
+                            <option value="White Label">White Label</option>
+                            <option value="Wires">Wires</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Functional Area</label>
+                        <select id="functionalArea">
+                            <option value="">Select area...</option>
+                            <option value="Account Aggregation">Account Aggregation</option>
+                            <option value="Accounts">Accounts</option>
+                            <option value="ADA">ADA</option>
+                            <option value="Alerts">Alerts</option>
+                            <option value="Beneficiaries">Beneficiaries</option>
+                            <option value="Bill Pay">Bill Pay</option>
+                            <option value="Biometrics">Biometrics</option>
+                            <option value="Dashboard">Dashboard</option>
+                            <option value="Deposits">Deposits</option>
+                            <option value="Dispute Transaction">Dispute Transaction</option>
+                            <option value="Enrollment/Registration">Enrollment/Registration</option>
+                            <option value="Evo Chat">Evo Chat</option>
+                            <option value="General/Misc">General/Misc</option>
+                            <option value="Help/Support">Help/Support</option>
+                            <option value="Login/Locked Account">Login/Locked Account</option>
+                            <option value="Messages">Messages</option>
+                            <option value="Move Money">Move Money</option>
+                            <option value="Navigation">Navigation</option>
+                            <option value="Profile and Settings">Profile and Settings</option>
+                            <option value="Schedule Transfers">Schedule Transfers</option>
+                            <option value="Security">Security</option>
+                            <option value="Statements/Tax Forms">Statements/Tax Forms</option>
+                            <option value="Transactions">Transactions</option>
+                            <option value="Wire Transfers">Wire Transfers</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Regression</label>
+                        <select id="regression">
+                            <option value="">Select...</option>
+                            <option value="No">No</option>
+                            <option value="Yes">Yes</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Estimated Impact</label>
+                        <select id="estimatedImpact">
+                            <option value="">Select impact...</option>
+                            <option value="k001">k001 (Less than 1 user)</option>
+                            <option value="001-004">001-004 (1-4 users)</option>
+                            <option value="004-010">004-010 (4-10 users)</option>
+                            <option value="010-025">010-025 (10-25 users)</option>
+                            <option value="025-100">025-100 (25-100 users)</option>
+                            <option value="100-500">100-500 (100-500 users)</option>
+                            <option value="500+">500+ (More than 500 users)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section 9: Approvals (Optional) -->
+        <div class="section optional collapsed" data-section="approvals">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title">
+                    <span class="section-icon">📋</span>
+                    Approvals
+                    <span class="section-badge">Optional</span>
+                </div>
+                <div class="section-toggle">▼</div>
+            </div>
+            <div class="section-content">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">
+                            Business Unit <span class="optional-mark">(Optional)</span>
+                        </label>
+                        <select id="businessUnit">
+                            <option value="">Select business unit...</option>
+                            <option value="TECH">TECH</option>
+                            <option value="AAS">AAS</option>
+                            <option value="AAS Marketing">AAS Marketing</option>
+                            <option value="Accounting and Finance">Accounting and Finance</option>
+                            <option value="ADMIN PORTAL">ADMIN PORTAL</option>
+                            <option value="AFS">AFS</option>
+                            <option value="BANK">BANK</option>
+                            <option value="BORROW">BORROW</option>
+                            <option value="CL-Operations">CL-Operations</option>
+                            <option value="CL-Servicing">CL-Servicing</option>
+                            <option value="CL-Transactions">CL-Transactions</option>
+                            <option value="Clearing">Clearing</option>
+                            <option value="Clearing Marketing">Clearing Marketing</option>
+                            <option value="COE">COE</option>
+                            <option value="Commercial - Credit PM">Commercial - Credit PM</option>
+                            <option value="Commercial Banking">Commercial Banking</option>
+                            <option value="Commercial Credit Quality Control">Commercial Credit Quality Control</option>
+                            <option value="Commercial Marketing">Commercial Marketing</option>
+                            <option value="Commercial Originations">Commercial Originations</option>
+                            <option value="Commercial Quality Control">Commercial Quality Control</option>
+                            <option value="Commercial Underwriting">Commercial Underwriting</option>
+                            <option value="Consumer - Credit PM">Consumer - Credit PM</option>
+                            <option value="Consumer - General Credit">Consumer - General Credit</option>
+                            <option value="Consumer Banking">Consumer Banking</option>
+                            <option value="Consumer Deposits">Consumer Deposits</option>
+                            <option value="Consumer Direct SFR">Consumer Direct SFR</option>
+                            <option value="Consumer Marketing">Consumer Marketing</option>
+                            <option value="Data Analytics">Data Analytics</option>
+                            <option value="Deposit Ops">Deposit Ops</option>
+                            <option value="Direct Auto">Direct Auto</option>
+                            <option value="ENROLLMENT">ENROLLMENT</option>
+                            <option value="GRC">GRC</option>
+                            <option value="HR">HR</option>
+                            <option value="Indirect Auto">Indirect Auto</option>
+                            <option value="Invest">Invest</option>
+                            <option value="IPL">IPL</option>
+                            <option value="IT">IT</option>
+                            <option value="Legal">Legal</option>
+                            <option value="Loan Servicing">Loan Servicing</option>
+                            <option value="LVF - Floorplan">LVF - Floorplan</option>
+                            <option value="LVF - Retail">LVF - Retail</option>
+                            <option value="MARKETING">MARKETING</option>
+                            <option value="OCEO">OCEO</option>
+                            <option value="PLAN">PLAN</option>
+                            <option value="SBB">SBB</option>
+                            <option value="Special Assets">Special Assets</option>
+                            <option value="Treasury Management">Treasury Management</option>
+                            <option value="ULP">ULP</option>
+                            <option value="Warehouse Lending">Warehouse Lending</option>
+                            <option value="WCPL">WCPL</option>
+                            <option value="Zenith">Zenith</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Requested By</label>
+                        <input type="text" id="requestedBy" placeholder="QA Team">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section 10: Linked Work Items (Optional) -->
+        <div class="section links collapsed" data-section="links">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title">
+                    <span class="section-icon">🔗</span>
+                    Linked Work Items
+                    <span class="section-badge">Optional</span>
+                </div>
+                <div class="section-toggle">▼</div>
+            </div>
+            <div class="section-content">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">Related Feature ID</label>
+                        <input type="number" id="relatedFeature" placeholder="Feature ID">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Related Epic ID</label>
+                        <input type="number" id="epicId" placeholder="Related Epic ID">
+                    </div>
+                    <div class="form-group full-width">
+                        <label class="form-label">Related Bug IDs</label>
+                        <input type="text" id="relatedBugs" placeholder="Comma-separated bug IDs">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section 11: Automation (Optional) -->
+        <div class="section automation collapsed" data-section="automation">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title">
+                    <span class="section-icon">🤖</span>
+                    Automation & Assignment
+                    <span class="section-badge">Optional</span>
+                </div>
+                <div class="section-toggle">▼</div>
+            </div>
+            <div class="section-content">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">QA Tester</label>
+                        <input type="text" id="qaTester" placeholder="john.doe or john.doe@bofifederalbank.com" onblur="normalizeEmail(this)">
+                        <span class="field-help">Enter username (john.doe) or full email — auto-completes domain</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Assigned To <span style="color: var(--text-muted); font-weight: 400; font-size: 11px;">(Developer)</span></label>
+                        <input type="text" id="assignedTo" placeholder="dev.name or dev.name@bofifederalbank.com" onblur="normalizeEmail(this)">
+                        <span class="field-help">👨‍💻 The developer who will FIX this bug (not the reporter or tester)</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Found by Automation</label>
+                        <select id="foundByAutomation">
+                            <option value="No">No (Default)</option>
+                            <option value="Yes">Yes</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Automation Status</label>
+                        <select id="automationStatus">
+                            <option value="Not Automated">Not Automated (Default)</option>
+                            <option value="Automated">Automated</option>
+                            <option value="Automation in Progress">Automation in Progress</option>
+                            <option value="Planned">Planned</option>
+                            <option value="Unable to Automate">Unable to Automate</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Automation Engineer</label>
+                        <input type="text" id="automationEngineer" placeholder="auto.engineer or full email" onblur="normalizeEmail(this)">
+                        <span class="field-help">Enter username or full email</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Spacer for fixed action bar -->
+        <div style="height: 100px;"></div>
+    </div>
+    
+    <!-- Action Bar -->
+    <div class="action-bar">
+        <div class="action-bar-inner">
+            <div class="action-status">
+                <div class="status-indicator" id="statusIndicator"></div>
+                <span id="statusText">Fill required fields to generate</span>
+            </div>
+            <div class="action-buttons">
+                <button class="btn btn-secondary" onclick="resetForm()">
+                    🔄 Reset
+                </button>
+                <button class="btn btn-primary" onclick="generateOutput()" id="generateBtn">
+                    📋 Generate Bug Report
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Output Modal -->
+    <div class="modal-overlay" id="outputModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">
+                    📋 Generated Bug Report
+                </div>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <!-- Usage Note (not copied) -->
+                <div style="background: linear-gradient(135deg, rgba(250, 167, 74, 0.15) 0%, rgba(30, 56, 96, 0.2) 100%); border: 1px solid rgba(250, 167, 74, 0.4); border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 14px;">
+                    <span style="font-size: 24px;">📌</span>
+                    <div>
+                        <p style="color: #FAA74A; font-weight: 700; margin-bottom: 8px; font-size: 14px;">How to Use</p>
+                        <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.8;">
+                            1. Copy this content to your clipboard<br>
+                            2. In Cursor, call <code style="background: rgba(250, 167, 74, 0.25); padding: 3px 8px; border-radius: 4px; color: #FAA74A; font-weight: 600;">/Admin-QA-File-Bug</code><br>
+                            3. Paste the bug details when prompted
+                        </p>
+                    </div>
+                </div>
+                <div class="output-box" id="outputBox"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+                <button class="btn btn-primary" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+                <button class="btn btn-orange" onclick="downloadAsFile()">💾 Download .txt</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast -->
+    <div class="toast" id="toast">
+        <span id="toastIcon">✅</span>
+        <span id="toastMessage">Copied to clipboard!</span>
+    </div>
+    
+    <script>
+        // Required fields
+        const requiredFields = [
+            'project', 'title', 'description', 'environment', 'appType',
+            'username', 'password', 'actualResult', 'expectedResult'
+        ];
+        
+        // Parse Work Item URL or ID
+        function parseWorkItemInput(input) {
+            if (!input) return null;
+            
+            const trimmed = input.trim();
+            
+            // Check if it's just a number (ID)
+            if (/^\d+$/.test(trimmed)) {
+                return {
+                    project: null,
+                    workItemId: trimmed
+                };
+            }
+            
+            // Check for Azure DevOps URL patterns
+            const patterns = [
+                // https://bofaz.visualstudio.com/UDB/_workitems/edit/2173081
+                /https?:\/\/([^.]+)\.visualstudio\.com\/([^\/]+)\/_workitems\/edit\/(\d+)/i,
+                // https://dev.azure.com/bofaz/UDB/_workitems/edit/2173081
+                /https?:\/\/dev\.azure\.com\/([^\/]+)\/([^\/]+)\/_workitems\/edit\/(\d+)/i
+            ];
+            
+            for (const pattern of patterns) {
+                const match = trimmed.match(pattern);
+                if (match) {
+                    return {
+                        organization: match[1],
+                        project: decodeURIComponent(match[2]),
+                        workItemId: match[3]
+                    };
+                }
+            }
+            
+            // Couldn't parse - might be just an ID with spaces or invalid
+            const idMatch = trimmed.match(/(\d+)/);
+            if (idMatch) {
+                return {
+                    project: null,
+                    workItemId: idMatch[1]
+                };
+            }
+            
+            return null;
+        }
+        
+        // Parse Parent Work Item input
+        function parseParentWorkItem() {
+            const input = document.getElementById('parentWorkItem').value;
+            const parsed = parseWorkItemInput(input);
+            const infoDiv = document.getElementById('parentParsedInfo');
+            const projectAutoFilled = document.getElementById('projectAutoFilled');
+            
+            if (parsed && parsed.workItemId) {
+                // Show parsed info
+                infoDiv.style.display = 'block';
+                document.getElementById('parsedParentId').textContent = parsed.workItemId;
+                document.getElementById('parsedParentProject').textContent = parsed.project || 'Not detected (will be fetched by AI)';
+                
+                // Auto-fill project if detected
+                if (parsed.project) {
+                    const projectSelect = document.getElementById('project');
+                    const projectName = parsed.project;
+                    
+                    // Try to match to existing options
+                    let matched = false;
+                    for (let i = 0; i < projectSelect.options.length; i++) {
+                        if (projectSelect.options[i].value.toLowerCase() === projectName.toLowerCase() ||
+                            projectSelect.options[i].value.toLowerCase().includes(projectName.toLowerCase())) {
+                            projectSelect.selectedIndex = i;
+                            matched = true;
+                            break;
+                        }
+                    }
+                    
+                    // If no match, set as "other"
+                    if (!matched) {
+                        projectSelect.value = 'other';
+                        toggleOtherProject(projectSelect);
+                        document.getElementById('otherProject').value = projectName;
+                    }
+                    
+                    projectAutoFilled.style.display = 'block';
+                    updateTitlePrefix();
+                    updateProgress();
+                }
+            } else {
+                infoDiv.style.display = 'none';
+                projectAutoFilled.style.display = 'none';
+            }
+        }
+        
+        // Parse Reference Work Item input
+        function parseReferenceWorkItem() {
+            const input = document.getElementById('referenceWorkItem').value;
+            const parsed = parseWorkItemInput(input);
+            // Just validate - AI will use the ID
+        }
+        
+        // Get environment short code
+        function getEnvShortCode(envValue) {
+            if (!envValue) return '[ENV]';
+            const mapping = {
+                '0 - DEV': 'DEV',
+                '1 - QA': 'QA',
+                '2 - UAT': 'UAT',
+                '3 - STG': 'STG',
+                '3.5 - BETA': 'BETA',
+                '4 - PROD': 'PROD'
+            };
+            return mapping[envValue] || envValue.replace(/^\d+(\.\d+)?\s*-\s*/, '');
+        }
+        
+        // Get app type short code
+        function getAppTypeShortCode(appType) {
+            if (!appType) return '[App]';
+            const mapping = {
+                'API': 'API',
+                'API and Mobile': 'API/Mobile',
+                'API and Web': 'API/Web',
+                'API, Web and Mobile': 'All',
+                'Mobile': 'Mobile',
+                'Web': 'Web',
+                'Web and Mobile': 'Web/Mobile'
+            };
+            return mapping[appType] || appType;
+        }
+        
+        // Update Title Prefix based on current selections
+        function updateTitlePrefix() {
+            const projectNum = document.getElementById('projectNumber').value || '[#]';
+            const env = document.getElementById('environment').value;
+            const appType = document.getElementById('appType').value;
+            
+            const envCode = getEnvShortCode(env);
+            const appCode = getAppTypeShortCode(appType);
+            
+            const prefix = `${projectNum} - ${envCode} - ${appCode} - `;
+            
+            // Update the prefix display
+            document.getElementById('titlePrefixInput').textContent = prefix;
+            
+            // Update the full title
+            updateFullTitle();
+        }
+        
+        // Update the hidden full title field
+        function updateFullTitle() {
+            const projectNum = document.getElementById('projectNumber').value || '';
+            const env = document.getElementById('environment').value;
+            const appType = document.getElementById('appType').value;
+            const description = document.getElementById('titleDescription').value.trim();
+            
+            const envCode = getEnvShortCode(env);
+            const appCode = getAppTypeShortCode(appType);
+            
+            let fullTitle = '';
+            if (projectNum && env && appType && description) {
+                fullTitle = `${projectNum} - ${envCode} - ${appCode} - ${description}`;
+            } else if (description) {
+                // Partial - still build what we can
+                const parts = [];
+                if (projectNum) parts.push(projectNum);
+                if (env) parts.push(envCode);
+                if (appType) parts.push(appCode);
+                parts.push(description);
+                fullTitle = parts.join(' - ');
+            }
+            
+            document.getElementById('title').value = fullTitle;
+            updateProgress();
+        }
+        
+        // Email normalization - auto-complete domain for bofifederalbank
+        function normalizeEmail(input) {
+            let value = input.value.trim();
+            if (!value) return;
+            
+            // If it's already a full email, leave it as is
+            if (value.includes('@')) {
+                // Validate it's a proper email format
+                if (!value.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+                    input.classList.add('error');
+                    input.classList.remove('valid');
+                } else {
+                    input.classList.remove('error');
+                    input.classList.add('valid');
+                }
+                return;
+            }
+            
+            // It's just a username - add the domain
+            const fullEmail = value + '@bofifederalbank.com';
+            input.value = fullEmail;
+            input.classList.remove('error');
+            input.classList.add('valid');
+            
+            // Show a subtle toast notification
+            showToast('📧', `Auto-completed: ${fullEmail}`, 'success');
+        }
+        
+        // Toggle other project input
+        function toggleOtherProject(select) {
+            const container = document.getElementById('otherProjectContainer');
+            const otherInput = document.getElementById('otherProject');
+            if (select.value === 'other') {
+                container.style.display = 'block';
+                otherInput.required = true;
+                otherInput.focus();
+            } else {
+                container.style.display = 'none';
+                otherInput.required = false;
+                otherInput.value = '';
+            }
+            updateProgress();
+        }
+        
+        // Get project value (handles "other" option)
+        function getProjectValue() {
+            const projectSelect = document.getElementById('project');
+            if (projectSelect.value === 'other') {
+                return document.getElementById('otherProject').value.trim();
+            }
+            return projectSelect.value;
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            // Add input listeners for progress
+            document.querySelectorAll('input, select, textarea').forEach(el => {
+                el.addEventListener('input', updateProgress);
+                el.addEventListener('change', updateProgress);
+            });
+            
+            // Add step input listeners
+            document.querySelectorAll('.step-input').forEach(el => {
+                el.addEventListener('input', updateProgress);
+            });
+            
+            // Initialize title prefix
+            updateTitlePrefix();
+            
+            updateProgress();
+        });
+        
+        // Toggle section
+        function toggleSection(header) {
+            const section = header.closest('.section');
+            section.classList.toggle('collapsed');
+        }
+        
+        // Toggle instructions preview
+        function toggleInstructionsPreview(element) {
+            element.classList.toggle('collapsed');
+        }
+        
+        // Update progress
+        function updateProgress() {
+            let filledRequired = 0;
+            let filledOptional = 0;
+            
+            requiredFields.forEach(id => {
+                const el = document.getElementById(id);
+                if (el && el.value.trim()) {
+                    // Special handling for project "other" option
+                    if (id === 'project' && el.value === 'other') {
+                        const otherProject = document.getElementById('otherProject');
+                        if (otherProject && otherProject.value.trim()) {
+                            filledRequired++;
+                            el.classList.remove('error');
+                            el.classList.add('valid');
+                            otherProject.classList.remove('error');
+                            otherProject.classList.add('valid');
+                        } else {
+                            el.classList.remove('valid');
+                            if (otherProject) {
+                                otherProject.classList.add('error');
+                                otherProject.classList.remove('valid');
+                            }
+                        }
+                    } else {
+                        filledRequired++;
+                        el.classList.remove('error');
+                        el.classList.add('valid');
+                    }
+                } else if (el) {
+                    el.classList.remove('valid');
+                }
+            });
+            
+            // Check steps
+            const steps = document.querySelectorAll('.step-input');
+            let hasSteps = false;
+            steps.forEach(step => {
+                if (step.value.trim()) hasSteps = true;
+            });
+            if (hasSteps) filledRequired++;
+            
+            // Total required is 10 (9 fields + steps) - Evidence is recommended but not required
+            const totalRequired = 10;
+            const percentage = Math.round((filledRequired / totalRequired) * 100);
+            
+            document.getElementById('progressPercent').textContent = percentage + '%';
+            document.getElementById('progressFill').style.width = percentage + '%';
+            document.getElementById('requiredCount').textContent = filledRequired + '/' + totalRequired;
+            
+            // Count optional
+            const optionalSelects = document.querySelectorAll('.section.optional select, .section.links input, .section.automation input');
+            optionalSelects.forEach(el => {
+                if (el.value && el.value !== '' && !el.hasAttribute('required')) {
+                    filledOptional++;
+                }
+            });
+            document.getElementById('optionalCount').textContent = filledOptional;
+            
+            // Update status
+            const statusIndicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            const generateBtn = document.getElementById('generateBtn');
+            
+            if (percentage >= 80) {
+                statusIndicator.classList.add('complete');
+                statusText.textContent = '✨ Ready to generate!';
+                generateBtn.disabled = false;
+            } else {
+                statusIndicator.classList.remove('complete');
+                statusText.textContent = `Fill required fields (${totalRequired - filledRequired} remaining)`;
+                generateBtn.disabled = false; // Allow partial generation
+            }
+        }
+        
+        // Add step
+        function addStep() {
+            const list = document.getElementById('stepsList');
+            const stepNum = list.children.length + 1;
+            
+            const stepItem = document.createElement('div');
+            stepItem.className = 'step-item';
+            stepItem.innerHTML = `
+                <div class="step-number">${stepNum}</div>
+                <input type="text" class="step-input" placeholder="Step ${stepNum}..." data-step="${stepNum}">
+                <button type="button" class="step-remove" onclick="removeStep(this)">×</button>
+            `;
+            
+            list.appendChild(stepItem);
+            stepItem.querySelector('.step-input').focus();
+            stepItem.querySelector('.step-input').addEventListener('input', updateProgress);
+        }
+        
+        // Bulk Editor Functions
+        function openBulkEditor() {
+            const section = document.getElementById('bulkEditorSection');
+            const textarea = document.getElementById('bulkStepsInput');
+            section.style.display = 'block';
+            textarea.focus();
+            
+            // Add live preview listener
+            textarea.addEventListener('input', updateBulkPreview);
+        }
+        
+        function closeBulkEditor() {
+            const section = document.getElementById('bulkEditorSection');
+            const textarea = document.getElementById('bulkStepsInput');
+            const preview = document.getElementById('bulkPreview');
+            
+            section.style.display = 'none';
+            textarea.value = '';
+            preview.style.display = 'none';
+        }
+        
+        function updateBulkPreview() {
+            const textarea = document.getElementById('bulkStepsInput');
+            const preview = document.getElementById('bulkPreview');
+            const previewContent = document.getElementById('bulkPreviewContent');
+            
+            const lines = textarea.value.split('\n').filter(line => line.trim() !== '');
+            
+            if (lines.length > 0) {
+                preview.style.display = 'block';
+                previewContent.innerHTML = lines.map((line, idx) => 
+                    `<div style="display: flex; gap: 8px; margin-bottom: 4px;">
+                        <span style="color: var(--axos-orange); font-weight: 600; min-width: 20px;">${idx + 1}.</span>
+                        <span>${escapeHtml(line.trim())}</span>
+                    </div>`
+                ).join('');
+            } else {
+                preview.style.display = 'none';
+            }
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function applyBulkSteps() {
+            const textarea = document.getElementById('bulkStepsInput');
+            const lines = textarea.value.split('\n').filter(line => line.trim() !== '');
+            
+            if (lines.length === 0) {
+                showToast('⚠️', 'No steps to add. Enter at least one line.', 'error');
+                return;
+            }
+            
+            const list = document.getElementById('stepsList');
+            
+            // Check if we should replace or append
+            const existingSteps = Array.from(list.querySelectorAll('.step-input')).filter(input => input.value.trim() !== '');
+            
+            if (existingSteps.length > 0) {
+                const confirmReplace = confirm(`You have ${existingSteps.length} existing step(s). Do you want to:\n\n• OK = Replace all with ${lines.length} new steps\n• Cancel = Append ${lines.length} steps to existing`);
+                
+                if (confirmReplace) {
+                    // Clear existing steps
+                    list.innerHTML = '';
+                }
+            } else {
+                // Clear empty steps
+                list.innerHTML = '';
+            }
+            
+            // Add new steps from bulk input
+            const startNum = list.children.length;
+            lines.forEach((line, idx) => {
+                const stepNum = startNum + idx + 1;
+                const stepItem = document.createElement('div');
+                stepItem.className = 'step-item';
+                stepItem.innerHTML = `
+                    <div class="step-number">${stepNum}</div>
+                    <input type="text" class="step-input" value="${escapeHtml(line.trim())}" data-step="${stepNum}">
+                    <button type="button" class="step-remove" onclick="removeStep(this)">×</button>
+                `;
+                list.appendChild(stepItem);
+                stepItem.querySelector('.step-input').addEventListener('input', updateProgress);
+            });
+            
+            // Close editor and show success
+            closeBulkEditor();
+            updateProgress();
+            showToast('✅', `Added ${lines.length} step${lines.length > 1 ? 's' : ''} successfully!`, 'success');
+        }
+        
+        // Remove step
+        function removeStep(btn) {
+            const list = document.getElementById('stepsList');
+            if (list.children.length > 1) {
+                btn.closest('.step-item').remove();
+                // Renumber
+                Array.from(list.children).forEach((item, idx) => {
+                    item.querySelector('.step-number').textContent = idx + 1;
+                    item.querySelector('.step-input').dataset.step = idx + 1;
+                });
+                updateProgress();
+            }
+        }
+        
+        // Generate output
+        function generateOutput() {
+            const getValue = (id) => document.getElementById(id)?.value || '';
+            
+            // Gather steps
+            const steps = [];
+            document.querySelectorAll('.step-input').forEach(input => {
+                if (input.value.trim()) {
+                    steps.push(input.value.trim());
+                }
+            });
+            
+            // Parse work item inputs to extract IDs
+            const parentParsed = parseWorkItemInput(getValue('parentWorkItem'));
+            const referenceParsed = parseWorkItemInput(getValue('referenceWorkItem'));
+            const parentId = parentParsed ? parentParsed.workItemId : '';
+            const referenceId = referenceParsed ? referenceParsed.workItemId : '';
+            
+            // Build output - INSTRUCTIONS FIRST, then the bug details
+            let output = `📋 **EXECUTION INSTRUCTIONS** (READ FIRST!):
+1. Read the ENTIRE markdown workflow file first - process every section thoroughly before starting
+2. Take all the time needed to understand each guideline and requirement
+3. Display ALL outputs with beautiful formatting:
+   • Use proper markdown tables with clean alignment
+   • Include clear section headers and dividers
+   • Show organized, visually appealing summaries
+   • Follow ALL formatting guidelines specified in the markdown exactly
+
+---
+
+🎯 **REQUEST**:
+File the following bug in Azure DevOps:
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#                           🐛 BUG REPORT - Generated by Axos QA Form
+# ═══════════════════════════════════════════════════════════════════════════════
+
+`;
+
+            // Reference Work Item (if provided)
+            if (referenceId) {
+                output += `📋 REFERENCE WORK ITEM (for auto-filling fields + linked as Related):
+REFERENCE WORK ITEM: ${referenceId}
+
+`;
+            }
+
+            output += `# ─────────────────────────────────────────────────────────────────────────────
+#                              📁 PROJECT INFO
+# ─────────────────────────────────────────────────────────────────────────────
+
+PROJECT: ${getProjectValue()}
+TITLE: ${getValue('title')}
+PROJECT NUMBER: ${getValue('projectNumber') || '28'}
+`;
+            
+            if (parentId) {
+                output += `PARENT WORK ITEM: ${parentId}\n`;
+            }
+
+            output += `
+# ─────────────────────────────────────────────────────────────────────────────
+#                              📝 DESCRIPTION
+# ─────────────────────────────────────────────────────────────────────────────
+
+DESCRIPTION: ${getValue('description')}
+
+# ─────────────────────────────────────────────────────────────────────────────
+#                           🌍 ENVIRONMENT & APP
+# ─────────────────────────────────────────────────────────────────────────────
+
+ENVIRONMENT: ${getValue('environment')}
+APPLICATION TYPE: ${getValue('appType')}
+`;
+            
+            if (getValue('envUrl')) {
+                output += `ENVIRONMENT URL: ${getValue('envUrl')}\n`;
+            }
+            
+            // Web Testing Info
+            if (getValue('browser') || getValue('webVersion')) {
+                output += `\n# 🌐 Web Testing:\n`;
+                if (getValue('browser')) output += `BROWSER: ${getValue('browser')}\n`;
+                if (getValue('webVersion')) output += `WEB VERSION: ${getValue('webVersion')}\n`;
+            }
+            
+            // Mobile Testing Info
+            if (getValue('device') || getValue('mobileAppVersion')) {
+                output += `\n# 📱 Mobile Testing:\n`;
+                if (getValue('device')) output += `DEVICE: ${getValue('device')}\n`;
+                if (getValue('mobileAppVersion')) output += `MOBILE APP VERSION: ${getValue('mobileAppVersion')}\n`;
+            }
+
+            output += `
+# ─────────────────────────────────────────────────────────────────────────────
+#                         💾 TEST DATA / CREDENTIALS
+# ─────────────────────────────────────────────────────────────────────────────
+
+TEST DATA:
+- Username: ${getValue('username')}
+- Password: ${getValue('password')}
+`;
+            
+            if (getValue('additionalTestData')) {
+                output += `- Additional: ${getValue('additionalTestData')}\n`;
+            }
+
+            output += `
+# ─────────────────────────────────────────────────────────────────────────────
+#                         🔢 STEPS TO REPRODUCE
+# ─────────────────────────────────────────────────────────────────────────────
+
+STEPS TO REPRODUCE:
+`;
+            
+            steps.forEach((step, idx) => {
+                output += `${idx + 1}. ${step}\n`;
+            });
+
+            output += `
+# ─────────────────────────────────────────────────────────────────────────────
+#                            🎯 EXPECTED & ACTUAL RESULTS
+# ─────────────────────────────────────────────────────────────────────────────
+
+EXPECTED RESULT:
+${getValue('expectedResult')}
+
+ACTUAL RESULT:
+${getValue('actualResult')}
+
+📎 NOTE: Evidence (screenshots, videos, logs) must be attached AFTER bug creation in Azure DevOps.
+   The AI will add "Add evidence here" placeholders in the bug description as reminders.
+`;
+
+            // Priority & Severity
+            if (getValue('priority') || getValue('severity') || getValue('tags')) {
+                output += `
+# ─────────────────────────────────────────────────────────────────────────────
+#                          ⚡ PRIORITY & SEVERITY
+# ─────────────────────────────────────────────────────────────────────────────
+
+`;
+                if (getValue('priority')) output += `PRIORITY: ${getValue('priority')}\n`;
+                if (getValue('severity')) output += `SEVERITY: ${getValue('severity')}\n`;
+                if (getValue('tags')) output += `TAGS: ${getValue('tags')}\n`;
+            }
+
+            // Bug Information
+            if (getValue('system') || getValue('functionalArea') || getValue('regression') || getValue('estimatedImpact')) {
+                output += `
+# ─────────────────────────────────────────────────────────────────────────────
+#                            📊 BUG INFORMATION
+# ─────────────────────────────────────────────────────────────────────────────
+
+`;
+                if (getValue('system')) output += `SYSTEM: ${getValue('system')}\n`;
+                if (getValue('functionalArea')) output += `FUNCTIONAL AREA: ${getValue('functionalArea')}\n`;
+                if (getValue('regression')) output += `REGRESSION: ${getValue('regression')}\n`;
+                if (getValue('estimatedImpact')) output += `ESTIMATED IMPACT: ${getValue('estimatedImpact')}\n`;
+            }
+
+            // Approvals (only show if any value is set)
+            if (getValue('businessUnit') || getValue('requestedBy')) {
+                output += `
+# ─────────────────────────────────────────────────────────────────────────────
+#                            📋 APPROVALS
+# ─────────────────────────────────────────────────────────────────────────────
+
+`;
+                if (getValue('businessUnit')) output += `BUSINESS UNIT: ${getValue('businessUnit')}\n`;
+                if (getValue('requestedBy')) output += `REQUESTED BY: ${getValue('requestedBy')}\n`;
+            }
+
+            // Links
+            if (getValue('relatedFeature') || getValue('epicId') || getValue('relatedBugs')) {
+                output += `
+# ─────────────────────────────────────────────────────────────────────────────
+#                            🔗 LINKED WORK ITEMS
+# ─────────────────────────────────────────────────────────────────────────────
+
+`;
+                if (getValue('relatedFeature')) output += `RELATED FEATURE: ${getValue('relatedFeature')}\n`;
+                if (getValue('epicId')) output += `EPIC: ${getValue('epicId')}\n`;
+                if (getValue('relatedBugs')) output += `RELATED BUGS: ${getValue('relatedBugs')}\n`;
+            }
+
+            // Automation
+            if (getValue('qaTester') || getValue('assignedTo') || getValue('automationEngineer')) {
+                output += `
+# ─────────────────────────────────────────────────────────────────────────────
+#                            🤖 AUTOMATION & ASSIGNMENT
+# ─────────────────────────────────────────────────────────────────────────────
+
+`;
+                if (getValue('qaTester')) output += `QA TESTER: ${getValue('qaTester')}\n`;
+                if (getValue('assignedTo')) output += `ASSIGNED TO: ${getValue('assignedTo')}\n`;
+                if (getValue('foundByAutomation') && getValue('foundByAutomation') !== 'No') {
+                    output += `FOUND BY AUTOMATION: ${getValue('foundByAutomation')}\n`;
+                }
+                if (getValue('automationStatus') && getValue('automationStatus') !== 'Not Automated') {
+                    output += `AUTOMATION STATUS: ${getValue('automationStatus')}\n`;
+                }
+                if (getValue('automationEngineer')) output += `AUTOMATION ENGINEER: ${getValue('automationEngineer')}\n`;
+            }
+
+            output += `
+# ═══════════════════════════════════════════════════════════════════════════════
+#                                    END OF BUG REPORT
+# ═══════════════════════════════════════════════════════════════════════════════
+`;
+
+            document.getElementById('outputBox').textContent = output;
+            document.getElementById('outputModal').classList.add('show');
+        }
+        
+        // Copy to clipboard
+        function copyToClipboard() {
+            const text = document.getElementById('outputBox').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('✅', 'Copied to clipboard!', 'success');
+            });
+        }
+        
+        // Download as file
+        function downloadAsFile() {
+            const text = document.getElementById('outputBox').textContent;
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            
+            const title = document.getElementById('title').value || 'bug-report';
+            const filename = title.replace(/[^a-z0-9]/gi, '-').toLowerCase() + '.txt';
+            
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showToast('💾', 'Downloaded ' + filename, 'success');
+        }
+        
+        // Close modal
+        function closeModal() {
+            document.getElementById('outputModal').classList.remove('show');
+        }
+        
+        // Reset form
+        function resetForm() {
+            if (confirm('Are you sure you want to reset all fields?')) {
+                document.querySelectorAll('input, select, textarea').forEach(el => {
+                    if (el.tagName === 'SELECT') {
+                        el.selectedIndex = 0;
+                    } else {
+                        el.value = '';
+                    }
+                    el.classList.remove('valid', 'error');
+                });
+                
+                // Reset project number default
+                document.getElementById('projectNumber').value = '28';
+                
+                // Reset steps to 3
+                const stepsList = document.getElementById('stepsList');
+                stepsList.innerHTML = `
+                    <div class="step-item">
+                        <div class="step-number">1</div>
+                        <input type="text" class="step-input" placeholder="Navigate to..." data-step="1">
+                        <button type="button" class="step-remove" onclick="removeStep(this)">×</button>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">2</div>
+                        <input type="text" class="step-input" placeholder="Enter..." data-step="2">
+                        <button type="button" class="step-remove" onclick="removeStep(this)">×</button>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">3</div>
+                        <input type="text" class="step-input" placeholder="Click..." data-step="3">
+                        <button type="button" class="step-remove" onclick="removeStep(this)">×</button>
+                    </div>
+                `;
+                
+                // Re-add listeners
+                document.querySelectorAll('.step-input').forEach(el => {
+                    el.addEventListener('input', updateProgress);
+                });
+                
+                updateProgress();
+                showToast('🔄', 'Form reset!', 'success');
+            }
+        }
+        
+        // Show toast
+        function showToast(icon, message, type) {
+            const toast = document.getElementById('toast');
+            const toastIcon = document.getElementById('toastIcon');
+            const toastMessage = document.getElementById('toastMessage');
+            
+            toastIcon.textContent = icon;
+            toastMessage.textContent = message;
+            toast.className = 'toast ' + type + ' show';
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Close modal on escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+        
+        // Close modal on backdrop click
+        document.getElementById('outputModal').addEventListener('click', (e) => {
+            if (e.target.id === 'outputModal') {
+                closeModal();
+            }
+        });
+    </script>
+
+    <!-- Footer Section -->
+    <style>
+        @keyframes borderGlow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .animated-border-box {
+            position: relative;
+            max-width: 650px;
+            margin: 0 auto;
+            padding: 3px;
+            border-radius: 16px;
+            background: linear-gradient(90deg, #003366, #F7941D, #003366, #F7941D, #003366);
+            background-size: 300% 100%;
+            animation: borderGlow 4s ease infinite;
+        }
+        
+        .animated-border-content {
+            background: #0f0f1a;
+            border-radius: 14px;
+            padding: 24px;
+        }
+    </style>
+    
+    <footer style="
+        margin-top: 40px;
+        padding: 30px 20px 120px;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+        border-top: 1px solid #333;
+        text-align: center;
+        font-size: 12px;
+        color: #888;
+    ">
+        <!-- Confidentiality Notice -->
+        <div style="
+            max-width: 800px;
+            margin: 0 auto 30px;
+            padding: 15px 20px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            color: #f87171;
+        ">
+            <span style="font-size: 14px;">🔒</span>
+            <strong>CONFIDENTIAL</strong> — This document and form are proprietary to Axos Bank. 
+            Do not copy, distribute, or share outside the organization without authorization.
+        </div>
+
+        <!-- Credits Section with Animated Border -->
+        <div class="animated-border-box">
+            <div class="animated-border-content">
+                <div style="font-size: 13px; color: #666; margin-bottom: 8px; letter-spacing: 2px; text-transform: uppercase;">
+                    Powered by
+                </div>
+                <div style="font-size: 22px; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap;">
+                    <span style="color: #F7941D; font-weight: 700;">QCoE</span>
+                    <span style="color: #444; font-size: 18px;">×</span>
+                    <span style="background: linear-gradient(90deg, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 600;">Cursor AI</span>
+                    <span style="color: #444; font-size: 18px;">×</span>
+                    <span style="color: #003366; font-weight: 600;">Human Intelligence</span>
+                </div>
+                <div style="
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: center; 
+                    gap: 8px; 
+                    padding: 12px 20px; 
+                    background: rgba(0, 51, 102, 0.2); 
+                    border-radius: 8px;
+                    margin-bottom: 16px;
+                ">
+                    <span style="font-size: 20px;">🤖</span>
+                    <span style="color: #888;">Silicon precision</span>
+                    <span style="color: #F7941D; font-size: 16px;">+</span>
+                    <span style="font-size: 20px;">🦍</span>
+                    <span style="color: #888;">Primal instincts</span>
+                    <span style="color: #F7941D; font-size: 16px;">=</span>
+                    <span style="font-size: 20px;">🐛💀</span>
+                </div>
+                <div style="font-style: italic; color: #555; font-size: 12px; line-height: 1.5;">
+                    "Teaching machines to report bugs so humans can drink more coffee" ☕
+                </div>
+            </div>
+        </div>
+
+        <!-- Copyright -->
+        <div style="margin-top: 24px; color: #555; font-size: 11px;">
+            © 2025-2026 Axos Bank. All rights reserved. | QCoE Bug Report Form v2.0
+        </div>
+    </footer>
+</body>
+</html>
+
