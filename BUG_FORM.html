@@ -1597,6 +1597,9 @@ File the following bug in Azure DevOps:
                 <button class="btn btn-secondary" onclick="resetForm()">
                     🔄 Reset
                 </button>
+                <button class="btn btn-secondary" onclick="openImportModal()" style="background: rgba(96, 165, 250, 0.1); border-color: rgba(96, 165, 250, 0.3); color: #60a5fa;">
+                    📥 Import Form
+                </button>
                 <button class="btn btn-primary" onclick="generateOutput()" id="generateBtn">
                     📋 Generate Bug Report
                 </button>
@@ -1632,6 +1635,58 @@ File the following bug in Azure DevOps:
                 <button class="btn btn-secondary" onclick="closeModal()">Close</button>
                 <button class="btn btn-primary" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
                 <button class="btn btn-orange" onclick="downloadAsFile()">💾 Download .txt</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Import Modal -->
+    <div class="modal-overlay" id="importModal">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <div class="modal-title">
+                    📥 Import Bug Report
+                </div>
+                <button class="modal-close" onclick="closeImportModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div style="background: linear-gradient(135deg, rgba(96, 165, 250, 0.15) 0%, rgba(30, 56, 96, 0.2) 100%); border: 1px solid rgba(96, 165, 250, 0.4); border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 14px;">
+                    <span style="font-size: 24px;">💡</span>
+                    <div>
+                        <p style="color: #60a5fa; font-weight: 700; margin-bottom: 8px; font-size: 14px;">How to Import</p>
+                        <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.6;">
+                            Paste a previously generated bug report below, or drag & drop a .txt file. The form fields will be automatically filled based on the content.
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Drop Zone -->
+                <div id="importDropZone" style="border: 2px dashed rgba(96, 165, 250, 0.4); border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 16px; transition: all 0.3s ease; cursor: pointer;" 
+                     ondragover="handleDragOver(event)" 
+                     ondragleave="handleDragLeave(event)" 
+                     ondrop="handleFileDrop(event)"
+                     onclick="document.getElementById('importFileInput').click()">
+                    <div style="font-size: 40px; margin-bottom: 12px;">📄</div>
+                    <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 8px;">Drag & drop a .txt file here</p>
+                    <p style="color: var(--text-muted); font-size: 12px;">or click to browse</p>
+                    <input type="file" id="importFileInput" accept=".txt" style="display: none;" onchange="handleFileSelect(event)">
+                </div>
+                
+                <!-- Or Separator -->
+                <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
+                    <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+                    <span style="color: var(--text-muted); font-size: 12px; font-weight: 600;">OR PASTE BELOW</span>
+                    <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+                </div>
+                
+                <!-- Paste Area -->
+                <textarea id="importTextArea" placeholder="Paste the generated bug report here..." style="width: 100%; min-height: 250px; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.6; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; color: var(--text-primary); resize: vertical;"></textarea>
+                
+                <!-- Import Status -->
+                <div id="importStatus" style="display: none; margin-top: 12px; padding: 12px 16px; border-radius: 8px; font-size: 13px;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeImportModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="processImport()" style="background: linear-gradient(135deg, #60a5fa, #3b82f6);">📥 Import & Fill Form</button>
             </div>
         </div>
     </div>
@@ -2411,10 +2466,11 @@ ${getValue('actualResult')}
             }, 3000);
         }
         
-        // Close modal on escape
+        // Close modals on escape
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 closeModal();
+                closeImportModal();
             }
         });
         
@@ -2424,6 +2480,555 @@ ${getValue('actualResult')}
                 closeModal();
             }
         });
+        
+        // Close import modal on backdrop click
+        document.getElementById('importModal').addEventListener('click', (e) => {
+            if (e.target.id === 'importModal') {
+                closeImportModal();
+            }
+        });
+        
+        // ============================================
+        // IMPORT FUNCTIONALITY
+        // ============================================
+        
+        function openImportModal() {
+            document.getElementById('importTextArea').value = '';
+            document.getElementById('importStatus').style.display = 'none';
+            document.getElementById('importModal').classList.add('show');
+        }
+        
+        function closeImportModal() {
+            document.getElementById('importModal').classList.remove('show');
+        }
+        
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.style.borderColor = '#60a5fa';
+            e.currentTarget.style.background = 'rgba(96, 165, 250, 0.1)';
+        }
+        
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.currentTarget.style.borderColor = 'rgba(96, 165, 250, 0.4)';
+            e.currentTarget.style.background = 'transparent';
+        }
+        
+        function handleFileDrop(e) {
+            e.preventDefault();
+            handleDragLeave(e);
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                readFile(files[0]);
+            }
+        }
+        
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                readFile(files[0]);
+            }
+        }
+        
+        function readFile(file) {
+            if (!file.name.endsWith('.txt')) {
+                showImportStatus('error', '❌ Please select a .txt file');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('importTextArea').value = e.target.result;
+                showImportStatus('success', '✅ File loaded! Click "Import & Fill Form" to continue.');
+            };
+            reader.onerror = function() {
+                showImportStatus('error', '❌ Failed to read file');
+            };
+            reader.readAsText(file);
+        }
+        
+        function showImportStatus(type, message) {
+            const status = document.getElementById('importStatus');
+            status.style.display = 'block';
+            status.textContent = message;
+            if (type === 'success') {
+                status.style.background = 'rgba(16, 185, 129, 0.1)';
+                status.style.border = '1px solid rgba(16, 185, 129, 0.3)';
+                status.style.color = '#10b981';
+            } else if (type === 'error') {
+                status.style.background = 'rgba(239, 68, 68, 0.1)';
+                status.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+                status.style.color = '#ef4444';
+            } else {
+                status.style.background = 'rgba(96, 165, 250, 0.1)';
+                status.style.border = '1px solid rgba(96, 165, 250, 0.3)';
+                status.style.color = '#60a5fa';
+            }
+        }
+        
+        function processImport() {
+            const text = document.getElementById('importTextArea').value.trim();
+            if (!text) {
+                showImportStatus('error', '❌ Please paste or drop a bug report first');
+                return;
+            }
+            
+            const parsed = parseBugReport(text);
+            if (parsed.fieldsFound === 0) {
+                showImportStatus('error', '❌ Could not parse any fields from the input');
+                return;
+            }
+            
+            fillFormFromParsed(parsed);
+            closeImportModal();
+            showToast(`✅ Imported ${parsed.fieldsFound} fields successfully!`);
+            updateProgress();
+        }
+        
+        function parseBugReport(text) {
+            const result = {
+                fieldsFound: 0
+            };
+            
+            // Helper to extract value after a label
+            const extractValue = (label, multiline = false) => {
+                const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                let regex;
+                if (multiline) {
+                    // For multiline, capture until next section header or end
+                    regex = new RegExp(`${escapedLabel}:\\s*([\\s\\S]*?)(?=\\n(?:[A-Z][A-Z\\s]+:|#\\s*[─═]|📎|$))`, 'i');
+                } else {
+                    regex = new RegExp(`${escapedLabel}:\\s*(.+?)(?:\\n|$)`, 'i');
+                }
+                const match = text.match(regex);
+                return match ? match[1].trim() : null;
+            };
+            
+            // Parse PROJECT
+            const project = extractValue('PROJECT');
+            if (project) {
+                result.project = project;
+                result.fieldsFound++;
+            }
+            
+            // Parse TITLE - extract just the description part after prefix
+            const title = extractValue('TITLE');
+            if (title) {
+                // Try to extract just the description after "## - ENV - App - "
+                const titleMatch = title.match(/^\d+\s*-\s*[^-]+\s*-\s*[^-]+\s*-\s*(.+)$/);
+                if (titleMatch) {
+                    result.titleDescription = titleMatch[1].trim();
+                } else {
+                    result.titleDescription = title;
+                }
+                result.fieldsFound++;
+            }
+            
+            // Parse PROJECT NUMBER
+            const projectNumber = extractValue('PROJECT NUMBER');
+            if (projectNumber) {
+                result.projectNumber = projectNumber;
+                result.fieldsFound++;
+            }
+            
+            // Parse PARENT WORK ITEM
+            const parentWorkItem = extractValue('PARENT WORK ITEM');
+            if (parentWorkItem) {
+                result.parentWorkItem = parentWorkItem;
+                result.fieldsFound++;
+            }
+            
+            // Parse DESCRIPTION
+            const description = extractValue('DESCRIPTION');
+            if (description) {
+                result.description = description;
+                result.fieldsFound++;
+            }
+            
+            // Parse ENVIRONMENT
+            const environment = extractValue('ENVIRONMENT');
+            if (environment) {
+                result.environment = environment;
+                result.fieldsFound++;
+            }
+            
+            // Parse APPLICATION TYPE
+            const appType = extractValue('APPLICATION TYPE');
+            if (appType) {
+                result.appType = appType;
+                result.fieldsFound++;
+            }
+            
+            // Parse ENVIRONMENT URL
+            const envUrl = extractValue('ENVIRONMENT URL');
+            if (envUrl) {
+                result.envUrl = envUrl;
+                result.fieldsFound++;
+            }
+            
+            // Parse TEST DATA section
+            const testDataMatch = text.match(/TEST DATA:\s*([\s\S]*?)(?=\n#|STEPS TO REPRODUCE)/i);
+            if (testDataMatch) {
+                const testData = testDataMatch[1];
+                
+                // Extract username
+                const usernameMatch = testData.match(/Username:\s*(.+?)(?:\n|$)/i);
+                if (usernameMatch) {
+                    result.username = usernameMatch[1].trim();
+                    result.fieldsFound++;
+                }
+                
+                // Extract password
+                const passwordMatch = testData.match(/Password:\s*(.+?)(?:\n|$)/i);
+                if (passwordMatch) {
+                    result.password = passwordMatch[1].trim();
+                    result.fieldsFound++;
+                }
+                
+                // Extract additional test data (anything else after username/password)
+                const additionalLines = testData.split('\n').filter(line => {
+                    const trimmed = line.trim();
+                    return trimmed && 
+                           !trimmed.startsWith('-') &&
+                           !trimmed.toLowerCase().includes('username:') && 
+                           !trimmed.toLowerCase().includes('password:');
+                });
+                if (additionalLines.length > 0) {
+                    result.additionalTestData = additionalLines.join('\n');
+                }
+            }
+            
+            // Parse STEPS TO REPRODUCE
+            const stepsMatch = text.match(/STEPS TO REPRODUCE:\s*([\s\S]*?)(?=\n#|EXPECTED RESULT)/i);
+            if (stepsMatch) {
+                const stepsText = stepsMatch[1].trim();
+                const steps = stepsText.split('\n')
+                    .map(line => line.replace(/^\d+\.\s*/, '').trim())
+                    .filter(line => line.length > 0);
+                if (steps.length > 0) {
+                    result.steps = steps;
+                    result.fieldsFound++;
+                }
+            }
+            
+            // Parse EXPECTED RESULT
+            const expectedMatch = text.match(/EXPECTED RESULT:\s*([\s\S]*?)(?=\nACTUAL RESULT|$)/i);
+            if (expectedMatch) {
+                result.expectedResult = expectedMatch[1].trim().replace(/\n+/g, '\n');
+                result.fieldsFound++;
+            }
+            
+            // Parse ACTUAL RESULT
+            const actualMatch = text.match(/ACTUAL RESULT:\s*([\s\S]*?)(?=\n📎|#\s*═|$)/i);
+            if (actualMatch) {
+                result.actualResult = actualMatch[1].trim().replace(/\n+/g, '\n');
+                result.fieldsFound++;
+            }
+            
+            // Parse PRIORITY
+            const priority = extractValue('PRIORITY');
+            if (priority) {
+                const priorityNum = priority.match(/(\d)/);
+                if (priorityNum) {
+                    result.priority = priorityNum[1];
+                    result.fieldsFound++;
+                }
+            }
+            
+            // Parse SEVERITY
+            const severity = extractValue('SEVERITY');
+            if (severity) {
+                result.severity = severity;
+                result.fieldsFound++;
+            }
+            
+            // Parse TAGS
+            const tags = extractValue('TAGS');
+            if (tags) {
+                result.tags = tags;
+                result.fieldsFound++;
+            }
+            
+            // Parse BROWSER
+            const browser = extractValue('BROWSER');
+            if (browser) {
+                result.browser = browser;
+                result.fieldsFound++;
+            }
+            
+            // Parse WEB VERSION
+            const webVersion = extractValue('WEB VERSION');
+            if (webVersion) {
+                result.webVersion = webVersion;
+                result.fieldsFound++;
+            }
+            
+            // Parse DEVICE
+            const device = extractValue('DEVICE');
+            if (device) {
+                result.device = device;
+                result.fieldsFound++;
+            }
+            
+            // Parse MOBILE APP VERSION
+            const mobileVersion = extractValue('MOBILE APP VERSION');
+            if (mobileVersion) {
+                result.mobileAppVersion = mobileVersion;
+                result.fieldsFound++;
+            }
+            
+            // Parse SYSTEM
+            const system = extractValue('SYSTEM');
+            if (system) {
+                result.system = system;
+                result.fieldsFound++;
+            }
+            
+            // Parse FUNCTIONAL AREA
+            const functionalArea = extractValue('FUNCTIONAL AREA');
+            if (functionalArea) {
+                result.functionalArea = functionalArea;
+                result.fieldsFound++;
+            }
+            
+            // Parse QA TESTER
+            const qaTester = extractValue('QA TESTER');
+            if (qaTester) {
+                result.qaTester = qaTester;
+                result.fieldsFound++;
+            }
+            
+            // Parse ASSIGNED TO
+            const assignedTo = extractValue('ASSIGNED TO');
+            if (assignedTo) {
+                result.assignedTo = assignedTo;
+                result.fieldsFound++;
+            }
+            
+            // Parse RELATED FEATURE
+            const relatedFeature = extractValue('RELATED FEATURE');
+            if (relatedFeature) {
+                result.relatedFeature = relatedFeature;
+                result.fieldsFound++;
+            }
+            
+            // Parse RELATED EPIC
+            const epicId = extractValue('RELATED EPIC');
+            if (epicId) {
+                result.epicId = epicId;
+                result.fieldsFound++;
+            }
+            
+            // Parse RELATED BUGS
+            const relatedBugs = extractValue('RELATED BUGS');
+            if (relatedBugs) {
+                result.relatedBugs = relatedBugs;
+                result.fieldsFound++;
+            }
+            
+            return result;
+        }
+        
+        function fillFormFromParsed(parsed) {
+            // Helper to set select value
+            const setSelectValue = (id, value) => {
+                const select = document.getElementById(id);
+                if (!select || !value) return false;
+                
+                // Try exact match first
+                for (let i = 0; i < select.options.length; i++) {
+                    if (select.options[i].value === value || 
+                        select.options[i].value.toLowerCase() === value.toLowerCase() ||
+                        select.options[i].text.toLowerCase() === value.toLowerCase()) {
+                        select.selectedIndex = i;
+                        return true;
+                    }
+                }
+                
+                // Try partial match
+                const valueLower = value.toLowerCase();
+                for (let i = 0; i < select.options.length; i++) {
+                    if (select.options[i].value.toLowerCase().includes(valueLower) ||
+                        select.options[i].text.toLowerCase().includes(valueLower)) {
+                        select.selectedIndex = i;
+                        return true;
+                    }
+                }
+                
+                return false;
+            };
+            
+            // Helper to set input value
+            const setInputValue = (id, value) => {
+                const input = document.getElementById(id);
+                if (input && value) {
+                    input.value = value;
+                    return true;
+                }
+                return false;
+            };
+            
+            // Fill PROJECT
+            if (parsed.project) {
+                setSelectValue('project', parsed.project);
+            }
+            
+            // Fill PROJECT NUMBER
+            if (parsed.projectNumber) {
+                setInputValue('projectNumber', parsed.projectNumber);
+            }
+            
+            // Fill PARENT WORK ITEM
+            if (parsed.parentWorkItem) {
+                setInputValue('parentWorkItem', parsed.parentWorkItem);
+                parseParentWorkItem();
+            }
+            
+            // Fill ENVIRONMENT
+            if (parsed.environment) {
+                setSelectValue('environment', parsed.environment);
+            }
+            
+            // Fill APP TYPE
+            if (parsed.appType) {
+                setSelectValue('appType', parsed.appType);
+            }
+            
+            // Update title prefix after setting project, env, appType
+            updateTitlePrefix();
+            
+            // Fill TITLE DESCRIPTION
+            if (parsed.titleDescription) {
+                setInputValue('titleDescription', parsed.titleDescription);
+                updateFullTitle();
+            }
+            
+            // Fill DESCRIPTION
+            if (parsed.description) {
+                setInputValue('description', parsed.description);
+            }
+            
+            // Fill ENVIRONMENT URL
+            if (parsed.envUrl) {
+                setInputValue('envUrl', parsed.envUrl);
+            }
+            
+            // Fill TEST DATA
+            if (parsed.username) {
+                setInputValue('username', parsed.username);
+            }
+            if (parsed.password) {
+                setInputValue('password', parsed.password);
+            }
+            if (parsed.additionalTestData) {
+                setInputValue('additionalTestData', parsed.additionalTestData);
+            }
+            
+            // Fill STEPS
+            if (parsed.steps && parsed.steps.length > 0) {
+                const stepsList = document.getElementById('stepsList');
+                stepsList.innerHTML = '';
+                
+                parsed.steps.forEach((step, index) => {
+                    const stepHtml = `
+                        <div class="step-item">
+                            <div class="step-number">${index + 1}</div>
+                            <input type="text" class="step-input" placeholder="Step ${index + 1}..." data-step="${index + 1}" value="${escapeHtml(step)}">
+                            <button type="button" class="step-remove" onclick="removeStep(this)">×</button>
+                        </div>
+                    `;
+                    stepsList.insertAdjacentHTML('beforeend', stepHtml);
+                });
+            }
+            
+            // Fill EXPECTED RESULT
+            if (parsed.expectedResult) {
+                setInputValue('expectedResult', parsed.expectedResult);
+            }
+            
+            // Fill ACTUAL RESULT
+            if (parsed.actualResult) {
+                setInputValue('actualResult', parsed.actualResult);
+            }
+            
+            // Fill PRIORITY
+            if (parsed.priority) {
+                setSelectValue('priority', parsed.priority);
+            }
+            
+            // Fill SEVERITY
+            if (parsed.severity) {
+                setSelectValue('severity', parsed.severity);
+            }
+            
+            // Fill TAGS
+            if (parsed.tags) {
+                setInputValue('tags', parsed.tags);
+            }
+            
+            // Fill BROWSER
+            if (parsed.browser) {
+                setInputValue('browser', parsed.browser);
+            }
+            
+            // Fill WEB VERSION
+            if (parsed.webVersion) {
+                setInputValue('webVersion', parsed.webVersion);
+            }
+            
+            // Fill DEVICE
+            if (parsed.device) {
+                setInputValue('device', parsed.device);
+            }
+            
+            // Fill MOBILE APP VERSION
+            if (parsed.mobileAppVersion) {
+                setInputValue('mobileAppVersion', parsed.mobileAppVersion);
+            }
+            
+            // Fill SYSTEM
+            if (parsed.system) {
+                setSelectValue('system', parsed.system);
+            }
+            
+            // Fill FUNCTIONAL AREA
+            if (parsed.functionalArea) {
+                setSelectValue('functionalArea', parsed.functionalArea);
+            }
+            
+            // Fill QA TESTER
+            if (parsed.qaTester) {
+                setInputValue('qaTester', parsed.qaTester);
+            }
+            
+            // Fill ASSIGNED TO
+            if (parsed.assignedTo) {
+                setInputValue('assignedTo', parsed.assignedTo);
+            }
+            
+            // Fill RELATED FEATURE
+            if (parsed.relatedFeature) {
+                setInputValue('relatedFeature', parsed.relatedFeature);
+            }
+            
+            // Fill EPIC ID
+            if (parsed.epicId) {
+                setInputValue('epicId', parsed.epicId);
+            }
+            
+            // Fill RELATED BUGS
+            if (parsed.relatedBugs) {
+                setInputValue('relatedBugs', parsed.relatedBugs);
+            }
+        }
+        
+        // Helper function to escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
     </script>
 
     <!-- Footer Section -->

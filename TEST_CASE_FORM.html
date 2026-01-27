@@ -1020,6 +1020,9 @@
                 <button class="btn btn-secondary" onclick="resetForm()">
                     🔄 Reset
                 </button>
+                <button class="btn btn-secondary" onclick="openImportModal()" style="background: rgba(96, 165, 250, 0.1); border-color: rgba(96, 165, 250, 0.3); color: #60a5fa;">
+                    📥 Import Form
+                </button>
                 <button class="btn btn-primary" onclick="generateCommand()" id="generateBtn">
                     📋 Copy Request
                 </button>
@@ -1054,6 +1057,58 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeModal()">Close</button>
                 <button class="btn btn-primary" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Import Modal -->
+    <div class="modal-overlay" id="importModal">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <div class="modal-title">
+                    📥 Import Test Case Form
+                </div>
+                <button class="modal-close" onclick="closeImportModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div style="background: linear-gradient(135deg, rgba(96, 165, 250, 0.15) 0%, rgba(30, 56, 96, 0.2) 100%); border: 1px solid rgba(96, 165, 250, 0.4); border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 14px;">
+                    <span style="font-size: 24px;">💡</span>
+                    <div>
+                        <p style="color: #60a5fa; font-weight: 700; margin-bottom: 8px; font-size: 14px;">How to Import</p>
+                        <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.6;">
+                            Paste a previously generated test case request below, or drag & drop a .txt file. The form fields will be automatically filled based on the content.
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Drop Zone -->
+                <div id="importDropZone" style="border: 2px dashed rgba(96, 165, 250, 0.4); border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 16px; transition: all 0.3s ease; cursor: pointer;" 
+                     ondragover="handleDragOver(event)" 
+                     ondragleave="handleDragLeave(event)" 
+                     ondrop="handleFileDrop(event)"
+                     onclick="document.getElementById('importFileInput').click()">
+                    <div style="font-size: 40px; margin-bottom: 12px;">📄</div>
+                    <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 8px;">Drag & drop a .txt file here</p>
+                    <p style="color: var(--text-muted); font-size: 12px;">or click to browse</p>
+                    <input type="file" id="importFileInput" accept=".txt" style="display: none;" onchange="handleFileSelect(event)">
+                </div>
+                
+                <!-- Or Separator -->
+                <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
+                    <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+                    <span style="color: var(--text-muted); font-size: 12px; font-weight: 600;">OR PASTE BELOW</span>
+                    <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+                </div>
+                
+                <!-- Paste Area -->
+                <textarea id="importTextArea" placeholder="Paste the generated test case request here..." style="width: 100%; min-height: 250px; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.6; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; color: var(--text-primary); resize: vertical;"></textarea>
+                
+                <!-- Import Status -->
+                <div id="importStatus" style="display: none; margin-top: 12px; padding: 12px 16px; border-radius: 8px; font-size: 13px;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeImportModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="processImport()" style="background: linear-gradient(135deg, #60a5fa, #3b82f6);">📥 Import & Fill Form</button>
             </div>
         </div>
     </div>
@@ -1423,10 +1478,11 @@ Generate test cases for PBI ${pbiUrl}`;
             }, 3000);
         }
         
-        // Close modal on escape
+        // Close modals on escape
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 closeModal();
+                closeImportModal();
             }
         });
         
@@ -1436,6 +1492,170 @@ Generate test cases for PBI ${pbiUrl}`;
                 closeModal();
             }
         });
+        
+        // Close import modal on backdrop click
+        document.getElementById('importModal').addEventListener('click', (e) => {
+            if (e.target.id === 'importModal') {
+                closeImportModal();
+            }
+        });
+        
+        // ============================================
+        // IMPORT FUNCTIONALITY
+        // ============================================
+        
+        function openImportModal() {
+            document.getElementById('importTextArea').value = '';
+            document.getElementById('importStatus').style.display = 'none';
+            document.getElementById('importModal').classList.add('show');
+        }
+        
+        function closeImportModal() {
+            document.getElementById('importModal').classList.remove('show');
+        }
+        
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.style.borderColor = '#60a5fa';
+            e.currentTarget.style.background = 'rgba(96, 165, 250, 0.1)';
+        }
+        
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.currentTarget.style.borderColor = 'rgba(96, 165, 250, 0.4)';
+            e.currentTarget.style.background = 'transparent';
+        }
+        
+        function handleFileDrop(e) {
+            e.preventDefault();
+            handleDragLeave(e);
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                readFile(files[0]);
+            }
+        }
+        
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                readFile(files[0]);
+            }
+        }
+        
+        function readFile(file) {
+            if (!file.name.endsWith('.txt')) {
+                showImportStatus('error', '❌ Please select a .txt file');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('importTextArea').value = e.target.result;
+                showImportStatus('success', '✅ File loaded! Click "Import & Fill Form" to continue.');
+            };
+            reader.onerror = function() {
+                showImportStatus('error', '❌ Failed to read file');
+            };
+            reader.readAsText(file);
+        }
+        
+        function showImportStatus(type, message) {
+            const status = document.getElementById('importStatus');
+            status.style.display = 'block';
+            status.textContent = message;
+            if (type === 'success') {
+                status.style.background = 'rgba(16, 185, 129, 0.1)';
+                status.style.border = '1px solid rgba(16, 185, 129, 0.3)';
+                status.style.color = '#10b981';
+            } else if (type === 'error') {
+                status.style.background = 'rgba(239, 68, 68, 0.1)';
+                status.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+                status.style.color = '#ef4444';
+            } else {
+                status.style.background = 'rgba(96, 165, 250, 0.1)';
+                status.style.border = '1px solid rgba(96, 165, 250, 0.3)';
+                status.style.color = '#60a5fa';
+            }
+        }
+        
+        function processImport() {
+            const text = document.getElementById('importTextArea').value.trim();
+            if (!text) {
+                showImportStatus('error', '❌ Please paste or drop a test case request first');
+                return;
+            }
+            
+            const parsed = parseTestCaseRequest(text);
+            if (parsed.fieldsFound === 0) {
+                showImportStatus('error', '❌ Could not parse any fields from the input');
+                return;
+            }
+            
+            fillFormFromParsed(parsed);
+            closeImportModal();
+            showToast('✅', `Imported ${parsed.fieldsFound} fields successfully!`, 'success');
+            updateCommandPreview();
+        }
+        
+        function parseTestCaseRequest(text) {
+            const result = {
+                fieldsFound: 0
+            };
+            
+            // Parse PBI URL - look for "Generate test cases for PBI <url>"
+            const pbiMatch = text.match(/Generate test cases for PBI\s+(https?:\/\/[^\s]+)/i);
+            if (pbiMatch) {
+                result.pbiUrl = pbiMatch[1];
+                result.fieldsFound++;
+            }
+            
+            // Parse existing task URL - look for "link to existing task: <url>"
+            const existingTaskMatch = text.match(/link to existing task:\s*(https?:\/\/[^\s]+)/i);
+            if (existingTaskMatch) {
+                result.existingTaskUrl = existingTaskMatch[1];
+                result.isExistingTask = true;
+                result.fieldsFound++;
+            }
+            
+            // Parse parent URL - look for "create test case creation task with parent: <url>"
+            const parentMatch = text.match(/create test case creation task with parent:\s*(https?:\/\/[^\s]+)/i);
+            if (parentMatch) {
+                result.parentUrl = parentMatch[1];
+                result.isExistingTask = false;
+                result.fieldsFound++;
+            }
+            
+            // Parse test plan URL - look for "add to test plan: <url>"
+            const testPlanMatch = text.match(/add to test plan:\s*(https?:\/\/[^\s]+)/i);
+            if (testPlanMatch) {
+                result.testPlanUrl = testPlanMatch[1];
+                result.fieldsFound++;
+            }
+            
+            return result;
+        }
+        
+        function fillFormFromParsed(parsed) {
+            // Fill PBI URL
+            if (parsed.pbiUrl) {
+                document.getElementById('pbiId').value = parsed.pbiUrl;
+            }
+            
+            // Handle task option
+            if (parsed.isExistingTask === true && parsed.existingTaskUrl) {
+                selectTaskOption('existing');
+                document.getElementById('existingTaskUrl').value = parsed.existingTaskUrl;
+            } else if (parsed.isExistingTask === false && parsed.parentUrl) {
+                selectTaskOption('create');
+                document.getElementById('parentUrl').value = parsed.parentUrl;
+            }
+            
+            // Fill Test Plan URL
+            if (parsed.testPlanUrl) {
+                document.getElementById('testPlanUrl').value = parsed.testPlanUrl;
+            }
+        }
         
         // Initialize
         updateCommandPreview();
