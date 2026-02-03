@@ -1,0 +1,3369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Core Services API Tracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --axos-orange: #FAA74A;
+            --axos-orange-light: #FFF4E6;
+            --axos-orange-dark: #E8922E;
+            --axos-navy: #1E3860;
+            --axos-navy-light: #2A4A7A;
+            --axos-navy-dark: #152844;
+            --api-blue: #3b82f6;
+            --api-blue-light: #dbeafe;
+            --gradient-orange: linear-gradient(135deg, #FAA74A 0%, #F7931E 100%);
+            --gradient-navy: linear-gradient(135deg, #1E3860 0%, #2A4A7A 100%);
+            --shadow-sm: 0 2px 4px rgba(30, 56, 96, 0.08);
+            --shadow-md: 0 4px 12px rgba(30, 56, 96, 0.12);
+            --shadow-lg: 0 8px 24px rgba(30, 56, 96, 0.16);
+            --shadow-glow: 0 0 20px rgba(250, 167, 74, 0.3);
+            
+            /* Status colors */
+            --status-not-started: #94a3b8;
+            --status-in-progress: #3b82f6;
+            --status-blocked: #ef4444;
+            --status-completed: #10b981;
+            --status-testing: #f59e0b;
+        }
+        
+        * { box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            padding: 0; 
+            margin: 0; 
+            line-height: 1.6; 
+            background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+            min-height: 100vh;
+        }
+        
+        .page-header {
+            background: var(--gradient-navy);
+            padding: 40px 24px;
+            margin-bottom: 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .page-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(250, 167, 74, 0.2) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        
+        .page-header h1 {
+            color: white;
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .page-header h1 span {
+            color: var(--axos-orange);
+        }
+        
+        .page-header p {
+            color: rgba(255,255,255,0.8);
+            margin: 8px 0 0 0;
+            font-size: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .main-layout {
+            display: flex;
+            gap: 24px;
+            padding: 24px;
+            margin-top: -20px;
+        }
+        
+        .main-content {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .sidebar {
+            width: 340px;
+            flex-shrink: 0;
+        }
+        
+        .container { 
+            background: white; 
+            padding: 24px; 
+            border-radius: 16px; 
+            box-shadow: var(--shadow-lg);
+            margin-bottom: 24px;
+        }
+        
+        h2 { 
+            color: var(--axos-navy); 
+            font-size: 1.3rem; 
+            font-weight: 700; 
+            display: flex; 
+            align-items: center; 
+            gap: 12px;
+            padding-bottom: 12px;
+            border-bottom: 3px solid var(--axos-orange);
+            margin: 0 0 20px 0;
+        }
+        
+        h3 { 
+            color: var(--axos-navy);
+            font-size: 1rem; 
+            font-weight: 600; 
+            margin: 0 0 16px 0;
+        }
+        
+        /* Controls */
+        .controls { 
+            display: flex; 
+            gap: 12px; 
+            padding: 20px;
+            background: linear-gradient(135deg, var(--axos-navy) 0%, var(--axos-navy-light) 100%);
+            border-radius: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+            box-shadow: var(--shadow-md);
+            margin-bottom: 24px;
+        }
+        
+        .controls button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .controls button:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .btn-primary { background: var(--gradient-orange); color: var(--axos-navy); }
+        .btn-success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; }
+        .btn-warning { background: var(--gradient-orange); color: var(--axos-navy); }
+        .btn-danger { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; }
+        .btn-info { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; }
+        
+        .btn-primary:hover, .btn-success:hover, .btn-warning:hover, .btn-danger:hover, .btn-info:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .save-status {
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-left: auto;
+        }
+        .save-status.saved { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); color: #065f46; }
+        .save-status.unsaved { background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); color: #991b1b; }
+        .save-status.syncing { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); color: #1e40af; animation: pulse 1.5s infinite; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        /* Form Styles */
+        .form-section {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .form-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--axos-navy);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            background: white;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--axos-orange);
+            box-shadow: var(--shadow-glow);
+        }
+        
+        /* Status Badge */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .status-not-started { background: #f1f5f9; color: var(--status-not-started); }
+        .status-in-progress { background: #dbeafe; color: var(--status-in-progress); }
+        .status-blocked { background: #fee2e2; color: var(--status-blocked); }
+        .status-completed { background: #d1fae5; color: var(--status-completed); }
+        .status-testing { background: #fef3c7; color: var(--status-testing); }
+        
+        /* Service Badge */
+        .service-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            background: var(--api-blue-light);
+            color: var(--api-blue);
+        }
+        
+        /* Team Tabs */
+        .team-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .team-tab {
+            padding: 8px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 20px;
+            background: white;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .team-tab:hover {
+            border-color: var(--axos-orange);
+        }
+        
+        .team-tab.active {
+            background: var(--axos-navy);
+            color: white;
+            border-color: var(--axos-navy);
+        }
+        
+        .team-tab .count {
+            background: rgba(255,255,255,0.2);
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: 6px;
+            font-size: 11px;
+        }
+        
+        .team-tab.active .count {
+            background: var(--axos-orange);
+            color: var(--axos-navy);
+        }
+        
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.3s ease;
+            border-left: 4px solid var(--axos-orange);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .stat-card .stat-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--axos-navy);
+        }
+        
+        .stat-card .stat-label {
+            font-size: 11px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+        
+        .stat-card.success { border-left-color: #10b981; }
+        .stat-card.info { border-left-color: #3b82f6; }
+        .stat-card.warning { border-left-color: #f59e0b; }
+        .stat-card.editable { cursor: pointer; border-left-color: var(--axos-orange); }
+        .stat-card.editable:hover { background: var(--axos-orange-light); }
+        
+        /* Progress Bar */
+        .progress-bar-container {
+            background: linear-gradient(90deg, #e2e8f0 0%, #f1f5f9 100%);
+            border-radius: 12px;
+            height: 32px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+            margin: 16px 0;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 12px;
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        
+        .progress-bar-text {
+            position: absolute;
+            right: 12px;
+            top: 7px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #1e293b;
+            text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+        }
+        
+        /* Finish Estimate */
+        .finish-estimate {
+            background: linear-gradient(135deg, var(--axos-navy) 0%, var(--axos-navy-light) 100%);
+            border-radius: 20px;
+            padding: 32px;
+            margin: 24px 0;
+            text-align: center;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .finish-estimate::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(250, 167, 74, 0.2) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        
+        .finish-estimate h3 {
+            margin: 0 0 16px 0;
+            color: white;
+            font-size: 1.25rem;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .finish-estimate .date {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--axos-orange);
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Weekly Tracker Table */
+        .tracker-container { 
+            overflow-x: auto; 
+            margin: 24px 0; 
+            border-radius: 12px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid #e2e8f0;
+        }
+        
+        .tracker-table { 
+            border-collapse: collapse; 
+            min-width: 100%; 
+            white-space: nowrap; 
+        }
+        
+        .tracker-table th, .tracker-table td { 
+            border: 1px solid #e2e8f0; 
+            padding: 8px 12px; 
+            text-align: center; 
+            min-width: 60px;
+            font-size: 12px;
+        }
+        
+        .tracker-table th { 
+            background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%); 
+            font-weight: 600; 
+        }
+        
+        .tracker-table .row-header { 
+            background: linear-gradient(90deg, var(--axos-navy) 0%, var(--axos-navy-light) 100%); 
+            color: white;
+            font-weight: 600; 
+            text-align: left; 
+            position: sticky; 
+            left: 0; 
+            z-index: 1;
+            min-width: 120px;
+            font-size: 11px;
+        }
+        
+        .tracker-table .month-header { 
+            background: var(--gradient-navy); 
+            color: white; 
+            font-weight: 700;
+        }
+        
+        .tracker-table .week-header { 
+            background: linear-gradient(180deg, var(--axos-navy-light) 0%, var(--axos-navy) 100%);
+            color: white;
+            font-size: 11px; 
+        }
+        
+        .editable {
+            background: linear-gradient(135deg, var(--axos-orange-light) 0%, #fff7ed 100%) !important;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+        
+        .editable:hover {
+            background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%) !important;
+            outline: 2px solid var(--axos-orange);
+        }
+        
+        .auto-calc {
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%) !important;
+            font-weight: 600;
+        }
+        
+        .status-cell { font-size: 10px; font-weight: 700; padding: 6px 4px !important; }
+        .status-cell.on-track { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); color: #065f46; }
+        .status-cell.on-risk { background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); color: #991b1b; }
+        .status-cell.ahead { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); color: #1e40af; }
+        .status-cell.future { background: #f1f5f9; color: #94a3b8; }
+        
+        .cumulative-row { background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%) !important; font-weight: 600; }
+        .cumulative-row td { border-top: 3px solid #10b981; }
+        
+        /* Daily Entry Cards */
+        .daily-entry-card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border-left: 4px solid var(--axos-orange);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .daily-entry-card .entry-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .daily-entry-card .entry-date {
+            font-weight: 700;
+            color: var(--axos-navy);
+        }
+        
+        /* Action buttons */
+        .action-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        
+        .action-btn.edit {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+        
+        .action-btn.delete {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        
+        .action-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        /* Day Filter Buttons */
+        .day-filter-btn {
+            padding: 8px 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            transition: all 0.2s ease;
+        }
+        
+        .day-filter-btn:hover {
+            border-color: var(--axos-orange);
+            color: var(--axos-navy);
+        }
+        
+        .day-filter-btn.active {
+            background: var(--axos-navy);
+            color: white;
+            border-color: var(--axos-navy);
+        }
+        
+        .day-filter-btn.today-btn {
+            background: var(--axos-orange-light);
+            border-color: var(--axos-orange);
+            color: var(--axos-navy);
+        }
+        
+        .day-filter-btn.today-btn.active {
+            background: var(--axos-orange);
+        }
+        
+        /* Log Day Section */
+        .log-day-section {
+            margin-bottom: 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .log-day-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            cursor: pointer;
+        }
+        
+        .log-day-header:hover {
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+        }
+        
+        .log-day-header .day-title {
+            font-weight: 700;
+            color: var(--axos-navy);
+            font-size: 14px;
+        }
+        
+        .log-day-header .entry-count {
+            background: var(--axos-orange);
+            color: var(--axos-navy);
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        
+        .log-day-content {
+            padding: 12px;
+            background: white;
+        }
+        
+        .log-day-section.collapsed .log-day-content {
+            display: none;
+        }
+        
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            width: 500px;
+            max-width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-20px);
+            transition: transform 0.3s ease;
+        }
+        
+        .modal-overlay.show .modal {
+            transform: translateY(0);
+        }
+        
+        .modal h3 {
+            margin-top: 0;
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        
+        .modal-actions button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        /* ADO Link */
+        .ado-link {
+            color: var(--api-blue);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .ado-link:hover {
+            text-decoration: underline;
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--axos-navy);
+            border-radius: 4px;
+        }
+        
+        /* Hidden file input */
+        #fileInput {
+            display: none;
+        }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes notificationSlideDown {
+            from { opacity: 0; transform: translate(-50%, -20px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
+        }
+        
+        @keyframes notificationSlideUp {
+            from { opacity: 1; transform: translate(-50%, 0); }
+            to { opacity: 0; transform: translate(-50%, -20px); }
+        }
+        
+        @keyframes popIn {
+            from { opacity: 0; transform: translate(-50%, -30px) scale(0.8); }
+            to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+        }
+        
+        @keyframes popOut {
+            from { opacity: 1; transform: translate(-50%, 0) scale(1); }
+            to { opacity: 0; transform: translate(-50%, -30px) scale(0.8); }
+        }
+        
+        .container {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .main-layout {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="page-header">
+    <h1>🔌 Core Services <span>API Tracker</span></h1>
+    <p><strong>Core Services Team</strong> — API Test Automation Progress | <span id="currentDate"></span></p>
+</div>
+
+<div class="main-layout">
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Controls -->
+        <div class="controls">
+            <button class="btn-success" onclick="saveAllData()">💾 Save</button>
+            <button class="btn-primary" onclick="syncFromCloud()">🔄 Sync</button>
+            <button class="btn-warning" onclick="exportData()">📤 Export</button>
+            <button class="btn-warning" onclick="importData()">📥 Import</button>
+            <span id="saveStatus" class="save-status saved">✓ Saved</span>
+            <span id="syncStatus" style="font-size: 12px; color: #64748b; margin-left: 8px;"></span>
+        </div>
+        
+        <!-- Progress Summary -->
+        <div class="container">
+            <h2>📊 Progress Summary</h2>
+            
+            <div class="stats-grid">
+                <div class="stat-card editable" onclick="editTotalTasks()">
+                    <div class="stat-value" id="totalTasks">1165</div>
+                    <div class="stat-label">Total Tasks ✏️</div>
+                </div>
+                <div class="stat-card success">
+                    <div class="stat-value" id="completedTasks">0</div>
+                    <div class="stat-label">Completed</div>
+                </div>
+                <div class="stat-card info">
+                    <div class="stat-value" id="inProgressTasks">0</div>
+                    <div class="stat-label">In Progress</div>
+                </div>
+                <div class="stat-card warning">
+                    <div class="stat-value" id="remainingTasks">1165</div>
+                    <div class="stat-label">Remaining</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="avgPerWeek">0</div>
+                    <div class="stat-label">Avg/Week</div>
+                </div>
+                <div class="stat-card success">
+                    <div class="stat-value" id="progressPercent">0%</div>
+                    <div class="stat-label">Progress</div>
+                </div>
+            </div>
+            
+            <div class="progress-bar-container">
+                <div class="progress-bar-fill" id="progressBarFill" style="width: 0%;"></div>
+                <span class="progress-bar-text" id="progressBarText">0% Complete</span>
+            </div>
+        </div>
+        
+        <!-- Estimated Finish -->
+        <div class="finish-estimate">
+            <h3>🏁 Estimated Completion</h3>
+            <div class="date" id="estimatedFinish">-</div>
+            <p style="color: rgba(255,255,255,0.7); margin-top: 12px; font-size: 13px;" id="estimateDetails">Based on current velocity</p>
+        </div>
+        
+        <!-- Daily Entry Form -->
+        <div class="container">
+            <h2>📝 Add Daily Entry</h2>
+            
+            <div class="form-section">
+                <div class="form-row">
+                    <div class="form-group" style="flex: 2;">
+                        <label>Engineer</label>
+                        <select id="selectedPerson">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>&nbsp;</label>
+                        <button class="btn-primary" style="width: 100%; padding: 12px;" onclick="showAddPersonModal()">
+                            ➕ Add Person
+                        </button>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Date</label>
+                        <input type="date" id="entryDate" value="">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3>📋 API Task Details</h3>
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label>ADO Task ID or URL</label>
+                        <input type="text" id="adoTaskId" placeholder="e.g., 1987152 or paste full URL">
+                    </div>
+                    <div class="form-group" style="flex: 2;">
+                        <label>API Endpoint / Description</label>
+                        <input type="text" id="apiEndpoint" placeholder="e.g., /api/transferSeries [POST]">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Service</label>
+                        <select id="taskService">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Status</label>
+                        <select id="taskStatus">
+                            <option value="not-started">⏳ Not Started</option>
+                            <option value="in-progress" selected>🔄 In Progress</option>
+                            <option value="testing">🧪 Testing</option>
+                            <option value="blocked">🚫 Blocked</option>
+                            <option value="completed">✅ Completed</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Notes / Comments</label>
+                        <textarea id="taskNotes" placeholder="Any additional notes..." style="min-height: 60px;"></textarea>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>🐛 Bug Link/ID (Optional)</label>
+                        <input type="text" id="bugLink" placeholder="e.g., BUG-1234 or paste bug URL">
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn-success" style="width: 100%; padding: 16px; font-size: 16px;" onclick="addDailyEntry()">
+                ✅ Add Entry
+            </button>
+        </div>
+        
+        <!-- Task Inventory -->
+        <div class="container">
+            <h2>📊 Task Inventory</h2>
+            
+            <!-- Duplicate Warning -->
+            <div id="duplicateWarning" style="display: none; margin-bottom: 16px; padding: 16px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #f59e0b; border-radius: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <strong style="color: #92400e; font-size: 14px;">⚠️ Duplicate Entries Found</strong>
+                    <button onclick="showDuplicateModal()" style="padding: 6px 14px; background: #dc2626; border: none; border-radius: 6px; color: white; font-weight: 600; font-size: 12px; cursor: pointer;">
+                        🔍 View Details & Remove
+                    </button>
+                </div>
+                <div id="duplicateWarningText" style="color: #92400e; font-size: 13px;"></div>
+            </div>
+            
+            <!-- Date Range Filter -->
+            <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                    <span style="font-weight: 700; color: var(--axos-navy); font-size: 13px;">📅 Date Range:</span>
+                    <span id="inventoryDateRangeLabel" style="font-size: 12px; color: #64748b;"></span>
+                </div>
+                
+                <!-- Date Preset Buttons -->
+                <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
+                    <button class="day-filter-btn" data-preset="today" onclick="setInventoryDatePreset('today')">⭐ Today</button>
+                    <button class="day-filter-btn active" data-preset="week" onclick="setInventoryDatePreset('week')">📆 This Week</button>
+                    <button class="day-filter-btn" data-preset="completed-week" onclick="setInventoryDatePreset('completed-week')">✅ Completed This Week</button>
+                    <button class="day-filter-btn" data-preset="month" onclick="setInventoryDatePreset('month')">📅 This Month</button>
+                    <button class="day-filter-btn" data-preset="year" onclick="setInventoryDatePreset('year')">📆 This Year</button>
+                    <button class="day-filter-btn" data-preset="all" onclick="setInventoryDatePreset('all')">🗂️ All Time</button>
+                </div>
+                
+                <!-- Custom Date Range -->
+                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="font-size: 12px; font-weight: 600; color: var(--axos-navy);">From:</label>
+                        <input type="date" id="inventoryStartDate" onchange="applyCustomDateRange()" 
+                               style="padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 12px;">
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="font-size: 12px; font-weight: 600; color: var(--axos-navy);">To:</label>
+                        <input type="date" id="inventoryEndDate" onchange="applyCustomDateRange()" 
+                               style="padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 12px;">
+                    </div>
+                    <button onclick="clearDateFilter()" style="padding: 8px 12px; border: none; border-radius: 8px; background: #fee2e2; color: #dc2626; cursor: pointer; font-size: 12px; font-weight: 600;">
+                        ✕ Clear
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Search Bar -->
+            <div style="margin-bottom: 16px; position: relative;">
+                <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 16px; pointer-events: none;">🔍</span>
+                <input type="text" id="inventorySearch" placeholder="Search by endpoint, ADO ID, service, notes..." 
+                       oninput="renderInventory()" 
+                       style="width: 100%; padding: 12px 16px 12px 42px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+            </div>
+            
+            <!-- Owner Filter Tabs -->
+            <div class="team-tabs" id="inventoryOwnerTabs" style="margin-bottom: 12px;">
+                <!-- Populated by JS -->
+            </div>
+            
+            <!-- Service Filter Tabs -->
+            <div class="team-tabs" id="inventoryServiceTabs" style="margin-bottom: 12px;">
+                <!-- Populated by JS -->
+            </div>
+            
+            <!-- Status Filter Tabs -->
+            <div class="team-tabs" id="inventoryStatusTabs" style="margin-bottom: 16px;">
+                <div class="team-tab active" data-status="all" onclick="setInventoryStatus('all')">All</div>
+                <div class="team-tab" data-status="not-started" onclick="setInventoryStatus('not-started')">⏳ Not Started</div>
+                <div class="team-tab" data-status="in-progress" onclick="setInventoryStatus('in-progress')">🔄 In Progress</div>
+                <div class="team-tab" data-status="testing" onclick="setInventoryStatus('testing')">🧪 Testing</div>
+                <div class="team-tab" data-status="blocked" onclick="setInventoryStatus('blocked')">🚫 Blocked</div>
+                <div class="team-tab" data-status="completed" onclick="setInventoryStatus('completed')">✅ Completed</div>
+            </div>
+            
+            <!-- Summary & Toggle -->
+            <div style="display: flex; gap: 16px; margin-bottom: 12px; padding: 12px; background: #f8fafc; border-radius: 8px; font-size: 13px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+                <div style="display: flex; gap: 16px; align-items: center;">
+                    <span><strong id="inventoryCount">0</strong> entries shown</span>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button onclick="toggleInventoryTable()" id="inventoryToggleBtn" 
+                            style="padding: 8px 16px; border: none; border-radius: 8px; background: var(--axos-navy); color: white; cursor: pointer; font-weight: 600; font-size: 12px;">
+                        <span id="inventoryToggleIcon">▼</span> <span id="inventoryToggleText">Show Table</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Inventory Table (Hidden by default) -->
+            <div id="inventoryTableContainer" style="display: none; max-height: 500px; overflow-y: auto;">
+                <table class="tracker-table" style="font-size: 12px;">
+                    <thead>
+                        <tr>
+                            <th>ADO Task</th>
+                            <th>API Endpoint</th>
+                            <th>Service</th>
+                            <th>Assignee</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryTableBody">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Daily Log -->
+        <div class="container">
+            <h2>📋 Daily Log</h2>
+            
+            <!-- Week Navigation -->
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding: 12px; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius: 10px;">
+                <button onclick="navigateLogWeek(-1)" style="padding: 8px 16px; border: none; border-radius: 8px; background: var(--axos-navy); color: white; cursor: pointer; font-weight: 600;">
+                    ◀ Prev Week
+                </button>
+                <div style="text-align: center;">
+                    <span id="logWeekLabel" style="font-weight: 700; color: var(--axos-navy); font-size: 14px;">This Week</span>
+                    <div id="logWeekDates" style="font-size: 12px; color: #64748b;"></div>
+                </div>
+                <button onclick="navigateLogWeek(1)" style="padding: 8px 16px; border: none; border-radius: 8px; background: var(--axos-navy); color: white; cursor: pointer; font-weight: 600;">
+                    Next Week ▶
+                </button>
+            </div>
+            
+            <!-- Day Filter Buttons -->
+            <div id="dayFilterButtons" style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
+                <button class="day-filter-btn active" data-day="all" onclick="filterLogByDay('all')">
+                    📅 All Week
+                </button>
+                <button class="day-filter-btn today-btn" data-day="today" onclick="filterLogByDay('today')">
+                    ⭐ Today
+                </button>
+            </div>
+            
+            <!-- Filters -->
+            <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <label style="font-size: 12px; font-weight: 600; color: var(--axos-navy);">👤 Owner:</label>
+                    <select id="logOwnerFilter" onchange="renderDailyLog()" style="padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 12px;">
+                        <option value="all">All Team</option>
+                    </select>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <label style="font-size: 12px; font-weight: 600; color: var(--axos-navy);">🔧 Service:</label>
+                    <select id="logServiceFilter" onchange="renderDailyLog()" style="padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 12px;">
+                        <option value="all">All Services</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Log Entries -->
+            <div id="dailyEntriesLog" style="max-height: 600px; overflow-y: auto;">
+                <p style="color: #64748b; text-align: center; padding: 20px;">No entries for this week.</p>
+            </div>
+        </div>
+        
+        <!-- Weekly Progress Tracker -->
+        <div class="container">
+            <h2>📋 Weekly Progress Tracker</h2>
+            
+            <!-- Bulk Edit Controls -->
+            <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+                <button class="btn-info" onclick="bulkEditTargets()" style="padding: 10px 20px;">
+                    📎 Bulk Edit Targets
+                </button>
+            </div>
+            
+            <div class="tracker-container">
+                <table class="tracker-table" id="trackerTable">
+                    <!-- Generated by JS -->
+                </table>
+            </div>
+            
+            <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-top: 16px; font-size: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 20px; height: 20px; background: var(--axos-orange-light); border: 2px solid var(--axos-orange); border-radius: 4px;"></div>
+                    Editable (click to edit)
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 20px; height: 20px; background: #d1fae5; border-radius: 4px;"></div>
+                    Auto-calculated
+                </div>
+            </div>
+        </div>
+        
+        <!-- Weekly Log -->
+        <div class="container">
+            <h2>📊 Weekly Log</h2>
+            
+            <!-- Week Navigation for Weekly Log -->
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding: 12px 16px; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius: 12px;">
+                <button onclick="navigateWeeklyLog(-1)" style="padding: 8px 16px; border: none; border-radius: 8px; background: var(--axos-navy); color: white; cursor: pointer; font-weight: 600;">
+                    ◀ Prev Week
+                </button>
+                <div style="text-align: center;">
+                    <span id="weeklyLogLabel" style="font-weight: 700; color: var(--axos-navy); font-size: 14px;">Week</span>
+                    <div id="weeklyLogDates" style="font-size: 12px; color: #64748b;"></div>
+                </div>
+                <button onclick="navigateWeeklyLog(1)" style="padding: 8px 16px; border: none; border-radius: 8px; background: var(--axos-navy); color: white; cursor: pointer; font-weight: 600;">
+                    Next Week ▶
+                </button>
+            </div>
+            
+            <!-- Owner Filter Tabs for Weekly Log -->
+            <div class="team-tabs" id="weeklyLogOwnerTabs" style="margin-bottom: 16px;">
+                <!-- Populated by JS -->
+            </div>
+            
+            <!-- Weekly Log Entries -->
+            <div id="weeklyLogEntries" style="max-height: 600px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 12px; background: white;">
+                <p style="color: #64748b; text-align: center; padding: 40px;">No entries for this week.</p>
+            </div>
+        </div>
+        
+        <!-- Service Progress -->
+        <div class="container">
+            <h2>📊 Progress by Service</h2>
+            <div id="serviceProgress"></div>
+        </div>
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="container" style="position: sticky; top: 24px;">
+            <h2>📈 Weekly Summary</h2>
+            
+            <!-- Week Selector -->
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label>Week</label>
+                <select id="weekSelector" onchange="updateWeeklySummary()">
+                    <!-- Populated by JS -->
+                </select>
+            </div>
+            
+            <!-- Team Stats -->
+            <div class="stat-card" style="margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <span style="font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase;">Team Total (This Week)</span>
+                </div>
+                <div class="stat-value" id="teamWeeklyTotal">0</div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;">
+                    <div style="background: #f8fafc; padding: 6px 12px; border-radius: 8px; font-size: 11px;">
+                        ✅ Completed: <strong id="teamCompleted">0</strong>
+                    </div>
+                    <div style="background: #f8fafc; padding: 6px 12px; border-radius: 8px; font-size: 11px;">
+                        🔄 In Progress: <strong id="teamInProgress">0</strong>
+                    </div>
+                    <div style="background: #f8fafc; padding: 6px 12px; border-radius: 8px; font-size: 11px;">
+                        🚫 Blocked: <strong id="teamBlocked">0</strong>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Individual Stats -->
+            <h3>👥 Individual Progress</h3>
+            <div id="individualStats">
+                <!-- Populated by JS -->
+            </div>
+            
+            <!-- Team Management -->
+            <h3 style="margin-top: 20px;">👥 Team Members</h3>
+            <div id="teamList" style="max-height: 300px; overflow-y: auto;">
+                <!-- Populated by JS -->
+            </div>
+            <button class="btn-primary" onclick="showAddPersonModal()" style="width: 100%; margin-top: 12px; padding: 10px;">
+                ➕ Add Team Member
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Person Modal -->
+<div class="modal-overlay" id="addPersonModal">
+    <div class="modal">
+        <h3>👤 Add Team Member</h3>
+        <div class="form-group">
+            <label>Name</label>
+            <input type="text" id="newPersonName" placeholder="e.g., John Smith">
+        </div>
+        <div class="modal-actions">
+            <button onclick="closeModal('addPersonModal')" style="background: #fee2e2; color: #dc2626;">Cancel</button>
+            <button onclick="addPerson()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">Add Person</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Task Modal -->
+<div class="modal-overlay" id="editTaskModal">
+    <div class="modal" style="width: 600px;">
+        <h3>✏️ Edit Task</h3>
+        <input type="hidden" id="editTaskId">
+        <div class="form-group">
+            <label>ADO Task ID or URL</label>
+            <input type="text" id="editAdoTaskId">
+        </div>
+        <div class="form-group">
+            <label>API Endpoint / Description</label>
+            <input type="text" id="editApiEndpoint">
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Service</label>
+                <select id="editTaskService">
+                    <!-- Populated by JS -->
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Status</label>
+                <select id="editTaskStatus">
+                    <option value="not-started">⏳ Not Started</option>
+                    <option value="in-progress">🔄 In Progress</option>
+                    <option value="testing">🧪 Testing</option>
+                    <option value="blocked">🚫 Blocked</option>
+                    <option value="completed">✅ Completed</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Assignee</label>
+            <select id="editTaskPerson">
+                <!-- Populated by JS -->
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Notes</label>
+            <textarea id="editTaskNotes" style="min-height: 60px;"></textarea>
+        </div>
+        <div class="form-group">
+            <label>🐛 Bug Link/ID (Optional)</label>
+            <input type="text" id="editBugLink" placeholder="e.g., BUG-1234 or paste bug URL">
+        </div>
+        <div class="modal-actions">
+            <button onclick="closeModal('editTaskModal')" style="background: #fee2e2; color: #dc2626;">Cancel</button>
+            <button onclick="saveTaskEdit()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden file input for import -->
+<input type="file" id="fileInput" accept=".json" onchange="handleFileImport(event)">
+
+<!-- Duplicate Modal is generated dynamically by JavaScript -->
+
+<!-- Signature Footer -->
+<footer style="
+    background: linear-gradient(135deg, var(--axos-navy) 0%, var(--axos-navy-dark) 100%);
+    padding: 32px 24px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+">
+    <div style="position: relative; z-index: 1;">
+        <div style="
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(255,255,255,0.05);
+            padding: 16px 28px;
+            border-radius: 50px;
+            border: 1px solid rgba(250, 167, 74, 0.3);
+        ">
+            <span style="font-size: 24px;">🧠💻</span>
+            <span style="color: rgba(255,255,255,0.9); font-size: 14px; font-weight: 500;">
+                Crafted in <span style="color: var(--axos-orange); font-weight: 700;">Cursor AI</span>
+            </span>
+        </div>
+        <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin: 12px 0;">
+            with the invaluable guidance of our primal 🦍 (a.k.a. human) companion:
+        </p>
+        <p style="color: white; font-size: 16px; font-weight: 700; margin: 8px 0;">
+            <span style="background: linear-gradient(90deg, var(--axos-orange), #fbbf24); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Juan Carlos Martinez Toledo</span>
+        </p>
+        <p style="color: rgba(255,255,255,0.4); font-size: 11px; margin-top: 16px; letter-spacing: 1px;">
+            CORE SERVICES TEAM × AXOS BANK • API AUTOMATION • 2025-2026
+        </p>
+    </div>
+</footer>
+
+<script>
+    // ========================================
+    // CONFIGURATION
+    // ========================================
+    
+    // ========================================
+    // GOOGLE SHEETS INTEGRATION
+    // ========================================
+    // Replace this URL with your deployed Google Apps Script Web App URL
+    // See: google-apps-script-core-services-tracker.js for setup instructions
+    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwZBGN7jfdxTvvy-DmSYgGLoz-fbj-7YS6Sa8MwjQBaypFMKPrcVcwzXTAa5xBVO1uf/exec';
+    
+    // Set to true once you've configured your Google Script URL
+    const USE_GOOGLE_SHEETS = GOOGLE_SCRIPT_URL !== 'YOUR_GOOGLE_SCRIPT_URL_HERE' && GOOGLE_SCRIPT_URL.includes('script.google.com');
+    
+    const CONFIG = {
+        totalTasks: 1165,
+        defaultWeeklyTarget: 30,
+        startWeek: 5, // W5 2026
+        startYear: 2026
+    };
+    
+    // Services - Based on Core Services team domains
+    const SERVICES = [
+        { id: 'BankingCore', name: 'Banking Core', icon: '🏦' },
+        { id: 'Securities', name: 'Securities', icon: '📈' },
+        { id: 'RulesManager', name: 'RulesManager', icon: '📜' },
+        { id: 'Identity', name: 'Identity', icon: '🔐' },
+        { id: 'Notifications', name: 'Notifications', icon: '🔔' },
+        { id: 'Documents', name: 'Documents', icon: '📄' },
+        { id: 'ServiceBus', name: 'Service Bus', icon: '🚌' },
+        { id: 'Agreements', name: 'Agreements', icon: '📝' },
+        { id: 'Branding', name: 'Branding', icon: '🎨' },
+        { id: 'Other', name: 'Other', icon: '📌' }
+    ];
+    
+    // Week definitions (52 weeks from W5 2026)
+    const WEEKS = generateWeeks();
+    
+    function generateWeeks() {
+        const weeks = [];
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        
+        // Start from W5 2026 (Feb 2, 2026)
+        let currentDate = new Date(2026, 1, 2); // Feb 2, 2026 (Monday of W5)
+        
+        for (let i = 0; i < 52; i++) {
+            const weekStart = new Date(currentDate);
+            const weekEnd = new Date(currentDate);
+            weekEnd.setDate(weekEnd.getDate() + 4); // Friday
+            
+            const weekNum = getWeekNumber(currentDate);
+            const year = currentDate.getFullYear();
+            
+            weeks.push({
+                week: weekNum,
+                year: year,
+                month: `${monthNames[weekEnd.getMonth()]} ${year}`,
+                dates: `${weekStart.getDate()}-${weekEnd.getDate()}`,
+                startDate: weekStart.toISOString().split('T')[0],
+                endDate: weekEnd.toISOString().split('T')[0]
+            });
+            
+            currentDate.setDate(currentDate.getDate() + 7);
+        }
+        
+        return weeks;
+    }
+    
+    function getWeekNumber(date) {
+        const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+        const dayNum = d.getUTCDay() || 7;
+        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    }
+    
+    // ========================================
+    // DATA STORAGE
+    // ========================================
+    
+    let data = {
+        totalTasks: CONFIG.totalTasks,
+        team: [
+            { id: 'unassigned', name: 'Unassigned' }
+        ],
+        entries: [], // All daily entries
+        weeklyTargets: {}, // { 'YYYY-WXX': number }
+        weeklyActuals: {}, // { 'YYYY-WXX': number } - auto-calculated from entries
+        lastUpdated: new Date().toISOString()
+    };
+    
+    // Current state
+    let logWeekOffset = 0;
+    let logDayFilter = 'all';
+    
+    // ========================================
+    // INITIALIZATION
+    // ========================================
+    
+    async function init() {
+        await loadData();
+        initializeDefaults();
+        setDefaultDate();
+        populateAllDropdowns();
+        
+        // Call updateWeeklySummary BEFORE renderAll to ensure it runs first
+        updateWeeklySummary();
+        updateTeamList();
+        
+        renderAll();
+        
+        // Also force a refresh after DOM is fully ready
+        requestAnimationFrame(() => {
+            updateWeeklySummary();
+            updateTeamList();
+        });
+        
+        if (!USE_GOOGLE_SHEETS) {
+            console.log('💡 Google Sheets not configured. Data saved locally only.');
+            console.log('📖 See google-apps-script-core-services-tracker.js for setup instructions.');
+        }
+    }
+    
+    async function loadData() {
+        // Try to load from Google Sheets first
+        if (USE_GOOGLE_SHEETS) {
+            try {
+                showSyncStatus('Loading from cloud...');
+                console.log('[Load] Fetching from Google Sheets...');
+                
+                const response = await fetch(GOOGLE_SCRIPT_URL);
+                const text = await response.text();
+                console.log('[Load] Response:', text.substring(0, 300));
+                
+                let result;
+                try {
+                    result = JSON.parse(text);
+                } catch (e) {
+                    console.error('[Load] Failed to parse response:', e);
+                    showSyncStatus('⚠️ Invalid cloud data');
+                    // Fall through to localStorage
+                }
+                
+                if (result && result.success && result.data && Object.keys(result.data).length > 0) {
+                    data = { ...data, ...result.data };
+                    if (!data.team) data.team = [{ id: 'unassigned', name: 'Unassigned' }];
+                    if (!data.entries) data.entries = [];
+                    if (!data.weeklyTargets) data.weeklyTargets = {};
+                    
+                    // Also cache locally
+                    localStorage.setItem('coreServicesApiTracker', JSON.stringify(data));
+                    showSyncStatus('✅ Synced from cloud');
+                    updateLastUpdated(result.lastUpdated);
+                    console.log('[Load] Loaded from cloud:', data.entries.length, 'entries');
+                    return;
+                } else {
+                    console.log('[Load] No cloud data or error:', result);
+                    showSyncStatus('☁️ No cloud data yet');
+                }
+            } catch (e) {
+                console.error('[Load] Error loading from Google Sheets:', e);
+                showSyncStatus('⚠️ Cloud unavailable');
+            }
+        }
+        
+        // Fallback to localStorage
+        console.log('[Load] Loading from localStorage...');
+        const saved = localStorage.getItem('coreServicesApiTracker');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                data = { ...data, ...parsed };
+                if (!data.team) data.team = [{ id: 'unassigned', name: 'Unassigned' }];
+                if (!data.entries) data.entries = [];
+                if (!data.weeklyTargets) data.weeklyTargets = {};
+                console.log('[Load] Loaded from localStorage:', data.entries.length, 'entries');
+            } catch (e) {
+                console.error('[Load] Error parsing localStorage:', e);
+            }
+        }
+        updateLastUpdated();
+    }
+    
+    function showSyncStatus(message) {
+        const statusEl = document.getElementById('syncStatus');
+        if (statusEl) {
+            statusEl.textContent = message;
+        }
+    }
+    
+    async function saveToCloud() {
+        if (!USE_GOOGLE_SHEETS) {
+            alert('⚠️ Google Sheets not configured.\n\nSee google-apps-script-core-services-tracker.js for setup instructions.');
+            return;
+        }
+        
+        try {
+            showSyncStatus('Saving to cloud...');
+            showNotification('☁️ Saving to cloud...', 'info');
+            
+            const response = await fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify({
+                    data: data,
+                    updatedBy: 'Core Services Tracker User',
+                    action: 'save'
+                })
+            });
+            
+            showSyncStatus('✅ Saved to cloud');
+            showSaveStatus(true);
+            showNotification('✅ Data saved to cloud successfully!', 'success');
+            
+        } catch (e) {
+            console.error('Error saving to Google Sheets:', e);
+            showSyncStatus('⚠️ Cloud save failed');
+            showNotification('❌ Cloud save failed. Data saved locally.', 'error');
+        }
+    }
+    
+    async function syncFromCloud() {
+        if (!USE_GOOGLE_SHEETS) {
+            alert('⚠️ Google Sheets not configured.\n\nSee google-apps-script-core-services-tracker.js for setup instructions.');
+            return;
+        }
+        
+        try {
+            showSyncStatus('Syncing...');
+            console.log('[Sync] Fetching from:', GOOGLE_SCRIPT_URL);
+            
+            const response = await fetch(GOOGLE_SCRIPT_URL);
+            console.log('[Sync] Response status:', response.status, response.statusText);
+            
+            const text = await response.text();
+            console.log('[Sync] Raw response:', text.substring(0, 500));
+            
+            let result;
+            try {
+                result = JSON.parse(text);
+            } catch (parseError) {
+                console.error('[Sync] JSON parse error:', parseError);
+                console.error('[Sync] Response was:', text);
+                showSyncStatus('⚠️ Invalid response');
+                showNotification('❌ Server returned invalid data: ' + text.substring(0, 100), 'error');
+                return;
+            }
+            
+            console.log('[Sync] Parsed result:', result);
+            
+            if (result.error) {
+                console.error('[Sync] Server error:', result.error);
+                showSyncStatus('⚠️ Server error');
+                showNotification('❌ Server error: ' + result.error, 'error');
+                return;
+            }
+            
+            if (result.success && result.data && Object.keys(result.data).length > 0) {
+                data = { ...data, ...result.data };
+                initializeDefaults();
+                localStorage.setItem('coreServicesApiTracker', JSON.stringify(data));
+                renderAll();
+                showSyncStatus('✅ Synced from cloud');
+                showNotification('✅ Data synced from cloud!', 'success');
+            } else {
+                showSyncStatus('☁️ No cloud data');
+                showNotification('ℹ️ No saved data in cloud yet. Save first!', 'info');
+            }
+        } catch (e) {
+            console.error('[Sync] Fetch error:', e);
+            showSyncStatus('⚠️ Sync failed');
+            showNotification('❌ Sync failed: ' + e.message, 'error');
+        }
+    }
+    
+    function initializeDefaults() {
+        // Initialize weekly targets
+        WEEKS.forEach(w => {
+            const key = `${w.year}-W${w.week}`;
+            if (data.weeklyTargets[key] === undefined) {
+                data.weeklyTargets[key] = CONFIG.defaultWeeklyTarget;
+            }
+        });
+    }
+    
+    function saveData() {
+        data.lastUpdated = new Date().toISOString();
+        localStorage.setItem('coreServicesApiTracker', JSON.stringify(data));
+        updateLastUpdated();
+        showSaveStatus(true);
+    }
+    
+    async function saveAllData() {
+        // Save locally first
+        data.lastUpdated = new Date().toISOString();
+        localStorage.setItem('coreServicesApiTracker', JSON.stringify(data));
+        updateLastUpdated();
+        
+        // Then save to cloud if configured
+        if (USE_GOOGLE_SHEETS) {
+            try {
+                showSyncStatus('Saving...');
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify({
+                        data: data,
+                        updatedBy: 'Core Services Tracker',
+                        action: 'save'
+                    })
+                });
+                showSyncStatus('✅ Saved');
+            } catch (e) {
+                console.error('Cloud save failed:', e);
+                showSyncStatus('⚠️ Local only');
+            }
+        }
+        
+        showSaveStatus(true);
+        
+        // Show popup
+        const popup = document.createElement('div');
+        popup.innerHTML = '💾 Data saved!';
+        popup.style.cssText = 'position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 14px 28px; border-radius: 12px; font-weight: 700; z-index: 10001; box-shadow: 0 4px 20px rgba(0,0,0,0.3); animation: popIn 0.3s ease;';
+        document.body.appendChild(popup);
+        setTimeout(() => {
+            popup.style.animation = 'popOut 0.3s ease forwards';
+            setTimeout(() => popup.remove(), 300);
+        }, 2000);
+    }
+    
+    function refreshData() {
+        loadData();
+        renderAll();
+        alert('✅ Data refreshed!');
+    }
+    
+    function resetData() {
+        if (!confirm('⚠️ Are you sure you want to reset ALL data? This cannot be undone.')) return;
+        
+        localStorage.removeItem('coreServicesApiTracker');
+        data = {
+            totalTasks: CONFIG.totalTasks,
+            team: [{ id: 'unassigned', name: 'Unassigned' }],
+            entries: [],
+            weeklyTargets: {},
+            lastUpdated: new Date().toISOString()
+        };
+        initializeDefaults();
+        renderAll();
+        alert('✅ Data reset!');
+    }
+    
+    function setDefaultDate() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('entryDate').value = today;
+        document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    }
+    
+    function updateLastUpdated() {
+        const el = document.getElementById('saveStatus');
+        // Keep status as is
+    }
+    
+    function showSaveStatus(saved) {
+        const el = document.getElementById('saveStatus');
+        if (saved) {
+            el.className = 'save-status saved';
+            el.textContent = '✓ All changes saved';
+        } else {
+            el.className = 'save-status unsaved';
+            el.textContent = '⚠ Unsaved changes';
+        }
+    }
+    
+    // Inventory filters
+    let inventoryFilters = {
+        datePreset: 'week',
+        startDate: null,
+        endDate: null,
+        owner: 'all',
+        service: 'all',
+        status: 'all',
+        search: '',
+        filterByCompletedDate: false
+    };
+    
+    let isInventoryVisible = false;
+    
+    function renderAll() {
+        updateSummary();
+        renderTrackerTable();
+        renderDailyLog();
+        renderWeeklyLog();
+        renderServiceProgress();
+        updateWeeklySummary();
+        updateTeamList();
+        populateDayFilterButtons();
+        renderInventory();
+        checkForDuplicates();
+        setInventoryDatePreset('week'); // Initialize date filter
+    }
+    
+    // ========================================
+    // DROPDOWNS
+    // ========================================
+    
+    function populateAllDropdowns() {
+        populatePersonDropdowns();
+        populateServiceDropdowns();
+        populateWeekSelector();
+        populateLogFilters();
+    }
+    
+    function populatePersonDropdowns() {
+        const selects = ['selectedPerson', 'editTaskPerson', 'logOwnerFilter'];
+        // Filter out "unassigned" from team members for dropdowns
+        const activeTeam = data.team.filter(p => p.id !== 'unassigned');
+        
+        selects.forEach(id => {
+            const select = document.getElementById(id);
+            if (select) {
+                const currentValue = select.value;
+                if (id === 'logOwnerFilter') {
+                    select.innerHTML = '<option value="all">All Team</option>' +
+                        activeTeam.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+                } else {
+                    select.innerHTML = activeTeam.map(p => 
+                        `<option value="${p.id}">${p.name}</option>`
+                    ).join('');
+                }
+                if (currentValue) select.value = currentValue;
+            }
+        });
+    }
+    
+    function populateServiceDropdowns() {
+        const selects = ['taskService', 'editTaskService', 'logServiceFilter'];
+        selects.forEach(id => {
+            const select = document.getElementById(id);
+            if (select) {
+                const currentValue = select.value;
+                if (id === 'logServiceFilter') {
+                    select.innerHTML = '<option value="all">All Services</option>' +
+                        SERVICES.map(s => `<option value="${s.id}">${s.icon} ${s.name}</option>`).join('');
+                } else {
+                    select.innerHTML = SERVICES.map(s => 
+                        `<option value="${s.id}">${s.icon} ${s.name}</option>`
+                    ).join('');
+                }
+                if (currentValue) select.value = currentValue;
+            }
+        });
+    }
+    
+    function populateWeekSelector() {
+        const select = document.getElementById('weekSelector');
+        if (!select) return;
+        
+        const currentWeekIdx = findCurrentWeekIndex();
+        
+        select.innerHTML = WEEKS.map((w, idx) => {
+            const isCurrent = idx === currentWeekIdx;
+            return `<option value="${idx}" ${isCurrent ? 'selected' : ''}>W${w.week} - ${w.dates} ${w.month}${isCurrent ? ' (Current)' : ''}</option>`;
+        }).join('');
+    }
+    
+    function populateLogFilters() {
+        populatePersonDropdowns();
+        populateServiceDropdowns();
+    }
+    
+    // ========================================
+    // PERSON MANAGEMENT
+    // ========================================
+    
+    function showAddPersonModal() {
+        document.getElementById('newPersonName').value = '';
+        document.getElementById('addPersonModal').classList.add('show');
+    }
+    
+    function addPerson() {
+        const name = document.getElementById('newPersonName').value.trim();
+        if (!name) {
+            alert('Please enter a name');
+            return;
+        }
+        
+        const id = name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
+        data.team.push({ id, name });
+        
+        closeModal('addPersonModal');
+        populateAllDropdowns();
+        updateTeamList();
+        showSaveStatus(false);
+        alert(`✅ ${name} added to the team!`);
+    }
+    
+    function removePerson(personId) {
+        if (personId === 'unassigned') {
+            alert('Cannot remove Unassigned');
+            return;
+        }
+        
+        const person = data.team.find(p => p.id === personId);
+        if (!confirm(`Remove ${person.name} from the team?`)) return;
+        
+        // Reassign their entries to Unassigned
+        data.entries.forEach(e => {
+            if (e.personId === personId) e.personId = 'unassigned';
+        });
+        
+        data.team = data.team.filter(p => p.id !== personId);
+        populateAllDropdowns();
+        updateTeamList();
+        renderAll();
+        showSaveStatus(false);
+    }
+    
+    function updateTeamList() {
+        const container = document.getElementById('teamList');
+        if (!container) return;
+        
+        // Get current week entries for "this week" stats
+        const weekDates = getWeekDates(0);
+        
+        let html = '';
+        data.team.filter(p => p.id !== 'unassigned').forEach(person => {
+            // All-time stats
+            const allEntries = data.entries.filter(e => e.personId === person.id);
+            const allCompleted = allEntries.filter(e => e.status === 'completed').length;
+            
+            // This week stats
+            const weekEntries = allEntries.filter(e => e.date >= weekDates.start && e.date <= weekDates.end);
+            const weekCompleted = weekEntries.filter(e => e.status === 'completed').length;
+            const weekInProgress = weekEntries.filter(e => e.status === 'in-progress').length;
+            const weekTesting = weekEntries.filter(e => e.status === 'testing').length;
+            
+            html += `
+                <div style="padding: 10px; background: #f8fafc; border-radius: 8px; margin-bottom: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="font-weight: 600; color: var(--axos-navy); font-size: 13px;">👤 ${person.name}</div>
+                        <button class="action-btn delete" onclick="removePerson('${person.id}')">🗑️</button>
+                    </div>
+                    <div style="font-size: 11px; color: #64748b; margin-top: 4px;">
+                        This week: ${weekEntries.length} entries
+                        ${weekCompleted > 0 ? `<span style="color: #059669;">✅${weekCompleted}</span>` : ''}
+                        ${weekInProgress > 0 ? `<span style="color: #2563eb;">🔄${weekInProgress}</span>` : ''}
+                        ${weekTesting > 0 ? `<span style="color: #d97706;">🧪${weekTesting}</span>` : ''}
+                    </div>
+                    <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">
+                        All time: ${allEntries.length} total, ${allCompleted} completed
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html || '<p style="color: #64748b; font-size: 13px;">No team members yet. Add one below!</p>';
+    }
+    
+    // ========================================
+    // ENTRY MANAGEMENT
+    // ========================================
+    
+    function addDailyEntry() {
+        const personId = document.getElementById('selectedPerson').value;
+        const date = document.getElementById('entryDate').value;
+        const adoTaskId = document.getElementById('adoTaskId').value.trim();
+        const apiEndpoint = document.getElementById('apiEndpoint').value.trim();
+        const service = document.getElementById('taskService').value;
+        const status = document.getElementById('taskStatus').value;
+        const notes = document.getElementById('taskNotes').value.trim();
+        
+        if (!apiEndpoint && !adoTaskId) {
+            alert('Please enter at least an ADO Task ID or API Endpoint');
+            return;
+        }
+        
+        // Parse ADO ID from URL if needed
+        let parsedAdoId = adoTaskId;
+        if (adoTaskId.includes('visualstudio.com') || adoTaskId.includes('dev.azure.com')) {
+            const match = adoTaskId.match(/(\d{6,})/);
+            if (match) parsedAdoId = match[1];
+        }
+        
+        const bugLink = document.getElementById('bugLink').value.trim();
+        
+        const now = new Date();
+        const entry = {
+            id: 'entry-' + Date.now(),
+            adoId: parsedAdoId,
+            adoUrl: adoTaskId.includes('http') ? adoTaskId : (parsedAdoId ? `https://bofaz.visualstudio.com/a77dd668-8a7e-4ddb-b8b7-3379e682e80b/_workitems/edit/${parsedAdoId}` : ''),
+            apiEndpoint: apiEndpoint,
+            service: service,
+            personId: personId,
+            status: status,
+            notes: notes,
+            bugLink: bugLink || null,
+            date: date,
+            createdAt: now.toISOString(),
+            history: [{
+                action: 'created',
+                timestamp: now.toISOString(),
+                status: status,
+                by: personId
+            }]
+        };
+        
+        // Check for duplicates by ADO ID
+        if (parsedAdoId) {
+            const existing = data.entries.find(e => e.adoId === parsedAdoId);
+            if (existing) {
+                if (confirm(`Task #${parsedAdoId} already exists. Update it instead?`)) {
+                    // Add history entry for the update
+                    if (!existing.history) existing.history = [];
+                    existing.history.push({
+                        action: 'updated',
+                        timestamp: now.toISOString(),
+                        changes: 'Merged with new entry',
+                        by: personId
+                    });
+                    Object.assign(existing, entry);
+                    existing.id = existing.id; // Keep original ID
+                    existing.history = existing.history; // Keep history
+                } else {
+                    return;
+                }
+            } else {
+                data.entries.push(entry);
+            }
+        } else {
+            data.entries.push(entry);
+        }
+        
+        // Clear form
+        document.getElementById('adoTaskId').value = '';
+        document.getElementById('apiEndpoint').value = '';
+        document.getElementById('taskNotes').value = '';
+        document.getElementById('bugLink').value = '';
+        
+        renderAll();
+        showSaveStatus(false);
+        
+        // Show success popup
+        const popup = document.createElement('div');
+        popup.className = 'success-popup';
+        popup.innerHTML = '✅ Entry added successfully!';
+        popup.style.cssText = 'position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 16px 32px; border-radius: 12px; font-weight: 700; font-size: 16px; z-index: 10001; box-shadow: 0 4px 20px rgba(0,0,0,0.3); animation: popIn 0.3s ease;';
+        document.body.appendChild(popup);
+        setTimeout(() => {
+            popup.style.animation = 'popOut 0.3s ease forwards';
+            setTimeout(() => popup.remove(), 300);
+        }, 2500);
+    }
+    
+    function editEntry(entryId) {
+        const entry = data.entries.find(e => e.id === entryId);
+        if (!entry) return;
+        
+        document.getElementById('editTaskId').value = entry.id;
+        document.getElementById('editAdoTaskId').value = entry.adoId || entry.adoUrl || '';
+        document.getElementById('editApiEndpoint').value = entry.apiEndpoint || '';
+        document.getElementById('editTaskService').value = entry.service || 'Other';
+        document.getElementById('editTaskStatus').value = entry.status || 'not-started';
+        document.getElementById('editTaskPerson').value = entry.personId || 'unassigned';
+        document.getElementById('editTaskNotes').value = entry.notes || '';
+        document.getElementById('editBugLink').value = entry.bugLink || '';
+        
+        document.getElementById('editTaskModal').classList.add('show');
+    }
+    
+    function saveTaskEdit() {
+        const entryId = document.getElementById('editTaskId').value;
+        const entry = data.entries.find(e => e.id === entryId);
+        if (!entry) return;
+        
+        const adoTaskId = document.getElementById('editAdoTaskId').value.trim();
+        let parsedAdoId = adoTaskId;
+        if (adoTaskId.includes('visualstudio.com') || adoTaskId.includes('dev.azure.com')) {
+            const match = adoTaskId.match(/(\d{6,})/);
+            if (match) parsedAdoId = match[1];
+        }
+        
+        const oldStatus = entry.status;
+        const newStatus = document.getElementById('editTaskStatus').value;
+        
+        entry.adoId = parsedAdoId;
+        entry.adoUrl = adoTaskId.includes('http') ? adoTaskId : (parsedAdoId ? `https://bofaz.visualstudio.com/a77dd668-8a7e-4ddb-b8b7-3379e682e80b/_workitems/edit/${parsedAdoId}` : '');
+        entry.apiEndpoint = document.getElementById('editApiEndpoint').value.trim();
+        entry.service = document.getElementById('editTaskService').value;
+        entry.status = newStatus;
+        entry.personId = document.getElementById('editTaskPerson').value;
+        entry.notes = document.getElementById('editTaskNotes').value.trim();
+        entry.bugLink = document.getElementById('editBugLink').value.trim() || null;
+        
+        // Add history entry
+        if (!entry.history) entry.history = [];
+        entry.history.push({
+            action: 'updated',
+            timestamp: new Date().toISOString(),
+            oldStatus: oldStatus,
+            newStatus: newStatus,
+            by: entry.personId
+        });
+        
+        closeModal('editTaskModal');
+        renderAll();
+        showSaveStatus(false);
+        showNotification('✅ Task updated!', 'success');
+    }
+    
+    function deleteEntry(entryId) {
+        if (!confirm('Delete this entry?')) return;
+        
+        data.entries = data.entries.filter(e => e.id !== entryId);
+        renderAll();
+        showSaveStatus(false);
+        showNotification('🗑️ Entry deleted', 'info');
+    }
+    
+    function showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = 'notification-popup';
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: ${type === 'success' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : type === 'error' ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'};
+            color: white;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-weight: 600;
+            z-index: 10001;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+            animation: notificationSlideDown 0.3s ease;
+        `;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.style.animation = 'notificationSlideUp 0.3s ease forwards';
+            setTimeout(() => notification.remove(), 300);
+        }, 2500);
+    }
+    
+    // ========================================
+    // SUMMARY & CALCULATIONS
+    // ========================================
+    
+    function updateSummary() {
+        const total = data.totalTasks;
+        const completed = data.entries.filter(e => e.status === 'completed').length;
+        const inProgress = data.entries.filter(e => e.status === 'in-progress').length;
+        const remaining = total - completed;
+        const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+        
+        document.getElementById('totalTasks').textContent = total;
+        document.getElementById('completedTasks').textContent = completed;
+        document.getElementById('inProgressTasks').textContent = inProgress;
+        document.getElementById('remainingTasks').textContent = remaining;
+        document.getElementById('progressPercent').textContent = progress + '%';
+        
+        // Progress bar
+        document.getElementById('progressBarFill').style.width = progress + '%';
+        document.getElementById('progressBarText').textContent = `${progress}% Complete (${completed}/${total})`;
+        
+        // Average per week
+        const weeklyStats = calculateWeeklyStats();
+        document.getElementById('avgPerWeek').textContent = weeklyStats.avgPerWeek;
+        
+        // Estimated finish
+        updateEstimatedFinish(weeklyStats, remaining);
+    }
+    
+    function calculateWeeklyStats() {
+        const weeklyCompleted = {};
+        
+        data.entries.filter(e => e.status === 'completed').forEach(entry => {
+            const date = new Date(entry.date);
+            const weekStart = new Date(date);
+            weekStart.setDate(date.getDate() - date.getDay() + 1);
+            const weekKey = weekStart.toISOString().split('T')[0];
+            
+            if (!weeklyCompleted[weekKey]) weeklyCompleted[weekKey] = 0;
+            weeklyCompleted[weekKey]++;
+        });
+        
+        const weeks = Object.keys(weeklyCompleted);
+        const totalCompleted = Object.values(weeklyCompleted).reduce((a, b) => a + b, 0);
+        const avgPerWeek = weeks.length > 0 ? Math.round(totalCompleted / weeks.length) : 0;
+        
+        return { weeklyCompleted, avgPerWeek, weeksWithData: weeks.length };
+    }
+    
+    function updateEstimatedFinish(weeklyStats, remaining) {
+        const estimateEl = document.getElementById('estimatedFinish');
+        const detailsEl = document.getElementById('estimateDetails');
+        
+        if (remaining <= 0) {
+            estimateEl.textContent = '✅ All Done!';
+            detailsEl.textContent = 'All tasks completed';
+            return;
+        }
+        
+        if (weeklyStats.avgPerWeek <= 0) {
+            estimateEl.textContent = '-';
+            detailsEl.textContent = 'Complete some tasks to see estimate';
+            return;
+        }
+        
+        const weeksNeeded = Math.ceil(remaining / weeklyStats.avgPerWeek);
+        const finishDate = new Date();
+        finishDate.setDate(finishDate.getDate() + (weeksNeeded * 7));
+        
+        estimateEl.textContent = finishDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        detailsEl.textContent = `~${weeksNeeded} weeks at ${weeklyStats.avgPerWeek}/week velocity`;
+    }
+    
+    function editTotalTasks() {
+        const newTotal = prompt('Enter total API tasks:', data.totalTasks);
+        if (newTotal !== null && !isNaN(parseInt(newTotal))) {
+            data.totalTasks = parseInt(newTotal);
+            renderAll();
+            showSaveStatus(false);
+        }
+    }
+    
+    // ========================================
+    // WEEKLY TRACKER TABLE
+    // ========================================
+    
+    function findCurrentWeekIndex() {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        
+        for (let i = 0; i < WEEKS.length; i++) {
+            if (todayStr >= WEEKS[i].startDate && todayStr <= WEEKS[i].endDate) {
+                return i;
+            }
+        }
+        return 0;
+    }
+    
+    function renderTrackerTable() {
+        const table = document.getElementById('trackerTable');
+        if (!table) return;
+        
+        const currentWeekIdx = findCurrentWeekIndex();
+        const cumulatives = calculateCumulatives();
+        
+        // Group weeks by month
+        const months = {};
+        WEEKS.forEach((w, idx) => {
+            if (!months[w.month]) months[w.month] = [];
+            months[w.month].push({ ...w, idx, ...cumulatives[idx] });
+        });
+        
+        let html = '';
+        
+        // Header rows
+        html += '<thead>';
+        
+        // Month headers
+        html += '<tr>';
+        html += '<th class="row-header"></th>';
+        Object.keys(months).forEach(month => {
+            html += `<th class="month-header" colspan="${months[month].length}">${month}</th>`;
+        });
+        html += '</tr>';
+        
+        // Week headers
+        html += '<tr>';
+        html += '<th class="row-header">Metric</th>';
+        WEEKS.forEach((w, idx) => {
+            const isCurrent = idx === currentWeekIdx;
+            html += `<th class="week-header" style="${isCurrent ? 'background: var(--axos-orange); color: var(--axos-navy);' : ''}">W${w.week}<br><span style="font-size:9px;">${w.dates}</span></th>`;
+        });
+        html += '</tr>';
+        
+        html += '</thead><tbody>';
+        
+        // Target row
+        html += '<tr>';
+        html += '<td class="row-header">📎 Target</td>';
+        WEEKS.forEach((w, idx) => {
+            const key = `${w.year}-W${w.week}`;
+            const target = data.weeklyTargets[key] || CONFIG.defaultWeeklyTarget;
+            html += `<td class="editable" onclick="editTarget('${key}')">${target}</td>`;
+        });
+        html += '</tr>';
+        
+        // Actual row
+        html += '<tr>';
+        html += '<td class="row-header">✅ Actual</td>';
+        WEEKS.forEach((w, idx) => {
+            const actual = cumulatives[idx].actual;
+            html += `<td class="auto-calc">${actual !== null ? actual : '-'}</td>`;
+        });
+        html += '</tr>';
+        
+        // Cumulative Target row
+        html += '<tr class="cumulative-row">';
+        html += '<td class="row-header">📊 Cum. Target</td>';
+        WEEKS.forEach((w, idx) => {
+            html += `<td>${Math.min(cumulatives[idx].cumulativeTarget, data.totalTasks)}</td>`;
+        });
+        html += '</tr>';
+        
+        // Cumulative Actual row
+        html += '<tr class="cumulative-row">';
+        html += '<td class="row-header">📈 Cum. Actual</td>';
+        WEEKS.forEach((w, idx) => {
+            const cumActual = cumulatives[idx].cumulativeActual;
+            html += `<td>${cumActual !== null ? cumActual : '-'}</td>`;
+        });
+        html += '</tr>';
+        
+        // Status row
+        html += '<tr>';
+        html += '<td class="row-header">🎯 Status</td>';
+        WEEKS.forEach((w, idx) => {
+            const status = cumulatives[idx].status;
+            const statusLabels = {
+                'ahead': '✓ Ahead',
+                'on-track': '≈ On Track',
+                'on-risk': '⚠ At Risk',
+                'future': '-'
+            };
+            html += `<td class="status-cell ${status}">${statusLabels[status] || '-'}</td>`;
+        });
+        html += '</tr>';
+        
+        html += '</tbody>';
+        
+        table.innerHTML = html;
+    }
+    
+    function calculateCumulatives() {
+        const results = [];
+        let cumulativeTarget = 0;
+        let cumulativeActual = 0;
+        
+        WEEKS.forEach((w, idx) => {
+            const key = `${w.year}-W${w.week}`;
+            const target = data.weeklyTargets[key] || CONFIG.defaultWeeklyTarget;
+            
+            // Calculate actual from entries
+            const weekEntries = data.entries.filter(e => {
+                return e.date >= w.startDate && e.date <= w.endDate && e.status === 'completed';
+            });
+            const actual = weekEntries.length > 0 ? weekEntries.length : null;
+            
+            cumulativeTarget += target;
+            if (actual !== null) {
+                cumulativeActual += actual;
+            }
+            
+            const variance = actual !== null ? cumulativeActual - cumulativeTarget : null;
+            
+            let status = 'future';
+            if (actual !== null) {
+                if (variance >= 0) status = 'ahead';
+                else if (variance >= -10) status = 'on-track';
+                else status = 'on-risk';
+            }
+            
+            results.push({
+                ...w,
+                key,
+                target,
+                actual,
+                cumulativeTarget,
+                cumulativeActual: actual !== null ? cumulativeActual : null,
+                variance,
+                status,
+                idx
+            });
+        });
+        
+        return results;
+    }
+    
+    function editTarget(weekKey) {
+        const currentTarget = data.weeklyTargets[weekKey] || CONFIG.defaultWeeklyTarget;
+        const newTarget = prompt(`Enter target for ${weekKey}:`, currentTarget);
+        if (newTarget !== null && !isNaN(parseInt(newTarget))) {
+            data.weeklyTargets[weekKey] = parseInt(newTarget);
+            renderTrackerTable();
+            updateSummary();
+            showSaveStatus(false);
+        }
+    }
+    
+    function bulkEditTargets() {
+        const currentTarget = CONFIG.defaultWeeklyTarget;
+        const choice = prompt(
+            `Bulk Edit Weekly Targets\n\n` +
+            `Enter new weekly target value.\n` +
+            `This will update ALL weeks that haven't been completed yet.\n\n` +
+            `Current default: ${currentTarget}`,
+            currentTarget
+        );
+        
+        if (choice === null) return;
+        
+        const val = parseInt(choice.trim());
+        if (isNaN(val) || val <= 0) {
+            alert('Please enter a valid positive number.');
+            return;
+        }
+        
+        // Update all future weeks (weeks without actual data)
+        const cumulatives = calculateCumulatives();
+        let updatedCount = 0;
+        
+        WEEKS.forEach((w, idx) => {
+            const key = `${w.year}-W${w.week}`;
+            if (cumulatives[idx].actual === null) {
+                data.weeklyTargets[key] = val;
+                updatedCount++;
+            }
+        });
+        
+        renderTrackerTable();
+        updateSummary();
+        showSaveStatus(false);
+        alert(`✅ Updated ${updatedCount} weekly targets to ${val}/week`);
+    }
+    
+    
+    // ========================================
+    // DAILY LOG
+    // ========================================
+    
+    function getWeekDates(offset = 0) {
+        const today = new Date();
+        const currentDay = today.getDay();
+        const monday = new Date(today);
+        monday.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1) + (offset * 7));
+        
+        const friday = new Date(monday);
+        friday.setDate(monday.getDate() + 4);
+        
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        
+        return {
+            start: monday.toISOString().split('T')[0],
+            end: sunday.toISOString().split('T')[0],
+            monday: monday,
+            label: `${monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${friday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+        };
+    }
+    
+    function formatDate(dateStr) {
+        if (!dateStr) return '';
+        const date = new Date(dateStr + 'T00:00:00');
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    
+    function navigateLogWeek(direction) {
+        logWeekOffset += direction;
+        renderDailyLog();
+        populateDayFilterButtons();
+    }
+    
+    function filterLogByDay(day) {
+        logDayFilter = day;
+        
+        document.querySelectorAll('.day-filter-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.day === day);
+        });
+        
+        renderDailyLog();
+    }
+    
+    function populateDayFilterButtons() {
+        const container = document.getElementById('dayFilterButtons');
+        if (!container) return;
+        
+        const week = getWeekDates(logWeekOffset);
+        const today = new Date().toISOString().split('T')[0];
+        
+        const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        
+        let html = `
+            <button class="day-filter-btn ${logDayFilter === 'all' ? 'active' : ''}" data-day="all" onclick="filterLogByDay('all')">
+                📅 All Week
+            </button>
+            <button class="day-filter-btn today-btn ${logDayFilter === 'today' ? 'active' : ''}" data-day="today" onclick="filterLogByDay('today')">
+                ⭐ Today
+            </button>
+        `;
+        
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(week.monday);
+            date.setDate(date.getDate() + i);
+            const dateStr = date.toISOString().split('T')[0];
+            const hasEntries = data.entries.some(e => e.date === dateStr);
+            const isToday = dateStr === today;
+            
+            html += `
+                <button class="day-filter-btn ${logDayFilter === dateStr ? 'active' : ''} ${hasEntries ? 'has-entries' : ''}" 
+                        data-day="${dateStr}" onclick="filterLogByDay('${dateStr}')"
+                        style="${isToday ? 'border-color: var(--axos-orange);' : ''}">
+                    ${dayNames[i]} ${date.getDate()}
+                </button>
+            `;
+        }
+        
+        container.innerHTML = html;
+    }
+    
+    function renderDailyLog() {
+        const container = document.getElementById('dailyEntriesLog');
+        if (!container) return;
+        
+        const week = getWeekDates(logWeekOffset);
+        const today = new Date().toISOString().split('T')[0];
+        
+        // Update week label
+        document.getElementById('logWeekLabel').textContent = logWeekOffset === 0 ? 'This Week' : (logWeekOffset === -1 ? 'Last Week' : `Week ${logWeekOffset > 0 ? '+' : ''}${logWeekOffset}`);
+        document.getElementById('logWeekDates').textContent = week.label;
+        
+        // Get filters
+        const ownerFilter = document.getElementById('logOwnerFilter')?.value || 'all';
+        const serviceFilter = document.getElementById('logServiceFilter')?.value || 'all';
+        
+        // Filter entries
+        let entries = data.entries.filter(e => {
+            // Date filter
+            if (logDayFilter === 'all') {
+                if (e.date < week.start || e.date > week.end) return false;
+            } else if (logDayFilter === 'today') {
+                if (e.date !== today) return false;
+            } else {
+                if (e.date !== logDayFilter) return false;
+            }
+            
+            // Owner filter
+            if (ownerFilter !== 'all' && e.personId !== ownerFilter) return false;
+            
+            // Service filter
+            if (serviceFilter !== 'all' && e.service !== serviceFilter) return false;
+            
+            return true;
+        });
+        
+        if (entries.length === 0) {
+            container.innerHTML = '<p style="color: #64748b; text-align: center; padding: 20px;">No entries for this period.</p>';
+            return;
+        }
+        
+        // Group by date
+        const byDate = {};
+        entries.forEach(e => {
+            if (!byDate[e.date]) byDate[e.date] = [];
+            byDate[e.date].push(e);
+        });
+        
+        let html = '';
+        Object.keys(byDate).sort().reverse().forEach(date => {
+            const dateEntries = byDate[date];
+            const dateLabel = new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+            const isToday = date === today;
+            
+            html += `
+                <div class="log-day-section">
+                    <div class="log-day-header" onclick="toggleLogDay(this)">
+                        <span class="day-title">${isToday ? '⭐ Today - ' : ''}${dateLabel}</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="entry-count">${dateEntries.length} entries</span>
+                            <span class="collapse-icon">▼</span>
+                        </div>
+                    </div>
+                    <div class="log-day-content">
+            `;
+            
+            dateEntries.forEach(entry => {
+                const person = data.team.find(p => p.id === entry.personId);
+                const service = SERVICES.find(s => s.id === entry.service);
+                
+                const hasHistory = entry.history && entry.history.length > 0;
+                
+                html += `
+                    <div class="daily-entry-card" style="border-left-color: ${getStatusColor(entry.status)};">
+                        <div class="entry-header">
+                            <span class="entry-date">
+                                ${entry.adoId ? `<a href="${entry.adoUrl}" target="_blank" class="ado-link">#${entry.adoId}</a> - ` : ''}
+                                ${entry.apiEndpoint || 'No description'}
+                            </span>
+                            <div>
+                                <button class="action-btn edit" onclick="editEntry('${entry.id}')">✏️</button>
+                                <button class="action-btn delete" onclick="deleteEntry('${entry.id}')">🗑️</button>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap; font-size: 12px;">
+                            <span class="service-badge">${service ? service.icon : '📌'} ${entry.service}</span>
+                            <span class="status-badge status-${entry.status}">${getStatusLabel(entry.status)}</span>
+                            <span style="color: #64748b;">👤 ${person ? person.name : 'Unknown'}</span>
+                            ${entry.bugLink ? `<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; font-size: 11px;">🐛 ${entry.bugLink}</span>` : ''}
+                            ${hasHistory ? `<button onclick="toggleEntryHistory('${entry.id}')" style="background: none; border: none; cursor: pointer; font-size: 11px; color: #3b82f6; text-decoration: underline;">📜 History (${entry.history.length})</button>` : ''}
+                        </div>
+                        ${entry.notes ? `<p style="margin-top: 8px; font-size: 12px; color: #475569;">${entry.notes}</p>` : ''}
+                        
+                        ${hasHistory ? renderEntryHistory(entry) : ''}
+                    </div>
+                `;
+            });
+            
+            html += '</div></div>';
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    function toggleLogDay(header) {
+        header.parentElement.classList.toggle('collapsed');
+    }
+    
+    function toggleEntryHistory(entryId) {
+        const historyEl = document.getElementById('history-' + entryId);
+        if (historyEl) {
+            historyEl.style.display = historyEl.style.display === 'none' ? 'block' : 'none';
+        }
+    }
+    
+    function renderEntryHistory(entry) {
+        if (!entry.history || entry.history.length === 0) return '';
+        
+        let historyItems = entry.history.map(h => {
+            const histDate = new Date(h.timestamp);
+            const formattedDate = histDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            const formattedTime = histDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            const actionLabel = h.action === 'created' ? '🆕 Created' : '✏️ Updated';
+            let statusInfo = '';
+            if (h.oldStatus && h.newStatus && h.oldStatus !== h.newStatus) {
+                statusInfo = ' (' + getStatusLabel(h.oldStatus) + ' → ' + getStatusLabel(h.newStatus) + ')';
+            } else if (h.status) {
+                statusInfo = ' - ' + getStatusLabel(h.status);
+            }
+            return '<div style="margin-bottom: 4px; color: #475569;">' + actionLabel + statusInfo + ' <span style="color: #94a3b8;">— ' + formattedDate + ' at ' + formattedTime + '</span></div>';
+        }).join('');
+        
+        return '<div id="history-' + entry.id + '" class="entry-history" style="display: none; margin-top: 10px; padding: 10px; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 8px; font-size: 11px;">' +
+            '<strong style="color: var(--axos-navy);">📜 Update History:</strong>' +
+            '<div style="margin-top: 6px; padding-left: 12px; border-left: 2px solid var(--axos-orange);">' +
+            historyItems +
+            '</div></div>';
+    }
+    
+    function getStatusLabel(status) {
+        const labels = {
+            'not-started': '⏳ Not Started',
+            'in-progress': '🔄 In Progress',
+            'testing': '🧪 Testing',
+            'blocked': '🚫 Blocked',
+            'completed': '✅ Completed'
+        };
+        return labels[status] || status;
+    }
+    
+    function getStatusColor(status) {
+        const colors = {
+            'not-started': '#94a3b8',
+            'in-progress': '#3b82f6',
+            'testing': '#f59e0b',
+            'blocked': '#ef4444',
+            'completed': '#10b981'
+        };
+        return colors[status] || '#94a3b8';
+    }
+    
+    // ========================================
+    // WEEKLY SUMMARY (Sidebar)
+    // ========================================
+    
+    function updateWeeklySummary() {
+        // Get current week dates - ALWAYS use current week on load, week selector for manual changes
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        
+        // Calculate current week's Monday
+        const dayOfWeek = today.getDay();
+        const monday = new Date(today);
+        monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+        
+        // Calculate current week's Sunday
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        
+        const startDate = monday.toISOString().split('T')[0];
+        const endDate = sunday.toISOString().split('T')[0];
+        
+        // Filter entries for this week
+        const weekEntries = data.entries.filter(e => e.date && e.date >= startDate && e.date <= endDate);
+        
+        const completed = weekEntries.filter(e => e.status === 'completed').length;
+        const inProgress = weekEntries.filter(e => e.status === 'in-progress').length;
+        const testing = weekEntries.filter(e => e.status === 'testing').length;
+        const blocked = weekEntries.filter(e => e.status === 'blocked').length;
+        
+        // Update DOM elements - use direct assignment, no null checks that could fail silently
+        document.getElementById('teamWeeklyTotal').innerText = weekEntries.length;
+        document.getElementById('teamCompleted').innerText = completed;
+        document.getElementById('teamInProgress').innerText = inProgress;
+        document.getElementById('teamBlocked').innerText = blocked;
+        
+        // Individual stats
+        const individualStats = document.getElementById('individualStats');
+        
+        let html = '';
+        data.team.filter(p => p.id !== 'unassigned').forEach(person => {
+            const personEntries = weekEntries.filter(e => e.personId === person.id);
+            const personTotal = personEntries.length;
+            
+            if (personTotal === 0) return;
+            
+            const pCompleted = personEntries.filter(e => e.status === 'completed').length;
+            const pInProgress = personEntries.filter(e => e.status === 'in-progress').length;
+            const pTesting = personEntries.filter(e => e.status === 'testing').length;
+            const pBlocked = personEntries.filter(e => e.status === 'blocked').length;
+            const pNotStarted = personEntries.filter(e => e.status === 'not-started').length;
+            
+            html += `
+                <div style="padding: 12px; background: #f8fafc; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid var(--axos-orange);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-weight: 600; color: var(--axos-navy); font-size: 13px;">👤 ${person.name}</span>
+                        <span style="font-weight: 700; color: var(--axos-navy); font-size: 14px;">${personTotal} total</span>
+                    </div>
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap; font-size: 11px;">
+                        ${pCompleted > 0 ? `<span style="background: #d1fae5; color: #065f46; padding: 3px 8px; border-radius: 4px;">✅ ${pCompleted}</span>` : ''}
+                        ${pInProgress > 0 ? `<span style="background: #dbeafe; color: #1e40af; padding: 3px 8px; border-radius: 4px;">🔄 ${pInProgress}</span>` : ''}
+                        ${pTesting > 0 ? `<span style="background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 4px;">🧪 ${pTesting}</span>` : ''}
+                        ${pBlocked > 0 ? `<span style="background: #fee2e2; color: #991b1b; padding: 3px 8px; border-radius: 4px;">🚫 ${pBlocked}</span>` : ''}
+                        ${pNotStarted > 0 ? `<span style="background: #e2e8f0; color: #475569; padding: 3px 8px; border-radius: 4px;">⏳ ${pNotStarted}</span>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+        
+        if (!html) {
+            html = '<p style="color: #64748b; font-size: 13px; text-align: center; padding: 16px;">No entries this week yet.</p>';
+        }
+        
+        individualStats.innerHTML = html;
+    }
+    
+    // ========================================
+    // SERVICE PROGRESS
+    // ========================================
+    
+    function renderServiceProgress() {
+        const container = document.getElementById('serviceProgress');
+        if (!container) return;
+        
+        let html = '';
+        SERVICES.forEach(service => {
+            const serviceEntries = data.entries.filter(e => e.service === service.id);
+            const completed = serviceEntries.filter(e => e.status === 'completed').length;
+            const total = serviceEntries.length;
+            
+            if (total === 0) return;
+            
+            const progress = Math.round((completed / total) * 100);
+            
+            html += `
+                <div style="margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 13px;">
+                        <span>${service.icon} ${service.name}</span>
+                        <span style="color: #64748b;">${completed}/${total} (${progress}%)</span>
+                    </div>
+                    <div style="background: #e2e8f0; border-radius: 6px; height: 8px; overflow: hidden;">
+                        <div style="background: linear-gradient(90deg, #10b981, #059669); height: 100%; width: ${progress}%; transition: width 0.5s;"></div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html || '<p style="color: #64748b;">No entries yet.</p>';
+    }
+    
+    // ========================================
+    // IMPORT/EXPORT
+    // ========================================
+    
+    function exportData() {
+        const exportObj = {
+            ...data,
+            exportedAt: new Date().toISOString(),
+            exportVersion: '1.0'
+        };
+        
+        const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `core-services-api-tracker-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+    
+    function importData() {
+        document.getElementById('fileInput').click();
+    }
+    
+    function handleFileImport(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const imported = JSON.parse(e.target.result);
+                
+                if (confirm(`Import data? This will merge with existing data.\n\nEntries: ${imported.entries?.length || 0}\nTeam members: ${imported.team?.length || 0}`)) {
+                    // Merge entries
+                    if (imported.entries) {
+                        imported.entries.forEach(entry => {
+                            const existing = data.entries.find(e => e.id === entry.id || (e.adoId && e.adoId === entry.adoId));
+                            if (existing) {
+                                Object.assign(existing, entry);
+                            } else {
+                                data.entries.push(entry);
+                            }
+                        });
+                    }
+                    
+                    // Merge team
+                    if (imported.team) {
+                        imported.team.forEach(person => {
+                            if (!data.team.find(p => p.id === person.id)) {
+                                data.team.push(person);
+                            }
+                        });
+                    }
+                    
+                    // Merge weekly targets
+                    if (imported.weeklyTargets) {
+                        Object.assign(data.weeklyTargets, imported.weeklyTargets);
+                    }
+                    
+                    // Update total tasks if provided
+                    if (imported.totalTasks) {
+                        data.totalTasks = imported.totalTasks;
+                    }
+                    
+                    populateAllDropdowns();
+                    renderAll();
+                    showSaveStatus(false);
+                    alert('✅ Data imported successfully!');
+                }
+            } catch (err) {
+                alert('Error parsing file: ' + err.message);
+            }
+        };
+        reader.readAsText(file);
+        
+        event.target.value = '';
+    }
+    
+    // ========================================
+    // MODALS
+    // ========================================
+    
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('show');
+    }
+    
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.remove('show');
+            }
+        });
+    });
+    
+    // ========================================
+    // WEEKLY LOG
+    // ========================================
+    
+    let weeklyLogWeekIdx = 0;
+    let weeklyLogOwnerFilter = 'all';
+    
+    function navigateWeeklyLog(direction) {
+        weeklyLogWeekIdx += direction;
+        renderWeeklyLog();
+    }
+    
+    function setWeeklyLogOwner(ownerId) {
+        weeklyLogOwnerFilter = ownerId;
+        document.querySelectorAll('#weeklyLogOwnerTabs .team-tab').forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.owner === ownerId);
+        });
+        renderWeeklyLog();
+    }
+    
+    function renderWeeklyLog() {
+        const container = document.getElementById('weeklyLogEntries');
+        const labelEl = document.getElementById('weeklyLogLabel');
+        const datesEl = document.getElementById('weeklyLogDates');
+        const ownerTabsEl = document.getElementById('weeklyLogOwnerTabs');
+        
+        if (!container) return;
+        
+        // Calculate week dates
+        const weekDates = getWeekDates(weeklyLogWeekIdx);
+        const weekNum = getWeekNumber(new Date(weekDates.start + 'T12:00:00'));
+        
+        labelEl.textContent = weeklyLogWeekIdx === 0 ? 'This Week' : 
+                              weeklyLogWeekIdx === -1 ? 'Last Week' : 
+                              `Week ${weekNum}`;
+        datesEl.textContent = `${formatDate(weekDates.start)} - ${formatDate(weekDates.end)}`;
+        
+        // Filter entries for this week
+        let weekEntries = data.entries.filter(entry => {
+            return entry.date >= weekDates.start && entry.date <= weekDates.end;
+        });
+        
+        // Build owner tabs
+        const ownerCounts = {};
+        weekEntries.forEach(entry => {
+            ownerCounts[entry.personId] = (ownerCounts[entry.personId] || 0) + 1;
+        });
+        
+        let tabsHtml = `<div class="team-tab ${weeklyLogOwnerFilter === 'all' ? 'active' : ''}" data-owner="all" onclick="setWeeklyLogOwner('all')">All <span class="count">${weekEntries.length}</span></div>`;
+        
+        data.team.forEach(person => {
+            const count = ownerCounts[person.id] || 0;
+            if (count > 0) {
+                tabsHtml += `<div class="team-tab ${weeklyLogOwnerFilter === person.id ? 'active' : ''}" data-owner="${person.id}" onclick="setWeeklyLogOwner('${person.id}')">${person.name} <span class="count">${count}</span></div>`;
+            }
+        });
+        
+        ownerTabsEl.innerHTML = tabsHtml;
+        
+        // Apply owner filter
+        if (weeklyLogOwnerFilter !== 'all') {
+            weekEntries = weekEntries.filter(e => e.personId === weeklyLogOwnerFilter);
+        }
+        
+        if (weekEntries.length === 0) {
+            container.innerHTML = '<p style="color: #64748b; text-align: center; padding: 40px;">No entries for this week.</p>';
+            return;
+        }
+        
+        // Group by owner
+        const byOwner = {};
+        weekEntries.forEach(entry => {
+            if (!byOwner[entry.personId]) byOwner[entry.personId] = [];
+            byOwner[entry.personId].push(entry);
+        });
+        
+        let html = '';
+        
+        Object.keys(byOwner).forEach(ownerId => {
+            const person = data.team.find(p => p.id === ownerId);
+            const entries = byOwner[ownerId];
+            
+            // Count by status
+            const completed = entries.filter(e => e.status === 'completed').length;
+            const inProgress = entries.filter(e => e.status === 'in-progress').length;
+            const testing = entries.filter(e => e.status === 'testing').length;
+            const blocked = entries.filter(e => e.status === 'blocked').length;
+            
+            html += `
+                <div style="border-bottom: 1px solid #e2e8f0;">
+                    <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span style="font-weight: 700; color: var(--axos-navy); font-size: 14px;">${person ? person.name : 'Unknown'}</span>
+                            <span style="font-size: 13px; color: #64748b;">${entries.length} entries</span>
+                        </div>
+                        <div style="display: flex; gap: 8px; font-size: 11px;">
+                            ${completed > 0 ? `<span style="background: #d1fae5; color: #065f46; padding: 4px 8px; border-radius: 4px;">✅ ${completed}</span>` : ''}
+                            ${inProgress > 0 ? `<span style="background: #dbeafe; color: #1e40af; padding: 4px 8px; border-radius: 4px;">🔄 ${inProgress}</span>` : ''}
+                            ${testing > 0 ? `<span style="background: #fef3c7; color: #92400e; padding: 4px 8px; border-radius: 4px;">🧪 ${testing}</span>` : ''}
+                            ${blocked > 0 ? `<span style="background: #fee2e2; color: #991b1b; padding: 4px 8px; border-radius: 4px;">🚫 ${blocked}</span>` : ''}
+                        </div>
+                    </div>
+                    <div style="padding: 12px;">
+            `;
+            
+            // Sort entries by date (newest first)
+            entries.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            entries.forEach(entry => {
+                const service = SERVICES.find(s => s.id === entry.service);
+                const dayName = new Date(entry.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' });
+                
+                html += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; margin-bottom: 4px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; border-left: 3px solid ${getStatusColor(entry.status)};">
+                        <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0;">
+                            <span style="font-size: 11px; color: #64748b; white-space: nowrap;">${dayName} ${new Date(entry.date + 'T12:00:00').getDate()}</span>
+                            <span class="service-badge" style="font-size: 10px; white-space: nowrap;">${service?.icon || '📌'} ${entry.service}</span>
+                            <span style="font-size: 12px; color: #374151; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${entry.apiEndpoint || ''}">${entry.apiEndpoint || '-'}</span>
+                            ${entry.adoId ? `<a href="${entry.adoUrl}" target="_blank" class="ado-link" style="font-size: 11px; white-space: nowrap;">#${entry.adoId}</a>` : ''}
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="status-badge status-${entry.status}" style="font-size: 10px;">${getStatusLabel(entry.status)}</span>
+                            <button class="action-btn edit" onclick="editEntry('${entry.id}')" style="font-size: 10px; padding: 4px 8px;">✏️</button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div></div>';
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    function getStatusColor(status) {
+        const colors = {
+            'not-started': '#94a3b8',
+            'in-progress': '#3b82f6',
+            'testing': '#f59e0b',
+            'blocked': '#ef4444',
+            'completed': '#10b981'
+        };
+        return colors[status] || '#94a3b8';
+    }
+    
+    // ========================================
+    // TASK INVENTORY
+    // ========================================
+    
+    function setInventoryDatePreset(preset) {
+        inventoryFilters.datePreset = preset;
+        inventoryFilters.filterByCompletedDate = (preset === 'completed-week');
+        
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        
+        // Update button states
+        document.querySelectorAll('[data-preset]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.preset === preset);
+        });
+        
+        switch(preset) {
+            case 'today':
+                inventoryFilters.startDate = todayStr;
+                inventoryFilters.endDate = todayStr;
+                break;
+            case 'week':
+            case 'completed-week':
+                const weekDates = getWeekDates(0);
+                inventoryFilters.startDate = weekDates.start;
+                inventoryFilters.endDate = weekDates.end;
+                break;
+            case 'month':
+                const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+                const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                inventoryFilters.startDate = monthStart.toISOString().split('T')[0];
+                inventoryFilters.endDate = monthEnd.toISOString().split('T')[0];
+                break;
+            case 'year':
+                inventoryFilters.startDate = `${today.getFullYear()}-01-01`;
+                inventoryFilters.endDate = `${today.getFullYear()}-12-31`;
+                break;
+            case 'all':
+                inventoryFilters.startDate = null;
+                inventoryFilters.endDate = null;
+                break;
+        }
+        
+        // Update date inputs
+        document.getElementById('inventoryStartDate').value = inventoryFilters.startDate || '';
+        document.getElementById('inventoryEndDate').value = inventoryFilters.endDate || '';
+        
+        updateInventoryDateLabel();
+        renderInventory();
+    }
+    
+    function applyCustomDateRange() {
+        inventoryFilters.startDate = document.getElementById('inventoryStartDate').value || null;
+        inventoryFilters.endDate = document.getElementById('inventoryEndDate').value || null;
+        inventoryFilters.datePreset = 'custom';
+        
+        document.querySelectorAll('[data-preset]').forEach(btn => btn.classList.remove('active'));
+        
+        updateInventoryDateLabel();
+        renderInventory();
+    }
+    
+    function clearDateFilter() {
+        inventoryFilters.startDate = null;
+        inventoryFilters.endDate = null;
+        inventoryFilters.datePreset = 'all';
+        inventoryFilters.filterByCompletedDate = false;
+        
+        document.getElementById('inventoryStartDate').value = '';
+        document.getElementById('inventoryEndDate').value = '';
+        document.querySelectorAll('[data-preset]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.preset === 'all');
+        });
+        
+        updateInventoryDateLabel();
+        renderInventory();
+    }
+    
+    function updateInventoryDateLabel() {
+        const label = document.getElementById('inventoryDateRangeLabel');
+        if (!label) return;
+        
+        if (!inventoryFilters.startDate && !inventoryFilters.endDate) {
+            label.textContent = 'All Time';
+        } else {
+            const start = inventoryFilters.startDate || 'Beginning';
+            const end = inventoryFilters.endDate || 'Now';
+            const prefix = inventoryFilters.filterByCompletedDate ? 'Completed: ' : '';
+            label.textContent = `${prefix}${start} → ${end}`;
+        }
+    }
+    
+    function setInventoryOwner(ownerId) {
+        inventoryFilters.owner = ownerId;
+        document.querySelectorAll('#inventoryOwnerTabs .team-tab').forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.owner === ownerId);
+        });
+        renderInventory();
+    }
+    
+    function setInventoryService(serviceId) {
+        inventoryFilters.service = serviceId;
+        document.querySelectorAll('#inventoryServiceTabs .team-tab').forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.service === serviceId);
+        });
+        renderInventory();
+    }
+    
+    function setInventoryStatus(status) {
+        inventoryFilters.status = status;
+        document.querySelectorAll('#inventoryStatusTabs .team-tab').forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.status === status);
+        });
+        renderInventory();
+    }
+    
+    function toggleInventoryTable() {
+        isInventoryVisible = !isInventoryVisible;
+        document.getElementById('inventoryTableContainer').style.display = isInventoryVisible ? 'block' : 'none';
+        document.getElementById('inventoryToggleIcon').textContent = isInventoryVisible ? '▲' : '▼';
+        document.getElementById('inventoryToggleText').textContent = isInventoryVisible ? 'Hide Table' : 'Show Table';
+    }
+    
+    function renderInventory() {
+        const search = (document.getElementById('inventorySearch')?.value || '').toLowerCase();
+        inventoryFilters.search = search;
+        
+        // Filter entries
+        let filtered = data.entries.filter(entry => {
+            // Date filter
+            if (inventoryFilters.startDate || inventoryFilters.endDate) {
+                const dateToCheck = inventoryFilters.filterByCompletedDate && entry.status === 'completed' 
+                    ? entry.date 
+                    : entry.date;
+                
+                if (inventoryFilters.filterByCompletedDate && entry.status !== 'completed') {
+                    return false;
+                }
+                
+                if (inventoryFilters.startDate && dateToCheck < inventoryFilters.startDate) return false;
+                if (inventoryFilters.endDate && dateToCheck > inventoryFilters.endDate) return false;
+            }
+            
+            // Owner filter
+            if (inventoryFilters.owner !== 'all' && entry.personId !== inventoryFilters.owner) return false;
+            
+            // Service filter
+            if (inventoryFilters.service !== 'all' && entry.service !== inventoryFilters.service) return false;
+            
+            // Status filter
+            if (inventoryFilters.status !== 'all' && entry.status !== inventoryFilters.status) return false;
+            
+            // Search filter
+            if (search) {
+                const searchFields = [
+                    entry.apiEndpoint || '',
+                    entry.adoId || '',
+                    entry.service || '',
+                    entry.notes || '',
+                    data.team.find(p => p.id === entry.personId)?.name || ''
+                ].join(' ').toLowerCase();
+                
+                if (!searchFields.includes(search)) return false;
+            }
+            
+            return true;
+        });
+        
+        // Sort by date descending
+        filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        // Update count
+        document.getElementById('inventoryCount').textContent = filtered.length;
+        
+        // Update owner tabs
+        renderInventoryOwnerTabs();
+        
+        // Update service tabs
+        renderInventoryServiceTabs();
+        
+        // Render table
+        const tbody = document.getElementById('inventoryTableBody');
+        if (!tbody) return;
+        
+        if (filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #64748b; padding: 40px;">No entries match the current filters</td></tr>';
+            return;
+        }
+        
+        let html = '';
+        filtered.forEach(entry => {
+            const person = data.team.find(p => p.id === entry.personId);
+            const service = SERVICES.find(s => s.id === entry.service);
+            
+            html += `
+                <tr>
+                    <td>${entry.adoId ? `<a href="${entry.adoUrl}" target="_blank" class="ado-link">#${entry.adoId}</a>` : '-'}</td>
+                    <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${entry.apiEndpoint || ''}">${entry.apiEndpoint || '-'}</td>
+                    <td><span class="service-badge">${service ? service.icon : '📌'} ${entry.service}</span></td>
+                    <td>${person ? person.name : 'Unknown'}</td>
+                    <td><span class="status-badge status-${entry.status}">${getStatusLabel(entry.status)}</span></td>
+                    <td>${new Date(entry.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
+                    <td>
+                        <button class="action-btn edit" onclick="editEntry('${entry.id}')">✏️</button>
+                        <button class="action-btn delete" onclick="deleteEntry('${entry.id}')">🗑️</button>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        tbody.innerHTML = html;
+    }
+    
+    function renderInventoryOwnerTabs() {
+        const container = document.getElementById('inventoryOwnerTabs');
+        if (!container) return;
+        
+        const allCount = data.entries.length;
+        let html = `<div class="team-tab ${inventoryFilters.owner === 'all' ? 'active' : ''}" data-owner="all" onclick="setInventoryOwner('all')">All <span class="count">${allCount}</span></div>`;
+        
+        data.team.filter(p => p.id !== 'unassigned').forEach(person => {
+            const count = data.entries.filter(e => e.personId === person.id).length;
+            html += `<div class="team-tab ${inventoryFilters.owner === person.id ? 'active' : ''}" data-owner="${person.id}" onclick="setInventoryOwner('${person.id}')">${person.name} <span class="count">${count}</span></div>`;
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    function renderInventoryServiceTabs() {
+        const container = document.getElementById('inventoryServiceTabs');
+        if (!container) return;
+        
+        let html = `<div class="team-tab ${inventoryFilters.service === 'all' ? 'active' : ''}" data-service="all" onclick="setInventoryService('all')">All Services</div>`;
+        
+        SERVICES.forEach(service => {
+            const count = data.entries.filter(e => e.service === service.id).length;
+            if (count > 0) {
+                html += `<div class="team-tab ${inventoryFilters.service === service.id ? 'active' : ''}" data-service="${service.id}" onclick="setInventoryService('${service.id}')">${service.icon} ${service.name} <span class="count">${count}</span></div>`;
+            }
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    // ========================================
+    // DUPLICATE DETECTION
+    // ========================================
+    
+    let currentDuplicateGroups = [];
+    
+    function checkForDuplicates() {
+        currentDuplicateGroups = findDuplicateGroups();
+        
+        const warningDiv = document.getElementById('duplicateWarning');
+        const warningText = document.getElementById('duplicateWarningText');
+        
+        if (currentDuplicateGroups.length > 0) {
+            warningDiv.style.display = 'block';
+            warningText.innerHTML = `Found <strong>${currentDuplicateGroups.length}</strong> duplicate group(s). Click "View Details & Remove" to see and remove duplicates.`;
+        } else {
+            warningDiv.style.display = 'none';
+        }
+    }
+    
+    function findDuplicateGroups() {
+        const groups = [];
+        const processedAdoIds = new Set();
+        const processedEndpoints = new Set();
+        
+        // Find duplicates by ADO ID
+        data.entries.forEach(entry => {
+            if (entry.adoId && !processedAdoIds.has(entry.adoId)) {
+                const matches = data.entries.filter(e => e.adoId === entry.adoId);
+                if (matches.length > 1) {
+                    matches.sort((a, b) => new Date(a.date) - new Date(b.date));
+                    groups.push({
+                        type: 'ado',
+                        identifier: `ADO #${entry.adoId}`,
+                        entries: matches
+                    });
+                }
+                processedAdoIds.add(entry.adoId);
+            }
+        });
+        
+        // Find duplicates by endpoint name
+        data.entries.forEach(entry => {
+            if (entry.apiEndpoint) {
+                const lowerEndpoint = entry.apiEndpoint.toLowerCase();
+                if (!processedEndpoints.has(lowerEndpoint)) {
+                    const matches = data.entries.filter(e => 
+                        e.apiEndpoint && e.apiEndpoint.toLowerCase() === lowerEndpoint
+                    );
+                    if (matches.length > 1) {
+                        // Check if not already covered by ADO group
+                        const alreadyInAdoGroup = groups.some(g => 
+                            g.type === 'ado' && g.entries.some(e => e.apiEndpoint?.toLowerCase() === lowerEndpoint)
+                        );
+                        
+                        if (!alreadyInAdoGroup) {
+                            matches.sort((a, b) => new Date(a.date) - new Date(b.date));
+                            groups.push({
+                                type: 'endpoint',
+                                identifier: `"${entry.apiEndpoint}"`,
+                                entries: matches
+                            });
+                        }
+                    }
+                    processedEndpoints.add(lowerEndpoint);
+                }
+            }
+        });
+        
+        return groups;
+    }
+    
+    function showDuplicateModal() {
+        if (currentDuplicateGroups.length === 0) {
+            alert('No duplicates found.');
+            return;
+        }
+        
+        let html = `
+            <div id="duplicateModal" class="modal-overlay show" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;" onclick="if(event.target === this) closeDuplicateModal()">
+                <div class="modal" style="width: 800px; max-height: 90vh; overflow-y: auto;" onclick="event.stopPropagation()">
+                    <div style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: white; padding: 20px; border-radius: 16px 16px 0 0; margin: -24px -24px 20px -24px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h3 style="margin: 0;">⚠️ Duplicate Entries</h3>
+                            <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.8;">Found ${currentDuplicateGroups.length} duplicate group(s)</p>
+                        </div>
+                        <button onclick="closeDuplicateModal()" style="background: rgba(255,255,255,0.1); border: none; color: white; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 18px;">✕</button>
+                    </div>
+        `;
+        
+        currentDuplicateGroups.forEach((group, groupIdx) => {
+            html += `
+                <div style="margin-bottom: 16px; border: 2px solid #fecaca; border-radius: 12px; overflow: hidden;">
+                    <div style="background: #fef2f2; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong style="color: #991b1b;">${group.type === 'ado' ? '🔗' : '📝'} ${group.identifier}</strong>
+                            <span style="color: #92400e; font-size: 12px; margin-left: 8px;">${group.entries.length} occurrences</span>
+                        </div>
+                        <button onclick="removeDuplicatesInGroup(${groupIdx})" style="padding: 6px 12px; background: #dc2626; border: none; border-radius: 6px; color: white; font-weight: 600; font-size: 11px; cursor: pointer;">
+                            🗑️ Keep Original Only
+                        </button>
+                    </div>
+                    <div style="padding: 12px;">
+            `;
+            
+            group.entries.forEach((entry, idx) => {
+                const isOriginal = idx === 0;
+                const person = data.team.find(p => p.id === entry.personId);
+                const service = SERVICES.find(s => s.id === entry.service);
+                
+                html += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; margin-bottom: 4px; background: ${isOriginal ? '#d1fae5' : '#fef2f2'}; border-radius: 6px; border-left: 3px solid ${isOriginal ? '#10b981' : '#ef4444'};">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span style="font-size: 11px; color: ${isOriginal ? '#065f46' : '#991b1b'}; font-weight: 700;">
+                                ${isOriginal ? '✓ ORIGINAL' : '✕ DUPLICATE'}
+                            </span>
+                            <span style="font-size: 12px; color: #64748b;">${new Date(entry.date + 'T12:00:00').toLocaleDateString()}</span>
+                            <span style="font-size: 12px; color: #374151;">${person?.name || 'Unknown'}</span>
+                            <span class="service-badge" style="font-size: 10px;">${service?.icon || '📌'} ${entry.service}</span>
+                        </div>
+                        ${!isOriginal ? `<button onclick="deleteSingleDuplicate('${entry.id}', ${groupIdx})" class="action-btn delete" style="font-size: 10px; padding: 4px 8px;">🗑️</button>` : ''}
+                    </div>
+                `;
+            });
+            
+            html += '</div></div>';
+        });
+        
+        html += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid #e2e8f0;">
+                        <span style="font-size: 13px; color: #64748b;">⚡ Removing duplicates will keep only the original (earliest) entry</span>
+                        <div style="display: flex; gap: 12px;">
+                            <button onclick="removeAllDuplicates()" style="padding: 10px 20px; background: #dc2626; border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer;">
+                                🗑️ Remove All Duplicates
+                            </button>
+                            <button onclick="closeDuplicateModal()" style="padding: 10px 20px; background: #e2e8f0; border: none; border-radius: 8px; color: #374151; font-weight: 600; cursor: pointer;">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', html);
+    }
+    
+    function closeDuplicateModal() {
+        const modal = document.getElementById('duplicateModal');
+        if (modal) modal.remove();
+    }
+    
+    function removeDuplicatesInGroup(groupIdx) {
+        const group = currentDuplicateGroups[groupIdx];
+        if (!group || group.entries.length < 2) return;
+        
+        const entriesToRemove = group.entries.slice(1);
+        
+        if (!confirm(`Remove ${entriesToRemove.length} duplicate(s) for ${group.identifier}?\n\nThis will keep only the original entry.`)) {
+            return;
+        }
+        
+        entriesToRemove.forEach(entry => {
+            data.entries = data.entries.filter(e => e.id !== entry.id);
+        });
+        
+        closeDuplicateModal();
+        renderAll();
+        showSaveStatus(false);
+        
+        if (currentDuplicateGroups.length > 0) {
+            showDuplicateModal();
+        } else {
+            alert(`✅ Removed ${entriesToRemove.length} duplicate(s). No more duplicates found!`);
+        }
+    }
+    
+    function deleteSingleDuplicate(entryId, groupIdx) {
+        if (!confirm('Delete this duplicate entry?')) return;
+        
+        data.entries = data.entries.filter(e => e.id !== entryId);
+        
+        closeDuplicateModal();
+        renderAll();
+        showSaveStatus(false);
+        
+        if (currentDuplicateGroups.length > 0) {
+            showDuplicateModal();
+        }
+    }
+    
+    function removeAllDuplicates() {
+        let totalRemoved = 0;
+        
+        currentDuplicateGroups.forEach(group => {
+            const entriesToRemove = group.entries.slice(1);
+            entriesToRemove.forEach(entry => {
+                data.entries = data.entries.filter(e => e.id !== entry.id);
+                totalRemoved++;
+            });
+        });
+        
+        closeDuplicateModal();
+        renderAll();
+        showSaveStatus(false);
+        alert(`✅ Removed ${totalRemoved} duplicate(s). All entries are now unique!`);
+    }
+    
+    // ========================================
+    // INITIALIZE
+    // ========================================
+    
+    init();
+    
+    // Backup: ensure summary updates after full page load
+    window.addEventListener('load', function() {
+        updateWeeklySummary();
+        updateTeamList();
+    });
+</script>
+
+</body>
+</html>
