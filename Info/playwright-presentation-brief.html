@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Why We're Exploring Playwright - Executive Brief</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --axos-orange: #FAA74A;
+            --axos-orange-dark: #e8922a;
+            --axos-navy: #1E3860;
+            --axos-navy-dark: #152844;
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: #161d2e;
+            --border-color: #2d3748;
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --success: #10b981;
+            --success-bg: rgba(16, 185, 129, 0.1);
+            --error: #ef4444;
+            --error-bg: rgba(239, 68, 68, 0.1);
+            --warning: #f59e0b;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+        
+        .bg-pattern {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: 
+                radial-gradient(ellipse at 20% 20%, rgba(30, 56, 96, 0.3) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(250, 167, 74, 0.08) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .particles {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: var(--axos-orange);
+            border-radius: 50%;
+            opacity: 0.3;
+            animation: float 15s infinite ease-in-out;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(100vh); opacity: 0; }
+            10% { opacity: 0.3; }
+            90% { opacity: 0.3; }
+            100% { transform: translateY(-100vh); opacity: 0; }
+        }
+        
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 60px 24px;
+        }
+        
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 48px;
+            animation: fadeInUp 0.8s ease;
+        }
+        
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 8px 20px;
+            background: rgba(250, 167, 74, 0.15);
+            border: 1px solid rgba(250, 167, 74, 0.3);
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--axos-orange);
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            font-size: clamp(40px, 6vw, 60px);
+            font-weight: 800;
+            margin-bottom: 16px;
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, var(--axos-orange) 0%, #fdd9a8 50%, var(--axos-orange) 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shimmer 3s ease-in-out infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: 0% center; }
+            50% { background-position: 100% center; }
+            100% { background-position: 0% center; }
+        }
+        
+        .subtitle {
+            font-size: 20px;
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        
+        /* Section Headers */
+        .section-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        
+        .section-header h2 {
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+        
+        .section-header p {
+            color: var(--text-secondary);
+            font-size: 16px;
+        }
+        
+        /* Tech Stack */
+        .tech-stack {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin: 32px 0 48px;
+            padding: 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            animation: fadeInUp 0.8s ease 0.2s both;
+        }
+        
+        .tech-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 15px;
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+        }
+        
+        .tech-item.highlight { 
+            color: var(--axos-orange);
+            background: rgba(250, 167, 74, 0.1);
+        }
+        
+        .tech-divider {
+            width: 1px;
+            height: 24px;
+            background: var(--border-color);
+        }
+        
+        /* Critical Problem Section */
+        .critical-section {
+            margin-bottom: 48px;
+            animation: fadeInUp 0.8s ease 0.3s both;
+        }
+        
+        .critical-box {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 100%);
+            border: 2px solid var(--error);
+            border-radius: 20px;
+            padding: 32px;
+            margin-bottom: 24px;
+        }
+        
+        .critical-box h3 {
+            color: var(--error);
+            font-size: 22px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .critical-box p {
+            color: var(--text-secondary);
+            font-size: 16px;
+            line-height: 1.7;
+        }
+        
+        .problem-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+        }
+        
+        .problem-card {
+            background: var(--error-bg);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .problem-card:hover {
+            border-color: var(--error);
+            transform: translateY(-2px);
+        }
+        
+        .problem-card h4 {
+            font-size: 15px;
+            color: var(--error);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .problem-card p {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        
+        /* Cost Section */
+        .cost-section {
+            margin-bottom: 48px;
+            animation: fadeInUp 0.8s ease 0.4s both;
+        }
+        
+        .cost-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        
+        @media (max-width: 700px) {
+            .cost-grid { grid-template-columns: 1fr; }
+        }
+        
+        .cost-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 28px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .cost-card:hover { transform: translateY(-4px); }
+        
+        .cost-card.testim { border: 2px solid var(--error); }
+        .cost-card.playwright { border: 2px solid var(--success); }
+        
+        .cost-card .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .cost-card h4 {
+            font-size: 20px;
+        }
+        
+        .cost-card .tag {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        
+        .cost-card.testim .tag { background: var(--error-bg); color: var(--error); }
+        .cost-card.playwright .tag { background: var(--success-bg); color: var(--success); }
+        
+        .cost-card .amount {
+            font-size: 42px;
+            font-weight: 800;
+            margin: 16px 0;
+        }
+        
+        .cost-card.testim .amount { color: var(--error); }
+        .cost-card.playwright .amount { color: var(--success); }
+        
+        .cost-card .details {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        
+        .cost-card .details strong {
+            color: var(--text-primary);
+        }
+        
+        /* Benefits Section */
+        .benefits-section {
+            margin-bottom: 48px;
+            animation: fadeInUp 0.8s ease 0.5s both;
+        }
+        
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+        }
+        
+        .benefit-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            transition: all 0.3s ease;
+        }
+        
+        .benefit-card:hover {
+            border-color: var(--axos-orange);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .benefit-card .icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, rgba(250, 167, 74, 0.2) 0%, rgba(250, 167, 74, 0.05) 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 16px;
+        }
+        
+        .benefit-card h4 {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        
+        .benefit-card p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        
+        /* Language Section */
+        .language-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 48px;
+            animation: fadeInUp 0.8s ease 0.6s both;
+        }
+        
+        .language-section h3 {
+            font-size: 26px;
+            margin-bottom: 24px;
+        }
+        
+        .language-section h3 span {
+            color: var(--axos-orange);
+        }
+        
+        .language-flow {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .lang-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px 24px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .lang-item:hover {
+            border-color: var(--axos-orange);
+            transform: scale(1.05);
+        }
+        
+        .lang-item .icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        
+        .lang-item .name {
+            font-weight: 700;
+            font-size: 14px;
+        }
+        
+        .lang-item .tech {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        
+        .lang-connector {
+            font-size: 24px;
+            color: var(--axos-orange);
+        }
+        
+        .lang-center {
+            background: linear-gradient(135deg, var(--axos-orange) 0%, var(--axos-orange-dark) 100%);
+            color: var(--bg-primary);
+            border-radius: 16px;
+            padding: 24px 36px;
+        }
+        
+        .lang-center .icon {
+            font-size: 36px;
+            margin-bottom: 8px;
+        }
+        
+        .lang-center .name {
+            font-size: 22px;
+            font-weight: 800;
+        }
+        
+        .language-note {
+            margin-top: 24px;
+            font-size: 16px;
+            color: var(--text-secondary);
+        }
+        
+        .language-note strong {
+            color: var(--text-primary);
+        }
+        
+        /* TestGennie Section */
+        .vision-section {
+            margin-bottom: 48px;
+            animation: fadeInUp 0.8s ease 0.7s both;
+        }
+        
+        .vision-card {
+            background: var(--bg-card);
+            border: 2px solid var(--axos-navy);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .vision-card::before {
+            content: '';
+            position: absolute;
+            top: -100px;
+            left: -100px;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(250, 167, 74, 0.1) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.2); opacity: 1; }
+        }
+        
+        .vision-card .icon {
+            font-size: 56px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .vision-card h3 {
+            font-size: 28px;
+            margin-bottom: 16px;
+            position: relative;
+        }
+        
+        .vision-card h3 .gradient-text {
+            background: linear-gradient(135deg, var(--axos-orange) 0%, #fdd9a8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .vision-card > p {
+            color: var(--text-secondary);
+            font-size: 16px;
+            max-width: 600px;
+            margin: 0 auto 28px;
+            position: relative;
+        }
+        
+        .vision-steps {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            position: relative;
+        }
+        
+        @media (max-width: 700px) {
+            .vision-steps { grid-template-columns: repeat(2, 1fr); }
+        }
+        
+        .vision-step {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .vision-step:hover {
+            border-color: var(--axos-orange);
+            transform: translateY(-2px);
+        }
+        
+        .vision-step .number {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--axos-orange) 0%, var(--axos-orange-dark) 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--bg-primary);
+            margin: 0 auto 12px;
+        }
+        
+        .vision-step h4 {
+            font-size: 14px;
+            margin-bottom: 6px;
+        }
+        
+        .vision-step p {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        
+        .vision-note {
+            margin-top: 24px;
+            padding: 16px 24px;
+            background: var(--success-bg);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 12px;
+            color: var(--success);
+            font-size: 15px;
+            font-weight: 600;
+            position: relative;
+        }
+        
+        /* FAQ Section */
+        .faq-section {
+            margin-bottom: 48px;
+            animation: fadeInUp 0.8s ease 0.8s both;
+        }
+        
+        .faq-grid {
+            display: grid;
+            gap: 16px;
+        }
+        
+        .faq-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .faq-item:hover {
+            border-color: var(--axos-orange);
+        }
+        
+        .faq-question {
+            padding: 20px 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .faq-question h4 {
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .faq-question .toggle {
+            width: 28px;
+            height: 28px;
+            background: var(--bg-secondary);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .faq-item.open .faq-question .toggle {
+            background: var(--axos-orange);
+            color: var(--bg-primary);
+            transform: rotate(45deg);
+        }
+        
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        
+        .faq-item.open .faq-answer {
+            max-height: 300px;
+        }
+        
+        .faq-answer-content {
+            padding: 0 24px 20px;
+            font-size: 15px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+        
+        .faq-answer-content strong {
+            color: var(--text-primary);
+        }
+        
+        /* Bottom Line */
+        .bottom-line {
+            background: var(--bg-card);
+            border: 2px solid var(--axos-orange);
+            border-radius: 24px;
+            padding: 40px;
+            text-align: center;
+            animation: fadeInUp 0.8s ease 0.9s both;
+        }
+        
+        .bottom-line h3 {
+            font-size: 28px;
+            margin-bottom: 16px;
+        }
+        
+        .bottom-line > p {
+            font-size: 17px;
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin: 0 auto 32px;
+        }
+        
+        .bottom-line > p .highlight {
+            color: var(--axos-orange);
+            font-weight: 700;
+        }
+        
+        .bottom-line-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+        
+        .bl-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 20px;
+            text-align: left;
+            transition: all 0.3s ease;
+        }
+        
+        .bl-item:hover {
+            border-color: var(--axos-orange);
+            transform: translateY(-2px);
+        }
+        
+        .bl-item .check {
+            color: var(--success);
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        
+        .bl-item h4 {
+            font-size: 15px;
+            margin-bottom: 6px;
+            color: var(--text-primary);
+        }
+        
+        .bl-item p {
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+        
+        .footer {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-top: 48px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        /* Navigation */
+        .nav-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 14, 26, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-color);
+            z-index: 100;
+            padding: 14px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            font-size: 16px;
+        }
+        
+        .nav-logo span { color: var(--axos-orange); }
+        
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-btn:hover {
+            background: var(--axos-navy);
+            border-color: var(--axos-orange);
+        }
+        
+        .nav-btn.active {
+            background: linear-gradient(135deg, var(--axos-orange) 0%, var(--axos-orange-dark) 100%);
+            border-color: var(--axos-orange);
+            color: var(--bg-primary);
+        }
+        
+        /* Edit Mode */
+        .edit-mode-banner {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--axos-orange);
+            color: var(--bg-primary);
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 700;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 20px rgba(250, 167, 74, 0.4);
+        }
+        
+        .edit-mode-banner.visible {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .editable {
+            outline: none;
+            transition: all 0.2s ease;
+        }
+        
+        body.edit-mode .editable:hover {
+            background: rgba(250, 167, 74, 0.1);
+            border-radius: 4px;
+        }
+        
+        body.edit-mode .editable:focus {
+            background: rgba(250, 167, 74, 0.15);
+            border-radius: 4px;
+            box-shadow: 0 0 0 2px var(--axos-orange);
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-pattern"></div>
+    <div class="particles" id="particles"></div>
+    
+    <!-- Navigation -->
+    <nav class="nav-header">
+        <div class="nav-logo">
+            <span>⚡</span> Axos QCOE
+        </div>
+        <button class="nav-btn" id="editToggle" onclick="toggleEditMode()">✏️ Edit Mode</button>
+    </nav>
+    
+    <!-- Edit Mode Banner -->
+    <div class="edit-mode-banner" id="editBanner">
+        <span>📝</span> Edit Mode Active - Click any highlighted text to edit
+    </div>
+    
+    <div class="container" style="padding-top: 100px;">
+        <!-- Header -->
+        <div class="header">
+            <div class="badge">Executive Brief | QCOE Team</div>
+            <h1>Why We're Exploring <span class="gradient-text">Playwright</span></h1>
+            <p class="subtitle">A strategic move towards cost efficiency, AI-powered development, and future-proof test automation</p>
+        </div>
+        
+        <!-- Tech Stack -->
+        <div class="tech-stack">
+            <div class="tech-item highlight">🎭 Playwright + JavaScript</div>
+            <div class="tech-divider"></div>
+            <div class="tech-item">📱 Appium + JavaScript</div>
+            <div class="tech-divider"></div>
+            <div class="tech-item">📬 Postman + JavaScript</div>
+            <div class="tech-divider"></div>
+            <div class="tech-item" style="color: var(--success);">✓ One Language Everywhere</div>
+        </div>
+        
+        <!-- Critical Problem -->
+        <div class="critical-section">
+            <div class="section-header">
+                <h2>🚨 Why We Need to Move</h2>
+                <p>Critical limitations with TestIM that are impacting our efficiency</p>
+            </div>
+            
+            <div class="critical-box">
+                <h3>🔴 Critical: No Scheduling Queue System</h3>
+                <p class="editable">TestIM lacks a queue system. When test executions exceed our parallel limit, it causes <strong>multiple test failures</strong>. Their only solution is "buy more parallels"—a band-aid that costs more money without solving the root problem.</p>
+            </div>
+            
+            <div class="problem-grid">
+                <div class="problem-card">
+                    <h4>🔒 Vendor Lock-In</h4>
+                    <p class="editable">Tests are proprietary. If we leave, our tests are completely unusable—years of work, gone.</p>
+                </div>
+                <div class="problem-card">
+                    <h4>💸 Ongoing Costs</h4>
+                    <p class="editable">~$150K/year in subscription fees. We pay but never own what we create.</p>
+                </div>
+                <div class="problem-card">
+                    <h4>🐌 Limited Execution</h4>
+                    <p class="editable">Only 1 test at a time on our own servers. Must use their Grid for parallel runs.</p>
+                </div>
+                <div class="problem-card">
+                    <h4>🤖 No AI Tooling</h4>
+                    <p class="editable">Cannot leverage Cursor AI or other modern development accelerators.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Cost Comparison -->
+        <div class="cost-section">
+            <div class="section-header">
+                <h2>💰 Cost Comparison</h2>
+                <p>Understanding the financial impact</p>
+            </div>
+            
+            <div class="cost-grid">
+                <div class="cost-card testim">
+                    <div class="card-header">
+                        <h4>TestIM</h4>
+                        <span class="tag">Current</span>
+                    </div>
+                    <div class="amount editable">~$150K/yr</div>
+                    <div class="details editable">
+                        <strong>Subscription + 75 parallel slots</strong><br>
+                        We don't own our tests<br>
+                        Locked into proprietary format
+                    </div>
+                </div>
+                
+                <div class="cost-card playwright">
+                    <div class="card-header">
+                        <h4>Playwright</h4>
+                        <span class="tag">Proposed</span>
+                    </div>
+                    <div class="amount editable">$0 Base</div>
+                    <div class="details editable">
+                        <strong>Open source + BrowserStack</strong><br>
+                        Same vendor we use for mobile<br>
+                        We own everything we build
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Benefits -->
+        <div class="benefits-section">
+            <div class="section-header">
+                <h2>✅ Key Benefits</h2>
+                <p>What Playwright brings to our automation strategy</p>
+            </div>
+            
+            <div class="benefits-grid">
+                <div class="benefit-card">
+                    <div class="icon">🤖</div>
+                    <h4>AI-Powered Development</h4>
+                    <p class="editable">Full compatibility with Cursor AI and our TestGennie markdowns for rapid test creation and maintenance.</p>
+                </div>
+                <div class="benefit-card">
+                    <div class="icon">🔓</div>
+                    <h4>Complete Ownership</h4>
+                    <p class="editable">Tests are JavaScript code we own—portable forever, no vendor lock-in, take them anywhere.</p>
+                </div>
+                <div class="benefit-card">
+                    <div class="icon">⚡</div>
+                    <h4>Full Flexibility & Control</h4>
+                    <p class="editable">Code-based = unlimited customization. Complex scenarios, API integrations, without workarounds.</p>
+                </div>
+                <div class="benefit-card">
+                    <div class="icon">📅</div>
+                    <h4>Proper Scheduling</h4>
+                    <p class="editable">Integrates with BrowserStack (same vendor) and any CI/CD with proper queue management.</p>
+                </div>
+                <div class="benefit-card">
+                    <div class="icon">👥</div>
+                    <h4>Easy Team Adoption</h4>
+                    <p class="editable">Framework is ready. Simple Playwright + JS course and hands-on practice is all that's needed.</p>
+                </div>
+                <div class="benefit-card">
+                    <div class="icon">🚀</div>
+                    <h4>Developer Contribution</h4>
+                    <p class="editable">Same language developers know—they can contribute, review, and help maintain tests.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Language Unification -->
+        <div class="language-section">
+            <h3>One Language = <span>Zero Barriers</span></h3>
+            
+            <div class="language-flow">
+                <div class="lang-item">
+                    <div class="icon">🌐</div>
+                    <div class="name">Web Testing</div>
+                    <div class="tech">Playwright + JS</div>
+                </div>
+                
+                <div class="lang-connector">→</div>
+                
+                <div class="lang-center">
+                    <div class="icon">🟨</div>
+                    <div class="name">JavaScript</div>
+                </div>
+                
+                <div class="lang-connector">←</div>
+                
+                <div class="lang-item">
+                    <div class="icon">📱</div>
+                    <div class="name">Mobile Testing</div>
+                    <div class="tech">Appium + JS</div>
+                </div>
+                
+                <div class="lang-item">
+                    <div class="icon">📬</div>
+                    <div class="name">API Testing</div>
+                    <div class="tech">Postman + JS</div>
+                </div>
+            </div>
+            
+            <p class="language-note"><strong>Result:</strong> Any QE can move, learn, or support any framework without a language barrier</p>
+        </div>
+        
+        <!-- TestGennie Vision -->
+        <div class="vision-section">
+            <div class="vision-card">
+                <div class="icon">🧞‍♂️</div>
+                <h3>Alignment with <span class="gradient-text">TestGennie</span> AI Vision</h3>
+                <p class="editable">Our AI-powered test generation strategy integrates seamlessly with Playwright, enabling intelligent test creation that learns from our codebase.</p>
+                
+                <div class="vision-steps">
+                    <div class="vision-step">
+                        <div class="number">1</div>
+                        <h4>Scans Repository</h4>
+                        <p>AI reads codebase patterns</p>
+                    </div>
+                    <div class="vision-step">
+                        <div class="number">2</div>
+                        <h4>Takes Input</h4>
+                        <p>ADO work items or descriptions</p>
+                    </div>
+                    <div class="vision-step">
+                        <div class="number">3</div>
+                        <h4>Generates Tests</h4>
+                        <p>Complete E2E scenarios</p>
+                    </div>
+                    <div class="vision-step">
+                        <div class="number">4</div>
+                        <h4>Adds to Framework</h4>
+                        <p>Auto-integrates tests</p>
+                    </div>
+                </div>
+                
+                <div class="vision-note">
+                    ✓ Already working for mobile — Adapting the same approach for web
+                </div>
+            </div>
+        </div>
+        
+        <!-- FAQ -->
+        <div class="faq-section">
+            <div class="section-header">
+                <h2>❓ Common Questions</h2>
+            </div>
+            
+            <div class="faq-grid">
+                <div class="faq-item open">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h4>💡 Is the framework ready?</h4>
+                        <span class="toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content editable">
+                            <strong>Yes.</strong> We built it based on our existing mobile framework. OLB 3.0 will start fresh with Playwright—no migration needed.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h4>🔄 What happens to existing TestIM tests?</h4>
+                        <span class="toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content editable">
+                            They continue running. Teams using TestIM can keep using it. Over time, we can negotiate fewer parallel slots or phase it out entirely.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h4>🛡️ Is Playwright enterprise-ready?</h4>
+                        <span class="toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content editable">
+                            <strong>Absolutely.</strong> Built and maintained by Microsoft (same team as VS Code). Industry standard, used by major enterprises worldwide.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h4>🎯 Why not just buy more TestIM parallels?</h4>
+                        <span class="toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content editable">
+                            That's a band-aid, not a solution. It doesn't fix vendor lock-in, AI limitations, or test ownership. We'd be paying more to stay locked into a platform that limits our growth.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h4>🤝 Can developers contribute to tests?</h4>
+                        <span class="toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="faq-answer-content editable">
+                            <strong>Yes!</strong> Tests are JavaScript—the language developers already know. This creates shared quality ownership between QE and Development teams.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Bottom Line -->
+        <div class="bottom-line">
+            <h3>The Bottom Line</h3>
+            <p>This isn't just about saving money—it's about building a <span class="highlight">future-proof automation strategy</span> that aligns with our AI vision and gives us complete ownership.</p>
+            
+            <div class="bottom-line-grid">
+                <div class="bl-item">
+                    <div class="check">✓</div>
+                    <h4>Cost Efficiency</h4>
+                    <p class="editable">Eliminate ongoing subscription fees with open-source</p>
+                </div>
+                <div class="bl-item">
+                    <div class="check">✓</div>
+                    <h4>AI-Powered</h4>
+                    <p class="editable">Cursor AI + TestGennie markdowns for rapid development</p>
+                </div>
+                <div class="bl-item">
+                    <div class="check">✓</div>
+                    <h4>Ownership</h4>
+                    <p class="editable">Tests are code we own—portable and ours forever</p>
+                </div>
+                <div class="bl-item">
+                    <div class="check">✓</div>
+                    <h4>Unified Stack</h4>
+                    <p class="editable">JavaScript everywhere—no language barriers</p>
+                </div>
+                <div class="bl-item">
+                    <div class="check">✓</div>
+                    <h4>Framework Ready</h4>
+                    <p class="editable">Already built based on our mobile framework</p>
+                </div>
+                <div class="bl-item">
+                    <div class="check">✓</div>
+                    <h4>Reliable Scheduling</h4>
+                    <p class="editable">Proper queue management—no more failures</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">QCOE Team | February 2026</div>
+    </div>
+    
+    <script>
+        // Particles
+        function createParticles() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 15; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 15 + 's';
+                particle.style.animationDuration = (15 + Math.random() * 10) + 's';
+                container.appendChild(particle);
+            }
+        }
+        
+        // FAQ toggle
+        function toggleFaq(element) {
+            const faqItem = element.parentElement;
+            const isOpen = faqItem.classList.contains('open');
+            document.querySelectorAll('.faq-item').forEach(item => item.classList.remove('open'));
+            if (!isOpen) faqItem.classList.add('open');
+        }
+        
+        // Edit mode toggle
+        let editMode = false;
+        function toggleEditMode() {
+            editMode = !editMode;
+            const banner = document.getElementById('editBanner');
+            const toggle = document.getElementById('editToggle');
+            const editables = document.querySelectorAll('.editable');
+            
+            if (editMode) {
+                document.body.classList.add('edit-mode');
+                banner.classList.add('visible');
+                toggle.classList.add('active');
+                toggle.innerHTML = '✓ Editing';
+                editables.forEach(el => el.setAttribute('contenteditable', 'true'));
+            } else {
+                document.body.classList.remove('edit-mode');
+                banner.classList.remove('visible');
+                toggle.classList.remove('active');
+                toggle.innerHTML = '✏️ Edit Mode';
+                editables.forEach(el => el.removeAttribute('contenteditable'));
+            }
+        }
+        
+        createParticles();
+    </script>
+</body>
+</html>
