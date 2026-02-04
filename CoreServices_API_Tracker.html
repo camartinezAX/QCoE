@@ -1264,7 +1264,7 @@
             <span style="background: linear-gradient(90deg, var(--axos-orange), #fbbf24); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Juan Carlos Martinez Toledo</span>
         </p>
         <p style="color: rgba(255,255,255,0.4); font-size: 11px; margin-top: 16px; letter-spacing: 1px;">
-            CORE SERVICES TEAM × AXOS BANK • API AUTOMATION • 2025-2026
+            QCOE × CS • API AUTOMATION • 2026
         </p>
     </div>
 </footer>
@@ -1293,16 +1293,15 @@
     
     // Services - Based on Core Services team domains
     const SERVICES = [
-        { id: 'BankingCore', name: 'Banking Core', icon: '🏦' },
-        { id: 'Securities', name: 'Securities', icon: '📈' },
-        { id: 'RulesManager', name: 'RulesManager', icon: '📜' },
-        { id: 'Identity', name: 'Identity', icon: '🔐' },
-        { id: 'Notifications', name: 'Notifications', icon: '🔔' },
-        { id: 'Documents', name: 'Documents', icon: '📄' },
-        { id: 'ServiceBus', name: 'Service Bus', icon: '🚌' },
-        { id: 'Agreements', name: 'Agreements', icon: '📝' },
-        { id: 'Branding', name: 'Branding', icon: '🎨' },
-        { id: 'Other', name: 'Other', icon: '📌' }
+        { id: 'BankingCore', name: 'Banking Core', icon: '🏦', totalTasks: 243 },
+        { id: 'Securities', name: 'Securities', icon: '📈', totalTasks: 172 },
+        { id: 'Identity', name: 'Identity', icon: '🔐', totalTasks: 310 },
+        { id: 'Notifications', name: 'Notifications', icon: '🔔', totalTasks: 20 },
+        { id: 'Documents', name: 'Documents', icon: '📄', totalTasks: 149 },
+        { id: 'ServiceBus', name: 'Service Bus', icon: '🚌', totalTasks: 3 },
+        { id: 'Agreements', name: 'Agreements', icon: '📝', totalTasks: 9 },
+        { id: 'Branding', name: 'Branding', icon: '🎨', totalTasks: 18 },
+        { id: 'RulesManager', name: 'RulesManager', icon: '📜', totalTasks: 0 }
     ];
     
     // Week definitions (52 weeks from W5 2026)
@@ -1802,11 +1801,12 @@
         
         // Get current week entries for "this week" stats
         const weekDates = getWeekDates(0);
+        const activeEntries = getActiveEntries();
         
         let html = '';
         data.team.filter(p => p.id !== 'unassigned').forEach(person => {
-            // All-time stats
-            const allEntries = data.entries.filter(e => e.personId === person.id);
+            // All-time stats (exclude deleted)
+            const allEntries = activeEntries.filter(e => e.personId === person.id);
             const allCompleted = allEntries.filter(e => e.status === 'completed').length;
             
             // This week stats
@@ -1989,12 +1989,26 @@
     }
     
     function deleteEntry(entryId) {
-        if (!confirm('Delete this entry?')) return;
+        if (!confirm('Delete this entry? It will be marked as deleted in the Daily Log for audit purposes.')) return;
         
-        data.entries = data.entries.filter(e => e.id !== entryId);
+        const entry = data.entries.find(e => e.id === entryId);
+        if (!entry) return;
+        
+        // Mark as deleted instead of removing
+        entry.status = 'deleted';
+        entry.deletedAt = new Date().toISOString();
+        
+        // Add to history
+        if (!entry.history) entry.history = [];
+        entry.history.push({
+            action: 'deleted',
+            timestamp: new Date().toISOString(),
+            by: entry.personId
+        });
+        
         renderAll();
         showSaveStatus(false);
-        showNotification('🗑️ Entry deleted', 'info');
+        showNotification('🗑️ Entry marked as deleted', 'info');
     }
     
     function showNotification(message, type = 'info') {
@@ -2027,10 +2041,16 @@
     // SUMMARY & CALCULATIONS
     // ========================================
     
+    // Helper: Get active (non-deleted) entries
+    function getActiveEntries() {
+        return data.entries.filter(e => e.status !== 'deleted');
+    }
+    
     function updateSummary() {
         const total = data.totalTasks;
-        const completed = data.entries.filter(e => e.status === 'completed').length;
-        const inProgress = data.entries.filter(e => e.status === 'in-progress').length;
+        const activeEntries = getActiveEntries();
+        const completed = activeEntries.filter(e => e.status === 'completed').length;
+        const inProgress = activeEntries.filter(e => e.status === 'in-progress').length;
         const remaining = total - completed;
         const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
         
@@ -2055,7 +2075,7 @@
     function calculateWeeklyStats() {
         const weeklyCompleted = {};
         
-        data.entries.filter(e => e.status === 'completed').forEach(entry => {
+        getActiveEntries().filter(e => e.status === 'completed').forEach(entry => {
             const date = new Date(entry.date);
             const weekStart = new Date(date);
             weekStart.setDate(date.getDate() - date.getDay() + 1);
@@ -2461,27 +2481,29 @@
                 const service = SERVICES.find(s => s.id === entry.service);
                 
                 const hasHistory = entry.history && entry.history.length > 0;
+                const isDeleted = entry.status === 'deleted';
                 
                 html += `
-                    <div class="daily-entry-card" style="border-left-color: ${getStatusColor(entry.status)};">
+                    <div class="daily-entry-card" style="border-left-color: ${getStatusColor(entry.status)}; ${isDeleted ? 'background: #f5f5f5; opacity: 0.7;' : ''}">
                         <div class="entry-header">
-                            <span class="entry-date">
-                                ${entry.adoId ? `<a href="${entry.adoUrl}" target="_blank" class="ado-link">#${entry.adoId}</a> - ` : ''}
+                            <span class="entry-date" style="${isDeleted ? 'text-decoration: line-through; color: #94a3b8;' : ''}">
+                                ${isDeleted ? '🗑️ ' : ''}
+                                ${entry.adoId ? `<a href="${entry.adoUrl}" target="_blank" class="ado-link" style="${isDeleted ? 'text-decoration: line-through;' : ''}">#${entry.adoId}</a> - ` : ''}
                                 ${entry.apiEndpoint || 'No description'}
                             </span>
                             <div>
-                                <button class="action-btn edit" onclick="editEntry('${entry.id}')">✏️</button>
-                                <button class="action-btn delete" onclick="deleteEntry('${entry.id}')">🗑️</button>
+                                ${!isDeleted ? `<button class="action-btn edit" onclick="editEntry('${entry.id}')">✏️</button>` : ''}
+                                ${!isDeleted ? `<button class="action-btn delete" onclick="deleteEntry('${entry.id}')">🗑️</button>` : ''}
                             </div>
                         </div>
                         <div style="display: flex; gap: 8px; flex-wrap: wrap; font-size: 12px;">
-                            <span class="service-badge">${service ? service.icon : '📌'} ${entry.service}</span>
+                            <span class="service-badge" style="${isDeleted ? 'opacity: 0.6;' : ''}">${service ? service.icon : '📌'} ${entry.service}</span>
                             <span class="status-badge status-${entry.status}">${getStatusLabel(entry.status)}</span>
-                            <span style="color: #64748b;">👤 ${person ? person.name : 'Unknown'}</span>
-                            ${entry.bugLink ? `<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; font-size: 11px;">🐛 ${entry.bugLink}</span>` : ''}
+                            <span style="color: #64748b; ${isDeleted ? 'opacity: 0.6;' : ''}">👤 ${person ? person.name : 'Unknown'}</span>
+                            ${entry.bugLink ? `<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; font-size: 11px; ${isDeleted ? 'opacity: 0.6;' : ''}">🐛 ${entry.bugLink}</span>` : ''}
                             ${hasHistory ? `<button onclick="toggleEntryHistory('${entry.id}')" style="background: none; border: none; cursor: pointer; font-size: 11px; color: #3b82f6; text-decoration: underline;">📜 History (${entry.history.length})</button>` : ''}
                         </div>
-                        ${entry.notes ? `<p style="margin-top: 8px; font-size: 12px; color: #475569;">${entry.notes}</p>` : ''}
+                        ${entry.notes ? `<p style="margin-top: 8px; font-size: 12px; color: #475569; ${isDeleted ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${entry.notes}</p>` : ''}
                         
                         ${hasHistory ? renderEntryHistory(entry) : ''}
                     </div>
@@ -2535,7 +2557,8 @@
             'in-progress': '🔄 In Progress',
             'testing': '🧪 Testing',
             'blocked': '🚫 Blocked',
-            'completed': '✅ Completed'
+            'completed': '✅ Completed',
+            'deleted': '🗑️ Deleted'
         };
         return labels[status] || status;
     }
@@ -2546,7 +2569,8 @@
             'in-progress': '#3b82f6',
             'testing': '#f59e0b',
             'blocked': '#ef4444',
-            'completed': '#10b981'
+            'completed': '#10b981',
+            'deleted': '#6b7280'
         };
         return colors[status] || '#94a3b8';
     }
@@ -2572,8 +2596,8 @@
         const startDate = monday.toISOString().split('T')[0];
         const endDate = sunday.toISOString().split('T')[0];
         
-        // Filter entries for this week
-        const weekEntries = data.entries.filter(e => e.date && e.date >= startDate && e.date <= endDate);
+        // Filter entries for this week (exclude deleted)
+        const weekEntries = getActiveEntries().filter(e => e.date && e.date >= startDate && e.date <= endDate);
         
         const completed = weekEntries.filter(e => e.status === 'completed').length;
         const inProgress = weekEntries.filter(e => e.status === 'in-progress').length;
@@ -2634,13 +2658,31 @@
         const container = document.getElementById('serviceProgress');
         if (!container) return;
         
+        const activeEntries = getActiveEntries();
+        
         let html = '';
         SERVICES.forEach(service => {
-            const serviceEntries = data.entries.filter(e => e.service === service.id);
-            const completed = serviceEntries.filter(e => e.status === 'completed').length;
-            const total = serviceEntries.length;
+            // Skip services with no total tasks defined (like Other)
+            if (!service.totalTasks && service.totalTasks !== 0) return;
             
-            if (total === 0) return;
+            const completed = activeEntries.filter(e => e.service === service.id && e.status === 'completed').length;
+            const total = service.totalTasks;
+            
+            // Special case: RulesManager has 0 total tasks, show as 100% complete
+            if (total === 0) {
+                html += `
+                    <div style="margin-bottom: 16px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 13px;">
+                            <span>${service.icon} ${service.name}</span>
+                            <span style="color: #10b981; font-weight: 600;">✅ Complete</span>
+                        </div>
+                        <div style="background: #e2e8f0; border-radius: 6px; height: 8px; overflow: hidden;">
+                            <div style="background: linear-gradient(90deg, #10b981, #059669); height: 100%; width: 100%; transition: width 0.5s;"></div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
             
             const progress = Math.round((completed / total) * 100);
             
@@ -2657,7 +2699,7 @@
             `;
         });
         
-        container.innerHTML = html || '<p style="color: #64748b;">No entries yet.</p>';
+        container.innerHTML = html || '<p style="color: #64748b;">No services configured.</p>';
     }
     
     // ========================================
@@ -2866,18 +2908,19 @@
             entries.forEach(entry => {
                 const service = SERVICES.find(s => s.id === entry.service);
                 const dayName = new Date(entry.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' });
+                const isDeleted = entry.status === 'deleted';
                 
                 html += `
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; margin-bottom: 4px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; border-left: 3px solid ${getStatusColor(entry.status)};">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; margin-bottom: 4px; background: ${isDeleted ? '#f5f5f5' : 'white'}; border: 1px solid #e2e8f0; border-radius: 6px; border-left: 3px solid ${getStatusColor(entry.status)}; ${isDeleted ? 'opacity: 0.7;' : ''}">
                         <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0;">
                             <span style="font-size: 11px; color: #64748b; white-space: nowrap;">${dayName} ${new Date(entry.date + 'T12:00:00').getDate()}</span>
-                            <span class="service-badge" style="font-size: 10px; white-space: nowrap;">${service?.icon || '📌'} ${entry.service}</span>
-                            <span style="font-size: 12px; color: #374151; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${entry.apiEndpoint || ''}">${entry.apiEndpoint || '-'}</span>
-                            ${entry.adoId ? `<a href="${entry.adoUrl}" target="_blank" class="ado-link" style="font-size: 11px; white-space: nowrap;">#${entry.adoId}</a>` : ''}
+                            <span class="service-badge" style="font-size: 10px; white-space: nowrap; ${isDeleted ? 'opacity: 0.6;' : ''}">${service?.icon || '📌'} ${entry.service}</span>
+                            <span style="font-size: 12px; color: #374151; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; ${isDeleted ? 'text-decoration: line-through;' : ''}" title="${entry.apiEndpoint || ''}">${isDeleted ? '🗑️ ' : ''}${entry.apiEndpoint || '-'}</span>
+                            ${entry.adoId ? `<a href="${entry.adoUrl}" target="_blank" class="ado-link" style="font-size: 11px; white-space: nowrap; ${isDeleted ? 'text-decoration: line-through;' : ''}">#${entry.adoId}</a>` : ''}
                         </div>
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <span class="status-badge status-${entry.status}" style="font-size: 10px;">${getStatusLabel(entry.status)}</span>
-                            <button class="action-btn edit" onclick="editEntry('${entry.id}')" style="font-size: 10px; padding: 4px 8px;">✏️</button>
+                            ${!isDeleted ? `<button class="action-btn edit" onclick="editEntry('${entry.id}')" style="font-size: 10px; padding: 4px 8px;">✏️</button>` : ''}
                         </div>
                     </div>
                 `;
@@ -2895,7 +2938,8 @@
             'in-progress': '#3b82f6',
             'testing': '#f59e0b',
             'blocked': '#ef4444',
-            'completed': '#10b981'
+            'completed': '#10b981',
+            'deleted': '#6b7280'
         };
         return colors[status] || '#94a3b8';
     }
@@ -3027,8 +3071,8 @@
         const search = (document.getElementById('inventorySearch')?.value || '').toLowerCase();
         inventoryFilters.search = search;
         
-        // Filter entries
-        let filtered = data.entries.filter(entry => {
+        // Filter entries (exclude deleted)
+        let filtered = getActiveEntries().filter(entry => {
             // Date filter
             if (inventoryFilters.startDate || inventoryFilters.endDate) {
                 const dateToCheck = inventoryFilters.filterByCompletedDate && entry.status === 'completed' 
@@ -3117,11 +3161,12 @@
         const container = document.getElementById('inventoryOwnerTabs');
         if (!container) return;
         
-        const allCount = data.entries.length;
+        const activeEntries = getActiveEntries();
+        const allCount = activeEntries.length;
         let html = `<div class="team-tab ${inventoryFilters.owner === 'all' ? 'active' : ''}" data-owner="all" onclick="setInventoryOwner('all')">All <span class="count">${allCount}</span></div>`;
         
         data.team.filter(p => p.id !== 'unassigned').forEach(person => {
-            const count = data.entries.filter(e => e.personId === person.id).length;
+            const count = activeEntries.filter(e => e.personId === person.id).length;
             html += `<div class="team-tab ${inventoryFilters.owner === person.id ? 'active' : ''}" data-owner="${person.id}" onclick="setInventoryOwner('${person.id}')">${person.name} <span class="count">${count}</span></div>`;
         });
         
@@ -3132,10 +3177,11 @@
         const container = document.getElementById('inventoryServiceTabs');
         if (!container) return;
         
+        const activeEntries = getActiveEntries();
         let html = `<div class="team-tab ${inventoryFilters.service === 'all' ? 'active' : ''}" data-service="all" onclick="setInventoryService('all')">All Services</div>`;
         
         SERVICES.forEach(service => {
-            const count = data.entries.filter(e => e.service === service.id).length;
+            const count = activeEntries.filter(e => e.service === service.id).length;
             if (count > 0) {
                 html += `<div class="team-tab ${inventoryFilters.service === service.id ? 'active' : ''}" data-service="${service.id}" onclick="setInventoryService('${service.id}')">${service.icon} ${service.name} <span class="count">${count}</span></div>`;
             }
@@ -3169,10 +3215,12 @@
         const processedAdoIds = new Set();
         const processedEndpoints = new Set();
         
+        const activeEntries = getActiveEntries();
+        
         // Find duplicates by ADO ID
-        data.entries.forEach(entry => {
+        activeEntries.forEach(entry => {
             if (entry.adoId && !processedAdoIds.has(entry.adoId)) {
-                const matches = data.entries.filter(e => e.adoId === entry.adoId);
+                const matches = activeEntries.filter(e => e.adoId === entry.adoId);
                 if (matches.length > 1) {
                     matches.sort((a, b) => new Date(a.date) - new Date(b.date));
                     groups.push({
@@ -3186,11 +3234,11 @@
         });
         
         // Find duplicates by endpoint name
-        data.entries.forEach(entry => {
+        activeEntries.forEach(entry => {
             if (entry.apiEndpoint) {
                 const lowerEndpoint = entry.apiEndpoint.toLowerCase();
                 if (!processedEndpoints.has(lowerEndpoint)) {
-                    const matches = data.entries.filter(e => 
+                    const matches = activeEntries.filter(e => 
                         e.apiEndpoint && e.apiEndpoint.toLowerCase() === lowerEndpoint
                     );
                     if (matches.length > 1) {
@@ -3201,10 +3249,16 @@
                         
                         if (!alreadyInAdoGroup) {
                             matches.sort((a, b) => new Date(a.date) - new Date(b.date));
+                            
+                            // Check if these entries have DIFFERENT ADO IDs (name collision, not true duplicate)
+                            const uniqueAdoIds = new Set(matches.map(m => m.adoId).filter(id => id));
+                            const isDifferentAdos = uniqueAdoIds.size > 1;
+                            
                             groups.push({
-                                type: 'endpoint',
+                                type: isDifferentAdos ? 'nameCollision' : 'endpoint',
                                 identifier: `"${entry.apiEndpoint}"`,
-                                entries: matches
+                                entries: matches,
+                                isDifferentAdos: isDifferentAdos
                             });
                         }
                     }
@@ -3235,17 +3289,34 @@
         `;
         
         currentDuplicateGroups.forEach((group, groupIdx) => {
+            const isNameCollision = group.type === 'nameCollision';
+            const borderColor = isNameCollision ? '#fcd34d' : '#fecaca';
+            const bgColor = isNameCollision ? '#fffbeb' : '#fef2f2';
+            const textColor = isNameCollision ? '#92400e' : '#991b1b';
+            
             html += `
-                <div style="margin-bottom: 16px; border: 2px solid #fecaca; border-radius: 12px; overflow: hidden;">
-                    <div style="background: #fef2f2; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <strong style="color: #991b1b;">${group.type === 'ado' ? '🔗' : '📝'} ${group.identifier}</strong>
-                            <span style="color: #92400e; font-size: 12px; margin-left: 8px;">${group.entries.length} occurrences</span>
+                <div style="margin-bottom: 16px; border: 2px solid ${borderColor}; border-radius: 12px; overflow: hidden;">
+                    <div style="background: ${bgColor}; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <strong style="color: ${textColor};">${group.type === 'ado' ? '🔗' : isNameCollision ? '⚠️' : '📝'} ${group.identifier}</strong>
+                            <span style="color: #92400e; font-size: 12px;">${group.entries.length} occurrences</span>
+                            ${isNameCollision ? `
+                                <span style="padding: 4px 10px; background: #fbbf24; border-radius: 6px; color: white; font-weight: 600; font-size: 10px;">
+                                    💡 Rename Recommended
+                                </span>
+                            ` : ''}
                         </div>
                         <button onclick="removeDuplicatesInGroup(${groupIdx})" style="padding: 6px 12px; background: #dc2626; border: none; border-radius: 6px; color: white; font-weight: 600; font-size: 11px; cursor: pointer;">
                             🗑️ Keep Original Only
                         </button>
                     </div>
+                    ${isNameCollision ? `
+                        <div style="background: #fef3c7; padding: 8px 16px; border-bottom: 1px solid #fcd34d;">
+                            <span style="font-size: 12px; color: #92400e;">
+                                ℹ️ These entries have the <strong>same name but different ADO tasks</strong>. Renaming is recommended, but you can still delete if needed.
+                            </span>
+                        </div>
+                    ` : ''}
                     <div style="padding: 12px;">
             `;
             
@@ -3255,11 +3326,14 @@
                 const service = SERVICES.find(s => s.id === entry.service);
                 
                 html += `
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; margin-bottom: 4px; background: ${isOriginal ? '#d1fae5' : '#fef2f2'}; border-radius: 6px; border-left: 3px solid ${isOriginal ? '#10b981' : '#ef4444'};">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <span style="font-size: 11px; color: ${isOriginal ? '#065f46' : '#991b1b'}; font-weight: 700;">
-                                ${isOriginal ? '✓ ORIGINAL' : '✕ DUPLICATE'}
-                            </span>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; margin-bottom: 4px; background: ${isNameCollision ? '#fefce8' : (isOriginal ? '#d1fae5' : '#fef2f2')}; border-radius: 6px; border-left: 3px solid ${isNameCollision ? '#fbbf24' : (isOriginal ? '#10b981' : '#ef4444')};">
+                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            ${!isNameCollision ? `
+                                <span style="font-size: 11px; color: ${isOriginal ? '#065f46' : '#991b1b'}; font-weight: 700;">
+                                    ${isOriginal ? '✓ ORIGINAL' : '✕ DUPLICATE'}
+                                </span>
+                            ` : ''}
+                            ${entry.adoId ? `<span style="font-size: 11px; font-weight: 600; color: #3b82f6;">ADO #${entry.adoId}</span>` : ''}
                             <span style="font-size: 12px; color: #64748b;">${new Date(entry.date + 'T12:00:00').toLocaleDateString()}</span>
                             <span style="font-size: 12px; color: #374151;">${person?.name || 'Unknown'}</span>
                             <span class="service-badge" style="font-size: 10px;">${service?.icon || '📌'} ${entry.service}</span>
@@ -3272,9 +3346,14 @@
             html += '</div></div>';
         });
         
+        const nameCollisions = currentDuplicateGroups.filter(g => g.type === 'nameCollision');
+        
         html += `
                     <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid #e2e8f0;">
-                        <span style="font-size: 13px; color: #64748b;">⚡ Removing duplicates will keep only the original (earliest) entry</span>
+                        <div>
+                            <span style="font-size: 13px; color: #64748b;">⚡ Removing duplicates will keep only the original (earliest) entry</span>
+                            ${nameCollisions.length > 0 ? `<br><span style="font-size: 12px; color: #92400e;">💡 ${nameCollisions.length} name collision(s) found - renaming recommended</span>` : ''}
+                        </div>
                         <div style="display: flex; gap: 12px;">
                             <button onclick="removeAllDuplicates()" style="padding: 10px 20px; background: #dc2626; border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer;">
                                 🗑️ Remove All Duplicates
@@ -3302,12 +3381,24 @@
         
         const entriesToRemove = group.entries.slice(1);
         
-        if (!confirm(`Remove ${entriesToRemove.length} duplicate(s) for ${group.identifier}?\n\nThis will keep only the original entry.`)) {
+        // Show different message for name collisions
+        const warningMsg = group.type === 'nameCollision' 
+            ? `⚠️ These entries have DIFFERENT ADO tasks.\n\nRenaming is recommended, but you can proceed with deletion.\n\nRemove ${entriesToRemove.length} duplicate(s) for ${group.identifier}?\nThis will keep only the original entry.`
+            : `Remove ${entriesToRemove.length} duplicate(s) for ${group.identifier}?\n\nThis will keep only the original entry.`;
+        
+        if (!confirm(warningMsg)) {
             return;
         }
         
         entriesToRemove.forEach(entry => {
-            data.entries = data.entries.filter(e => e.id !== entry.id);
+            entry.status = 'deleted';
+            entry.deletedAt = new Date().toISOString();
+            if (!entry.history) entry.history = [];
+            entry.history.push({
+                action: 'deleted',
+                timestamp: new Date().toISOString(),
+                by: entry.personId
+            });
         });
         
         closeDuplicateModal();
@@ -3317,14 +3408,24 @@
         if (currentDuplicateGroups.length > 0) {
             showDuplicateModal();
         } else {
-            alert(`✅ Removed ${entriesToRemove.length} duplicate(s). No more duplicates found!`);
+            alert(`✅ Marked ${entriesToRemove.length} duplicate(s) as deleted. Check the Daily Log for audit trail.`);
         }
     }
     
     function deleteSingleDuplicate(entryId, groupIdx) {
-        if (!confirm('Delete this duplicate entry?')) return;
+        if (!confirm('Delete this duplicate entry? It will be marked as deleted in the Daily Log.')) return;
         
-        data.entries = data.entries.filter(e => e.id !== entryId);
+        const entry = data.entries.find(e => e.id === entryId);
+        if (entry) {
+            entry.status = 'deleted';
+            entry.deletedAt = new Date().toISOString();
+            if (!entry.history) entry.history = [];
+            entry.history.push({
+                action: 'deleted',
+                timestamp: new Date().toISOString(),
+                by: entry.personId
+            });
+        }
         
         closeDuplicateModal();
         renderAll();
@@ -3336,12 +3437,29 @@
     }
     
     function removeAllDuplicates() {
+        const nameCollisions = currentDuplicateGroups.filter(g => g.type === 'nameCollision');
+        
+        // Warn about name collisions but allow deletion
+        if (nameCollisions.length > 0) {
+            const confirmMsg = `⚠️ Warning: ${nameCollisions.length} group(s) have the same name but DIFFERENT ADO tasks.\n\nRenaming is recommended instead of deleting.\n\nProceed with removing all duplicates anyway?`;
+            if (!confirm(confirmMsg)) {
+                return;
+            }
+        }
+        
         let totalRemoved = 0;
         
         currentDuplicateGroups.forEach(group => {
             const entriesToRemove = group.entries.slice(1);
             entriesToRemove.forEach(entry => {
-                data.entries = data.entries.filter(e => e.id !== entry.id);
+                entry.status = 'deleted';
+                entry.deletedAt = new Date().toISOString();
+                if (!entry.history) entry.history = [];
+                entry.history.push({
+                    action: 'deleted',
+                    timestamp: new Date().toISOString(),
+                    by: entry.personId
+                });
                 totalRemoved++;
             });
         });
@@ -3349,7 +3467,7 @@
         closeDuplicateModal();
         renderAll();
         showSaveStatus(false);
-        alert(`✅ Removed ${totalRemoved} duplicate(s). All entries are now unique!`);
+        alert(`✅ Marked ${totalRemoved} duplicate(s) as deleted. Check the Daily Log for audit trail.`);
     }
     
     // ========================================
