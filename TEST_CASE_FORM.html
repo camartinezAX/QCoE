@@ -507,6 +507,16 @@
             box-shadow: none;
         }
         
+        .btn-orange {
+            background: linear-gradient(135deg, var(--axos-orange) 0%, var(--axos-orange-dark) 100%);
+            color: var(--axos-navy-dark);
+        }
+        
+        .btn-orange:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(250, 167, 74, 0.3);
+        }
+        
         /* Modal */
         .modal-overlay {
             position: fixed;
@@ -1057,6 +1067,7 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeModal()">Close</button>
                 <button class="btn btn-primary" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+                <button class="btn btn-orange" onclick="downloadAsFile()">💾 Download .txt</button>
             </div>
         </div>
     </div>
@@ -1440,8 +1451,28 @@ Generate test cases for PBI ${pbiUrl}`;
             const text = document.getElementById('outputBox').textContent;
             navigator.clipboard.writeText(text).then(() => {
                 showToast('✅', 'Copied to clipboard!', 'success');
-                closeModal();
             });
+        }
+        
+        // Download as file
+        function downloadAsFile() {
+            const text = document.getElementById('outputBox').textContent;
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            
+            const pbiId = document.getElementById('pbiId').value || 'test-case-request';
+            const parsedPbi = parsePbiInput(pbiId);
+            const filename = parsedPbi && parsedPbi.pbiId 
+                ? `test-case-pbi-${parsedPbi.pbiId}.txt` 
+                : 'test-case-request.txt';
+            
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showToast('💾', 'Downloaded ' + filename, 'success');
         }
         
         // Close modal

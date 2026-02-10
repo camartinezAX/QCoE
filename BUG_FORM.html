@@ -962,13 +962,6 @@ File the following bug in Azure DevOps:
                             </div>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">
-                            Reference Work Item <span class="optional-mark">(Optional)</span>
-                        </label>
-                        <input type="text" id="referenceWorkItem" placeholder="Bug/PBI ID or URL to copy settings from" oninput="parseReferenceWorkItem()">
-                        <span class="field-help">AI auto-fills fields + links as Related item</span>
-                    </div>
                 </div>
             </div>
         </div>
@@ -1103,6 +1096,42 @@ File the following bug in Azure DevOps:
                         <span class="field-help">Installed mobile app version</span>
                     </div>
                 </div>
+                
+                <!-- API Testing Info -->
+                <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 10px; padding: 16px; margin-top: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <span style="color: #f59e0b; font-weight: 600; font-size: 13px;">🔌 API Testing</span>
+                        <span style="color: var(--text-muted); font-size: 11px;">Optional</span>
+                    </div>
+                    
+                    <!-- API Endpoints List -->
+                    <div id="apiEndpointsList">
+                        <div class="api-endpoint-item" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 10px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span style="color: #f59e0b; font-size: 12px; font-weight: 500;">Endpoint 1</span>
+                                <button type="button" class="step-remove" onclick="removeApiEndpoint(this)" style="display: none;">×</button>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 8px;">
+                                <input type="text" class="api-title" placeholder="Title/Description (e.g., Login API, Get Account Balance)" style="font-size: 13px;">
+                            </div>
+                            <div class="form-group">
+                                <input type="text" class="api-endpoint" placeholder="Endpoint or full URL (e.g., /api/v1/accounts or https://api.uat.axos.com/v1/accounts)" style="font-size: 13px; font-family: 'JetBrains Mono', monospace;">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="button" class="add-step-btn" onclick="addApiEndpoint()" style="margin-bottom: 12px; border-color: rgba(245, 158, 11, 0.4); color: #f59e0b;">
+                        ➕ Add Another API Endpoint
+                    </button>
+                    
+                    <div class="form-group">
+                        <label class="form-label">
+                            Swagger/API Docs Link <span class="optional-mark">(Optional)</span>
+                        </label>
+                        <input type="url" id="swaggerLink" placeholder="https://api.uat.axos.com/swagger/index.html">
+                        <span class="field-help">Link to Swagger UI or API documentation</span>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -1121,6 +1150,46 @@ File the following bug in Azure DevOps:
                     <label class="form-label">
                         Title <span class="required-mark">*</span>
                     </label>
+                    
+                    <!-- Title Prefix Toggles -->
+                    <div style="display: flex; gap: 16px; margin-bottom: 12px; flex-wrap: wrap; align-items: center;">
+                        <span style="color: var(--text-muted); font-size: 12px; font-weight: 500;">Include in prefix:</span>
+                        <span style="color: #10b981; font-size: 11px; font-style: italic;">✨ Recommended: Keep all enabled for consistent bug titles</span>
+                        
+                        <!-- Project Number Toggle -->
+                        <label class="prefix-toggle" style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+                            <div class="toggle-switch" onclick="togglePrefixComponent(this, 'projectNum')">
+                                <input type="checkbox" id="includeProjNum" checked style="display: none;">
+                                <div class="toggle-track" style="width: 36px; height: 20px; background: var(--success); border-radius: 10px; position: relative; transition: background 0.3s;">
+                                    <div class="toggle-thumb" style="width: 16px; height: 16px; background: white; border-radius: 50%; position: absolute; top: 2px; left: 18px; transition: left 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>
+                                </div>
+                            </div>
+                            <span style="font-size: 12px; color: var(--text-secondary);">Project #</span>
+                        </label>
+                        
+                        <!-- Environment Toggle -->
+                        <label class="prefix-toggle" style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+                            <div class="toggle-switch" onclick="togglePrefixComponent(this, 'env')">
+                                <input type="checkbox" id="includeEnv" checked style="display: none;">
+                                <div class="toggle-track" style="width: 36px; height: 20px; background: var(--success); border-radius: 10px; position: relative; transition: background 0.3s;">
+                                    <div class="toggle-thumb" style="width: 16px; height: 16px; background: white; border-radius: 50%; position: absolute; top: 2px; left: 18px; transition: left 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>
+                                </div>
+                            </div>
+                            <span style="font-size: 12px; color: var(--text-secondary);">Environment</span>
+                        </label>
+                        
+                        <!-- App Type Toggle -->
+                        <label class="prefix-toggle" style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+                            <div class="toggle-switch" onclick="togglePrefixComponent(this, 'app')">
+                                <input type="checkbox" id="includeAppType" checked style="display: none;">
+                                <div class="toggle-track" style="width: 36px; height: 20px; background: var(--success); border-radius: 10px; position: relative; transition: background 0.3s;">
+                                    <div class="toggle-thumb" style="width: 16px; height: 16px; background: white; border-radius: 50%; position: absolute; top: 2px; left: 18px; transition: left 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>
+                                </div>
+                            </div>
+                            <span style="font-size: 12px; color: var(--text-secondary);">App Type</span>
+                        </label>
+                    </div>
+                    
                     <div style="display: flex; gap: 0; align-items: stretch;">
                         <div id="titlePrefixBox" style="background: var(--axos-navy); color: var(--axos-orange); padding: 12px 16px; border-radius: 10px 0 0 10px; border: 1px solid var(--axos-navy); font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600; white-space: nowrap; display: flex; align-items: center;">
                             <span id="titlePrefixInput">[#] - [ENV] - [App] - </span>
@@ -1128,7 +1197,7 @@ File the following bug in Azure DevOps:
                         <input type="text" id="titleDescription" placeholder="Brief description of the bug..." style="border-radius: 0 10px 10px 0; border-left: none; flex: 1;" oninput="updateFullTitle()">
                     </div>
                     <input type="hidden" id="title">
-                    <span class="field-help">💡 The prefix is auto-generated from Project Number, Environment, and App Type above. Just add a brief description here! Example: Login button not responding on click</span>
+                    <span class="field-help">💡 The prefix is auto-generated based on toggles above. Just add a brief description! Example: Login button not responding on click</span>
                 </div>
                 <div class="form-group full-width">
                     <label class="form-label">
@@ -1260,21 +1329,39 @@ File the following bug in Azure DevOps:
                 <div class="section-toggle">▼</div>
             </div>
             <div class="section-content">
-                <div class="form-group full-width">
-                    <label class="form-label">
-                        ✅ Expected Result <span class="required-mark">*</span>
-                    </label>
-                    <textarea id="expectedResult" placeholder="What should have happened? Reference AC if available..."></textarea>
-                </div>
-                <div class="form-group full-width">
-                    <label class="form-label">
-                        🚨 Actual Result <span class="required-mark">*</span>
-                    </label>
-                    <textarea id="actualResult" placeholder="What happened? Include error messages, console errors, network errors..."></textarea>
+                <!-- Scenarios Container -->
+                <div id="scenariosList">
+                    <!-- Scenario 1 (Default) -->
+                    <div class="scenario-item" data-scenario="1" style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span style="background: var(--axos-navy); color: var(--axos-orange); padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;">Scenario 1</span>
+                                <input type="text" class="scenario-title" placeholder="Scenario title/description (optional)" style="background: transparent; border: 1px dashed var(--border-color); padding: 6px 12px; font-size: 13px; border-radius: 6px; width: 300px;">
+                            </div>
+                            <button type="button" class="step-remove" onclick="removeScenario(this)" style="display: none;">×</button>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 12px;">
+                            <label class="form-label">
+                                ✅ Expected Result <span class="required-mark">*</span>
+                            </label>
+                            <textarea class="expected-result" id="expectedResult" placeholder="What should have happened? Reference AC if available..." style="min-height: 80px;"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">
+                                🚨 Actual Result <span class="required-mark">*</span>
+                            </label>
+                            <textarea class="actual-result" id="actualResult" placeholder="What happened? Include error messages, console errors, network errors..." style="min-height: 80px;"></textarea>
+                        </div>
+                    </div>
                 </div>
                 
+                <!-- Add Scenario Button -->
+                <button type="button" class="add-step-btn" onclick="addScenario()" style="margin-bottom: 16px;">
+                    ➕ Add Another Scenario (Expected/Actual Result Pair)
+                </button>
+                
                 <!-- Evidence Reminder Info Box -->
-                <div style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(30, 56, 96, 0.15) 100%); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 10px; padding: 14px 18px; margin-top: 8px; display: flex; align-items: flex-start; gap: 12px;">
+                <div style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(30, 56, 96, 0.15) 100%); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 10px; padding: 14px 18px; display: flex; align-items: flex-start; gap: 12px;">
                     <span style="font-size: 20px;">📎</span>
                     <div>
                         <p style="color: #60a5fa; font-weight: 600; margin-bottom: 6px; font-size: 14px;">ℹ️ Evidence Must Be Added After Bug Creation</p>
@@ -1287,7 +1374,136 @@ File the following bug in Azure DevOps:
             </div>
         </div>
         
-        <!-- Section 6: Priority & Severity (Optional - AI Determines) -->
+        <!-- Section 6: Automation & Assignment (Optional) -->
+        <div class="section automation collapsed" data-section="automation">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title">
+                    <span class="section-icon">🤖</span>
+                    Automation & Assignment
+                    <span class="section-badge">Optional</span>
+                </div>
+                <div class="section-toggle">▼</div>
+            </div>
+            <div class="section-content">
+                <div class="form-grid">
+                    <!-- QA Tester with "Make Me QA Tester" checkbox -->
+                    <div class="form-group full-width">
+                        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 8px;">
+                            <label class="form-label" style="margin: 0;">QA Tester</label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; background: rgba(16, 185, 129, 0.1); padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.3);">
+                                <input type="checkbox" id="makeCreatorQATester" checked onchange="toggleCreatorAsQATester()" style="accent-color: var(--success); width: 16px; height: 16px;">
+                                <span style="font-size: 12px; color: #10b981; font-weight: 500;">👤 Assign myself as QA Tester</span>
+                            </label>
+                        </div>
+                        <input type="text" id="qaTester" placeholder="john.doe or john.doe@bofifederalbank.com" onblur="normalizeEmail(this)">
+                        <span class="field-help">Enter username (john.doe) or full email — auto-completes domain. Leave blank if using checkbox above.</span>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Assigned To <span style="color: var(--text-muted); font-weight: 400; font-size: 11px;">(Developer)</span></label>
+                        <input type="text" id="assignedTo" placeholder="dev.name or dev.name@bofifederalbank.com" onblur="normalizeEmail(this)">
+                        <span class="field-help">👨‍💻 The developer who will FIX this bug (not the reporter or tester)</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Found by Automation</label>
+                        <select id="foundByAutomation">
+                            <option value="No">No (Default)</option>
+                            <option value="Yes">Yes</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Automation Status</label>
+                        <select id="automationStatus">
+                            <option value="Not Automated">Not Automated (Default)</option>
+                            <option value="Automated">Automated</option>
+                            <option value="Automation in Progress">Automation in Progress</option>
+                            <option value="Planned">Planned</option>
+                            <option value="Unable to Automate">Unable to Automate</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Automation Engineer</label>
+                        <input type="text" id="automationEngineer" placeholder="auto.engineer or full email" onblur="normalizeEmail(this)">
+                        <span class="field-help">Enter username or full email</span>
+                    </div>
+                </div>
+                
+                <!-- QA Automation Effort Section -->
+                <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 10px; padding: 16px; margin-top: 16px;">
+                    <div style="margin-bottom: 12px;">
+                        <span style="color: #10b981; font-weight: 600; font-size: 13px;">🔧 QA Automation Effort</span>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Automation Effort</label>
+                            <input type="number" id="automationEffort" placeholder="e.g., 4" step="0.5" min="0">
+                            <span class="field-help">Estimated hours for automation</span>
+                        </div>
+                        <div class="form-group full-width">
+                            <label class="form-label">Automation Notes</label>
+                            <textarea id="automationNotes" placeholder="Notes about automation approach, blockers, dependencies, test framework considerations..." style="min-height: 60px;"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section 6.5: Effort Estimates (Optional) -->
+        <div class="section optional collapsed" data-section="effort">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title">
+                    <span class="section-icon">⏱️</span>
+                    Effort Estimates
+                    <span class="section-badge">Optional</span>
+                </div>
+                <div class="section-toggle">▼</div>
+            </div>
+            <div class="section-content">
+                <p style="color: var(--text-muted); margin-bottom: 16px; font-size: 13px;">
+                    💡 Estimate the effort required for QA testing and DEV fix. These help with sprint planning.
+                </p>
+                
+                <!-- QA Effort -->
+                <div style="background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 10px; padding: 16px; margin-bottom: 16px;">
+                    <div style="margin-bottom: 12px;">
+                        <span style="color: #22d3ee; font-weight: 600; font-size: 13px;">🧪 QA Effort</span>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">QA Effort</label>
+                            <input type="number" id="qaEffort" placeholder="e.g., 2.5" step="0.5" min="0">
+                            <span class="field-help">Estimated hours for QA testing/verification</span>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">QA Hours Estimate</label>
+                            <input type="number" id="qaHoursEstimate" placeholder="e.g., 2.5" step="0.5" min="0">
+                            <span class="field-help">Alternative/additional hours estimate</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- DEV Effort -->
+                <div style="background: rgba(139, 92, 246, 0.08); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 10px; padding: 16px;">
+                    <div style="margin-bottom: 12px;">
+                        <span style="color: #a78bfa; font-weight: 600; font-size: 13px;">💻 DEV Effort</span>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">DEV Effort</label>
+                            <input type="number" id="devEffort" placeholder="e.g., 4" step="0.5" min="0">
+                            <span class="field-help">Estimated hours for DEV to fix</span>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">DEV Hours Estimate</label>
+                            <input type="number" id="devHoursEstimate" placeholder="e.g., 4" step="0.5" min="0">
+                            <span class="field-help">Alternative/additional hours estimate</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section 7: Priority & Severity (Optional - AI Determines) -->
         <div class="section optional collapsed" data-section="priority">
             <div class="section-header" onclick="toggleSection(this)">
                 <div class="section-title">
@@ -1517,68 +1733,18 @@ File the following bug in Azure DevOps:
                 <div class="section-toggle">▼</div>
             </div>
             <div class="section-content">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label class="form-label">Related Feature ID</label>
-                        <input type="number" id="relatedFeature" placeholder="Feature ID">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Related Epic ID</label>
-                        <input type="number" id="epicId" placeholder="Related Epic ID">
-                    </div>
-                    <div class="form-group full-width">
-                        <label class="form-label">Related Bug IDs</label>
-                        <input type="text" id="relatedBugs" placeholder="Comma-separated bug IDs">
-                    </div>
+                <p style="color: #9ca3af; font-size: 13px; margin-bottom: 16px;">
+                    Add links to related work items. Comment is optional.
+                </p>
+                
+                <!-- Dynamic list of linked work items -->
+                <div id="linkedItemsList">
+                    <!-- Links will be added here dynamically -->
                 </div>
-            </div>
-        </div>
-        
-        <!-- Section 11: Automation (Optional) -->
-        <div class="section automation collapsed" data-section="automation">
-            <div class="section-header" onclick="toggleSection(this)">
-                <div class="section-title">
-                    <span class="section-icon">🤖</span>
-                    Automation & Assignment
-                    <span class="section-badge">Optional</span>
-                </div>
-                <div class="section-toggle">▼</div>
-            </div>
-            <div class="section-content">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label class="form-label">QA Tester</label>
-                        <input type="text" id="qaTester" placeholder="john.doe or john.doe@bofifederalbank.com" onblur="normalizeEmail(this)">
-                        <span class="field-help">Enter username (john.doe) or full email — auto-completes domain</span>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Assigned To <span style="color: var(--text-muted); font-weight: 400; font-size: 11px;">(Developer)</span></label>
-                        <input type="text" id="assignedTo" placeholder="dev.name or dev.name@bofifederalbank.com" onblur="normalizeEmail(this)">
-                        <span class="field-help">👨‍💻 The developer who will FIX this bug (not the reporter or tester)</span>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Found by Automation</label>
-                        <select id="foundByAutomation">
-                            <option value="No">No (Default)</option>
-                            <option value="Yes">Yes</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Automation Status</label>
-                        <select id="automationStatus">
-                            <option value="Not Automated">Not Automated (Default)</option>
-                            <option value="Automated">Automated</option>
-                            <option value="Automation in Progress">Automation in Progress</option>
-                            <option value="Planned">Planned</option>
-                            <option value="Unable to Automate">Unable to Automate</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Automation Engineer</label>
-                        <input type="text" id="automationEngineer" placeholder="auto.engineer or full email" onblur="normalizeEmail(this)">
-                        <span class="field-help">Enter username or full email</span>
-                    </div>
-                </div>
+                
+                <button type="button" class="add-step-btn" onclick="addLinkedItem()" style="margin-top: 8px; border-color: rgba(96, 165, 250, 0.4); color: #60a5fa;">
+                    ➕ Add Linked Work Item
+                </button>
             </div>
         </div>
         
@@ -1589,9 +1755,20 @@ File the following bug in Azure DevOps:
     <!-- Action Bar -->
     <div class="action-bar">
         <div class="action-bar-inner">
-            <div class="action-status">
-                <div class="status-indicator" id="statusIndicator"></div>
-                <span id="statusText">Fill required fields to generate</span>
+            <div class="action-status" style="position: relative;">
+                <div style="display: flex; align-items: center; gap: 8px; cursor: pointer;" onclick="toggleFieldStatus()">
+                    <div class="status-indicator" id="statusIndicator"></div>
+                    <span id="statusText">Fill required fields to generate</span>
+                    <span id="statusToggle" style="font-size: 10px; color: #6b7280; transition: transform 0.2s;">▼</span>
+                </div>
+                <!-- Expandable field status panel -->
+                <div id="fieldStatusPanel" style="display: none; position: absolute; bottom: 100%; left: 0; right: 0; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 8px; max-height: 300px; overflow-y: auto; box-shadow: 0 -4px 20px rgba(0,0,0,0.3);">
+                    <div style="font-size: 12px; font-weight: 600; color: #9ca3af; margin-bottom: 8px; display: flex; justify-content: space-between;">
+                        <span>📋 Field Status</span>
+                        <span id="fieldStatusSummary"></span>
+                    </div>
+                    <div id="fieldStatusList" style="font-size: 12px;"></div>
+                </div>
             </div>
             <div class="action-buttons">
                 <button class="btn btn-secondary" onclick="resetForm()">
@@ -1698,10 +1875,11 @@ File the following bug in Azure DevOps:
     </div>
     
     <script>
-        // Required fields
+        // Required fields (8 total: Project, Title, Description, Environment, App Type, Steps, Expected, Actual)
+        // Note: Priority & Severity are optional (have defaults), username/password are optional
         const requiredFields = [
-            'project', 'title', 'description', 'environment', 'appType',
-            'username', 'password', 'actualResult', 'expectedResult'
+            'project', 'title', 'description', 'environment', 'appType'
+            // Steps and Expected/Actual are tracked separately in updateProgress
         ];
         
         // Parse Work Item URL or ID
@@ -1796,10 +1974,285 @@ File the following bug in Azure DevOps:
         }
         
         // Parse Reference Work Item input
-        function parseReferenceWorkItem() {
-            const input = document.getElementById('referenceWorkItem').value;
-            const parsed = parseWorkItemInput(input);
-            // Just validate - AI will use the ID
+        // Toggle Title Prefix Component
+        function togglePrefixComponent(toggleSwitch, component) {
+            const checkbox = toggleSwitch.querySelector('input[type="checkbox"]');
+            const track = toggleSwitch.querySelector('.toggle-track');
+            const thumb = toggleSwitch.querySelector('.toggle-thumb');
+            
+            // Toggle the checkbox state
+            checkbox.checked = !checkbox.checked;
+            
+            // Update visual state
+            if (checkbox.checked) {
+                track.style.background = 'var(--success)';
+                thumb.style.left = '18px';
+            } else {
+                track.style.background = 'var(--bg-tertiary)';
+                thumb.style.left = '2px';
+            }
+            
+            // Update the title prefix
+            updateTitlePrefix();
+        }
+        
+        // Toggle Creator as QA Tester
+        function toggleCreatorAsQATester() {
+            const checkbox = document.getElementById('makeCreatorQATester');
+            const qaTesterInput = document.getElementById('qaTester');
+            
+            if (checkbox.checked) {
+                // When checked, the AI will use the bug creator as QA tester
+                qaTesterInput.placeholder = 'Leave blank - bug creator will be assigned';
+                qaTesterInput.value = '';
+            } else {
+                qaTesterInput.placeholder = 'john.doe or john.doe@bofifederalbank.com';
+            }
+        }
+        
+        // Add Scenario for Expected/Actual Results
+        function addScenario() {
+            const list = document.getElementById('scenariosList');
+            const count = list.querySelectorAll('.scenario-item').length + 1;
+            
+            const newScenario = document.createElement('div');
+            newScenario.className = 'scenario-item';
+            newScenario.setAttribute('data-scenario', count);
+            newScenario.style.cssText = 'background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 16px;';
+            newScenario.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="background: var(--axos-navy); color: var(--axos-orange); padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;">Scenario ${count}</span>
+                        <input type="text" class="scenario-title" placeholder="Scenario title/description (optional)" style="background: transparent; border: 1px dashed var(--border-color); padding: 6px 12px; font-size: 13px; border-radius: 6px; width: 300px;">
+                    </div>
+                    <button type="button" class="step-remove" onclick="removeScenario(this)">×</button>
+                </div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label class="form-label">
+                        ✅ Expected Result
+                    </label>
+                    <textarea class="expected-result" placeholder="What should have happened?" style="min-height: 80px;"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        🚨 Actual Result
+                    </label>
+                    <textarea class="actual-result" placeholder="What happened?" style="min-height: 80px;"></textarea>
+                </div>
+            `;
+            
+            list.appendChild(newScenario);
+            newScenario.querySelector('.scenario-title').focus();
+            
+            // Show all remove buttons when there's more than one scenario
+            updateScenarioRemoveButtons();
+            updateProgress();
+        }
+        
+        // Remove Scenario
+        function removeScenario(btn) {
+            const list = document.getElementById('scenariosList');
+            if (list.querySelectorAll('.scenario-item').length > 1) {
+                btn.closest('.scenario-item').remove();
+                
+                // Renumber scenarios
+                const scenarios = list.querySelectorAll('.scenario-item');
+                scenarios.forEach((item, idx) => {
+                    item.setAttribute('data-scenario', idx + 1);
+                    item.querySelector('span[style*="background: var(--axos-navy)"]').textContent = `Scenario ${idx + 1}`;
+                });
+                
+                updateScenarioRemoveButtons();
+                updateProgress();
+            }
+        }
+        
+        // Update remove button visibility for scenarios
+        function updateScenarioRemoveButtons() {
+            const list = document.getElementById('scenariosList');
+            const scenarios = list.querySelectorAll('.scenario-item');
+            
+            scenarios.forEach((item, idx) => {
+                const removeBtn = item.querySelector('.step-remove');
+                if (scenarios.length === 1) {
+                    removeBtn.style.display = 'none';
+                } else {
+                    removeBtn.style.display = 'flex';
+                }
+            });
+        }
+        
+        // Add API Endpoint
+        function addApiEndpoint() {
+            const list = document.getElementById('apiEndpointsList');
+            const count = list.querySelectorAll('.api-endpoint-item').length + 1;
+            
+            const newItem = document.createElement('div');
+            newItem.className = 'api-endpoint-item';
+            newItem.style.cssText = 'background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 10px;';
+            newItem.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="color: #f59e0b; font-size: 12px; font-weight: 500;">Endpoint ${count}</span>
+                    <button type="button" class="step-remove" onclick="removeApiEndpoint(this)">×</button>
+                </div>
+                <div class="form-group" style="margin-bottom: 8px;">
+                    <input type="text" class="api-title" placeholder="Title/Description (e.g., Login API, Get Account Balance)" style="font-size: 13px;">
+                </div>
+                <div class="form-group">
+                    <input type="text" class="api-endpoint" placeholder="Endpoint or full URL" style="font-size: 13px; font-family: 'JetBrains Mono', monospace;">
+                </div>
+            `;
+            
+            list.appendChild(newItem);
+            newItem.querySelector('.api-title').focus();
+            
+            // Show all remove buttons when there's more than one endpoint
+            updateApiEndpointRemoveButtons();
+        }
+        
+        // Remove API Endpoint
+        function removeApiEndpoint(btn) {
+            const list = document.getElementById('apiEndpointsList');
+            if (list.querySelectorAll('.api-endpoint-item').length > 1) {
+                btn.closest('.api-endpoint-item').remove();
+                
+                // Renumber endpoints
+                const endpoints = list.querySelectorAll('.api-endpoint-item');
+                endpoints.forEach((item, idx) => {
+                    item.querySelector('span[style*="color: #f59e0b"]').textContent = `Endpoint ${idx + 1}`;
+                });
+                
+                updateApiEndpointRemoveButtons();
+            } else {
+                // Clear the inputs instead of removing if it's the last one
+                const item = btn.closest('.api-endpoint-item');
+                item.querySelector('.api-title').value = '';
+                item.querySelector('.api-endpoint').value = '';
+            }
+        }
+        
+        // Update remove button visibility for API endpoints
+        function updateApiEndpointRemoveButtons() {
+            const list = document.getElementById('apiEndpointsList');
+            const endpoints = list.querySelectorAll('.api-endpoint-item');
+            
+            endpoints.forEach((item, idx) => {
+                const removeBtn = item.querySelector('.step-remove');
+                if (endpoints.length === 1) {
+                    removeBtn.style.display = 'none';
+                } else {
+                    removeBtn.style.display = 'flex';
+                }
+            });
+        }
+        
+        // Add Linked Work Item
+        function addLinkedItem() {
+            const list = document.getElementById('linkedItemsList');
+            const count = list.querySelectorAll('.linked-item').length + 1;
+            
+            const newItem = document.createElement('div');
+            newItem.className = 'linked-item';
+            newItem.style.cssText = 'background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 10px;';
+            newItem.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="color: #60a5fa; font-size: 12px; font-weight: 500;">Link ${count}</span>
+                    <button type="button" class="step-remove" onclick="removeLinkedItem(this)">×</button>
+                </div>
+                <div class="form-grid" style="gap: 8px;">
+                    <div class="form-group">
+                        <label class="form-label" style="font-size: 11px; margin-bottom: 4px;">Link Type</label>
+                        <select class="link-type" onchange="checkParentLinkWarning(this)" style="font-size: 13px;">
+                            <option value="">Select type...</option>
+                            <option value="Child">Child</option>
+                            <option value="Duplicate">Duplicate</option>
+                            <option value="Duplicate Of">Duplicate Of</option>
+                            <option value="Parent">Parent</option>
+                            <option value="Predecessor">Predecessor</option>
+                            <option value="Related">Related</option>
+                            <option value="Successor">Successor</option>
+                            <option value="Tested By">Tested By</option>
+                            <option value="Tests">Tests</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" style="font-size: 11px; margin-bottom: 4px;">Work Item ID <span style="color: #6b7280;">(or paste URL)</span></label>
+                        <input type="text" class="link-work-item-id" placeholder="ID or URL (e.g., 2173081)" oninput="extractWorkItemId(this)" style="font-size: 13px;">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top: 8px;">
+                    <label class="form-label" style="font-size: 11px; margin-bottom: 4px;">Comment <span style="color: #6b7280;">(optional)</span></label>
+                    <input type="text" class="link-comment" placeholder="Optional comment for this link" style="font-size: 13px;">
+                </div>
+                <div class="parent-warning" style="display: none; margin-top: 8px; padding: 8px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 4px; color: #f59e0b; font-size: 12px;">
+                    ⚠️ Setting Parent here will override the "Parent Work Item" field above if it was filled.
+                </div>
+            `;
+            
+            list.appendChild(newItem);
+            newItem.querySelector('.link-type').focus();
+            updateLinkedItemRemoveButtons();
+        }
+        
+        // Check if Parent link type selected and show warning
+        function checkParentLinkWarning(select) {
+            const warning = select.closest('.linked-item').querySelector('.parent-warning');
+            if (select.value === 'Parent') {
+                warning.style.display = 'block';
+            } else {
+                warning.style.display = 'none';
+            }
+        }
+        
+        // Extract Work Item ID from URL if pasted
+        function extractWorkItemId(input) {
+            const value = input.value.trim();
+            // Check if it's a URL containing a work item ID
+            // Pattern: https://bofaz.visualstudio.com/.../edit/2173081
+            const urlMatch = value.match(/\/edit\/(\d+)/);
+            if (urlMatch) {
+                input.value = urlMatch[1];
+                return;
+            }
+            // Also handle: https://dev.azure.com/.../workitems/2173081
+            const altMatch = value.match(/\/workitems\/(\d+)/);
+            if (altMatch) {
+                input.value = altMatch[1];
+                return;
+            }
+            // If it contains non-numeric characters but isn't a URL, try to extract numbers
+            if (!/^\d*$/.test(value) && !value.includes('http')) {
+                const numMatch = value.match(/(\d+)/);
+                if (numMatch) {
+                    input.value = numMatch[1];
+                }
+            }
+        }
+        
+        // Remove Linked Work Item
+        function removeLinkedItem(btn) {
+            const list = document.getElementById('linkedItemsList');
+            btn.closest('.linked-item').remove();
+            
+            // Renumber links
+            const links = list.querySelectorAll('.linked-item');
+            links.forEach((item, idx) => {
+                item.querySelector('span[style*="color: #60a5fa"]').textContent = `Link ${idx + 1}`;
+            });
+            
+            updateLinkedItemRemoveButtons();
+        }
+        
+        // Update remove button visibility for linked items
+        function updateLinkedItemRemoveButtons() {
+            const list = document.getElementById('linkedItemsList');
+            const links = list.querySelectorAll('.linked-item');
+            
+            links.forEach((item) => {
+                const removeBtn = item.querySelector('.step-remove');
+                // Always show remove button for linked items (they're optional)
+                removeBtn.style.display = 'flex';
+            });
         }
         
         // Get environment short code
@@ -1831,8 +2284,12 @@ File the following bug in Azure DevOps:
             return mapping[appType] || appType;
         }
         
-        // Update Title Prefix based on current selections
+        // Update Title Prefix based on current selections and toggles
         function updateTitlePrefix() {
+            const includeProjNum = document.getElementById('includeProjNum')?.checked ?? true;
+            const includeEnv = document.getElementById('includeEnv')?.checked ?? true;
+            const includeAppType = document.getElementById('includeAppType')?.checked ?? true;
+            
             const projectNum = document.getElementById('projectNumber').value || '[#]';
             const env = document.getElementById('environment').value;
             const appType = document.getElementById('appType').value;
@@ -1840,10 +2297,35 @@ File the following bug in Azure DevOps:
             const envCode = getEnvShortCode(env);
             const appCode = getAppTypeShortCode(appType);
             
-            const prefix = `${projectNum} - ${envCode} - ${appCode} - `;
+            // Build prefix based on toggles
+            const parts = [];
+            if (includeProjNum) parts.push(projectNum);
+            if (includeEnv) parts.push(envCode);
+            if (includeAppType) parts.push(appCode);
+            
+            const prefix = parts.length > 0 ? parts.join(' - ') + ' - ' : '';
             
             // Update the prefix display
-            document.getElementById('titlePrefixInput').textContent = prefix;
+            const prefixBox = document.getElementById('titlePrefixBox');
+            const prefixInput = document.getElementById('titlePrefixInput');
+            
+            if (prefix) {
+                prefixBox.style.display = 'flex';
+                prefixInput.textContent = prefix;
+            } else {
+                prefixBox.style.display = 'none';
+                prefixInput.textContent = '';
+            }
+            
+            // Adjust the description input border-radius when prefix is hidden
+            const descInput = document.getElementById('titleDescription');
+            if (prefix) {
+                descInput.style.borderRadius = '0 10px 10px 0';
+                descInput.style.borderLeft = 'none';
+            } else {
+                descInput.style.borderRadius = '10px';
+                descInput.style.borderLeft = '1px solid var(--border-color)';
+            }
             
             // Update the full title
             updateFullTitle();
@@ -1851,6 +2333,10 @@ File the following bug in Azure DevOps:
         
         // Update the hidden full title field
         function updateFullTitle() {
+            const includeProjNum = document.getElementById('includeProjNum')?.checked ?? true;
+            const includeEnv = document.getElementById('includeEnv')?.checked ?? true;
+            const includeAppType = document.getElementById('includeAppType')?.checked ?? true;
+            
             const projectNum = document.getElementById('projectNumber').value || '';
             const env = document.getElementById('environment').value;
             const appType = document.getElementById('appType').value;
@@ -1859,17 +2345,18 @@ File the following bug in Azure DevOps:
             const envCode = getEnvShortCode(env);
             const appCode = getAppTypeShortCode(appType);
             
+            // Build prefix based on toggles
+            const parts = [];
+            if (includeProjNum && projectNum) parts.push(projectNum);
+            if (includeEnv && env) parts.push(envCode);
+            if (includeAppType && appType) parts.push(appCode);
+            
             let fullTitle = '';
-            if (projectNum && env && appType && description) {
-                fullTitle = `${projectNum} - ${envCode} - ${appCode} - ${description}`;
-            } else if (description) {
-                // Partial - still build what we can
-                const parts = [];
-                if (projectNum) parts.push(projectNum);
-                if (env) parts.push(envCode);
-                if (appType) parts.push(appCode);
+            if (parts.length > 0 && description) {
                 parts.push(description);
                 fullTitle = parts.join(' - ');
+            } else if (description) {
+                fullTitle = description;
             }
             
             document.getElementById('title').value = fullTitle;
@@ -1959,50 +2446,102 @@ File the following bug in Azure DevOps:
             element.classList.toggle('collapsed');
         }
         
+        // Toggle field status panel
+        function toggleFieldStatus() {
+            const panel = document.getElementById('fieldStatusPanel');
+            const toggle = document.getElementById('statusToggle');
+            if (panel.style.display === 'none') {
+                panel.style.display = 'block';
+                toggle.style.transform = 'rotate(180deg)';
+            } else {
+                panel.style.display = 'none';
+                toggle.style.transform = 'rotate(0deg)';
+            }
+        }
+        
         // Update progress
         function updateProgress() {
             let filledRequired = 0;
             let filledOptional = 0;
             
-            requiredFields.forEach(id => {
-                const el = document.getElementById(id);
-                if (el && el.value.trim()) {
-                    // Special handling for project "other" option
-                    if (id === 'project' && el.value === 'other') {
-                        const otherProject = document.getElementById('otherProject');
-                        if (otherProject && otherProject.value.trim()) {
-                            filledRequired++;
-                            el.classList.remove('error');
-                            el.classList.add('valid');
-                            otherProject.classList.remove('error');
-                            otherProject.classList.add('valid');
-                        } else {
-                            el.classList.remove('valid');
-                            if (otherProject) {
-                                otherProject.classList.add('error');
-                                otherProject.classList.remove('valid');
-                            }
-                        }
-                    } else {
-                        filledRequired++;
-                        el.classList.remove('error');
-                        el.classList.add('valid');
-                    }
-                } else if (el) {
-                    el.classList.remove('valid');
-                }
-            });
+            // Track field status in order (top to bottom as they appear in form)
+            const fieldStatus = [];
             
-            // Check steps
+            // 1. Project
+            const projectEl = document.getElementById('project');
+            let projectFilled = false;
+            if (projectEl && projectEl.value.trim()) {
+                if (projectEl.value === 'other') {
+                    const otherProject = document.getElementById('otherProject');
+                    if (otherProject && otherProject.value.trim()) {
+                        projectFilled = true;
+                        projectEl.classList.add('valid');
+                        otherProject.classList.add('valid');
+                    } else {
+                        if (otherProject) otherProject.classList.add('error');
+                    }
+                } else {
+                    projectFilled = true;
+                    projectEl.classList.add('valid');
+                }
+            }
+            fieldStatus.push({ name: 'Project', filled: projectFilled, required: true });
+            if (projectFilled) filledRequired++;
+            
+            // 2. Title
+            const titleEl = document.getElementById('title');
+            const titleFilled = titleEl && titleEl.value.trim();
+            fieldStatus.push({ name: 'Title', filled: !!titleFilled, required: true });
+            if (titleFilled) { filledRequired++; titleEl.classList.add('valid'); } else if (titleEl) { titleEl.classList.remove('valid'); }
+            
+            // 3. Description
+            const descEl = document.getElementById('description');
+            const descFilled = descEl && descEl.value.trim();
+            fieldStatus.push({ name: 'Description', filled: !!descFilled, required: true });
+            if (descFilled) { filledRequired++; descEl.classList.add('valid'); } else if (descEl) { descEl.classList.remove('valid'); }
+            
+            // 4. Environment
+            const envEl = document.getElementById('environment');
+            const envFilled = envEl && envEl.value.trim();
+            fieldStatus.push({ name: 'Environment', filled: !!envFilled, required: true });
+            if (envFilled) { filledRequired++; envEl.classList.add('valid'); } else if (envEl) { envEl.classList.remove('valid'); }
+            
+            // 5. App Type
+            const appEl = document.getElementById('appType');
+            const appFilled = appEl && appEl.value.trim();
+            fieldStatus.push({ name: 'App Type', filled: !!appFilled, required: true });
+            if (appFilled) { filledRequired++; appEl.classList.add('valid'); } else if (appEl) { appEl.classList.remove('valid'); }
+            
+            // 6. Steps to Reproduce
             const steps = document.querySelectorAll('.step-input');
             let hasSteps = false;
             steps.forEach(step => {
                 if (step.value.trim()) hasSteps = true;
             });
+            fieldStatus.push({ name: 'Steps to Reproduce', filled: hasSteps, required: true });
             if (hasSteps) filledRequired++;
             
-            // Total required is 10 (9 fields + steps) - Evidence is recommended but not required
-            const totalRequired = 10;
+            // 9 & 10. Expected & Actual Results (at least one valid scenario)
+            let hasValidScenario = false;
+            const scenarios = document.querySelectorAll('#scenariosList .scenario-item');
+            scenarios.forEach(item => {
+                const expected = item.querySelector('.expected-result');
+                const actual = item.querySelector('.actual-result');
+                if (expected && actual && expected.value.trim() && actual.value.trim()) {
+                    hasValidScenario = true;
+                    expected.classList.add('valid');
+                    actual.classList.add('valid');
+                } else {
+                    if (expected) expected.classList.remove('valid');
+                    if (actual) actual.classList.remove('valid');
+                }
+            });
+            fieldStatus.push({ name: 'Expected Result', filled: hasValidScenario, required: true });
+            fieldStatus.push({ name: 'Actual Result', filled: hasValidScenario, required: true });
+            if (hasValidScenario) filledRequired += 2;
+            
+            // Total required is 8 (Project, Title, Description, Environment, App Type, Steps, Expected, Actual)
+            const totalRequired = 8;
             const percentage = Math.round((filledRequired / totalRequired) * 100);
             
             document.getElementById('progressPercent').textContent = percentage + '%';
@@ -2018,19 +2557,47 @@ File the following bug in Azure DevOps:
             });
             document.getElementById('optionalCount').textContent = filledOptional;
             
+            // Update field status panel
+            const fieldStatusList = document.getElementById('fieldStatusList');
+            const completedFields = fieldStatus.filter(f => f.filled);
+            const missingFields = fieldStatus.filter(f => !f.filled && f.required);
+            
+            let statusHtml = '';
+            if (missingFields.length > 0) {
+                statusHtml += '<div style="margin-bottom: 8px;"><span style="color: #ef4444; font-weight: 500;">❌ Missing:</span></div>';
+                missingFields.forEach(f => {
+                    statusHtml += `<div style="padding: 4px 0; padding-left: 16px; color: #f87171;">• ${f.name}</div>`;
+                });
+            }
+            if (completedFields.length > 0) {
+                statusHtml += '<div style="margin-top: 8px; margin-bottom: 8px;"><span style="color: #22c55e; font-weight: 500;">✅ Complete:</span></div>';
+                completedFields.forEach(f => {
+                    statusHtml += `<div style="padding: 4px 0; padding-left: 16px; color: #4ade80;">• ${f.name}</div>`;
+                });
+            }
+            fieldStatusList.innerHTML = statusHtml;
+            document.getElementById('fieldStatusSummary').textContent = `${completedFields.length}/${totalRequired} complete`;
+            
             // Update status
             const statusIndicator = document.getElementById('statusIndicator');
             const statusText = document.getElementById('statusText');
             const generateBtn = document.getElementById('generateBtn');
             
-            if (percentage >= 80) {
+            // Must have 100% AND valid scenario (expected + actual) to be ready
+            if (percentage === 100 && hasValidScenario) {
                 statusIndicator.classList.add('complete');
                 statusText.textContent = '✨ Ready to generate!';
                 generateBtn.disabled = false;
             } else {
                 statusIndicator.classList.remove('complete');
-                statusText.textContent = `Fill required fields (${totalRequired - filledRequired} remaining)`;
-                generateBtn.disabled = false; // Allow partial generation
+                // Show first missing field (top to bottom order)
+                const firstMissing = missingFields[0];
+                if (firstMissing) {
+                    statusText.textContent = `Missing: ${firstMissing.name}${missingFields.length > 1 ? ` (+${missingFields.length - 1} more)` : ''}`;
+                } else {
+                    statusText.textContent = `Fill required fields (${totalRequired - filledRequired} remaining)`;
+                }
+                generateBtn.disabled = true;
             }
         }
         
@@ -2172,11 +2739,23 @@ File the following bug in Azure DevOps:
                 }
             });
             
+            // Gather scenarios (expected/actual results)
+            const scenarios = [];
+            document.querySelectorAll('#scenariosList .scenario-item').forEach(item => {
+                const title = item.querySelector('.scenario-title')?.value.trim() || '';
+                const expected = item.querySelector('.expected-result')?.value.trim() || '';
+                const actual = item.querySelector('.actual-result')?.value.trim() || '';
+                if (expected || actual) {
+                    scenarios.push({ title, expected, actual });
+                }
+            });
+            
             // Parse work item inputs to extract IDs
             const parentParsed = parseWorkItemInput(getValue('parentWorkItem'));
-            const referenceParsed = parseWorkItemInput(getValue('referenceWorkItem'));
             const parentId = parentParsed ? parentParsed.workItemId : '';
-            const referenceId = referenceParsed ? referenceParsed.workItemId : '';
+            
+            // Check if creator should be QA tester
+            const makeCreatorQA = document.getElementById('makeCreatorQATester')?.checked || false;
             
             // Build output - INSTRUCTIONS FIRST, then the bug details
             let output = `📋 **EXECUTION INSTRUCTIONS** (READ FIRST!):
@@ -2198,14 +2777,6 @@ File the following bug in Azure DevOps:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 `;
-
-            // Reference Work Item (if provided)
-            if (referenceId) {
-                output += `📋 REFERENCE WORK ITEM (for auto-filling fields + linked as Related):
-REFERENCE WORK ITEM: ${referenceId}
-
-`;
-            }
 
             output += `# ─────────────────────────────────────────────────────────────────────────────
 #                              📁 PROJECT INFO
@@ -2252,6 +2823,25 @@ APPLICATION TYPE: ${getValue('appType')}
                 if (getValue('device')) output += `DEVICE: ${getValue('device')}\n`;
                 if (getValue('mobileAppVersion')) output += `MOBILE APP VERSION: ${getValue('mobileAppVersion')}\n`;
             }
+            
+            // API Testing Info
+            const apiEndpoints = [];
+            document.querySelectorAll('#apiEndpointsList .api-endpoint-item').forEach(item => {
+                const title = item.querySelector('.api-title')?.value.trim() || '';
+                const endpoint = item.querySelector('.api-endpoint')?.value.trim() || '';
+                if (title || endpoint) {
+                    apiEndpoints.push({ title, endpoint });
+                }
+            });
+            
+            if (apiEndpoints.length > 0 || getValue('swaggerLink')) {
+                output += `\n# 🔌 API Testing:\n`;
+                apiEndpoints.forEach((api, idx) => {
+                    if (api.title) output += `API ${idx + 1} TITLE: ${api.title}\n`;
+                    if (api.endpoint) output += `API ${idx + 1} ENDPOINT: ${api.endpoint}\n`;
+                });
+                if (getValue('swaggerLink')) output += `SWAGGER LINK: ${getValue('swaggerLink')}\n`;
+            }
 
             output += `
 # ─────────────────────────────────────────────────────────────────────────────
@@ -2284,15 +2874,76 @@ STEPS TO REPRODUCE:
 #                            🎯 EXPECTED & ACTUAL RESULTS
 # ─────────────────────────────────────────────────────────────────────────────
 
-EXPECTED RESULT:
-${getValue('expectedResult')}
+`;
+            
+            // Output scenarios
+            if (scenarios.length === 1 && !scenarios[0].title) {
+                // Single scenario without title - use simple format
+                output += `EXPECTED RESULT:
+${scenarios[0].expected}
 
 ACTUAL RESULT:
-${getValue('actualResult')}
+${scenarios[0].actual}
+`;
+            } else {
+                // Multiple scenarios or scenario with title
+                scenarios.forEach((scenario, idx) => {
+                    const scenarioLabel = scenario.title ? `SCENARIO ${idx + 1}: ${scenario.title}` : `SCENARIO ${idx + 1}`;
+                    output += `--- ${scenarioLabel} ---
+EXPECTED RESULT:
+${scenario.expected}
 
-📎 NOTE: Evidence (screenshots, videos, logs) must be attached AFTER bug creation in Azure DevOps.
+ACTUAL RESULT:
+${scenario.actual}
+
+`;
+                });
+            }
+
+            output += `📎 NOTE: Evidence (screenshots, videos, logs) must be attached AFTER bug creation in Azure DevOps.
    The AI will add "Add evidence here" placeholders in the bug description as reminders.
 `;
+
+            // Automation & Assignment (moved before Priority)
+            const hasAutomation = getValue('qaTester') || getValue('assignedTo') || getValue('automationEngineer') || makeCreatorQA || getValue('automationEffort') || getValue('automationNotes');
+            if (hasAutomation) {
+                output += `
+# ─────────────────────────────────────────────────────────────────────────────
+#                            🤖 AUTOMATION & ASSIGNMENT
+# ─────────────────────────────────────────────────────────────────────────────
+
+`;
+                if (makeCreatorQA && !getValue('qaTester')) {
+                    output += `QA TESTER: [ASSIGN BUG CREATOR AS QA TESTER]\n`;
+                } else if (getValue('qaTester')) {
+                    output += `QA TESTER: ${getValue('qaTester')}\n`;
+                }
+                if (getValue('assignedTo')) output += `ASSIGNED TO: ${getValue('assignedTo')}\n`;
+                if (getValue('foundByAutomation') && getValue('foundByAutomation') !== 'No') {
+                    output += `FOUND BY AUTOMATION: ${getValue('foundByAutomation')}\n`;
+                }
+                if (getValue('automationStatus') && getValue('automationStatus') !== 'Not Automated') {
+                    output += `AUTOMATION STATUS: ${getValue('automationStatus')}\n`;
+                }
+                if (getValue('automationEngineer')) output += `AUTOMATION ENGINEER: ${getValue('automationEngineer')}\n`;
+                if (getValue('automationEffort')) output += `AUTOMATION EFFORT: ${getValue('automationEffort')}\n`;
+                if (getValue('automationNotes')) output += `AUTOMATION NOTES: ${getValue('automationNotes')}\n`;
+            }
+
+            // Effort Estimates
+            const hasEffort = getValue('qaEffort') || getValue('qaHoursEstimate') || getValue('devEffort') || getValue('devHoursEstimate');
+            if (hasEffort) {
+                output += `
+# ─────────────────────────────────────────────────────────────────────────────
+#                            ⏱️ EFFORT ESTIMATES
+# ─────────────────────────────────────────────────────────────────────────────
+
+`;
+                if (getValue('qaEffort')) output += `QA EFFORT: ${getValue('qaEffort')}\n`;
+                if (getValue('qaHoursEstimate')) output += `QA HOURS ESTIMATE: ${getValue('qaHoursEstimate')}\n`;
+                if (getValue('devEffort')) output += `DEV EFFORT: ${getValue('devEffort')}\n`;
+                if (getValue('devHoursEstimate')) output += `DEV HOURS ESTIMATE: ${getValue('devHoursEstimate')}\n`;
+            }
 
             // Priority & Severity
             if (getValue('priority') || getValue('severity') || getValue('tags')) {
@@ -2333,36 +2984,36 @@ ${getValue('actualResult')}
                 if (getValue('requestedBy')) output += `REQUESTED BY: ${getValue('requestedBy')}\n`;
             }
 
-            // Links
-            if (getValue('relatedFeature') || getValue('epicId') || getValue('relatedBugs')) {
+            // Linked Work Items
+            const linkedItems = document.querySelectorAll('#linkedItemsList .linked-item');
+            const validLinks = [];
+            linkedItems.forEach((item, idx) => {
+                const linkType = item.querySelector('.link-type').value;
+                const workItemId = item.querySelector('.link-work-item-id').value;
+                if (linkType && workItemId) {
+                    validLinks.push({
+                        type: linkType,
+                        id: workItemId,
+                        comment: item.querySelector('.link-comment').value || ''
+                    });
+                }
+            });
+            
+            if (validLinks.length > 0) {
                 output += `
 # ─────────────────────────────────────────────────────────────────────────────
 #                            🔗 LINKED WORK ITEMS
 # ─────────────────────────────────────────────────────────────────────────────
 
 `;
-                if (getValue('relatedFeature')) output += `RELATED FEATURE: ${getValue('relatedFeature')}\n`;
-                if (getValue('epicId')) output += `EPIC: ${getValue('epicId')}\n`;
-                if (getValue('relatedBugs')) output += `RELATED BUGS: ${getValue('relatedBugs')}\n`;
-            }
-
-            // Automation
-            if (getValue('qaTester') || getValue('assignedTo') || getValue('automationEngineer')) {
-                output += `
-# ─────────────────────────────────────────────────────────────────────────────
-#                            🤖 AUTOMATION & ASSIGNMENT
-# ─────────────────────────────────────────────────────────────────────────────
-
-`;
-                if (getValue('qaTester')) output += `QA TESTER: ${getValue('qaTester')}\n`;
-                if (getValue('assignedTo')) output += `ASSIGNED TO: ${getValue('assignedTo')}\n`;
-                if (getValue('foundByAutomation') && getValue('foundByAutomation') !== 'No') {
-                    output += `FOUND BY AUTOMATION: ${getValue('foundByAutomation')}\n`;
-                }
-                if (getValue('automationStatus') && getValue('automationStatus') !== 'Not Automated') {
-                    output += `AUTOMATION STATUS: ${getValue('automationStatus')}\n`;
-                }
-                if (getValue('automationEngineer')) output += `AUTOMATION ENGINEER: ${getValue('automationEngineer')}\n`;
+                validLinks.forEach((link, idx) => {
+                    output += `LINK ${idx + 1} TYPE: ${link.type}\n`;
+                    output += `LINK ${idx + 1} WORK ITEM ID: ${link.id}\n`;
+                    if (link.comment) {
+                        output += `LINK ${idx + 1} COMMENT: ${link.comment}\n`;
+                    }
+                    output += `\n`;
+                });
             }
 
             output += `
@@ -2445,6 +3096,9 @@ ${getValue('actualResult')}
                 document.querySelectorAll('.step-input').forEach(el => {
                     el.addEventListener('input', updateProgress);
                 });
+                
+                // Clear linked items
+                document.getElementById('linkedItemsList').innerHTML = '';
                 
                 updateProgress();
                 showToast('🔄', 'Form reset!', 'success');
@@ -2615,12 +3269,36 @@ ${getValue('actualResult')}
             // Parse TITLE - extract just the description part after prefix
             const title = extractValue('TITLE');
             if (title) {
-                // Try to extract just the description after "## - ENV - App - "
-                const titleMatch = title.match(/^\d+\s*-\s*[^-]+\s*-\s*[^-]+\s*-\s*(.+)$/);
-                if (titleMatch) {
-                    result.titleDescription = titleMatch[1].trim();
+                // Detect which prefix parts are present
+                // Full pattern: "## - ENV - App - Description" or partial
+                const fullMatch = title.match(/^(\d+)\s*-\s*([^-]+)\s*-\s*([^-]+)\s*-\s*(.+)$/);
+                const envAppMatch = title.match(/^([^-]+)\s*-\s*([^-]+)\s*-\s*(.+)$/);
+                
+                if (fullMatch) {
+                    // Has project number, env, app, description
+                    result.titleDescription = fullMatch[4].trim();
+                    result.titleHasProjectNumber = true;
+                    result.titleHasEnvironment = true;
+                    result.titleHasAppType = true;
+                } else if (envAppMatch) {
+                    // Check if first part looks like env (QA, UAT, PROD, DEV)
+                    const firstPart = envAppMatch[1].trim().toUpperCase();
+                    if (['QA', 'UAT', 'PROD', 'DEV', 'STAGE', 'STAGING'].includes(firstPart)) {
+                        result.titleDescription = envAppMatch[3].trim();
+                        result.titleHasProjectNumber = false;
+                        result.titleHasEnvironment = true;
+                        result.titleHasAppType = true;
+                    } else {
+                        result.titleDescription = title;
+                        result.titleHasProjectNumber = false;
+                        result.titleHasEnvironment = false;
+                        result.titleHasAppType = false;
+                    }
                 } else {
                     result.titleDescription = title;
+                    result.titleHasProjectNumber = false;
+                    result.titleHasEnvironment = false;
+                    result.titleHasAppType = false;
                 }
                 result.fieldsFound++;
             }
@@ -2686,21 +3364,28 @@ ${getValue('actualResult')}
                     result.fieldsFound++;
                 }
                 
-                // Extract additional test data (anything else after username/password)
-                const additionalLines = testData.split('\n').filter(line => {
-                    const trimmed = line.trim();
-                    return trimmed && 
-                           !trimmed.startsWith('-') &&
-                           !trimmed.toLowerCase().includes('username:') && 
-                           !trimmed.toLowerCase().includes('password:');
-                });
-                if (additionalLines.length > 0) {
-                    result.additionalTestData = additionalLines.join('\n');
+                // Extract additional test data - look for "Additional:" line or lines after username/password
+                const additionalMatch = testData.match(/Additional:\s*(.+?)(?:\n|$)/i);
+                if (additionalMatch) {
+                    result.additionalTestData = additionalMatch[1].trim();
+                    result.fieldsFound++;
+                } else {
+                    // Fallback: get any lines that aren't username/password
+                    const additionalLines = testData.split('\n').filter(line => {
+                        const trimmed = line.trim().replace(/^-\s*/, '');
+                        return trimmed && 
+                               !trimmed.toLowerCase().startsWith('username:') && 
+                               !trimmed.toLowerCase().startsWith('password:') &&
+                               !trimmed.toLowerCase().startsWith('additional:');
+                    }).map(line => line.trim().replace(/^-\s*/, ''));
+                    if (additionalLines.length > 0) {
+                        result.additionalTestData = additionalLines.join('\n');
+                    }
                 }
             }
             
             // Parse STEPS TO REPRODUCE
-            const stepsMatch = text.match(/STEPS TO REPRODUCE:\s*([\s\S]*?)(?=\n#|EXPECTED RESULT)/i);
+            const stepsMatch = text.match(/STEPS TO REPRODUCE:\s*([\s\S]*?)(?=\n#|---\s*SCENARIO|EXPECTED RESULT)/i);
             if (stepsMatch) {
                 const stepsText = stepsMatch[1].trim();
                 const steps = stepsText.split('\n')
@@ -2712,18 +3397,52 @@ ${getValue('actualResult')}
                 }
             }
             
-            // Parse EXPECTED RESULT
-            const expectedMatch = text.match(/EXPECTED RESULT:\s*([\s\S]*?)(?=\nACTUAL RESULT|$)/i);
-            if (expectedMatch) {
-                result.expectedResult = expectedMatch[1].trim().replace(/\n+/g, '\n');
-                result.fieldsFound++;
+            // Parse SCENARIOS (multiple Expected/Actual pairs)
+            // Format: --- SCENARIO 1: title here ---
+            const scenarios = [];
+            
+            // Split by scenario markers
+            const scenarioBlocks = text.split(/---\s*SCENARIO\s*\d+:/i);
+            
+            if (scenarioBlocks.length > 1) {
+                // Skip first block (before first scenario)
+                for (let i = 1; i < scenarioBlocks.length; i++) {
+                    const block = scenarioBlocks[i];
+                    
+                    // Extract title (everything before the closing ---)
+                    const titleMatch = block.match(/^([^-]*?)---/);
+                    const title = titleMatch ? titleMatch[1].trim() : '';
+                    
+                    // Extract expected result
+                    const expectedMatch = block.match(/EXPECTED RESULT:\s*([\s\S]*?)(?=ACTUAL RESULT:|$)/i);
+                    const expected = expectedMatch ? expectedMatch[1].trim() : '';
+                    
+                    // Extract actual result
+                    const actualMatch = block.match(/ACTUAL RESULT:\s*([\s\S]*?)(?=📎|#\s*[═─]|$)/i);
+                    const actual = actualMatch ? actualMatch[1].trim() : '';
+                    
+                    if (expected || actual) {
+                        scenarios.push({ title, expected, actual });
+                    }
+                }
             }
             
-            // Parse ACTUAL RESULT
-            const actualMatch = text.match(/ACTUAL RESULT:\s*([\s\S]*?)(?=\n📎|#\s*═|$)/i);
-            if (actualMatch) {
-                result.actualResult = actualMatch[1].trim().replace(/\n+/g, '\n');
+            if (scenarios.length > 0) {
+                result.scenarios = scenarios;
                 result.fieldsFound++;
+            } else {
+                // Fallback: Try single EXPECTED/ACTUAL RESULT format
+                const expectedMatch = text.match(/EXPECTED RESULT:\s*([\s\S]*?)(?=\nACTUAL RESULT|$)/i);
+                if (expectedMatch) {
+                    result.expectedResult = expectedMatch[1].trim().replace(/\n+/g, '\n');
+                    result.fieldsFound++;
+                }
+                
+                const actualMatch = text.match(/ACTUAL RESULT:\s*([\s\S]*?)(?=\n📎|#\s*═|$)/i);
+                if (actualMatch) {
+                    result.actualResult = actualMatch[1].trim().replace(/\n+/g, '\n');
+                    result.fieldsFound++;
+                }
             }
             
             // Parse PRIORITY
@@ -2806,24 +3525,178 @@ ${getValue('actualResult')}
                 result.fieldsFound++;
             }
             
-            // Parse RELATED FEATURE
+            // Parse LINKED WORK ITEMS (new format)
+            const linkedItems = [];
+            const linkTypeRegex = /LINK\s*(\d+)\s*TYPE:\s*(.+?)(?:\n|$)/gi;
+            const linkIdRegex = /LINK\s*(\d+)\s*WORK ITEM ID:\s*(.+?)(?:\n|$)/gi;
+            const linkCommentRegex = /LINK\s*(\d+)\s*COMMENT:\s*(.+?)(?:\n|$)/gi;
+            
+            // Helper to extract ID from URL or plain number
+            function extractIdFromValue(value) {
+                const trimmed = value.trim();
+                // Check for URL patterns
+                const urlMatch = trimmed.match(/\/edit\/(\d+)/);
+                if (urlMatch) return urlMatch[1];
+                const altMatch = trimmed.match(/\/workitems\/(\d+)/);
+                if (altMatch) return altMatch[1];
+                // Try to extract any number
+                const numMatch = trimmed.match(/(\d+)/);
+                if (numMatch) return numMatch[1];
+                return null;
+            }
+            
+            let linkMatch;
+            const linkTypes = {};
+            const linkIds = {};
+            const linkComments = {};
+            
+            while ((linkMatch = linkTypeRegex.exec(text)) !== null) {
+                linkTypes[linkMatch[1]] = linkMatch[2].trim();
+            }
+            while ((linkMatch = linkIdRegex.exec(text)) !== null) {
+                const extractedId = extractIdFromValue(linkMatch[2]);
+                if (extractedId) {
+                    linkIds[linkMatch[1]] = extractedId;
+                }
+            }
+            while ((linkMatch = linkCommentRegex.exec(text)) !== null) {
+                linkComments[linkMatch[1]] = linkMatch[2].trim();
+            }
+            
+            for (const num of Object.keys(linkTypes)) {
+                if (linkIds[num]) {
+                    linkedItems.push({
+                        type: linkTypes[num],
+                        id: linkIds[num],
+                        comment: linkComments[num] || ''
+                    });
+                }
+            }
+            
+            if (linkedItems.length > 0) {
+                result.linkedItems = linkedItems;
+                result.fieldsFound++;
+            }
+            
+            // Legacy parsing for backwards compatibility
             const relatedFeature = extractValue('RELATED FEATURE');
             if (relatedFeature) {
-                result.relatedFeature = relatedFeature;
+                result.linkedItems = result.linkedItems || [];
+                result.linkedItems.push({ type: 'Related', id: relatedFeature, comment: 'Related Feature' });
                 result.fieldsFound++;
             }
             
-            // Parse RELATED EPIC
-            const epicId = extractValue('RELATED EPIC');
+            const epicId = extractValue('EPIC');
             if (epicId) {
-                result.epicId = epicId;
+                result.linkedItems = result.linkedItems || [];
+                result.linkedItems.push({ type: 'Related', id: epicId, comment: 'Related Epic' });
                 result.fieldsFound++;
             }
             
-            // Parse RELATED BUGS
             const relatedBugs = extractValue('RELATED BUGS');
             if (relatedBugs) {
-                result.relatedBugs = relatedBugs;
+                result.linkedItems = result.linkedItems || [];
+                relatedBugs.split(',').forEach(bugId => {
+                    const id = bugId.trim();
+                    if (id) {
+                        result.linkedItems.push({ type: 'Related', id: id, comment: 'Related Bug' });
+                    }
+                });
+                result.fieldsFound++;
+            }
+            
+            // Parse API ENDPOINTS (multiple)
+            const apiEndpoints = [];
+            const apiTitleRegex = /API\s*(\d+)\s*TITLE:\s*(.+?)(?:\n|$)/gi;
+            const apiEndpointRegex = /API\s*(\d+)\s*ENDPOINT:\s*(.+?)(?:\n|$)/gi;
+            
+            let apiTitleMatch;
+            const apiTitles = {};
+            while ((apiTitleMatch = apiTitleRegex.exec(text)) !== null) {
+                apiTitles[apiTitleMatch[1]] = apiTitleMatch[2].trim();
+            }
+            
+            let apiEndpointMatch;
+            while ((apiEndpointMatch = apiEndpointRegex.exec(text)) !== null) {
+                const idx = apiEndpointMatch[1];
+                apiEndpoints.push({
+                    title: apiTitles[idx] || '',
+                    endpoint: apiEndpointMatch[2].trim()
+                });
+            }
+            
+            if (apiEndpoints.length > 0) {
+                result.apiEndpoints = apiEndpoints;
+                result.fieldsFound++;
+            }
+            
+            // Parse SWAGGER LINK
+            const swaggerLink = extractValue('SWAGGER LINK');
+            if (swaggerLink) {
+                result.swaggerLink = swaggerLink;
+                result.fieldsFound++;
+            }
+            
+            // Parse FOUND BY AUTOMATION
+            const foundByAutomation = extractValue('FOUND BY AUTOMATION');
+            if (foundByAutomation) {
+                result.foundByAutomation = foundByAutomation;
+                result.fieldsFound++;
+            }
+            
+            // Parse AUTOMATION STATUS
+            const automationStatus = extractValue('AUTOMATION STATUS');
+            if (automationStatus) {
+                result.automationStatus = automationStatus;
+                result.fieldsFound++;
+            }
+            
+            // Parse AUTOMATION ENGINEER
+            const automationEngineer = extractValue('AUTOMATION ENGINEER');
+            if (automationEngineer) {
+                result.automationEngineer = automationEngineer;
+                result.fieldsFound++;
+            }
+            
+            // Parse AUTOMATION EFFORT
+            const automationEffort = extractValue('AUTOMATION EFFORT');
+            if (automationEffort) {
+                result.automationEffort = automationEffort;
+                result.fieldsFound++;
+            }
+            
+            // Parse AUTOMATION NOTES
+            const automationNotes = extractValue('AUTOMATION NOTES');
+            if (automationNotes) {
+                result.automationNotes = automationNotes;
+                result.fieldsFound++;
+            }
+            
+            // Parse QA EFFORT
+            const qaEffort = extractValue('QA EFFORT');
+            if (qaEffort) {
+                result.qaEffort = qaEffort;
+                result.fieldsFound++;
+            }
+            
+            // Parse QA HOURS ESTIMATE
+            const qaHoursEstimate = extractValue('QA HOURS ESTIMATE');
+            if (qaHoursEstimate) {
+                result.qaHoursEstimate = qaHoursEstimate;
+                result.fieldsFound++;
+            }
+            
+            // Parse DEV EFFORT
+            const devEffort = extractValue('DEV EFFORT');
+            if (devEffort) {
+                result.devEffort = devEffort;
+                result.fieldsFound++;
+            }
+            
+            // Parse DEV HOURS ESTIMATE
+            const devHoursEstimate = extractValue('DEV HOURS ESTIMATE');
+            if (devHoursEstimate) {
+                result.devHoursEstimate = devHoursEstimate;
                 result.fieldsFound++;
             }
             
@@ -2895,7 +3768,48 @@ ${getValue('actualResult')}
                 setSelectValue('appType', parsed.appType);
             }
             
-            // Update title prefix after setting project, env, appType
+            // Update title prefix toggles based on what was detected in the title
+            if (parsed.titleHasProjectNumber !== undefined) {
+                const projectToggle = document.getElementById('includeProjNum');
+                if (projectToggle) {
+                    projectToggle.checked = parsed.titleHasProjectNumber;
+                    // Update visual toggle state
+                    const toggleTrack = projectToggle.closest('.toggle-switch')?.querySelector('.toggle-track');
+                    const toggleThumb = projectToggle.closest('.toggle-switch')?.querySelector('.toggle-thumb');
+                    if (toggleTrack && toggleThumb) {
+                        toggleTrack.style.background = parsed.titleHasProjectNumber ? 'var(--success)' : '#555';
+                        toggleThumb.style.left = parsed.titleHasProjectNumber ? '18px' : '2px';
+                    }
+                }
+            }
+            if (parsed.titleHasEnvironment !== undefined) {
+                const envToggle = document.getElementById('includeEnv');
+                if (envToggle) {
+                    envToggle.checked = parsed.titleHasEnvironment;
+                    // Update visual toggle state
+                    const toggleTrack = envToggle.closest('.toggle-switch')?.querySelector('.toggle-track');
+                    const toggleThumb = envToggle.closest('.toggle-switch')?.querySelector('.toggle-thumb');
+                    if (toggleTrack && toggleThumb) {
+                        toggleTrack.style.background = parsed.titleHasEnvironment ? 'var(--success)' : '#555';
+                        toggleThumb.style.left = parsed.titleHasEnvironment ? '18px' : '2px';
+                    }
+                }
+            }
+            if (parsed.titleHasAppType !== undefined) {
+                const appToggle = document.getElementById('includeAppType');
+                if (appToggle) {
+                    appToggle.checked = parsed.titleHasAppType;
+                    // Update visual toggle state
+                    const toggleTrack = appToggle.closest('.toggle-switch')?.querySelector('.toggle-track');
+                    const toggleThumb = appToggle.closest('.toggle-switch')?.querySelector('.toggle-thumb');
+                    if (toggleTrack && toggleThumb) {
+                        toggleTrack.style.background = parsed.titleHasAppType ? 'var(--success)' : '#555';
+                        toggleThumb.style.left = parsed.titleHasAppType ? '18px' : '2px';
+                    }
+                }
+            }
+            
+            // Update title prefix after setting toggles
             updateTitlePrefix();
             
             // Fill TITLE DESCRIPTION
@@ -2942,14 +3856,53 @@ ${getValue('actualResult')}
                 });
             }
             
-            // Fill EXPECTED RESULT
-            if (parsed.expectedResult) {
-                setInputValue('expectedResult', parsed.expectedResult);
-            }
-            
-            // Fill ACTUAL RESULT
-            if (parsed.actualResult) {
-                setInputValue('actualResult', parsed.actualResult);
+            // Fill SCENARIOS or single Expected/Actual
+            if (parsed.scenarios && parsed.scenarios.length > 0) {
+                // Clear existing scenarios and add new ones
+                const scenariosList = document.getElementById('scenariosList');
+                if (scenariosList) {
+                    scenariosList.innerHTML = '';
+                    
+                    parsed.scenarios.forEach((scenario, index) => {
+                        const scenarioHtml = `
+                            <div class="scenario-item" data-scenario="${index + 1}" style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <span style="background: var(--axos-navy); color: var(--axos-orange); padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;">Scenario ${index + 1}</span>
+                                        <input type="text" class="scenario-title" placeholder="Scenario title/description (optional)" value="${escapeHtml(scenario.title)}" style="background: transparent; border: 1px dashed var(--border-color); padding: 6px 12px; font-size: 13px; border-radius: 6px; width: 300px;">
+                                    </div>
+                                    <button type="button" class="step-remove" onclick="removeScenario(this)" style="display: ${index === 0 ? 'none' : 'block'};">×</button>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 12px;">
+                                    <label class="form-label">
+                                        ✅ Expected Result <span class="required-mark">*</span>
+                                    </label>
+                                    <textarea class="expected-result" ${index === 0 ? 'id="expectedResult"' : ''} placeholder="What should have happened? Reference AC if available..." style="min-height: 80px;">${escapeHtml(scenario.expected)}</textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        🚨 Actual Result <span class="required-mark">*</span>
+                                    </label>
+                                    <textarea class="actual-result" ${index === 0 ? 'id="actualResult"' : ''} placeholder="What happened? Include error messages, console errors, network errors..." style="min-height: 80px;">${escapeHtml(scenario.actual)}</textarea>
+                                </div>
+                            </div>
+                        `;
+                        scenariosList.insertAdjacentHTML('beforeend', scenarioHtml);
+                    });
+                    
+                    updateScenarioRemoveButtons();
+                }
+            } else {
+                // Fill single EXPECTED RESULT / ACTUAL RESULT
+                if (parsed.expectedResult) {
+                    const expectedTextarea = document.querySelector('.expected-result');
+                    if (expectedTextarea) expectedTextarea.value = parsed.expectedResult;
+                }
+                
+                if (parsed.actualResult) {
+                    const actualTextarea = document.querySelector('.actual-result');
+                    if (actualTextarea) actualTextarea.value = parsed.actualResult;
+                }
             }
             
             // Fill PRIORITY
@@ -3007,19 +3960,153 @@ ${getValue('actualResult')}
                 setInputValue('assignedTo', parsed.assignedTo);
             }
             
-            // Fill RELATED FEATURE
-            if (parsed.relatedFeature) {
-                setInputValue('relatedFeature', parsed.relatedFeature);
+            // Fill LINKED WORK ITEMS
+            if (parsed.linkedItems && parsed.linkedItems.length > 0) {
+                const linkedItemsList = document.getElementById('linkedItemsList');
+                if (linkedItemsList) {
+                    linkedItemsList.innerHTML = '';
+                    
+                    parsed.linkedItems.forEach((link, index) => {
+                        const linkHtml = `
+                            <div class="linked-item" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 10px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="color: #60a5fa; font-size: 12px; font-weight: 500;">Link ${index + 1}</span>
+                                    <button type="button" class="step-remove" onclick="removeLinkedItem(this)" style="display: flex;">×</button>
+                                </div>
+                                <div class="form-grid" style="gap: 8px;">
+                                    <div class="form-group">
+                                        <label class="form-label" style="font-size: 11px; margin-bottom: 4px;">Link Type</label>
+                                        <select class="link-type" onchange="checkParentLinkWarning(this)" style="font-size: 13px;">
+                                            <option value="">Select type...</option>
+                                            <option value="Child" ${link.type === 'Child' ? 'selected' : ''}>Child</option>
+                                            <option value="Duplicate" ${link.type === 'Duplicate' ? 'selected' : ''}>Duplicate</option>
+                                            <option value="Duplicate Of" ${link.type === 'Duplicate Of' ? 'selected' : ''}>Duplicate Of</option>
+                                            <option value="Parent" ${link.type === 'Parent' ? 'selected' : ''}>Parent</option>
+                                            <option value="Predecessor" ${link.type === 'Predecessor' ? 'selected' : ''}>Predecessor</option>
+                                            <option value="Related" ${link.type === 'Related' ? 'selected' : ''}>Related</option>
+                                            <option value="Successor" ${link.type === 'Successor' ? 'selected' : ''}>Successor</option>
+                                            <option value="Tested By" ${link.type === 'Tested By' ? 'selected' : ''}>Tested By</option>
+                                            <option value="Tests" ${link.type === 'Tests' ? 'selected' : ''}>Tests</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" style="font-size: 11px; margin-bottom: 4px;">Work Item ID <span style="color: #6b7280;">(or paste URL)</span></label>
+                                        <input type="text" class="link-work-item-id" placeholder="ID or URL (e.g., 2173081)" value="${escapeHtml(link.id)}" oninput="extractWorkItemId(this)" style="font-size: 13px;">
+                                    </div>
+                                </div>
+                                <div class="form-group" style="margin-top: 8px;">
+                                    <label class="form-label" style="font-size: 11px; margin-bottom: 4px;">Comment <span style="color: #6b7280;">(optional)</span></label>
+                                    <input type="text" class="link-comment" placeholder="Optional comment for this link" value="${escapeHtml(link.comment || '')}" style="font-size: 13px;">
+                                </div>
+                                <div class="parent-warning" style="display: ${link.type === 'Parent' ? 'block' : 'none'}; margin-top: 8px; padding: 8px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 4px; color: #f59e0b; font-size: 12px;">
+                                    ⚠️ Setting Parent here will override the "Parent Work Item" field above if it was filled.
+                                </div>
+                            </div>
+                        `;
+                        linkedItemsList.insertAdjacentHTML('beforeend', linkHtml);
+                    });
+                }
             }
             
-            // Fill EPIC ID
-            if (parsed.epicId) {
-                setInputValue('epicId', parsed.epicId);
+            // Fill API ENDPOINTS
+            if (parsed.apiEndpoints && parsed.apiEndpoints.length > 0) {
+                const apiEndpointsList = document.getElementById('apiEndpointsList');
+                if (apiEndpointsList) {
+                    apiEndpointsList.innerHTML = '';
+                    
+                    parsed.apiEndpoints.forEach((api, index) => {
+                        const apiHtml = `
+                            <div class="api-endpoint-item" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 10px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="color: #f59e0b; font-size: 12px; font-weight: 500;">Endpoint ${index + 1}</span>
+                                    <button type="button" class="step-remove" onclick="removeApiEndpoint(this)" style="display: ${index === 0 ? 'none' : 'block'};">×</button>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 8px;">
+                                    <input type="text" class="api-title" placeholder="Title/Description (e.g., Login API, Get Account Balance)" value="${escapeHtml(api.title)}" style="font-size: 13px;">
+                                </div>
+                                <div class="form-group">
+                                    <input type="text" class="api-endpoint" placeholder="Endpoint or full URL (e.g., /api/v1/accounts or https://api.uat.axos.com/v1/accounts)" value="${escapeHtml(api.endpoint)}" style="font-size: 13px; font-family: 'JetBrains Mono', monospace;">
+                                </div>
+                            </div>
+                        `;
+                        apiEndpointsList.insertAdjacentHTML('beforeend', apiHtml);
+                    });
+                }
             }
             
-            // Fill RELATED BUGS
-            if (parsed.relatedBugs) {
-                setInputValue('relatedBugs', parsed.relatedBugs);
+            // Fill SWAGGER LINK
+            if (parsed.swaggerLink) {
+                setInputValue('swaggerLink', parsed.swaggerLink);
+            }
+            
+            // Fill FOUND BY AUTOMATION
+            if (parsed.foundByAutomation) {
+                const foundByAuto = parsed.foundByAutomation.toLowerCase();
+                if (foundByAuto === 'yes' || foundByAuto === 'true') {
+                    setSelectValue('foundByAutomation', 'Yes');
+                } else {
+                    setSelectValue('foundByAutomation', 'No');
+                }
+            }
+            
+            // Fill AUTOMATION STATUS
+            if (parsed.automationStatus) {
+                setSelectValue('automationStatus', parsed.automationStatus);
+            }
+            
+            // Fill AUTOMATION ENGINEER
+            if (parsed.automationEngineer) {
+                setInputValue('automationEngineer', parsed.automationEngineer);
+            }
+            
+            // Fill AUTOMATION EFFORT
+            if (parsed.automationEffort) {
+                setInputValue('automationEffort', parsed.automationEffort);
+            }
+            
+            // Fill AUTOMATION NOTES
+            if (parsed.automationNotes) {
+                setInputValue('automationNotes', parsed.automationNotes);
+            }
+            
+            // Fill QA EFFORT
+            if (parsed.qaEffort) {
+                setInputValue('qaEffort', parsed.qaEffort);
+            }
+            
+            // Fill QA HOURS ESTIMATE
+            if (parsed.qaHoursEstimate) {
+                setInputValue('qaHoursEstimate', parsed.qaHoursEstimate);
+            }
+            
+            // Fill DEV EFFORT
+            if (parsed.devEffort) {
+                setInputValue('devEffort', parsed.devEffort);
+            }
+            
+            // Fill DEV HOURS ESTIMATE
+            if (parsed.devHoursEstimate) {
+                setInputValue('devHoursEstimate', parsed.devHoursEstimate);
+            }
+            
+            // Handle QA TESTER special case: [ASSIGN BUG CREATOR AS QA TESTER]
+            if (parsed.qaTester) {
+                const creatorCheckbox = document.getElementById('makeCreatorQATester');
+                const qaTesterInput = document.getElementById('qaTester');
+                if (parsed.qaTester.includes('ASSIGN BUG CREATOR') || parsed.qaTester.includes('[ASSIGN')) {
+                    if (creatorCheckbox) creatorCheckbox.checked = true;
+                    // Clear input and update placeholder
+                    if (qaTesterInput) {
+                        qaTesterInput.value = '';
+                        qaTesterInput.placeholder = 'Leave blank - bug creator will be assigned';
+                    }
+                } else {
+                    if (creatorCheckbox) creatorCheckbox.checked = false;
+                    if (qaTesterInput) {
+                        qaTesterInput.placeholder = 'john.doe or john.doe@bofifederalbank.com';
+                    }
+                    setInputValue('qaTester', parsed.qaTester);
+                }
             }
         }
         
