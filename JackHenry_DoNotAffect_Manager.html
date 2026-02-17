@@ -1779,136 +1779,6 @@
             document.getElementById('udReportStats').textContent = `${found} found / ${total - found} not found / ${total} total`;
         }
 
-        let autoSyncTimer = null;
-        function checkForNewUsersAndAutoSync() {
-            if (udSyncing) return;
-            if (typeof state === 'undefined' || !state.items) return;
-            const importedUsernames = new Set(state.items.map(i => i.value));
-            const reportUsernames = new Set(USER_DETAILS_DATA.map(r => r.u));
-            const newUsers = [...importedUsernames].filter(u => !reportUsernames.has(u));
-            if (newUsers.length === 0) return;
-            if (autoSyncTimer) clearTimeout(autoSyncTimer);
-            autoSyncTimer = setTimeout(async () => {
-                autoSyncTimer = null;
-                if (udSyncing) return;
-                const status = document.getElementById('udSyncStatus');
-                try {
-                    await fetch(SYNC_SERVER_URL + '/api/health').then(r => r.json());
-                } catch {
-                    if (status) status.textContent = `${newUsers.length} new user${newUsers.length > 1 ? 's' : ''} detected — start the sync server to auto-sync`;
-                    if (status) status.style.color = '#d97706';
-                    return;
-                }
-                if (status) {
-                    status.textContent = `Auto-syncing ${newUsers.length} new user${newUsers.length > 1 ? 's' : ''}...`;
-                    status.style.color = '#1E3860';
-                }
-                udSyncing = true;
-                const progressEl = document.getElementById('udSyncProgress');
-                const progressBar = document.getElementById('udProgressBar');
-                const progressText = document.getElementById('udProgressText');
-                const progressEta = document.getElementById('udProgressEta');
-                const progressPct = document.getElementById('udProgressPct');
-                const progressCar = document.getElementById('udProgressCar');
-                const progressSmoke = document.getElementById('udProgressSmoke');
-                const reportEl = document.getElementById('udSyncReport');
-                if (reportEl) reportEl.style.display = 'none';
-
-                function updateCarPos(pct) {
-                    const c = Math.min(Math.max(pct, 0), 100);
-                    if (progressCar) progressCar.style.left = c + '%';
-                    if (progressSmoke) progressSmoke.style.left = Math.max(c - 4, 0) + '%';
-                }
-                const autoStart = Date.now();
-                function updateAutoEta(done, total) {
-                    if (done === 0) { if (progressEta) progressEta.textContent = ''; return; }
-                    const el = (Date.now() - autoStart) / 1000;
-                    const rem = Math.round((total - done) / (done / el));
-                    if (progressEta) {
-                        if (rem <= 0) progressEta.textContent = 'Almost done...';
-                        else if (rem < 60) progressEta.textContent = `~${rem}s remaining`;
-                        else progressEta.textContent = `~${Math.floor(rem / 60)}m ${rem % 60}s remaining`;
-                    }
-                }
-                if (progressEl) progressEl.style.display = 'block';
-                if (progressBar) progressBar.style.width = '0%';
-                if (progressPct) progressPct.textContent = '0%';
-                updateCarPos(0);
-
-                const progressResults = [];
-                try {
-                    const resp = await fetch(SYNC_SERVER_URL + '/api/lookup', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ usernames: newUsers }),
-                    });
-                    const reader = resp.body.getReader();
-                    const decoder = new TextDecoder();
-                    let buffer = '';
-                    let finalResults = null;
-                    while (true) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
-                        buffer += decoder.decode(value, { stream: true });
-                        const lines = buffer.split('\n');
-                        buffer = lines.pop();
-                        for (const line of lines) {
-                            if (!line.trim()) continue;
-                            try {
-                                const msg = JSON.parse(line);
-                                if (msg.type === 'progress') {
-                                    progressResults.push(msg);
-                                    const pct = Math.round((msg.done / msg.total) * 100);
-                                    if (progressBar) progressBar.style.width = pct + '%';
-                                    if (progressPct) progressPct.textContent = pct + '%';
-                                    updateCarPos(pct);
-                                    updateAutoEta(msg.done, msg.total);
-                                    if (progressText) progressText.textContent = `${msg.done}/${msg.total} — ${msg.username} ${msg.found ? '✓' : '✗'}`;
-                                } else if (msg.type === 'done') {
-                                    finalResults = msg.results;
-                                }
-                            } catch {}
-                        }
-                    }
-                    if (progressBar) progressBar.style.width = '100%';
-                    if (progressPct) progressPct.textContent = '100%';
-                    updateCarPos(100);
-                    if (progressEta) progressEta.textContent = '';
-                    if (progressText) progressText.textContent = 'Auto-sync complete!';
-                    setTimeout(() => { if (progressEl) progressEl.style.display = 'none'; }, 3000);
-
-                    if (finalResults) {
-                        const existingMap = new Map(USER_DETAILS_DATA.map(r => [r.u, r]));
-                        let autoFound = 0;
-                        finalResults.forEach(r => {
-                            existingMap.set(r.u, r);
-                            if (r.c) autoFound++;
-                        });
-                        USER_DETAILS_DATA.length = 0;
-                        USER_DETAILS_DATA.push(...existingMap.values());
-                        try { localStorage.setItem('ud_data', JSON.stringify(USER_DETAILS_DATA)); } catch {}
-                        renderUserDetailsTable();
-                        updateUdStats();
-                        updateTabCounts();
-                        setUdTab(autoFound > 0 ? 'found' : 'all');
-                        const notFoundAuto = finalResults.length - autoFound;
-                        if (status) {
-                            status.textContent = `Auto-sync done! ${autoFound} found, ${notFoundAuto} not found`;
-                            status.style.color = '#16a34a';
-                        }
-                        lastNotFoundUsernames = finalResults.filter(r => !r.c).map(r => r.u);
-                        showSyncReport(finalResults, progressResults, autoStart);
-                        saveReportToHtml();
-                    }
-                } catch (err) {
-                    console.error('Auto-sync error:', err);
-                    if (status) { status.textContent = ''; }
-                    if (progressEl) progressEl.style.display = 'none';
-                }
-                udSyncing = false;
-            }, 2000);
-        }
-
         document.addEventListener('DOMContentLoaded', () => { updateUdStats(); updateTabCounts(); });
 
         let lastNotFoundUsernames = [];
@@ -1936,8 +1806,8 @@
                 const health = await fetch(SYNC_SERVER_URL + '/api/health').then(r => r.json());
                 if (health.status !== 'ok') throw new Error('Server not healthy');
             } catch {
-                status.textContent = '⚠️ Server offline - run: NODE_TLS_REJECT_UNAUTHORIZED=0 node Reports/user-details-server.js';
-                status.style.color = '#dc2626';
+                status.textContent = '⚠️ Sync requires VPN + local server — only the admin can sync new users';
+                status.style.color = '#d97706';
                 btn.disabled = false;
                 btn.textContent = '🔄 Sync New Users';
                 btn.style.opacity = '1';
@@ -2061,7 +1931,7 @@
                 updateTabCounts();
             } catch (err) {
                 console.error('Sync error:', err);
-                status.textContent = 'Sync failed — is the sync server running?';
+                status.textContent = '⚠️ Sync failed — VPN + local server required';
                 status.style.color = '#dc2626';
             }
 
@@ -2220,6 +2090,19 @@
                 }
             }
 
+            try {
+                const health = await fetch(SYNC_SERVER_URL + '/api/health').then(r => r.json());
+                if (health.status !== 'ok') throw new Error('not healthy');
+            } catch {
+                status.textContent = '⚠️ Retry requires VPN + local server';
+                status.style.color = '#d97706';
+                retryBtn.disabled = false;
+                retryBtn.style.opacity = '1';
+                retryBtn.textContent = '🔄 Retry Not Found';
+                udSyncing = false;
+                return;
+            }
+
             progressEl.style.display = 'block';
             if (progressBar) { progressBar.style.width = '0%'; }
             if (progressPct) progressPct.textContent = '0%';
@@ -2230,7 +2113,7 @@
 
             const progressResults = [];
             try {
-                const resp = await fetch('http://localhost:3456/api/lookup', {
+                const resp = await fetch(SYNC_SERVER_URL + '/api/lookup', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ usernames: lastNotFoundUsernames, forceReauth: true }),
@@ -2302,7 +2185,7 @@
                 }
             } catch (err) {
                 console.error('Retry error:', err);
-                status.textContent = 'Retry failed — is the sync server running?';
+                status.textContent = '⚠️ Retry failed — VPN + local server required';
                 status.style.color = '#dc2626';
                 progressEl.style.display = 'none';
             }
@@ -3355,8 +3238,6 @@
             document.getElementById('statTotal').textContent = totalItems;
             document.getElementById('statDuplicates').textContent = duplicates;
             document.getElementById('statUnique').textContent = uniqueValues;
-
-            checkForNewUsersAndAutoSync();
         }
 
         // Export Functions
