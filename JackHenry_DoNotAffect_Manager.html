@@ -1549,6 +1549,32 @@
                     </div>
                 </div>
                 <div style="max-height:70vh;overflow-y:auto;overflow-x:auto;scroll-behavior:smooth;" id="udTableContainer"></div>
+
+                <!-- User Details Export Section -->
+                <div class="export-section" style="margin-top:0;border-top:2px solid var(--border-color);padding:20px;">
+                    <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 16px; color: var(--text-secondary);">📤 Export User Details</h3>
+
+                    <!-- Combined Export -->
+                    <div style="margin-bottom: 16px;">
+                        <div style="font-size: 12px; font-weight: 600; color: var(--axos-navy); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Combined Export (All Teams)</div>
+                        <div class="export-actions">
+                            <button class="btn btn-secondary" onclick="udExportAllXls()">📊 Export All (Multi-Sheet XLS)</button>
+                            <button class="btn btn-outline" onclick="udExportAllTxt()">📄 Export as Text</button>
+                        </div>
+                    </div>
+
+                    <!-- Individual Team Export -->
+                    <div>
+                        <div style="font-size: 12px; font-weight: 600; color: var(--axos-navy); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Export Individual Team</div>
+                        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                            <select id="udExportTeamSelect" style="padding: 10px 14px; border: 2px solid var(--border-color); border-radius: 8px; font-size: 14px; min-width: 200px;">
+                                <option value="">Select a team...</option>
+                            </select>
+                            <button class="btn btn-outline" onclick="udExportTeamXls()">📊 Export Team XLS</button>
+                            <button class="btn btn-outline" onclick="udExportTeamTxt()">📄 Export Team TXT</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1752,6 +1778,8 @@
             const total = USER_DETAILS_DATA.length;
             const found = USER_DETAILS_DATA.filter(r => r.c).length;
             document.getElementById('udReportStats').textContent = `${found} found / ${total-found} not found / ${total} total`;
+
+            if (typeof updateUdExportTeamSelect === 'function') updateUdExportTeamSelect();
         }
 
         const SYNC_SERVER_URL = 'http://localhost:3456';
@@ -3489,6 +3517,186 @@
                 const count = state.items.filter(i => i.teamId === team.id).length;
                 select.innerHTML += `<option value="${team.id}">${team.name} (${count})</option>`;
             });
+            updateUdExportTeamSelect();
+        }
+
+        // =====================
+        // USER DETAILS REPORT EXPORT
+        // =====================
+
+        function updateUdExportTeamSelect() {
+            const select = document.getElementById('udExportTeamSelect');
+            if (!select) return;
+            select.innerHTML = '<option value="">Select a team...</option>';
+            state.teams.forEach(team => {
+                const teamUsernames = new Set(state.items.filter(i => i.teamId === team.id).map(i => i.value));
+                const udCount = USER_DETAILS_DATA.filter(r => teamUsernames.has(r.u)).length;
+                if (udCount > 0) {
+                    select.innerHTML += `<option value="${team.id}">${team.name} (${udCount} details)</option>`;
+                }
+            });
+        }
+
+        function getUdDataForTeam(teamId) {
+            const teamUsernames = new Set(state.items.filter(i => i.teamId === teamId).map(i => i.value));
+            return USER_DETAILS_DATA.filter(r => teamUsernames.has(r.u));
+        }
+
+        function udRowToArray(r) {
+            return [
+                r.u || '',
+                r.c || '',
+                (r.le || '').toUpperCase(),
+                r.uu || '',
+                r.ui || '',
+                (r.up || []).join(', '),
+                r.su || '',
+                r.pu || '',
+                r.pi || '',
+                (r.pp || []).join(', '),
+                r.sp || '',
+                (r.e || []).join('; ')
+            ];
+        }
+
+        const UD_EXPORT_HEADERS = [
+            'Username', 'CIF', 'Lower Env', 'Lower UDB User', 'Lower UDB ID',
+            'Lower Products', 'Lower SSN/Tax ID',
+            'PROD UDB User', 'PROD UDB ID', 'PROD Products', 'PROD SSN/Tax ID', 'Errors'
+        ];
+
+        function udExportAllXls() {
+            if (USER_DETAILS_DATA.length === 0) {
+                showToast('Error', 'No user details to export', 'error');
+                return;
+            }
+            const wb = XLSX.utils.book_new();
+            let totalExported = 0;
+
+            state.teams.forEach(team => {
+                const data = getUdDataForTeam(team.id);
+                if (data.length === 0) return;
+                const rows = data.map(udRowToArray);
+                const ws = XLSX.utils.aoa_to_sheet([UD_EXPORT_HEADERS, ...rows]);
+                ws['!cols'] = UD_EXPORT_HEADERS.map(() => ({ wch: 22 }));
+                const sheetName = team.name.substring(0, 31).replace(/[\\\/\?\*\[\]]/g, '_');
+                XLSX.utils.book_append_sheet(wb, ws, sheetName);
+                totalExported += data.length;
+            });
+
+            // Also add users not in any team
+            const allTeamUsernames = new Set(state.items.map(i => i.value));
+            const unassigned = USER_DETAILS_DATA.filter(r => !allTeamUsernames.has(r.u));
+            if (unassigned.length > 0) {
+                const rows = unassigned.map(udRowToArray);
+                const ws = XLSX.utils.aoa_to_sheet([UD_EXPORT_HEADERS, ...rows]);
+                ws['!cols'] = UD_EXPORT_HEADERS.map(() => ({ wch: 22 }));
+                XLSX.utils.book_append_sheet(wb, ws, 'Unassigned');
+                totalExported += unassigned.length;
+            }
+
+            if (totalExported === 0) {
+                showToast('Error', 'No user details to export', 'error');
+                return;
+            }
+
+            XLSX.writeFile(wb, `UserDetails_AllTeams_${new Date().toISOString().slice(0,10)}.xlsx`);
+            showToast('Exported', `${totalExported} user details across ${state.teams.length} teams exported`, 'success');
+        }
+
+        function udExportAllTxt() {
+            if (USER_DETAILS_DATA.length === 0) {
+                showToast('Error', 'No user details to export', 'error');
+                return;
+            }
+            let text = '';
+
+            state.teams.forEach(team => {
+                const data = getUdDataForTeam(team.id);
+                if (data.length === 0) return;
+                text += `\n=== ${team.name} (${data.length} users) ===\n`;
+                data.forEach(r => {
+                    text += `\n${r.u}  |  CIF: ${r.c || 'N/A'}  |  Env: ${(r.le || '').toUpperCase()}\n`;
+                    text += `  Lower: ${r.uu || 'N/A'} (UDB ID: ${r.ui || 'N/A'})  SSN: ${r.su || 'N/A'}\n`;
+                    text += `  Lower Products: ${(r.up || []).join(', ') || 'None'}\n`;
+                    text += `  PROD:  ${r.pu || 'N/A'} (UDB ID: ${r.pi || 'N/A'})  SSN: ${r.sp || 'N/A'}\n`;
+                    text += `  PROD Products: ${(r.pp || []).join(', ') || 'None'}\n`;
+                });
+            });
+
+            const allTeamUsernames = new Set(state.items.map(i => i.value));
+            const unassigned = USER_DETAILS_DATA.filter(r => !allTeamUsernames.has(r.u));
+            if (unassigned.length > 0) {
+                text += `\n=== Unassigned (${unassigned.length} users) ===\n`;
+                unassigned.forEach(r => {
+                    text += `\n${r.u}  |  CIF: ${r.c || 'N/A'}  |  Env: ${(r.le || '').toUpperCase()}\n`;
+                    text += `  Lower: ${r.uu || 'N/A'} (UDB ID: ${r.ui || 'N/A'})  SSN: ${r.su || 'N/A'}\n`;
+                    text += `  Lower Products: ${(r.up || []).join(', ') || 'None'}\n`;
+                    text += `  PROD:  ${r.pu || 'N/A'} (UDB ID: ${r.pi || 'N/A'})  SSN: ${r.sp || 'N/A'}\n`;
+                    text += `  PROD Products: ${(r.pp || []).join(', ') || 'None'}\n`;
+                });
+            }
+
+            const blob = new Blob([text.trim()], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `UserDetails_AllTeams_${new Date().toISOString().slice(0,10)}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Exported', `${USER_DETAILS_DATA.length} user details exported as text`, 'success');
+        }
+
+        function udExportTeamXls() {
+            const teamId = parseInt(document.getElementById('udExportTeamSelect').value);
+            if (!teamId) {
+                showToast('Error', 'Please select a team to export', 'error');
+                return;
+            }
+            const team = state.teams.find(t => t.id === teamId);
+            const data = getUdDataForTeam(teamId);
+            if (data.length === 0) {
+                showToast('Error', 'No user details for this team', 'error');
+                return;
+            }
+            const rows = data.map(udRowToArray);
+            const ws = XLSX.utils.aoa_to_sheet([UD_EXPORT_HEADERS, ...rows]);
+            ws['!cols'] = UD_EXPORT_HEADERS.map(() => ({ wch: 22 }));
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'User Details');
+            const fileName = `UserDetails_${team.name.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0,10)}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+            showToast('Exported', `${data.length} user details from "${team.name}" exported`, 'success');
+        }
+
+        function udExportTeamTxt() {
+            const teamId = parseInt(document.getElementById('udExportTeamSelect').value);
+            if (!teamId) {
+                showToast('Error', 'Please select a team to export', 'error');
+                return;
+            }
+            const team = state.teams.find(t => t.id === teamId);
+            const data = getUdDataForTeam(teamId);
+            if (data.length === 0) {
+                showToast('Error', 'No user details for this team', 'error');
+                return;
+            }
+            let text = `=== ${team.name} — User Details (${data.length} users) ===\n`;
+            data.forEach(r => {
+                text += `\n${r.u}  |  CIF: ${r.c || 'N/A'}  |  Env: ${(r.le || '').toUpperCase()}\n`;
+                text += `  Lower: ${r.uu || 'N/A'} (UDB ID: ${r.ui || 'N/A'})  SSN: ${r.su || 'N/A'}\n`;
+                text += `  Lower Products: ${(r.up || []).join(', ') || 'None'}\n`;
+                text += `  PROD:  ${r.pu || 'N/A'} (UDB ID: ${r.pi || 'N/A'})  SSN: ${r.sp || 'N/A'}\n`;
+                text += `  PROD Products: ${(r.pp || []).join(', ') || 'None'}\n`;
+            });
+            const blob = new Blob([text.trim()], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `UserDetails_${team.name.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0,10)}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Exported', `${data.length} user details from "${team.name}" exported`, 'success');
         }
     </script>
 </body>
