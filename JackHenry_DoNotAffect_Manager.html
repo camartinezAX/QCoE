@@ -1779,6 +1779,21 @@
             document.getElementById('udReportStats').textContent = `${found} found / ${total - found} not found / ${total} total`;
         }
 
+        function checkForNewUsers() {
+            if (typeof state === 'undefined' || !state.items) return;
+            const importedUsernames = new Set(state.items.map(i => i.value));
+            const reportUsernames = new Set(USER_DETAILS_DATA.map(r => r.u));
+            const newUsers = [...importedUsernames].filter(u => !reportUsernames.has(u));
+            const status = document.getElementById('udSyncStatus');
+            if (!status) return;
+            if (newUsers.length > 0) {
+                status.textContent = `🆕 ${newUsers.length} new user${newUsers.length > 1 ? 's' : ''} detected — click "Sync New Users" to update`;
+                status.style.color = '#d97706';
+            } else {
+                status.textContent = '';
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => { updateUdStats(); updateTabCounts(); });
 
         let lastNotFoundUsernames = [];
@@ -3238,6 +3253,8 @@
             document.getElementById('statTotal').textContent = totalItems;
             document.getElementById('statDuplicates').textContent = duplicates;
             document.getElementById('statUnique').textContent = uniqueValues;
+
+            checkForNewUsers();
         }
 
         // Export Functions
