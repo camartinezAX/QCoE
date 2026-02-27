@@ -853,6 +853,134 @@
         .instructions-preview:not(.collapsed) .instructions-preview-content {
             max-height: 250px;
         }
+        
+        /* Evidence Image Drop Zones */
+        .evidence-dropzone {
+            border: 2px dashed rgba(96, 165, 250, 0.3);
+            border-radius: 10px;
+            padding: 14px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 8px;
+            background: rgba(96, 165, 250, 0.03);
+        }
+        
+        .evidence-dropzone:hover {
+            border-color: rgba(96, 165, 250, 0.5);
+            background: rgba(96, 165, 250, 0.06);
+        }
+        
+        .evidence-dropzone.dragover {
+            border-color: var(--axos-orange);
+            background: rgba(250, 167, 74, 0.08);
+            border-style: solid;
+        }
+        
+        .evidence-dropzone-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .evidence-dropzone-label span.icon {
+            font-size: 18px;
+        }
+        
+        .evidence-previews {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .evidence-thumb {
+            position: relative;
+            width: 120px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            background: var(--bg-primary);
+            transition: transform 0.2s ease;
+        }
+        
+        .evidence-thumb:hover {
+            transform: scale(1.03);
+        }
+        
+        .evidence-thumb img {
+            width: 100%;
+            height: 80px;
+            object-fit: cover;
+            display: block;
+        }
+        
+        .evidence-thumb-info {
+            padding: 4px 6px;
+            font-size: 10px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .evidence-thumb-remove {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(239, 68, 68, 0.9);
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .evidence-thumb:hover .evidence-thumb-remove {
+            opacity: 1;
+        }
+        
+        .evidence-count-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        
+        .evidence-btn {
+            background: rgba(96, 165, 250, 0.1);
+            border: 1px solid rgba(96, 165, 250, 0.3);
+            color: #93c5fd;
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        
+        .evidence-btn:hover {
+            background: rgba(96, 165, 250, 0.2);
+            border-color: rgba(96, 165, 250, 0.5);
+            color: #bfdbfe;
+        }
     </style>
 </head>
 <body>
@@ -1345,12 +1473,32 @@ File the following bug in Azure DevOps:
                                 ✅ Expected Result <span class="required-mark">*</span>
                             </label>
                             <textarea class="expected-result" id="expectedResult" placeholder="What should have happened? Reference AC if available..." style="min-height: 80px;"></textarea>
+                            <div class="evidence-dropzone" data-section="expected" data-scenario="1"
+                                 ondragover="evidenceDragOver(event)" ondragleave="evidenceDragLeave(event)" ondrop="evidenceDrop(event, this)">
+                                <input type="file" multiple style="display:none;" onchange="evidenceFileSelect(event, this.parentElement)">
+                                <div class="evidence-dropzone-label"><span class="icon">📎</span> Drag & drop files here (images, videos, logs, etc.)</div>
+                                <div style="display:flex;gap:8px;margin-top:8px;justify-content:center;">
+                                    <button type="button" class="evidence-btn" onclick="evidenceClick(this.closest('.evidence-dropzone'))">📁 Browse files</button>
+                                    <button type="button" class="evidence-btn" onclick="evidencePasteFromClipboard(this.closest('.evidence-dropzone'))">📋 Paste from clipboard</button>
+                                </div>
+                            </div>
+                            <div class="evidence-previews" data-section="expected" data-scenario="1"></div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">
                                 🚨 Actual Result <span class="required-mark">*</span>
                             </label>
                             <textarea class="actual-result" id="actualResult" placeholder="What happened? Include error messages, console errors, network errors..." style="min-height: 80px;"></textarea>
+                            <div class="evidence-dropzone" data-section="actual" data-scenario="1"
+                                 ondragover="evidenceDragOver(event)" ondragleave="evidenceDragLeave(event)" ondrop="evidenceDrop(event, this)">
+                                <input type="file" multiple style="display:none;" onchange="evidenceFileSelect(event, this.parentElement)">
+                                <div class="evidence-dropzone-label"><span class="icon">📎</span> Drag & drop files here (images, videos, logs, etc.)</div>
+                                <div style="display:flex;gap:8px;margin-top:8px;justify-content:center;">
+                                    <button type="button" class="evidence-btn" onclick="evidenceClick(this.closest('.evidence-dropzone'))">📁 Browse files</button>
+                                    <button type="button" class="evidence-btn" onclick="evidencePasteFromClipboard(this.closest('.evidence-dropzone'))">📋 Paste from clipboard</button>
+                                </div>
+                            </div>
+                            <div class="evidence-previews" data-section="actual" data-scenario="1"></div>
                         </div>
                     </div>
                 </div>
@@ -1361,14 +1509,20 @@ File the following bug in Azure DevOps:
                 </button>
                 
                 <!-- Evidence Reminder Info Box -->
-                <div style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(30, 56, 96, 0.15) 100%); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 10px; padding: 14px 18px; display: flex; align-items: flex-start; gap: 12px;">
-                    <span style="font-size: 20px;">📎</span>
+                <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(30, 56, 96, 0.15) 100%); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 14px 18px; display: flex; align-items: flex-start; gap: 12px;">
+                    <span style="font-size: 20px;">📷</span>
                     <div>
-                        <p style="color: #60a5fa; font-weight: 600; margin-bottom: 6px; font-size: 14px;">ℹ️ Evidence Must Be Added After Bug Creation</p>
+                        <p style="color: #10b981; font-weight: 600; margin-bottom: 6px; font-size: 14px;">Evidence Auto-Upload Supported!</p>
                         <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.6;">
-                            Screenshots, videos, and logs are <strong>critical</strong> for bug investigation. 
-                            The AI will add placeholder notes in the Expected/Actual Result sections as reminders.
+                            Drag & drop, browse, or paste from clipboard into the zones above.
+                            Supports any file type — images, videos, logs, PDFs, HAR files, etc.
+                            When you copy/download the prompt, files are <strong>saved to your Downloads folder</strong> temporarily.
+                            The AI will upload images <strong>inline</strong> and other files as <strong>attachments</strong>, then <strong>delete the local copies</strong>.
                         </p>
+                        <label style="display: flex; align-items: center; gap: 8px; margin-top: 8px; cursor: pointer; user-select: none;">
+                            <input type="checkbox" id="autoDeleteEvidence" checked style="accent-color: #10b981; width: 15px; height: 15px;">
+                            <span style="font-size: 12px; color: #10b981; font-weight: 500;">Auto-delete downloaded evidence files after bug creation</span>
+                        </label>
                     </div>
                 </div>
             </div>
@@ -1882,6 +2036,230 @@ File the following bug in Azure DevOps:
             // Steps and Expected/Actual are tracked separately in updateProgress
         ];
         
+        // ============================================
+        // EVIDENCE IMAGE HANDLING
+        // ============================================
+        
+        // key format: "S{scenarioNum}_{expected|actual}", value: [{blob, filename, dataUrl}]
+        const evidenceStore = new Map();
+        
+        function getEvidenceKey(section, scenario) {
+            return `S${scenario}_${section}`;
+        }
+        
+        function evidenceDragOver(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.currentTarget.classList.add('dragover');
+        }
+        
+        function evidenceDragLeave(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.currentTarget.classList.remove('dragover');
+        }
+        
+        function evidenceDrop(e, zone) {
+            e.preventDefault();
+            e.stopPropagation();
+            zone.classList.remove('dragover');
+            const section = zone.dataset.section;
+            const scenario = zone.dataset.scenario;
+            
+            if (e.dataTransfer.files) {
+                Array.from(e.dataTransfer.files).forEach(file => {
+                    addEvidenceFile(file, section, scenario);
+                });
+            }
+        }
+        
+        function evidenceClick(zone) {
+            zone.querySelector('input[type="file"]').click();
+        }
+        
+        function evidenceFileSelect(e, zone) {
+            const section = zone.dataset.section;
+            const scenario = zone.dataset.scenario;
+            Array.from(e.target.files).forEach(file => {
+                addEvidenceFile(file, section, scenario);
+            });
+            e.target.value = '';
+        }
+        
+        async function evidencePasteFromClipboard(zone) {
+            const section = zone.dataset.section;
+            const scenario = zone.dataset.scenario;
+            
+            try {
+                const clipboardItems = await navigator.clipboard.read();
+                let found = false;
+                for (const item of clipboardItems) {
+                    for (const type of item.types) {
+                        if (type.startsWith('image/')) {
+                            const blob = await item.getType(type);
+                            addEvidenceFile(blob, section, scenario);
+                            found = true;
+                        }
+                    }
+                }
+                if (!found) {
+                    showToast('⚠️', 'No image found in clipboard. Copy a screenshot first (e.g., Cmd+Shift+4).', 'warning');
+                }
+            } catch (err) {
+                showToast('⚠️', 'Clipboard access denied. Try: copy screenshot first, then click Paste.', 'warning');
+            }
+        }
+        
+        function addEvidenceFile(file, section, scenario) {
+            const key = getEvidenceKey(section, scenario);
+            if (!evidenceStore.has(key)) evidenceStore.set(key, []);
+            
+            const items = evidenceStore.get(key);
+            const idx = items.length + 1;
+            const isImage = file.type.startsWith('image/');
+            const isVideo = file.type.startsWith('video/');
+            const origName = file.name || '';
+            const origExt = origName.includes('.') ? origName.split('.').pop().toLowerCase() : '';
+            const extMap = {
+                'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp',
+                'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm', 'video/x-msvideo': 'avi'
+            };
+            const ext = extMap[file.type] || origExt || 'bin';
+            const sectionLabel = section.charAt(0).toUpperCase() + section.slice(1);
+            const filename = `BugEvidence_S${scenario}_${sectionLabel}_${idx}.${ext}`;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                items.push({
+                    blob: file,
+                    filename: filename,
+                    dataUrl: e.target.result,
+                    isImage: isImage,
+                    isVideo: isVideo
+                });
+                renderEvidencePreviews(section, scenario);
+                updateEvidenceBadges();
+                const label = isImage ? 'Screenshot' : isVideo ? 'Video' : 'File';
+                const icon = isImage ? '📷' : isVideo ? '🎬' : '📎';
+                showToast(icon, `${label} added to ${sectionLabel} Result`, 'success');
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function renderEvidencePreviews(section, scenario) {
+            const key = getEvidenceKey(section, scenario);
+            const container = document.querySelector(`.evidence-previews[data-section="${section}"][data-scenario="${scenario}"]`);
+            if (!container) return;
+            
+            const items = evidenceStore.get(key) || [];
+            container.innerHTML = items.map((item, idx) => {
+                let preview;
+                if (item.isImage) {
+                    preview = `<img src="${item.dataUrl}" alt="${item.filename}" title="${item.filename}">`;
+                } else if (item.isVideo) {
+                    preview = `<video src="${item.dataUrl}" title="${item.filename}" muted style="width:100%;height:100%;object-fit:cover;border-radius:6px;"></video>
+                               <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:24px;opacity:0.8;pointer-events:none;">▶</div>`;
+                } else {
+                    const ext = item.filename.split('.').pop().toUpperCase();
+                    preview = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;background:rgba(59,130,246,0.1);border-radius:6px;">
+                                   <span style="font-size:24px;">📎</span>
+                                   <span style="font-size:10px;color:var(--text-secondary);margin-top:4px;">.${ext}</span>
+                               </div>`;
+                }
+                return `<div class="evidence-thumb">
+                    ${preview}
+                    <button class="evidence-thumb-remove" onclick="removeEvidenceImage('${section}', '${scenario}', ${idx})" title="Remove">×</button>
+                    <div class="evidence-thumb-info">${item.filename}</div>
+                </div>`;
+            }).join('');
+        }
+        
+        function removeEvidenceImage(section, scenario, index) {
+            const key = getEvidenceKey(section, scenario);
+            const images = evidenceStore.get(key);
+            if (!images) return;
+            
+            images.splice(index, 1);
+            // Re-number remaining files
+            const sectionLabel = section.charAt(0).toUpperCase() + section.slice(1);
+            images.forEach((img, i) => {
+                const ext = img.filename.split('.').pop();
+                img.filename = `BugEvidence_S${scenario}_${sectionLabel}_${i + 1}.${ext}`;
+            });
+            
+            renderEvidencePreviews(section, scenario);
+            updateEvidenceBadges();
+        }
+        
+        function updateEvidenceBadges() {
+            // Update scenario headers with image count badges
+            document.querySelectorAll('.scenario-item').forEach(item => {
+                const num = item.dataset.scenario;
+                let total = 0;
+                const expKey = getEvidenceKey('expected', num);
+                const actKey = getEvidenceKey('actual', num);
+                total += (evidenceStore.get(expKey) || []).length;
+                total += (evidenceStore.get(actKey) || []).length;
+                
+                let badge = item.querySelector('.evidence-count-badge');
+                if (total > 0) {
+                    if (!badge) {
+                        badge = document.createElement('span');
+                        badge.className = 'evidence-count-badge';
+                        item.querySelector('span[style*="background: var(--axos-navy)"]').after(badge);
+                    }
+                    badge.textContent = `📷 ${total} image${total > 1 ? 's' : ''}`;
+                } else if (badge) {
+                    badge.remove();
+                }
+            });
+        }
+        
+        function getAllEvidenceImages() {
+            const all = [];
+            for (const [key, images] of evidenceStore) {
+                images.forEach(img => {
+                    const parts = key.split('_');
+                    all.push({
+                        scenario: parts[0],
+                        section: parts[1],
+                        filename: img.filename,
+                        blob: img.blob,
+                        dataUrl: img.dataUrl
+                    });
+                });
+            }
+            return all;
+        }
+        
+        function downloadEvidenceImages() {
+            const allImages = getAllEvidenceImages();
+            if (allImages.length === 0) return 0;
+            
+            allImages.forEach((img, idx) => {
+                setTimeout(() => {
+                    const a = document.createElement('a');
+                    a.href = img.dataUrl;
+                    a.download = img.filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                }, idx * 300); // stagger downloads to avoid browser blocking
+            });
+            
+            return allImages.length;
+        }
+        
+        function clearAllEvidence() {
+            evidenceStore.clear();
+            document.querySelectorAll('.evidence-previews').forEach(c => c.innerHTML = '');
+            document.querySelectorAll('.evidence-count-badge').forEach(b => b.remove());
+        }
+        
+        // ============================================
+        // END EVIDENCE IMAGE HANDLING
+        // ============================================
+        
         // Parse Work Item URL or ID
         function parseWorkItemInput(input) {
             if (!input) return null;
@@ -2032,12 +2410,32 @@ File the following bug in Azure DevOps:
                         ✅ Expected Result
                     </label>
                     <textarea class="expected-result" placeholder="What should have happened?" style="min-height: 80px;"></textarea>
+                    <div class="evidence-dropzone" data-section="expected" data-scenario="${count}"
+                         ondragover="evidenceDragOver(event)" ondragleave="evidenceDragLeave(event)" ondrop="evidenceDrop(event, this)">
+                        <input type="file" multiple style="display:none;" onchange="evidenceFileSelect(event, this.parentElement)">
+                        <div class="evidence-dropzone-label"><span class="icon">📎</span> Drag & drop files here (images, videos, logs, etc.)</div>
+                        <div style="display:flex;gap:8px;margin-top:8px;justify-content:center;">
+                            <button type="button" class="evidence-btn" onclick="evidenceClick(this.closest('.evidence-dropzone'))">📁 Browse files</button>
+                            <button type="button" class="evidence-btn" onclick="evidencePasteFromClipboard(this.closest('.evidence-dropzone'))">📋 Paste from clipboard</button>
+                        </div>
+                    </div>
+                    <div class="evidence-previews" data-section="expected" data-scenario="${count}"></div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">
                         🚨 Actual Result
                     </label>
                     <textarea class="actual-result" placeholder="What happened?" style="min-height: 80px;"></textarea>
+                    <div class="evidence-dropzone" data-section="actual" data-scenario="${count}"
+                         ondragover="evidenceDragOver(event)" ondragleave="evidenceDragLeave(event)" ondrop="evidenceDrop(event, this)">
+                        <input type="file" multiple style="display:none;" onchange="evidenceFileSelect(event, this.parentElement)">
+                        <div class="evidence-dropzone-label"><span class="icon">📎</span> Drag & drop files here (images, videos, logs, etc.)</div>
+                        <div style="display:flex;gap:8px;margin-top:8px;justify-content:center;">
+                            <button type="button" class="evidence-btn" onclick="evidenceClick(this.closest('.evidence-dropzone'))">📁 Browse files</button>
+                            <button type="button" class="evidence-btn" onclick="evidencePasteFromClipboard(this.closest('.evidence-dropzone'))">📋 Paste from clipboard</button>
+                        </div>
+                    </div>
+                    <div class="evidence-previews" data-section="actual" data-scenario="${count}"></div>
                 </div>
             `;
             
@@ -2053,15 +2451,48 @@ File the following bug in Azure DevOps:
         function removeScenario(btn) {
             const list = document.getElementById('scenariosList');
             if (list.querySelectorAll('.scenario-item').length > 1) {
+                const removedNum = btn.closest('.scenario-item').dataset.scenario;
+                evidenceStore.delete(getEvidenceKey('expected', removedNum));
+                evidenceStore.delete(getEvidenceKey('actual', removedNum));
+                
                 btn.closest('.scenario-item').remove();
                 
-                // Renumber scenarios
+                // Renumber scenarios and re-key evidence store
                 const scenarios = list.querySelectorAll('.scenario-item');
+                const oldStore = new Map(evidenceStore);
+                evidenceStore.clear();
+                
                 scenarios.forEach((item, idx) => {
-                    item.setAttribute('data-scenario', idx + 1);
-                    item.querySelector('span[style*="background: var(--axos-navy)"]').textContent = `Scenario ${idx + 1}`;
+                    const oldNum = item.dataset.scenario;
+                    const newNum = idx + 1;
+                    item.setAttribute('data-scenario', newNum);
+                    item.querySelector('span[style*="background: var(--axos-navy)"]').textContent = `Scenario ${newNum}`;
+                    
+                    // Update drop zone and preview data attributes
+                    item.querySelectorAll('.evidence-dropzone, .evidence-previews').forEach(el => {
+                        el.dataset.scenario = newNum;
+                    });
+                    
+                    // Re-key evidence in store
+                    ['expected', 'actual'].forEach(section => {
+                        const oldKey = `S${oldNum}_${section}`;
+                        const newKey = `S${newNum}_${section}`;
+                        if (oldStore.has(oldKey)) {
+                            const images = oldStore.get(oldKey);
+                            const sectionLabel = section.charAt(0).toUpperCase() + section.slice(1);
+                            images.forEach((img, i) => {
+                                const ext = img.filename.split('.').pop();
+                                img.filename = `BugEvidence_S${newNum}_${sectionLabel}_${i + 1}.${ext}`;
+                            });
+                            evidenceStore.set(newKey, images);
+                        }
+                    });
+                    
+                    renderEvidencePreviews('expected', newNum);
+                    renderEvidencePreviews('actual', newNum);
                 });
                 
+                updateEvidenceBadges();
                 updateScenarioRemoveButtons();
                 updateProgress();
             }
@@ -2900,9 +3331,41 @@ ${scenario.actual}
                 });
             }
 
-            output += `📎 NOTE: Evidence (screenshots, videos, logs) must be attached AFTER bug creation in Azure DevOps.
+            // Evidence files section
+            const allEvidence = getAllEvidenceImages();
+            const autoDelete = document.getElementById('autoDeleteEvidence')?.checked ?? true;
+            if (allEvidence.length > 0) {
+                output += `📷 EVIDENCE_FILES (auto-downloaded to ~/Downloads/):
+`;
+                allEvidence.forEach(img => {
+                    const sectionLabel = img.section === 'expected' ? 'Expected Result' : 'Actual Result';
+                    const ext = img.filename.split('.').pop().toLowerCase();
+                    const imageExts = ['png','jpg','jpeg','gif','webp'];
+                    const videoExts = ['mp4','mov','webm','avi'];
+                    const typeLabel = imageExts.includes(ext) ? '[IMAGE]' : videoExts.includes(ext) ? '[VIDEO]' : '[FILE]';
+                    output += `- ${typeLabel} ${sectionLabel} (${img.scenario}): ${img.filename}\n`;
+                });
+                output += `
+⚠️ CRITICAL EVIDENCE INSTRUCTIONS FOR AI (ORDER MATTERS!):
+1. Upload ALL files from ~/Downloads/ via REST API — save BOTH URL versions:
+   - img_url = URL WITHOUT ?fileName= → for <img src> (images only)
+   - relation_url = URL WITH ?fileName= → for AttachedFile relation (all files)
+2. Create the bug WITH PLACEHOLDER DIVS — do NOT embed <img> tags yet!
+3. Link ALL attachments FIRST using relation_url (PATCH with AttachedFile relations)
+4. THEN update ReproSteps HTML:
+   - [IMAGE] files: replace placeholders with <img> tags using img_url
+   - [VIDEO]/[FILE] files: replace placeholders with a styled clickable link (filename links to attachment URL for download)
+DO NOT embed <img> tags before linking attachments — images will break!
+`;
+                if (autoDelete) {
+                    output += `🗑️ AUTO_DELETE_EVIDENCE: YES - After successful upload, delete the downloaded files from ~/Downloads/
+`;
+                }
+            } else {
+                output += `📎 NOTE: No screenshots were attached. Evidence (screenshots, videos, logs) must be attached AFTER bug creation in Azure DevOps.
    The AI will add "Add evidence here" placeholders in the bug description as reminders.
 `;
+            }
 
             // Automation & Assignment (moved before Priority)
             const hasAutomation = getValue('qaTester') || getValue('assignedTo') || getValue('automationEngineer') || makeCreatorQA || getValue('automationEffort') || getValue('automationNotes');
@@ -3030,7 +3493,12 @@ ${scenario.actual}
         function copyToClipboard() {
             const text = document.getElementById('outputBox').textContent;
             navigator.clipboard.writeText(text).then(() => {
-                showToast('✅', 'Copied to clipboard!', 'success');
+                const imgCount = downloadEvidenceImages();
+                if (imgCount > 0) {
+                    showToast('✅', `Copied + downloading ${imgCount} screenshot${imgCount > 1 ? 's' : ''}...`, 'success');
+                } else {
+                    showToast('✅', 'Copied to clipboard!', 'success');
+                }
             });
         }
         
@@ -3049,7 +3517,12 @@ ${scenario.actual}
             a.click();
             URL.revokeObjectURL(url);
             
-            showToast('💾', 'Downloaded ' + filename, 'success');
+            const imgCount = downloadEvidenceImages();
+            if (imgCount > 0) {
+                showToast('💾', `Downloaded ${filename} + ${imgCount} screenshot${imgCount > 1 ? 's' : ''}`, 'success');
+            } else {
+                showToast('💾', 'Downloaded ' + filename, 'success');
+            }
         }
         
         // Close modal
@@ -3099,6 +3572,9 @@ ${scenario.actual}
                 
                 // Clear linked items
                 document.getElementById('linkedItemsList').innerHTML = '';
+                
+                // Clear evidence images
+                clearAllEvidence();
                 
                 updateProgress();
                 showToast('🔄', 'Form reset!', 'success');
@@ -3863,12 +4339,15 @@ ${scenario.actual}
                 if (scenariosList) {
                     scenariosList.innerHTML = '';
                     
+                    clearAllEvidence();
+                    
                     parsed.scenarios.forEach((scenario, index) => {
+                        const sNum = index + 1;
                         const scenarioHtml = `
-                            <div class="scenario-item" data-scenario="${index + 1}" style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                            <div class="scenario-item" data-scenario="${sNum}" style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                                     <div style="display: flex; align-items: center; gap: 10px;">
-                                        <span style="background: var(--axos-navy); color: var(--axos-orange); padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;">Scenario ${index + 1}</span>
+                                        <span style="background: var(--axos-navy); color: var(--axos-orange); padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;">Scenario ${sNum}</span>
                                         <input type="text" class="scenario-title" placeholder="Scenario title/description (optional)" value="${escapeHtml(scenario.title)}" style="background: transparent; border: 1px dashed var(--border-color); padding: 6px 12px; font-size: 13px; border-radius: 6px; width: 300px;">
                                     </div>
                                     <button type="button" class="step-remove" onclick="removeScenario(this)" style="display: ${index === 0 ? 'none' : 'block'};">×</button>
@@ -3878,12 +4357,32 @@ ${scenario.actual}
                                         ✅ Expected Result <span class="required-mark">*</span>
                                     </label>
                                     <textarea class="expected-result" ${index === 0 ? 'id="expectedResult"' : ''} placeholder="What should have happened? Reference AC if available..." style="min-height: 80px;">${escapeHtml(scenario.expected)}</textarea>
+                                    <div class="evidence-dropzone" data-section="expected" data-scenario="${sNum}"
+                                         ondragover="evidenceDragOver(event)" ondragleave="evidenceDragLeave(event)" ondrop="evidenceDrop(event, this)">
+                                        <input type="file" multiple style="display:none;" onchange="evidenceFileSelect(event, this.parentElement)">
+                                        <div class="evidence-dropzone-label"><span class="icon">📎</span> Drag & drop files here (images, videos, logs, etc.)</div>
+                                        <div style="display:flex;gap:8px;margin-top:8px;justify-content:center;">
+                                            <button type="button" class="evidence-btn" onclick="evidenceClick(this.closest('.evidence-dropzone'))">📁 Browse files</button>
+                                            <button type="button" class="evidence-btn" onclick="evidencePasteFromClipboard(this.closest('.evidence-dropzone'))">📋 Paste from clipboard</button>
+                                        </div>
+                                    </div>
+                                    <div class="evidence-previews" data-section="expected" data-scenario="${sNum}"></div>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">
                                         🚨 Actual Result <span class="required-mark">*</span>
                                     </label>
                                     <textarea class="actual-result" ${index === 0 ? 'id="actualResult"' : ''} placeholder="What happened? Include error messages, console errors, network errors..." style="min-height: 80px;">${escapeHtml(scenario.actual)}</textarea>
+                                    <div class="evidence-dropzone" data-section="actual" data-scenario="${sNum}"
+                                         ondragover="evidenceDragOver(event)" ondragleave="evidenceDragLeave(event)" ondrop="evidenceDrop(event, this)">
+                                        <input type="file" multiple style="display:none;" onchange="evidenceFileSelect(event, this.parentElement)">
+                                        <div class="evidence-dropzone-label"><span class="icon">📎</span> Drag & drop files here (images, videos, logs, etc.)</div>
+                                        <div style="display:flex;gap:8px;margin-top:8px;justify-content:center;">
+                                            <button type="button" class="evidence-btn" onclick="evidenceClick(this.closest('.evidence-dropzone'))">📁 Browse files</button>
+                                            <button type="button" class="evidence-btn" onclick="evidencePasteFromClipboard(this.closest('.evidence-dropzone'))">📋 Paste from clipboard</button>
+                                        </div>
+                                    </div>
+                                    <div class="evidence-previews" data-section="actual" data-scenario="${sNum}"></div>
                                 </div>
                             </div>
                         `;
