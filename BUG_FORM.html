@@ -301,16 +301,16 @@
             padding: 0 24px 24px;
             display: grid;
             gap: 20px;
-            max-height: 2000px;
-            transition: all 0.3s ease;
-            overflow: hidden;
+            transition: padding 0.3s ease, opacity 0.3s ease;
+            overflow: visible;
         }
         
         .section.collapsed .section-content {
-            max-height: 0;
+            max-height: 0 !important;
             padding-top: 0;
             padding-bottom: 0;
             opacity: 0;
+            overflow: hidden;
         }
         
         /* Form Grid */
@@ -2869,7 +2869,31 @@ File the following bug in Azure DevOps:
         // Toggle section
         function toggleSection(header) {
             const section = header.closest('.section');
-            section.classList.toggle('collapsed');
+            const content = section.querySelector('.section-content');
+            
+            if (section.classList.contains('collapsed')) {
+                section.classList.remove('collapsed');
+                content.style.maxHeight = content.scrollHeight + 'px';
+                content.style.overflow = 'hidden';
+                content.style.transition = 'max-height 0.3s ease, padding 0.3s ease, opacity 0.3s ease';
+                setTimeout(() => {
+                    content.style.maxHeight = '';
+                    content.style.overflow = '';
+                    content.style.transition = '';
+                }, 350);
+            } else {
+                content.style.maxHeight = content.scrollHeight + 'px';
+                content.style.overflow = 'hidden';
+                content.style.transition = 'max-height 0.3s ease, padding 0.3s ease, opacity 0.3s ease';
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        section.classList.add('collapsed');
+                    });
+                });
+                setTimeout(() => {
+                    content.style.transition = '';
+                }, 350);
+            }
         }
         
         // Toggle instructions preview
