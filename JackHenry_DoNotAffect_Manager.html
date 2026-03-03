@@ -1442,6 +1442,13 @@
                         <input type="text" id="searchInput" placeholder="Search users..." oninput="filterBySearch()">
                     </div>
 
+                    <!-- Deleted from UD Report bar -->
+                    <div id="udDeletedFromReportBarTop" style="display:none;padding:8px 14px;margin:0 0 8px;background:#fef3c7;border:1px solid #fde68a;border-radius:8px;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <span style="font-size:12px;color:#92400e;font-weight:600;" id="udDeletedFromReportInfoTop"></span>
+                        <button onclick="removeDeletedFromImport()" style="background:#dc2626;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;">🗑️ Remove from here too</button>
+                        <button onclick="clearDeletedFromReportList()" style="background:none;border:1px solid #d97706;color:#d97706;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;">Dismiss</button>
+                    </div>
+
                     <!-- Items List -->
                     <div class="items-container">
                         <div class="items-list" id="itemsList">
@@ -1515,11 +1522,16 @@
                     <button onclick="resetUdFilters()" class="btn btn-sm btn-outline" style="font-size:13px;padding:8px 14px;white-space:nowrap;" title="Reset all filters and sorting">↺ Reset</button>
                     <div style="display:flex;align-items:center;gap:8px;border-left:1px solid var(--border-color);padding-left:14px;">
                         <button id="udSyncBtn" onclick="syncUserDetails()" class="btn btn-sm" style="background:linear-gradient(135deg,#1E3860,#2a5090);color:#fff;border:none;font-size:13px;padding:8px 16px;border-radius:8px;cursor:pointer;white-space:nowrap;">🔄 Sync New Users</button>
+                        <button id="udStopSyncBtn" onclick="stopSync()" class="btn btn-sm" style="display:none;background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;border:none;font-size:13px;padding:8px 16px;border-radius:8px;cursor:pointer;white-space:nowrap;">⏹ Stop</button>
                         <label style="font-size:13px;display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;color:var(--text-secondary);">
                             <input type="checkbox" id="udSyncExisting"> Include existing
                         </label>
+                        <label style="font-size:13px;display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;color:var(--text-secondary);">
+                            <input type="checkbox" id="udSyncOnlyNotFound"> Only not found
+                        </label>
                         <span id="udSyncStatus" style="font-size:12px;color:var(--text-secondary);white-space:nowrap;"></span>
                     </div>
+                    <button id="udDeleteNotFoundBtn" onclick="deleteAllNotFoundFromReport()" style="display:none;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">🗑️ Remove all Not Found</button>
                 </div>
                 <div id="udSyncProgress" style="display:none;padding:18px 24px;background:linear-gradient(135deg,#0f172a,#1e293b);border-bottom:2px solid #FAA74A;">
                     <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
@@ -1548,11 +1560,27 @@
                         <span id="udRetryInfo" style="font-size:12px;color:#64748b;"></span>
                     </div>
                 </div>
+                <div id="udTeamLegend" style="padding:8px 20px 0;"></div>
+                <div id="udDeletedFromReportBar" style="display:none;padding:8px 20px;background:#fef3c7;border-bottom:1px solid #fde68a;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <span style="font-size:12px;color:#92400e;font-weight:600;" id="udDeletedFromReportInfo"></span>
+                    <button onclick="removeDeletedFromImport()" style="background:#dc2626;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;">🗑️ Remove from Import & Manager too</button>
+                    <button onclick="clearDeletedFromReportList()" style="background:none;border:1px solid #d97706;color:#d97706;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;">Dismiss</button>
+                </div>
                 <div style="max-height:70vh;overflow-y:auto;overflow-x:auto;scroll-behavior:smooth;" id="udTableContainer"></div>
 
                 <!-- User Details Export Section -->
                 <div class="export-section" style="margin-top:0;border-top:2px solid var(--border-color);padding:20px;">
                     <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 16px; color: var(--text-secondary);">📤 Export User Details</h3>
+
+                    <!-- Sort by products -->
+                    <div style="margin-bottom: 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <div style="font-size: 12px; font-weight: 600; color: var(--axos-navy); text-transform: uppercase; letter-spacing: 0.5px;">Sort by products:</div>
+                        <select id="udExportSortOrder" style="padding:8px 12px;border:2px solid var(--border-color);border-radius:8px;font-size:13px;min-width:200px;">
+                            <option value="none">No sorting (default order)</option>
+                            <option value="total-desc">Most products first</option>
+                            <option value="total-asc">Fewest products first</option>
+                        </select>
+                    </div>
 
                     <!-- Combined Export -->
                     <div style="margin-bottom: 16px;">
@@ -1583,7 +1611,7 @@
         // =====================
         // USER DETAILS REPORT DATA & RENDERING
         // =====================
-        const USER_DETAILS_DATA = [{"u":"DONTUSE_McLovinSIT_33420","uu":"DONTUSE_McLovinSIT_33420","ui":101194263,"pu":"ReeceeHarley","pi":2791137,"up":["Checking **4508","Savings **5745","CLOSED - Checking **4516","Roth IRA - Castilleja Financial Services - 6816","IRA - Castilleja Financial Services - 6819","Individual - Castilleja Financial Services - 6821","Self-Directed Trading - Axos Invest - 4919","Self-Directed Trading - Axos Invest - 7536"],"pp":["Checking **2439","Savings **8734"],"c":"WAJ2291","su":"331683567","sp":"***-**-6238","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_52186","uu":"DONTUSE_McLovinSIT_52186","ui":101194265,"pu":"Mabelay","pi":2756084,"up":["Checking **4524","Checking **4532","Checking **4540","Checking **5760","Checking **5786","Money Market **5778","Savings **5752","Savings **5794","CLOSED - Checking **4565"],"pp":["CLOSED - Checking **0639","CLOSED - Money Market **4803","CLOSED - Checking **4811","CLOSED - Savings **0621"],"c":"RAJ2966","su":"358426386","sp":"***-**-6926","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_14576","uu":"DONTUSE_McLovinSIT_14576","ui":101194267,"pu":"dandretrish@yahoo.com","pi":"","up":["Checking **4557"],"pp":["Savings **3155"],"c":"PAJ0273","su":"600492154","sp":"","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_20377","uu":"DONTUSE_McLovinSIT_20377","ui":101194268,"pu":"placeholder2761177","pi":2761177,"up":["Checking **4573","CD **1912","CD **1920","CLOSED - Checking **4581"],"pp":["Business Checking **6130"],"c":"SAR8845","su":"550554697","sp":"***-**-9048","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_98313","uu":"DONTUSE_McLovinSIT_98313","ui":101194269,"pu":"placeholder2737254","pi":2737254,"up":["Checking **4599","Checking **5810","Savings **5802","Mortgage **8876","CLOSED - Checking **4607","Individual - Castilleja Financial Services - 4116","Self-Directed Trading - Axos Invest - 2598","Self-Directed Trading - Axos Invest - 8469"],"pp":["ROTH IRA - Flexible Plan Investments, Ltd. - 6282"],"c":"KAH2899","su":"612607319","sp":"***-**-0491","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_68070","uu":"DONTUSE_McLovinSIT_68070","ui":101194338,"pu":"Pedroty","pi":2760676,"up":["Checking **4953","Checking **4961","Checking **5869","Money Market **5836","Savings **0788","Savings **8608","Savings **5927","Savings **5935","Individual - Castilleja Financial Services - 0683"],"pp":["Checking **4075","Savings **7855","Savings **4067"],"c":"SAR8849","su":"321518525","sp":"***-**-3892","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_16274","uu":"DONTUSE_McLovinSIT_16274","ui":101194341,"pu":"placeholder2771591","pi":2771591,"up":["Checking **4979","Checking **4987","Money Market **6966","Savings **6982","CD **2019","Mortgage **8876","HELOC **2865","Individual - Castilleja Financial Services - 4193","IRA - Castilleja Financial Services - 6718","Self-Directed Trading - Axos Invest - 4621","Self-Directed Trading - Axos Invest - 7134"],"pp":["CLOSED - Checking **3437","CLOSED - Savings **3429"],"c":"PAJ0275","su":"178568452","sp":"***-**-2906","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_23654","uu":"DONTUSE_McLovinSIT_23654","ui":101194342,"pu":"dglezer04","pi":2758240,"up":["Checking **4995","Savings **7105","Business Checking **3312","Business Savings **6362","Individual - Castilleja Financial Services - 4236"],"pp":["Savings **6015"],"c":"GAJ0355","su":"547385282","sp":"***-**-1507","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_31402","uu":"DONTUSE_McLovinSIT_31402","ui":101194344,"pu":"gavinvanderbeek@gmail.com","pi":2734723,"up":["Checking **5018","Checking **7089","Money Market **7097","CLOSED - Checking **5026"],"pp":["ROTH IRA - Matson Money, Inc. - 6015","IRA - Matson Money, Inc. - 6013"],"c":"VAC6615","su":"262486395","sp":"***-**-5452","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_60135","uu":"DONTUSE_McLovinSIT_60135","ui":101194348,"pu":"ccrmil@msn.com","pi":2734624,"up":["Checking **5034","Checking **5067","Checking **7485","Checking **7501","Savings **7519","Self-Directed Trading - Axos Invest - 0748","Self-Directed Trading - Axos Invest - 5478","Self-Directed Trading - Axos Invest - 5859"],"pp":["IRA - Portfolio Medics, LLC - 6076"],"c":"MAR2603","su":"751775755","sp":"***-**-4878","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_96012","uu":"DONTUSE_McLovinSIT_96012","ui":101194350,"pu":"placeholder2734625","pi":2734625,"up":["Checking **5075","Checking **5091","Savings **8608","Mortgage **8876","HELOC **2865","Personal Loan **4613","SBLOC **0804","Marine Loans **3588","CLOSED - Auto Loan **5264"],"pp":["IRA - Portfolio Medics, LLC - 6094"],"c":"MAR2604","su":"445238187","sp":"***-**-4880","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_22832","uu":"DONTUSE_McLovinSIT_22832","ui":101194323,"pu":"placeholder2734722","pi":2734722,"up":["Checking **4805","Checking **4813","Checking **7568","Money Market **7642","Savings **7667","CD **2092","Mortgage **8876","HELOC **2865","Personal Loan **4613","SBLOC **0804","Marine Loans **3588","CLOSED - Auto Loan **5264","Self-Directed Trading - Axos Invest - 2560"],"pp":["IRA - Matson Money, Inc. - 6012"],"c":"VAC6614","su":"882537615","sp":"***-**-1214","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_75147","uu":"DONTUSE_McLovinSIT_75147","ui":101194325,"pu":"placeholder2746813","pi":2746813,"up":["Checking **4821","CLOSED - Checking **4839"],"pp":["SIMPLE IRA - Interactive Financial Advisors - 3026"],"c":"EAD9379","su":"372283708","sp":"***-**-7953","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_53020","uu":"DONTUSE_McLovinSIT_53020","ui":101194327,"pu":"eaglewell","pi":1747206,"up":["Checking **4854","Checking **5055","Savings **5063","CLOSED - Checking **4862"],"pp":["Savings **9471"],"c":"CAO2482","su":"556438442","sp":"***-**-9373","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_91522","uu":"DONTUSE_McLovinSIT_91522","ui":101194328,"pu":"placeholder2734620","pi":2734620,"up":["Checking **4870","Checking **9705","Checking **9713","Checking **9721","CLOSED - Checking **4888"],"pp":["Individual - Heritage Capital LLC - 1641","IRA - Heritage Capital LLC - 1620"],"c":"MAR2602","su":"816363322","sp":"***-**-5528","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_86675","uu":"DONTUSE_McLovinSIT_86675","ui":101194333,"pu":"qu699871","pi":2759873,"up":["Checking **4896","CLOSED - Checking **4904"],"pp":["CLOSED - Checking **9001","CLOSED - Savings **8995"],"c":"OAC4176","su":"501604881","sp":"***-**-1061","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_84100","uu":"DONTUSE_McLovinSIT_84100","ui":101194335,"pu":"placeholder2790655","pi":2790655,"up":["Checking **4912","CLOSED - Checking **4946"],"pp":["CLOSED - Business Checking **3269"],"c":"TAH8820","su":"273722350","sp":"***-**-0398","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_81344","uu":"DONTUSE_McLovinSIT_81344","ui":101194290,"pu":"kdelsing","pi":2736382,"up":["Checking **4649","CLOSED - Checking **4656"],"pp":["Checking **3501","IRA - Discipline Wealth Solutions - 5972"],"c":"DAI7831","su":"207762122","sp":"***-**-0489","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_89188","uu":"DONTUSE_McLovinSIT_89188","ui":101194293,"pu":"Zurenarrh44","pi":3028936,"up":["Checking **4664","CLOSED - Checking **4672"],"pp":["CLOSED - Checking **4567","CLOSED - Checking **4641","CLOSED - Savings **4559","CLOSED - Savings **4658"],"c":"LAJ5513","su":"140623708","sp":"***-**-3993","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_21478","uu":"DONTUSE_McLovinSIT_21478","ui":101194298,"pu":"estock","pi":2760647,"up":["Checking **4680","CLOSED - Checking **4706"],"pp":["Savings **7798","Savings **7234","Savings **6598"],"c":"SAR8847","su":"299793587","sp":"***-**-7049","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_55384","uu":"DONTUSE_McLovinSIT_55384","ui":101194300,"pu":"lauratopher1","pi":2769482,"up":["Checking **4714","CLOSED - Checking **4730"],"pp":["CLOSED - Checking **3437","CLOSED - Savings **3429"],"c":"PAJ0274","su":"603265495","sp":"***-**-1605","e":["PROD Investment: Request to https://udbadminapi.mybofi.local/api/olb/axosclearing/lauratopher1/accounts failed: fetch failed"],"le":"uat"},{"u":"DONTUSE_McLovinSIT_35753","uu":"DONTUSE_McLovinSIT_35753","ui":101194303,"pu":"glenskinicholas9@gmail.com","pi":2759271,"up":["Checking **4748","CLOSED - Checking **4755"],"pp":["Self-Directed Trading - Axos Invest - 7606"],"c":"GAJ0354","su":"566573195","sp":"***-**-4061","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_61421","uu":"DONTUSE_McLovinSIT_61421","ui":101194305,"pu":"placeholder2761171","pi":2761171,"up":["Checking **4763","CLOSED - Checking **4771"],"pp":["Savings **7798","Savings **7234","Savings **6598"],"c":"SAR8848","su":"866201574","sp":"***-**-3866","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_16451","uu":"DONTUSE_McLovinSIT_16451","ui":101194384,"pu":"placeholder2767002","pi":2767002,"up":["Checking **5257","CLOSED - Checking **5265"],"pp":[],"c":"AAH0118","su":"559788123","sp":"***-**-3795","e":["PROD Banking: Request to https://udbadminapi.mybofi.local/api/account/2767002/sorted?withAmounts=true&withClosed=true failed: fetch failed","PROD Investment: Request to https://udbadminapi.mybofi.local/api/olb/axosclearing/placeholder2767002/accounts failed: fetch failed"],"le":"uat"},{"u":"DONTUSE_McLovinSIT_79698","uu":"DONTUSE_McLovinSIT_79698","ui":101194391,"pu":"CarlMark1217","pi":2771588,"up":["Checking **5273","CLOSED - Checking **5281"],"pp":[],"c":"PAJ0276","su":"484403166","sp":"***-**-0077","e":["PROD Banking: Request to https://udbadminapi.mybofi.local/api/account/2771588/sorted?withAmounts=true&withClosed=true failed: fetch failed","PROD Investment: Request to https://udbadminapi.mybofi.local/api/olb/axosclearing/CarlMark1217/accounts failed: fetch failed"],"le":"uat"},{"u":"DONTUSE_McLovinSIT_60249","uu":"DONTUSE_McLovinSIT_60249","ui":101194398,"pu":"Jbooze23","pi":"","up":["Checking **5299","CLOSED - Checking **5307"],"pp":["Checking **8497","Savings **8489"],"c":"BAP2090","su":"194656279","sp":"","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_70707","uu":"DONTUSE_McLovinSIT_70707","ui":101194401,"pu":"Slaterk","pi":2761244,"up":["Checking **5315","CLOSED - Checking **5331"],"pp":["Savings **8218"],"c":"SAR8852","su":"214775067","sp":"***-**-2287","e":["PROD Investment: Request to https://udbadminapi.mybofi.local/api/olb/axosclearing/Slaterk/accounts failed: fetch failed"],"le":"uat"},{"u":"DONTUSE_McLovinSIT_58000","uu":"DONTUSE_McLovinSIT_58000","ui":101194404,"pu":"placeholder2792366","pi":"","up":["Checking **5349","CLOSED - Checking **5356"],"pp":["CLOSED - Savings **8932"],"c":"WAJ2292","su":"141611524","sp":"","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_74687","uu":"DONTUSE_McLovinSIT_74687","ui":101194407,"pu":"placeholder2761254","pi":2761254,"up":["Checking **5372","CLOSED - Checking **5380"],"pp":[],"c":"SAR8853","su":"564597166","sp":"***-**-1616","e":["PROD Investment: Request to https://udbadminapi.mybofi.local/api/olb/axosclearing/placeholder2761254/accounts failed: fetch failed"],"le":"uat"},{"u":"FcAxosGoats_API87369","uu":"FcAxosGoats_API87369","ui":101196738,"pu":"Tiff3985","pi":2745378,"up":["Checking **9515","Self-Directed Trading - Axos Invest - 7937"],"pp":[],"c":"JAG0563","su":"826248515","sp":"***-**-1825","e":["PROD Banking: Request to https://udbadminapi.mybofi.local/api/account/2745378/sorted?withAmounts=true&withClosed=true failed: fetch failed"],"le":"uat"},{"u":"FcAxosGoats_API70343","uu":"FcAxosGoats_API70343","ui":101196737,"pu":"Loonies96","pi":3038438,"up":["Checking **9507"],"pp":["CLOSED - Checking **0113"],"c":"LAJ5694","su":"640176953","sp":"***-**-2653","e":[],"le":"uat"},{"u":"FcAxosGoats_API39589","uu":"FcAxosGoats_API39589","ui":101196755,"pu":"tpena2003","pi":2771888,"up":["Checking **9523"],"pp":["Savings **5457"],"c":"PAJ0292","su":"643618731","sp":"***-**-4280","e":[],"le":"uat"},{"u":"Trakas_PuroSandoval_18555","uu":"Trakas_PuroSandoval_18555","ui":101212513,"pu":"lucelo1991","pi":2772718,"up":["Checking **9561"],"pp":["Savings **7025"],"c":"PAJ0690","su":"489142647","sp":"***-**-7670","e":[],"le":"uat"},{"u":"Trakas_PuroSandoval_42534","uu":"Trakas_PuroSandoval_42534","ui":101214910,"pu":"placeholder2780983","pi":2780983,"up":["Checking **3944"],"pp":[],"c":"AAH0445","su":"568632539","sp":"***-**-0658","e":[],"le":"uat"},{"u":"FcAxosGoats_API71702","uu":"FcAxosGoats_API71702","ui":101196881,"pu":"dannielapena","pi":2772002,"up":["Checking **9622","Checking **0067","Checking **0083","Checking **0109","Money Market **0059","Savings **0091"],"pp":["Savings **5721"],"c":"PAJ0293","su":"744461999","sp":"***-**-1596","e":[],"le":"uat"},{"u":"DONTUSE_SIT_76324","uu":"DONTUSE_SIT_76324","ui":101179198,"pu":"sammyabdelazim1","pi":1785536,"up":["Checking **6239","Checking **6254","Checking **0172","Money Market **6247","Savings **8755","Savings **6221","Mortgage **8876","HELOC **2865","Individual - Castilleja Financial Services - 0680"],"pp":["Savings **8755"],"c":"AAE9363","su":"379177669","sp":"***-**-7669","e":[],"le":"uat"},{"u":"DONTUSE_SIT_81005","uu":"DONTUSE_SIT_81005","ui":101002095,"pu":"Jason+Amanda","pi":"","up":["Checking **7794","Checking **0346","Savings **1829","Mortgage **8876"],"pp":["Money Market **7794","Money Market **3788","Savings **1829","Savings **1145","CLOSED - Money Market **0346","CLOSED - Checking **3796"],"c":"KAE6996","su":"498981456","sp":"","e":[],"le":"uat"},{"u":"DONTUSE_SIT_12846","uu":"DONTUSE_SIT_12846","ui":100678809,"pu":"babyg00","pi":1559502,"up":["Money Market **0681","Savings **0410","Savings **5429","Mortgage **8876","HELOC **2865","CLOSED - Money Market **5258"],"pp":["Money Market **0681","CLOSED - Savings **0410","CLOSED - Savings **5429"],"c":"VAB5975","su":"321842609","sp":"***-**-2609","e":[],"le":"uat"},{"u":"DONTUSE_SIT_56789","uu":"DONTUSE_SIT_56789","ui":101001984,"pu":"qwang88","pi":"","up":["Money Market **3837","Savings **5198"],"pp":["Money Market **3837","Savings **5198"],"c":"WAG4768","su":"245859829","sp":"","e":[],"le":"uat"},{"u":"DONTUSE_STG_SIT_48327","uu":"DONTUSE_STG_SIT_48327","ui":"","pu":"Raging50","pi":2792,"up":["Checking **8586","Checking **8061","Savings **5726","Savings **3872","Savings **4979","CLOSED - Checking **3765"],"pp":["Checking **8586","Checking **8061","Savings **5726","Savings **3872","Savings **4979"],"c":"MAA8908","su":"","sp":"***-**-1535","e":[],"le":"stg"},{"u":"DONTUSE_STG_SIT_92081","uu":"DONTUSE_STG_SIT_92081","ui":"","pu":"Raccoon251","pi":48924,"up":["Checking **8357","Savings **8340","Mortgage **3597","CLOSED - Checking **8167"],"pp":["Checking **8357","Savings **8340","Mortgage **3597"],"c":"WAC7128","su":"","sp":"***-**-2957","e":[],"le":"stg"},{"u":"DONTUSE_STG_SIT_13752","uu":"DONTUSE_STG_SIT_13752","ui":"","pu":"placeholder580469","pi":580469,"up":["Checking **6703","Money Market **5508","Savings **1509"],"pp":["Checking **6703","Money Market **5508","Savings **1509"],"c":"BAA3407","su":"","sp":"***-**-4425","e":[],"le":"stg"},{"u":"DONTUSE_STG_SIT_60491","uu":"DONTUSE_STG_SIT_60491","ui":"","pu":"jlgreen2","pi":1342450,"up":["Checking **2971","Money Market **1322"],"pp":["Checking **2971","Savings **4338","CLOSED - Money Market **1322"],"c":"GAA5360","su":"","sp":"***-**-8604","e":[],"le":"stg"},{"u":"DONTUSE_STG_SIT_76830","uu":"DONTUSE_STG_SIT_76830","ui":"","pu":"lwatsondesign77","pi":290675,"up":["CLOSED - Checking **7083"],"pp":[],"c":"AAB7981","su":"","sp":"***-**-7295","e":[],"le":"stg"},{"u":"DONTUSE_STG_SIT_58246","uu":"DONTUSE_STG_SIT_58246","ui":"","pu":"kevinregan2932","pi":249969,"up":["Checking **0021","Checking **6770","Savings **0039"],"pp":["Checking **0021","Savings **0039","Business Checking **6770"],"c":"RAE2612","su":"","sp":"***-**-8722","e":[],"le":"stg"},{"u":"DONTUSE_STG_SIT_31975","uu":"DONTUSE_STG_SIT_31975","ui":"","pu":"placeholder426012","pi":426012,"up":[],"pp":[],"c":"BAG5548","su":"","sp":"***-**-2175","e":[],"le":"stg"},{"u":"DONTUSE_STG_SIT_84763","uu":"DONTUSE_STG_SIT_84763","ui":"","pu":"BrookeAnneH","pi":425570,"up":["Savings **5498"],"pp":["Savings **5498"],"c":"HAE4460","su":"","sp":"***-**-8049","e":[],"le":"stg"},{"u":"DONTUSE_STG_SIT_29037","uu":"DONTUSE_STG_SIT_29037","ui":"","pu":"yungbandoy","pi":351390,"up":["Checking **1752","Checking **2545","Savings **1760"],"pp":["Checking **1752","Checking **2545","Savings **1760"],"c":"BAG5952","su":"","sp":"***-**-0270","e":[],"le":"stg"},{"u":"DONTUSE_SIT_76324_QA","uu":"DONTUSE_SIT_76324_QA","ui":"","pu":"sammyabdelazim1","pi":1785536,"up":["Checking **6239","Checking **6254","Checking **0172","Money Market **6247","Savings **8755","Savings **6221","Mortgage **8876","HELOC **2865","Self-Directed Trading - Axos Invest - 6034"],"pp":["Savings **8755"],"c":"AAE9363","su":"","sp":"***-**-7669","e":[],"le":"qa"},{"u":"DONTUSE_McLovinSIT_68070_QA","uu":"DONTUSE_McLovinSIT_68070_QA","ui":"","pu":"Pedroty","pi":2760676,"up":["Checking **4953","Checking **4961","Checking **5869","Checking **5836","Savings **5927","Savings **0788","Savings **8608","Savings **5935"],"pp":["Checking **4075","Savings **7855","Savings **4067"],"c":"SAR8849","su":"","sp":"***-**-3892","e":[],"le":"qa"},{"u":"DONTUSE_McLovinSIT_16274_QA","uu":"DONTUSE_McLovinSIT_16274_QA","ui":"","pu":"placeholder2771591","pi":2771591,"up":["Checking **4979","Checking **4987","Checking **6966","Savings **6982","CD **2019","Mortgage **8876","HELOC **2865"],"pp":["CLOSED - Checking **3437","CLOSED - Savings **3429"],"c":"PAJ0275","su":"","sp":"***-**-2906","e":[],"le":"qa"},{"u":"DONTUSE_SIT_15489_QA","uu":"DONTUSE_SIT_15489_QA","ui":"","pu":"Kadenchamplin","pi":1677308,"up":["Auto Loan **9662","Joint - Bernet Wealth Management - 8717","Self-Directed Trading - Axos Invest - 7950"],"pp":["Auto Loan **9662"],"c":"CAJ9980","su":"","sp":"***-**-7891","e":[],"le":"qa"},{"u":"PuroApi_FierroAlv_50963","uu":"PuroApi_FierroAlv_50963","ui":101205676,"pu":"jbarrett286","pi":2733366,"up":["Checking **4969","Checking **4977","Money Market **5248","Savings **5180","Mortgage **8876","Personal Loan **4613","Individual - Castilleja Financial Services - 7731","IRA - Castilleja Financial Services - 7737","Roth IRA - Castilleja Financial Services - 7739","Self-Directed Trading - Axos Invest - 2344","Self-Directed Trading - Axos Invest - 5040","Self-Directed Trading - Axos Invest - 7145","Self-Directed Trading - Axos Invest - 7162","Self-Directed Trading - Axos Invest - 9041"],"pp":["CLOSED - Checking **6037"],"c":"BAP2132","su":"261555994","sp":"***-**-5084","e":[],"le":"uat"},{"u":"PuroApi_FierroAlv_85533","uu":"PuroApi_FierroAlv_85533","ui":101205689,"pu":"jdmitch83","pi":2730215,"up":["Checking **0451","Checking **5107","Checking **5123","Savings **5354","Mortgage **8876","SBLOC **0804","Individual - Castilleja Financial Services - 7766","Self-Directed Trading - Axos Invest - 1212"],"pp":["Savings **1935"],"c":"MAR2689","su":"693686417","sp":"***-**-5272","e":[],"le":"uat"},{"u":"PuroApi_FierroAlv_36599","uu":"PuroApi_FierroAlv_36599","ui":101205688,"pu":"haleyphelps","pi":2770827,"up":["Checking **5081","Checking **5099","Mortgage **8876","HELOC **2865","Individual - Castilleja Financial Services - 7768","Self-Directed Trading - Axos Invest - 2628"],"pp":["CLOSED - Savings **6094"],"c":"PAJ0570","su":"845191539","sp":"***-**-3121","e":[],"le":"uat"},{"u":"PuroApi_FierroAlv_75931","uu":"PuroApi_FierroAlv_75931","ui":101205677,"pu":"Sus@nCI56","pi":2772677,"up":["Checking **4985","Checking **4993","Money Market **7280","Savings **7355","Mortgage **8876","Individual - Castilleja Financial Services - 2847","Individual - Castilleja Financial Services - 2846","Individual - Castilleja Financial Services - 2844","Self-Directed Trading - Axos Invest - 4687"],"pp":["Individual - Bullseye Investment Management, LLC - 9120","IRA - Bullseye Investment Management, LLC - 9117","ROTH IRA - Bullseye Investment Management, LLC - 9119"],"c":"AAH0267","su":"287455225","sp":"***-**-7651","e":[],"le":"uat"},{"u":"PuroApi_FierroAlv_32320","uu":"PuroApi_FierroAlv_32320","ui":101205679,"pu":"RondaAkers","pi":2772678,"up":["Checking **5008","CLOSED - Checking **5016"],"pp":["IRA - Bullseye Investment Management, LLC - 9295"],"c":"AAH0268","su":"244822476","sp":"***-**-4467","e":[],"le":"uat"},{"u":"PuroApi_FierroAlv_12493","uu":"PuroApi_FierroAlv_12493","ui":101205682,"pu":"Texdan25","pi":2763311,"up":["Checking **5024","CLOSED - Checking **5032","Individual - Castilleja Financial Services - 2848"],"pp":["CLOSED - Savings **7805"],"c":"SAR8944","su":"364807940","sp":"***-**-5093","e":[],"le":"uat"},{"u":"PuroApi_FierroAlv_23001","uu":"PuroApi_FierroAlv_23001","ui":101205684,"pu":"PeachyAquino","pi":2772670,"up":["Checking **5040","CLOSED - Checking **5057"],"pp":["Savings **9467"],"c":"AAH0269","su":"420803738","sp":"***-**-4480","e":[],"le":"uat"},{"u":"PuroApi_FierroAlv_51558","uu":"PuroApi_FierroAlv_51558","ui":101205685,"pu":"Brookeartz325","pi":2772030,"up":["Checking **5065","CLOSED - Checking **5073"],"pp":["CLOSED - Checking **9855"],"c":"AAH0270","su":"333124083","sp":"***-**-4658","e":[],"le":"uat"},{"u":"PuroApi_FierroAlv_77212","uu":"PuroApi_FierroAlv_77212","ui":101205692,"pu":"Natmon217","pi":2730235,"up":["Checking **5149","CLOSED - Checking **5156"],"pp":["Savings **2057"],"c":"MAR2690","su":"557322772","sp":"***-**-2318","e":[],"le":"uat"},{"u":"PuroApi_FierroAlv_77182","uu":"PuroApi_FierroAlv_77182","ui":101205696,"pu":"kimberly.lin","pi":3057639,"up":["Checking **5164","CLOSED - Checking **5172"],"pp":["Checking **2818","Savings **2800","Savings **2784"],"c":"LAJ6116","su":"332498942","sp":"***-**-3533","e":[],"le":"uat"},{"u":"PuroApi_FierroAlv_93383","uu":"PuroApi_FierroAlv_93383","ui":101205699,"pu":"placeholder2733398","pi":2733398,"up":["Checking **5198","CLOSED - Checking **5206","Self-Directed Trading - Axos Invest - 1001","Self-Directed Trading - Axos Invest - 1570","Self-Directed Trading - Axos Invest - 2568","Self-Directed Trading - Axos Invest - 4130","Self-Directed Trading - Axos Invest - 7186","Self-Directed Trading - Axos Invest - 8749"],"pp":["IRA - Flexible Plan Investments, Ltd. - 5910"],"c":"BAP2133","su":"744388280","sp":"***-**-2592","e":[],"le":"uat"},{"u":"PuroApi_FierroAlv_77733","uu":"PuroApi_FierroAlv_77733","ui":101205701,"pu":"Cmazin1749","pi":2735720,"up":["Checking **5214","CLOSED - Checking **5222","Individual - Castilleja Financial Services - 1416","Individual - Castilleja Financial Services - 1427","Individual - Castilleja Financial Services - 1429"],"pp":["Savings **2222","CLOSED - Checking **2370","CLOSED - Money Market **4509","CLOSED - Savings **2362"],"c":"MAR2692","su":"385734413","sp":"***-**-1469","e":[],"le":"uat"},{"u":"Trakas_PuroSandoval_38186","uu":"Trakas_PuroSandoval_38186","ui":101211313,"pu":"placeholder2792056","pi":2792056,"up":["Checking **6922"],"pp":["Minor Custodial - FireSky Financial, Inc - 0784"],"c":"PAJ0685","su":"677785876","sp":"***-**-8891","e":[],"le":"uat"},{"u":"PuroApi_FierroAlv_50963_QA","uu":"PuroApi_FierroAlv_50963_QA","ui":"","pu":"jbarrett286","pi":2733366,"up":["Checking **4969","Checking **4977","Checking **5248","Savings **5180","Mortgage **8876","Personal Loan **4613"],"pp":[],"c":"BAP2132","su":"","sp":"***-**-5084","e":["PROD Banking: Request to https://udbadminapi.mybofi.local/api/account/2733366/sorted?withAmounts=true&withClosed=true failed: fetch failed","PROD Investment: Request to https://udbadminapi.mybofi.local/api/olb/axosclearing/jbarrett286/accounts failed: fetch failed"],"le":"qa"},{"u":"PuroApi_FierroAlv_85533_QA","uu":"PuroApi_FierroAlv_85533_QA","ui":"","pu":"jdmitch83","pi":2730215,"up":["Checking **0451","Checking **5107","Checking **5123","Savings **5354","Mortgage **8876","SBLOC **0804"],"pp":["Savings **1935"],"c":"MAR2689","su":"","sp":"***-**-5272","e":[],"le":"qa"},{"u":"FcAxosGoats_API60008","uu":"FcAxosGoats_API60008","ui":"","pu":"choleking17","pi":"","up":["Checking **7567"],"pp":["Checking **3153","Savings **3161"],"c":"KAH2914","su":"","sp":"","e":[],"le":"qa"},{"u":"DONTUSE_McLovinSIT_52186_QA","uu":"DONTUSE_McLovinSIT_52186_QA","ui":"","pu":"Mabelay","pi":2756084,"up":["Checking **4524","Checking **4532","Checking **4540","Checking **5760","Checking **5778","Checking **5786","Savings **5752","Savings **5794","CLOSED - Checking **4565"],"pp":["CLOSED - Checking **0639","CLOSED - Money Market **4803","CLOSED - Checking **4811","CLOSED - Savings **0621"],"c":"RAJ2966","su":"","sp":"***-**-6926","e":[],"le":"qa"},{"u":"FcAxosGoats_API57404","uu":"FcAxosGoats_API57404","ui":"","pu":"Lisach3","pi":2733839,"up":["Checking **7526"],"pp":["Savings **9442"],"c":"NAE1516","su":"","sp":"***-**-4825","e":["PROD Investment: Request to https://udbadminapi.mybofi.local/api/olb/axosclearing/Lisach3/accounts failed: fetch failed"],"le":"qa"},{"u":"SanityUFBTestim2_QA","uu":"SanityUFBTestim2_QA","ui":"","pu":"mangesh.pawar","pi":133243,"up":["Checking **6140","Money Market **7092","Savings **2145","Savings **7100","Savings **5512","Mortgage **8876"],"pp":["Checking **6140","Savings **2145","Savings **5512"],"c":"PAA3258","su":"","sp":"***-**-3341","e":[],"le":"qa"},{"u":"SanityUFBTestim_QA","uu":"SanityUFBTestim_QA","ui":"","pu":"ZWRbc47m","pi":136363,"up":["Checking **1686","Checking **3773","Checking **5778","Money Market **8632","Savings **7295","Mortgage **8876","CLOSED - Checking **0838"],"pp":["Checking **1686","Checking **3773","Savings **7295"],"c":"CAA9156","su":"","sp":"***-**-7981","e":[],"le":"qa"},{"u":"PuroApi_FierroAlv_77733_QA","uu":"PuroApi_FierroAlv_77733_QA","ui":"","pu":"Cmazin1749","pi":2735720,"up":["Checking **5214","CLOSED - Checking **5222"],"pp":["Savings **2222","CLOSED - Checking **2370","CLOSED - Money Market **4509","CLOSED - Savings **2362"],"c":"MAR2692","su":"","sp":"***-**-1469","e":[],"le":"qa"},{"u":"dontuse_sit_68070_stg","uu":"dontuse_sit_68070_stg","ui":"","pu":"Pedroty","pi":2760676,"up":["Checking **4953","Checking **4961","Checking **5836","Checking **5869","Savings **0788","Savings **5927","Savings **5935"],"pp":["Checking **4075","Savings **7855","Savings **4067"],"c":"SAR8849","su":"","sp":"***-**-3892","e":[],"le":"stg"},{"u":"dontuse_sit_16274_stg","uu":"dontuse_sit_16274_stg","ui":"","pu":"placeholder2771591","pi":2771591,"up":["Checking **4979","Checking **4987","Checking **6966","Savings **6982","CD **2019","Mortgage **8876","HELOC **2865"],"pp":["CLOSED - Checking **3437","CLOSED - Savings **3429"],"c":"PAJ0275","su":"","sp":"***-**-2906","e":[],"le":"stg"},{"u":"dontuse_sit_96012_stg","uu":"dontuse_sit_96012_stg","ui":"","pu":"placeholder2734625","pi":2734625,"up":["Checking **5075","Checking **5091","Mortgage **8876","HELOC **2865","Personal Loan **4613","SBLOC **0804","Marine Loans **3588","CLOSED - Auto Loan **5264"],"pp":["IRA - Portfolio Medics, LLC - 6094"],"c":"MAR2604","su":"","sp":"***-**-4880","e":[],"le":"stg"},{"u":"dontuse_sit_61421_stg","uu":"dontuse_sit_61421_stg","ui":"","pu":"placeholder2761171","pi":2761171,"up":["Checking **4763","CLOSED - Checking **4771"],"pp":["Savings **7798","Savings **7234","Savings **6598"],"c":"SAR8848","su":"","sp":"***-**-3866","e":[],"le":"stg"},{"u":"SanityUFBTestim2_STG","uu":"SanityUFBTestim2_stg","ui":"","pu":"mangesh.pawar","pi":133243,"up":["Checking **6140","Money Market **7092","Savings **2145","Savings **7100","Savings **5512","Mortgage **8876"],"pp":["Checking **6140","Savings **2145","Savings **5512"],"c":"PAA3258","su":"","sp":"***-**-3341","e":[],"le":"stg"},{"u":"SanityUFBTestim_STG","uu":"","ui":"","pu":"","pi":"","up":[],"pp":[],"c":"","su":"","sp":"","e":["Not found in UAT, QA, or STG"],"le":""},{"u":"PuroApi_FierroAlv_77733_STG","uu":"","ui":"","pu":"","pi":"","up":[],"pp":[],"c":"","su":"","sp":"","e":["Not found in UAT, QA, or STG"],"le":""},{"u":"Trakas_PuroSandoval_96435_STG","uu":"Trakas_PuroSandoval_96435_stg","ui":"","pu":"Faithaaliyah1","pi":2743026,"up":["Checking **1748"],"pp":["CLOSED - Savings **8805"],"c":"MAR2940","su":"","sp":"***-**-3239","e":[],"le":"stg"},{"u":"QCoE_McLovin_84391","uu":"QCoE_McLovin_84391","ui":101311008,"pu":"Chris_m121","pi":2810990,"up":["Checking **7934","Checking **8031","Savings **8049"],"pp":[],"c":"MAR5799","su":"376183614","sp":"***-**-3678","e":[],"le":"uat"},{"u":"QCoE_McLovin_59939","uu":"QCoE_McLovin_59939","ui":101311030,"pu":"Booboolexi53","pi":1370423,"up":["Checking **7967"],"pp":["CLOSED - Checking **2572"],"c":"VAC7092","su":"345708851","sp":"***-**-8475","e":[],"le":"uat"},{"u":"QCoE_McLovin_68072","uu":"QCoE_McLovin_68072","ui":101311222,"pu":"placeholder2777468","pi":2777468,"up":["Checking **8171"],"pp":["Savings **3580"],"c":"BAP3878","su":"163825604","sp":"***-**-8674","e":[],"le":"uat"},{"u":"QCoE_McLovin_35913","uu":"QCoE_McLovin_35913","ui":101311221,"pu":"placeholder2777422","pi":2777422,"up":["Checking **8163"],"pp":[],"c":"BAP3877","su":"667134730","sp":"***-**-4974","e":[],"le":"uat"},{"u":"QCoE_McLovin_76015","uu":"QCoE_McLovin_76015","ui":101311220,"pu":"snaxmeyers","pi":2811069,"up":["Checking **8155"],"pp":["CLOSED - Savings **8262"],"c":"MAR5802","su":"411617468","sp":"***-**-8430","e":[],"le":"uat"},{"u":"redd3-uat-lib","uu":"Redd3-uat-lib","ui":100707951,"pu":"Aredding3","pi":1500531,"up":["Checking **7608","Checking **0840","Checking **0264","Checking **0249","Checking **0256","Business Checking **6360","Savings **7616","Savings **0857","Overdraft Line of Credit **0249","Overdraft Line of Credit **0256","Overdraft Line of Credit **0264"],"pp":["Checking **0840","Checking **7608","Savings **0857","Savings **7616"],"c":"RAF9099","su":"292667377","sp":"***-**-7377","e":["UAT Investment: HTTP 500"],"le":"uat"}];
+        const USER_DETAILS_DATA = [{"u":"DONTUSE_McLovinSIT_16274","uu":"DONTUSE_McLovinSIT_16274","ui":101194341,"pu":"placeholder2771591","pi":2771591,"up":["Checking **4979","Checking **4987","Money Market **6966","Savings **6982","CD **2019","Mortgage **8876","HELOC **2865","Individual - Castilleja Financial Services - 4193","IRA - Castilleja Financial Services - 6718","Self-Directed Trading - Axos Invest - 4621","Self-Directed Trading - Axos Invest - 7134"],"pp":["CLOSED - Checking **3437","CLOSED - Savings **3429"],"c":"PAJ0275","su":"178568452","sp":"***-**-2906","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_53020","uu":"DONTUSE_McLovinSIT_53020","ui":101194327,"pu":"eaglewell","pi":1747206,"up":["Checking **4854","Checking **5055","Savings **5063","CLOSED - Checking **4862"],"pp":["Savings **9471"],"c":"CAO2482","su":"556438442","sp":"***-**-9373","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_91522","uu":"DONTUSE_McLovinSIT_91522","ui":101194328,"pu":"placeholder2734620","pi":2734620,"up":["Checking **4870","Checking **9705","Checking **9713","Checking **9721","CLOSED - Checking **4888"],"pp":["Individual - Heritage Capital LLC - 1641","IRA - Heritage Capital LLC - 1620"],"c":"MAR2602","su":"816363322","sp":"***-**-5528","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_86675","uu":"DONTUSE_McLovinSIT_86675","ui":101194333,"pu":"qu699871","pi":2759873,"up":["Checking **4896","CLOSED - Checking **4904"],"pp":["CLOSED - Checking **9001","CLOSED - Savings **8995"],"c":"OAC4176","su":"501604881","sp":"***-**-1061","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_84100","uu":"DONTUSE_McLovinSIT_84100","ui":101194335,"pu":"placeholder2790655","pi":2790655,"up":["Checking **4912","CLOSED - Checking **4946"],"pp":["CLOSED - Business Checking **3269"],"c":"TAH8820","su":"273722350","sp":"***-**-0398","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_81344","uu":"DONTUSE_McLovinSIT_81344","ui":101194290,"pu":"kdelsing","pi":2736382,"up":["Checking **4649","CLOSED - Checking **4656"],"pp":["Checking **3501","IRA - Discipline Wealth Solutions - 5972"],"c":"DAI7831","su":"207762122","sp":"***-**-0489","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_89188","uu":"DONTUSE_McLovinSIT_89188","ui":101194293,"pu":"Zurenarrh44","pi":3028936,"up":["Checking **4664","CLOSED - Checking **4672"],"pp":["CLOSED - Checking **4567","CLOSED - Checking **4641","CLOSED - Savings **4559","CLOSED - Savings **4658"],"c":"LAJ5513","su":"140623708","sp":"***-**-3993","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_21478","uu":"DONTUSE_McLovinSIT_21478","ui":101194298,"pu":"estock","pi":2760647,"up":["Checking **4680","CLOSED - Checking **4706"],"pp":["Savings **7798","Savings **7234","Savings **6598"],"c":"SAR8847","su":"299793587","sp":"***-**-7049","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_55384","uu":"DONTUSE_McLovinSIT_55384","ui":101194300,"pu":"lauratopher1","pi":2769482,"up":["Checking **4714","CLOSED - Checking **4730"],"pp":["CLOSED - Checking **3437","CLOSED - Savings **3429"],"c":"PAJ0274","su":"603265495","sp":"***-**-1605","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_35753","uu":"DONTUSE_McLovinSIT_35753","ui":101194303,"pu":"glenskinicholas9@gmail.com","pi":2759271,"up":["Checking **4748","CLOSED - Checking **4755"],"pp":["Self-Directed Trading - Axos Invest - 7606"],"c":"GAJ0354","su":"566573195","sp":"***-**-4061","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_61421","uu":"DONTUSE_McLovinSIT_61421","ui":101194305,"pu":"placeholder2761171","pi":2761171,"up":["Checking **4763","CLOSED - Checking **4771"],"pp":["Savings **7798","Savings **7234","Savings **6598"],"c":"SAR8848","su":"866201574","sp":"***-**-3866","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_16451","uu":"DONTUSE_McLovinSIT_16451","ui":101194384,"pu":"placeholder2767002","pi":2767002,"up":["Checking **5257","CLOSED - Checking **5265"],"pp":["ROTH IRA - Global View Capital Management, LLC - 0051"],"c":"AAH0118","su":"559788123","sp":"***-**-3795","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_79698","uu":"DONTUSE_McLovinSIT_79698","ui":101194391,"pu":"CarlMark1217","pi":2771588,"up":["Checking **5273","CLOSED - Checking **5281"],"pp":["Checking **3593","Savings **3585"],"c":"PAJ0276","su":"484403166","sp":"***-**-0077","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_60249","uu":"DONTUSE_McLovinSIT_60249","ui":101194398,"pu":"Jbooze23","pi":2731687,"up":["Checking **5299","CLOSED - Checking **5307"],"pp":["Checking **8497","Savings **8489"],"c":"BAP2090","su":"194656279","sp":"***-**-1217","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_70707","uu":"DONTUSE_McLovinSIT_70707","ui":101194401,"pu":"Slaterk","pi":2761244,"up":["Checking **5315","CLOSED - Checking **5331"],"pp":["Savings **8218"],"c":"SAR8852","su":"214775067","sp":"***-**-2287","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_58000","uu":"DONTUSE_McLovinSIT_58000","ui":101194404,"pu":"placeholder2792366","pi":2792366,"up":["Checking **5349","CLOSED - Checking **5356"],"pp":["CLOSED - Savings **8932"],"c":"WAJ2292","su":"141611524","sp":"***-**-0415","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_74687","uu":"DONTUSE_McLovinSIT_74687","ui":101194407,"pu":"placeholder2761254","pi":2761254,"up":["Checking **5372","CLOSED - Checking **5380"],"pp":[],"c":"SAR8853","su":"564597166","sp":"***-**-1616","e":[],"le":"uat"},{"u":"FcAxosGoats_API87369","uu":"FcAxosGoats_API87369","ui":101196738,"pu":"Tiff3985","pi":2745378,"up":["Checking **9515","Self-Directed Trading - Axos Invest - 7937"],"pp":["Savings **9786"],"c":"JAG0563","su":"826248515","sp":"***-**-1825","e":[],"le":"uat"},{"u":"FcAxosGoats_API70343","uu":"FcAxosGoats_API70343","ui":101196737,"pu":"Loonies96","pi":3038438,"up":["Checking **9507"],"pp":["CLOSED - Checking **0113"],"c":"LAJ5694","su":"640176953","sp":"***-**-2653","e":[],"le":"uat"},{"u":"Trakas_PuroSandoval_42534","uu":"Trakas_PuroSandoval_42534","ui":101214910,"pu":"placeholder2780983","pi":2780983,"up":["Checking **3944"],"pp":[],"c":"AAH0445","su":"568632539","sp":"***-**-0658","e":[],"le":"uat"},{"u":"DONTUSE_STG_SIT_92081","uu":"DONTUSE_STG_SIT_92081","ui":"","pu":"Raccoon251","pi":48924,"up":["Checking **8357","Savings **8340","Mortgage **3597"],"pp":["Checking **8357","Savings **8340","Mortgage **3597"],"c":"WAC7128","su":"","sp":"***-**-2957","e":[],"le":"stg"},{"u":"DONTUSE_STG_SIT_13752","uu":"DONTUSE_STG_SIT_13752","ui":"","pu":"placeholder580469","pi":580469,"up":["Checking **6703","Money Market **5508","Savings **1509"],"pp":["Checking **6703","Money Market **5508","Savings **1509"],"c":"BAA3407","su":"","sp":"***-**-4425","e":[],"le":"stg"},{"u":"DONTUSE_STG_SIT_60491","uu":"DONTUSE_STG_SIT_60491","ui":"","pu":"jlgreen2","pi":1342450,"up":["Checking **2971","Money Market **1322"],"pp":["Checking **2971","Savings **4338","CLOSED - Money Market **1322"],"c":"GAA5360","su":"","sp":"***-**-8604","e":[],"le":"stg"},{"u":"DONTUSE_STG_SIT_76830","uu":"DONTUSE_STG_SIT_76830","ui":"","pu":"lwatsondesign77","pi":290675,"up":["CLOSED - Checking **7083"],"pp":[],"c":"AAB7981","su":"","sp":"***-**-7295","e":[],"le":"stg"},{"u":"DONTUSE_STG_SIT_58246","uu":"DONTUSE_STG_SIT_58246","ui":"","pu":"kevinregan2932","pi":249969,"up":["Checking **0021","Checking **6770","Savings **0039"],"pp":["Checking **0021","Savings **0039","Business Checking **6770"],"c":"RAE2612","su":"","sp":"***-**-8722","e":[],"le":"stg"},{"u":"DONTUSE_STG_SIT_31975","uu":"DONTUSE_STG_SIT_31975","ui":"","pu":"placeholder426012","pi":426012,"up":[],"pp":[],"c":"BAG5548","su":"","sp":"***-**-2175","e":[],"le":"stg"},{"u":"DONTUSE_STG_SIT_84763","uu":"DONTUSE_STG_SIT_84763","ui":"","pu":"BrookeAnneH","pi":425570,"up":["Savings **5498"],"pp":["Savings **5498"],"c":"HAE4460","su":"","sp":"***-**-8049","e":[],"le":"stg"},{"u":"DONTUSE_STG_SIT_29037","uu":"DONTUSE_STG_SIT_29037","ui":"","pu":"yungbandoy","pi":351390,"up":["Checking **1752","Checking **2545","Savings **1760"],"pp":["Checking **1752","Checking **2545","Savings **1760"],"c":"BAG5952","su":"","sp":"***-**-0270","e":[],"le":"stg"},{"u":"DONTUSE_SIT_76324_QA","uu":"DONTUSE_SIT_76324_QA","ui":"","pu":"sammyabdelazim1","pi":1785536,"up":["Checking **6239","Checking **6254","Checking **0172","Money Market **6247","Savings **8755","Savings **6221","Mortgage **8876","HELOC **2865","Self-Directed Trading - Axos Invest - 6034"],"pp":["Savings **8755"],"c":"AAE9363","su":"","sp":"***-**-7669","e":[],"le":"qa"},{"u":"DONTUSE_McLovinSIT_68070_QA","uu":"DONTUSE_McLovinSIT_68070_QA","ui":"","pu":"Pedroty","pi":2760676,"up":["Checking **4953","Checking **4961","Checking **5869","Checking **5836","Savings **5927","Savings **0788","Savings **8608","Savings **5935"],"pp":["Checking **4075","Savings **7855","Savings **4067"],"c":"SAR8849","su":"","sp":"***-**-3892","e":[],"le":"qa"},{"u":"DONTUSE_McLovinSIT_16274_QA","uu":"DONTUSE_McLovinSIT_16274_QA","ui":"","pu":"placeholder2771591","pi":2771591,"up":["Checking **4979","Checking **4987","Checking **6966","Savings **6982","CD **2019","Mortgage **8876","HELOC **2865"],"pp":["CLOSED - Checking **3437","CLOSED - Savings **3429"],"c":"PAJ0275","su":"","sp":"***-**-2906","e":[],"le":"qa"},{"u":"DONTUSE_SIT_15489_QA","uu":"DONTUSE_SIT_15489_QA","ui":"","pu":"Kadenchamplin","pi":1677308,"up":["Auto Loan **9662","Joint - Bernet Wealth Management - 8717","Self-Directed Trading - Axos Invest - 7950"],"pp":["Auto Loan **9662"],"c":"CAJ9980","su":"","sp":"***-**-7891","e":[],"le":"qa"},{"u":"PuroApi_FierroAlv_50963","uu":"PuroApi_FierroAlv_50963","ui":101205676,"pu":"jbarrett286","pi":2733366,"up":["Checking **4969","Checking **4977","Money Market **5248","Savings **5180","Mortgage **8876","Personal Loan **4613","Individual - Castilleja Financial Services - 7731","IRA - Castilleja Financial Services - 7737","Roth IRA - Castilleja Financial Services - 7739","Self-Directed Trading - Axos Invest - 2344","Self-Directed Trading - Axos Invest - 5040","Self-Directed Trading - Axos Invest - 7145","Self-Directed Trading - Axos Invest - 7162","Self-Directed Trading - Axos Invest - 9041"],"pp":["CLOSED - Checking **6037"],"c":"BAP2132","su":"261555994","sp":"***-**-5084","e":[],"le":"uat"},{"u":"PuroApi_FierroAlv_85533","uu":"PuroApi_FierroAlv_85533","ui":101205689,"pu":"jdmitch83","pi":2730215,"up":["Checking **0451","Checking **5107","Checking **5123","Savings **5354","Mortgage **8876","SBLOC **0804","Individual - Castilleja Financial Services - 7766","Self-Directed Trading - Axos Invest - 1212"],"pp":["Savings **1935"],"c":"MAR2689","su":"693686417","sp":"***-**-5272","e":[],"le":"uat"},{"u":"PuroApi_FierroAlv_36599","uu":"PuroApi_FierroAlv_36599","ui":101205688,"pu":"haleyphelps","pi":2770827,"up":["Checking **5081","Checking **5099","Mortgage **8876","HELOC **2865","Individual - Castilleja Financial Services - 7768","Self-Directed Trading - Axos Invest - 2628"],"pp":["CLOSED - Savings **6094"],"c":"PAJ0570","su":"845191539","sp":"***-**-3121","e":[],"le":"uat"},{"u":"PuroApi_FierroAlv_75931","uu":"PuroApi_FierroAlv_75931","ui":101205677,"pu":"Sus@nCI56","pi":2772677,"up":["Checking **4985","Checking **4993","Money Market **7280","Savings **7355","Mortgage **8876","Individual - Castilleja Financial Services - 2847","Individual - Castilleja Financial Services - 2846","Individual - Castilleja Financial Services - 2844","Self-Directed Trading - Axos Invest - 4687"],"pp":["Individual - Bullseye Investment Management, LLC - 9120","IRA - Bullseye Investment Management, LLC - 9117","ROTH IRA - Bullseye Investment Management, LLC - 9119"],"c":"AAH0267","su":"287455225","sp":"***-**-7651","e":[],"le":"uat"},{"u":"PuroApi_FierroAlv_32320","uu":"PuroApi_FierroAlv_32320","ui":101205679,"pu":"RondaAkers","pi":2772678,"up":["Checking **5008","CLOSED - Checking **5016"],"pp":["IRA - Bullseye Investment Management, LLC - 9295"],"c":"AAH0268","su":"244822476","sp":"***-**-4467","e":[],"le":"uat"},{"u":"PuroApi_FierroAlv_12493","uu":"PuroApi_FierroAlv_12493","ui":101205682,"pu":"Texdan25","pi":2763311,"up":["Checking **5024","CLOSED - Checking **5032","Individual - Castilleja Financial Services - 2848"],"pp":["CLOSED - Savings **7805"],"c":"SAR8944","su":"364807940","sp":"***-**-5093","e":[],"le":"uat"},{"u":"PuroApi_FierroAlv_23001","uu":"PuroApi_FierroAlv_23001","ui":101205684,"pu":"PeachyAquino","pi":2772670,"up":["Checking **5040","CLOSED - Checking **5057"],"pp":["Savings **9467"],"c":"AAH0269","su":"420803738","sp":"***-**-4480","e":[],"le":"uat"},{"u":"PuroApi_FierroAlv_51558","uu":"PuroApi_FierroAlv_51558","ui":101205685,"pu":"Brookeartz325","pi":2772030,"up":["Checking **5065","CLOSED - Checking **5073"],"pp":["CLOSED - Checking **9855"],"c":"AAH0270","su":"333124083","sp":"***-**-4658","e":[],"le":"uat"},{"u":"PuroApi_FierroAlv_77212","uu":"PuroApi_FierroAlv_77212","ui":101205692,"pu":"Natmon217","pi":2730235,"up":["Checking **5149","CLOSED - Checking **5156"],"pp":["Savings **2057"],"c":"MAR2690","su":"557322772","sp":"***-**-2318","e":[],"le":"uat"},{"u":"PuroApi_FierroAlv_77182","uu":"PuroApi_FierroAlv_77182","ui":101205696,"pu":"kimberly.lin","pi":3057639,"up":["Checking **5164","CLOSED - Checking **5172"],"pp":["Checking **2818","Savings **2800","Savings **2784"],"c":"LAJ6116","su":"332498942","sp":"***-**-3533","e":[],"le":"uat"},{"u":"PuroApi_FierroAlv_93383","uu":"PuroApi_FierroAlv_93383","ui":101205699,"pu":"placeholder2733398","pi":2733398,"up":["Checking **5198","CLOSED - Checking **5206","Self-Directed Trading - Axos Invest - 1001","Self-Directed Trading - Axos Invest - 1570","Self-Directed Trading - Axos Invest - 2568","Self-Directed Trading - Axos Invest - 4130","Self-Directed Trading - Axos Invest - 7186","Self-Directed Trading - Axos Invest - 8749"],"pp":["IRA - Flexible Plan Investments, Ltd. - 5910"],"c":"BAP2133","su":"744388280","sp":"***-**-2592","e":[],"le":"uat"},{"u":"PuroApi_FierroAlv_77733","uu":"PuroApi_FierroAlv_77733","ui":101205701,"pu":"Cmazin1749","pi":2735720,"up":["Checking **5214","CLOSED - Checking **5222","Individual - Castilleja Financial Services - 1416","Individual - Castilleja Financial Services - 1427","Individual - Castilleja Financial Services - 1429"],"pp":["Savings **2222","CLOSED - Checking **2370","CLOSED - Money Market **4509","CLOSED - Savings **2362"],"c":"MAR2692","su":"385734413","sp":"***-**-1469","e":[],"le":"uat"},{"u":"Trakas_PuroSandoval_38186","uu":"Trakas_PuroSandoval_38186","ui":101211313,"pu":"placeholder2792056","pi":2792056,"up":["Checking **6922"],"pp":["Minor Custodial - FireSky Financial, Inc - 0784"],"c":"PAJ0685","su":"677785876","sp":"***-**-8891","e":[],"le":"uat"},{"u":"PuroApi_FierroAlv_50963_QA","uu":"PuroApi_FierroAlv_50963_QA","ui":"","pu":"jbarrett286","pi":2733366,"up":["Checking **4969","Checking **4977","Checking **5248","Savings **5180","Mortgage **8876","Personal Loan **4613"],"pp":["CLOSED - Checking **6037"],"c":"BAP2132","su":"","sp":"***-**-5084","e":[],"le":"qa"},{"u":"PuroApi_FierroAlv_85533_QA","uu":"PuroApi_FierroAlv_85533_QA","ui":"","pu":"jdmitch83","pi":2730215,"up":["Checking **0451","Checking **5107","Checking **5123","Savings **5354","Mortgage **8876","SBLOC **0804"],"pp":["Savings **1935"],"c":"MAR2689","su":"","sp":"***-**-5272","e":[],"le":"qa"},{"u":"FcAxosGoats_API60008","uu":"FcAxosGoats_API60008","ui":"","pu":"choleking17","pi":2662196,"up":["Checking **7567"],"pp":["Checking **3153","Savings **3161"],"c":"KAH2914","su":"","sp":"***-**-2142","e":[],"le":"qa"},{"u":"DONTUSE_McLovinSIT_52186_QA","uu":"DONTUSE_McLovinSIT_52186_QA","ui":"","pu":"Mabelay","pi":2756084,"up":["Checking **4524","Checking **4532","Checking **4540","Checking **5760","Checking **5778","Checking **5786","Savings **5752","Savings **5794","CLOSED - Checking **4565"],"pp":["CLOSED - Checking **0639","CLOSED - Money Market **4803","CLOSED - Checking **4811","CLOSED - Savings **0621"],"c":"RAJ2966","su":"","sp":"***-**-6926","e":[],"le":"qa"},{"u":"FcAxosGoats_API57404","uu":"FcAxosGoats_API57404","ui":"","pu":"Lisach3","pi":2733839,"up":["Checking **7526"],"pp":["Savings **9442"],"c":"NAE1516","su":"","sp":"***-**-4825","e":[],"le":"qa"},{"u":"SanityUFBTestim2_QA","uu":"SanityUFBTestim2_QA","ui":"","pu":"mangesh.pawar","pi":133243,"up":["Checking **6140","Money Market **7092","Savings **2145","Savings **7100","Savings **5512","Mortgage **8876"],"pp":["Checking **6140","Savings **2145","Savings **5512"],"c":"PAA3258","su":"","sp":"***-**-3341","e":[],"le":"qa"},{"u":"SanityUFBTestim_QA","uu":"SanityUFBTestim_QA","ui":"","pu":"ZWRbc47m","pi":136363,"up":["Checking **1686","Checking **3773","Checking **5778","Money Market **8632","Savings **7295","Mortgage **8876","CLOSED - Checking **0838"],"pp":["Checking **1686","Checking **3773","Savings **7295"],"c":"CAA9156","su":"","sp":"***-**-7981","e":[],"le":"qa"},{"u":"PuroApi_FierroAlv_77733_QA","uu":"PuroApi_FierroAlv_77733_QA","ui":"","pu":"Cmazin1749","pi":2735720,"up":["Checking **5214","CLOSED - Checking **5222"],"pp":["Savings **2222","CLOSED - Checking **2370","CLOSED - Money Market **4509","CLOSED - Savings **2362"],"c":"MAR2692","su":"","sp":"***-**-1469","e":[],"le":"qa"},{"u":"dontuse_sit_68070_stg","uu":"dontuse_sit_68070_stg","ui":"","pu":"Pedroty","pi":2760676,"up":["Checking **4953","Checking **4961","Checking **5836","Checking **5869","Savings **0788","Savings **5927","Savings **5935"],"pp":["Checking **4075","Savings **7855","Savings **4067"],"c":"SAR8849","su":"","sp":"***-**-3892","e":[],"le":"stg"},{"u":"dontuse_sit_16274_stg","uu":"dontuse_sit_16274_stg","ui":"","pu":"placeholder2771591","pi":2771591,"up":["Checking **4979","Checking **4987","Checking **6966","Savings **6982","CD **2019","Mortgage **8876","HELOC **2865"],"pp":["CLOSED - Checking **3437","CLOSED - Savings **3429"],"c":"PAJ0275","su":"","sp":"***-**-2906","e":[],"le":"stg"},{"u":"dontuse_sit_96012_stg","uu":"dontuse_sit_96012_stg","ui":"","pu":"placeholder2734625","pi":2734625,"up":["Checking **5075","Checking **5091","Mortgage **8876","HELOC **2865","Personal Loan **4613","SBLOC **0804","Marine Loans **3588","CLOSED - Auto Loan **5264"],"pp":["IRA - Portfolio Medics, LLC - 6094"],"c":"MAR2604","su":"","sp":"***-**-4880","e":[],"le":"stg"},{"u":"dontuse_sit_61421_stg","uu":"dontuse_sit_61421_stg","ui":"","pu":"placeholder2761171","pi":2761171,"up":["Checking **4763","CLOSED - Checking **4771"],"pp":["Savings **7798","Savings **7234","Savings **6598"],"c":"SAR8848","su":"","sp":"***-**-3866","e":[],"le":"stg"},{"u":"SanityUFBTestim2_STG","uu":"SanityUFBTestim2_stg","ui":"","pu":"mangesh.pawar","pi":133243,"up":["Checking **6140","Money Market **7092","Savings **2145","Savings **7100","Savings **5512","Mortgage **8876"],"pp":["Checking **6140","Savings **2145","Savings **5512"],"c":"PAA3258","su":"","sp":"***-**-3341","e":[],"le":"stg"},{"u":"Trakas_PuroSandoval_96435_STG","uu":"Trakas_PuroSandoval_96435_stg","ui":"","pu":"Faithaaliyah1","pi":2743026,"up":["Checking **1748"],"pp":["CLOSED - Savings **8805"],"c":"MAR2940","su":"","sp":"***-**-3239","e":[],"le":"stg"},{"u":"QCoE_McLovin_84391","uu":"QCoE_McLovin_84391","ui":101311008,"pu":"Chris_m121","pi":2810990,"up":["Checking **7934","Checking **8031","Savings **8049"],"pp":[],"c":"MAR5799","su":"376183614","sp":"***-**-3678","e":[],"le":"uat"},{"u":"QCoE_McLovin_59939","uu":"QCoE_McLovin_59939","ui":101311030,"pu":"Booboolexi53","pi":1370423,"up":["Checking **7967"],"pp":["CLOSED - Checking **2572"],"c":"VAC7092","su":"345708851","sp":"***-**-8475","e":[],"le":"uat"},{"u":"QCoE_McLovin_68072","uu":"QCoE_McLovin_68072","ui":101311222,"pu":"placeholder2777468","pi":2777468,"up":["Checking **8171"],"pp":["Savings **3580"],"c":"BAP3878","su":"163825604","sp":"***-**-8674","e":[],"le":"uat"},{"u":"QCoE_McLovin_35913","uu":"QCoE_McLovin_35913","ui":101311221,"pu":"placeholder2777422","pi":2777422,"up":["Checking **8163"],"pp":[],"c":"BAP3877","su":"667134730","sp":"***-**-4974","e":[],"le":"uat"},{"u":"QCoE_McLovin_76015","uu":"QCoE_McLovin_76015","ui":101311220,"pu":"snaxmeyers","pi":2811069,"up":["Checking **8155"],"pp":["CLOSED - Savings **8262"],"c":"MAR5802","su":"411617468","sp":"***-**-8430","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_33420","uu":"DONTUSE_McLovinSIT_33420","ui":101194263,"pu":"ReeceeHarley","pi":2791137,"up":["Checking **4508","Savings **5745","CLOSED - Checking **4516","Roth IRA - Castilleja Financial Services - 6816","IRA - Castilleja Financial Services - 6819","Individual - Castilleja Financial Services - 6821","Self-Directed Trading - Axos Invest - 4919","Self-Directed Trading - Axos Invest - 7536"],"pp":["Savings **8734","CLOSED - Checking **2439"],"c":"WAJ2291","su":"331683567","sp":"***-**-6238","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_52186","uu":"DONTUSE_McLovinSIT_52186","ui":101194265,"pu":"Mabelay","pi":2756084,"up":["Checking **4524","Checking **4532","Checking **4540","Checking **5760","Checking **5786","Money Market **5778","Savings **5752","Savings **5794","CLOSED - Checking **4565"],"pp":["CLOSED - Checking **0639","CLOSED - Money Market **4803","CLOSED - Checking **4811","CLOSED - Savings **0621"],"c":"RAJ2966","su":"358426386","sp":"***-**-6926","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_14576","uu":"DONTUSE_McLovinSIT_14576","ui":101194267,"pu":"dandretrish@yahoo.com","pi":2768527,"up":["Checking **4557"],"pp":["Savings **3155"],"c":"PAJ0273","su":"600492154","sp":"***-**-4399","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_20377","uu":"DONTUSE_McLovinSIT_20377","ui":101194268,"pu":"placeholder2761177","pi":2761177,"up":["Checking **4573","CD **1912","CD **1920","CLOSED - Checking **4581"],"pp":["Business Checking **6130"],"c":"SAR8845","su":"550554697","sp":"***-**-9048","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_98313","uu":"DONTUSE_McLovinSIT_98313","ui":101194269,"pu":"placeholder2737254","pi":2737254,"up":["Checking **4599","Checking **5810","Savings **5802","Mortgage **8876","CLOSED - Checking **4607","Individual - Castilleja Financial Services - 4116","Self-Directed Trading - Axos Invest - 2598","Self-Directed Trading - Axos Invest - 8469"],"pp":["ROTH IRA - Flexible Plan Investments, Ltd. - 6282"],"c":"KAH2899","su":"612607319","sp":"***-**-0491","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_68070","uu":"DONTUSE_McLovinSIT_68070","ui":101194338,"pu":"Pedroty","pi":2760676,"up":["Checking **4953","Checking **4961","Checking **5869","Money Market **5836","Savings **0788","Savings **8608","Savings **5927","Savings **5935","Individual - Castilleja Financial Services - 0683"],"pp":["Checking **4075","Savings **7855","Savings **4067"],"c":"SAR8849","su":"321518525","sp":"***-**-3892","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_23654","uu":"DONTUSE_McLovinSIT_23654","ui":101194342,"pu":"dglezer04","pi":2758240,"up":["Checking **4995","Savings **7105","Business Checking **3312","Business Savings **6362","Individual - Castilleja Financial Services - 4236"],"pp":["Savings **6015"],"c":"GAJ0355","su":"547385282","sp":"***-**-1507","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_31402","uu":"DONTUSE_McLovinSIT_31402","ui":101194344,"pu":"gavinvanderbeek@gmail.com","pi":2734723,"up":["Checking **5018","Checking **7089","Money Market **7097","CLOSED - Checking **5026"],"pp":["ROTH IRA - Matson Money, Inc. - 6015","IRA - Matson Money, Inc. - 6013"],"c":"VAC6615","su":"262486395","sp":"***-**-5452","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_60135","uu":"DONTUSE_McLovinSIT_60135","ui":101194348,"pu":"ccrmil@msn.com","pi":2734624,"up":["Checking **5034","Checking **5067","Checking **7485","Checking **7501","Savings **7519","Self-Directed Trading - Axos Invest - 0748","Self-Directed Trading - Axos Invest - 5478","Self-Directed Trading - Axos Invest - 5859"],"pp":["IRA - Portfolio Medics, LLC - 6076"],"c":"MAR2603","su":"751775755","sp":"***-**-4878","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_96012","uu":"DONTUSE_McLovinSIT_96012","ui":101194350,"pu":"placeholder2734625","pi":2734625,"up":["Checking **5075","Checking **5091","Savings **8608","Mortgage **8876","HELOC **2865","Personal Loan **4613","SBLOC **0804","Marine Loans **3588","CLOSED - Auto Loan **5264"],"pp":["IRA - Portfolio Medics, LLC - 6094"],"c":"MAR2604","su":"445238187","sp":"***-**-4880","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_22832","uu":"DONTUSE_McLovinSIT_22832","ui":101194323,"pu":"placeholder2734722","pi":2734722,"up":["Checking **4805","Checking **4813","Checking **7568","Money Market **7642","Savings **7667","CD **2092","Mortgage **8876","HELOC **2865","Personal Loan **4613","SBLOC **0804","Marine Loans **3588","CLOSED - Auto Loan **5264","Self-Directed Trading - Axos Invest - 2560"],"pp":["IRA - Matson Money, Inc. - 6012"],"c":"VAC6614","su":"882537615","sp":"***-**-1214","e":[],"le":"uat"},{"u":"DONTUSE_McLovinSIT_75147","uu":"DONTUSE_McLovinSIT_75147","ui":101194325,"pu":"placeholder2746813","pi":2746813,"up":["Checking **4821","CLOSED - Checking **4839"],"pp":["SIMPLE IRA - Interactive Financial Advisors - 3026"],"c":"EAD9379","su":"372283708","sp":"***-**-7953","e":[],"le":"uat"},{"u":"FcAxosGoats_API39589","uu":"FcAxosGoats_API39589","ui":101196755,"pu":"tpena2003","pi":2771888,"up":["Checking **9523"],"pp":["Savings **5457"],"c":"PAJ0292","su":"643618731","sp":"***-**-4280","e":[],"le":"uat"},{"u":"Trakas_PuroSandoval_18555","uu":"Trakas_PuroSandoval_18555","ui":101212513,"pu":"lucelo1991","pi":2772718,"up":["Checking **9561"],"pp":["Savings **7025"],"c":"PAJ0690","su":"489142647","sp":"***-**-7670","e":[],"le":"uat"},{"u":"FcAxosGoats_API71702","uu":"FcAxosGoats_API71702","ui":101196881,"pu":"dannielapena","pi":2772002,"up":["Checking **9622","Checking **0067","Checking **0083","Checking **0109","Money Market **0059","Savings **0091"],"pp":["Savings **5721"],"c":"PAJ0293","su":"744461999","sp":"***-**-1596","e":[],"le":"uat"},{"u":"DONTUSE_SIT_76324","uu":"DONTUSE_SIT_76324","ui":101179198,"pu":"sammyabdelazim1","pi":1785536,"up":["Checking **6239","Checking **6254","Checking **0172","Money Market **6247","Savings **8755","Savings **6221","Mortgage **8876","HELOC **2865","Individual - Castilleja Financial Services - 0680"],"pp":["Savings **8755"],"c":"AAE9363","su":"379177669","sp":"***-**-7669","e":[],"le":"uat"},{"u":"DONTUSE_SIT_81005","uu":"DONTUSE_SIT_81005","ui":101002095,"pu":"Jason+Amanda","pi":1698176,"up":["Checking **7794","Checking **0346","Savings **1829","Mortgage **8876"],"pp":["Money Market **7794","Money Market **3788","Savings **1829","Savings **1145","CLOSED - Money Market **0346","CLOSED - Checking **3796"],"c":"KAE6996","su":"498981456","sp":"***-**-1456","e":[],"le":"uat"},{"u":"DONTUSE_SIT_12846","uu":"DONTUSE_SIT_12846","ui":100678809,"pu":"babyg00","pi":1559502,"up":["Money Market **0681","Savings **0410","Savings **5429","Mortgage **8876","HELOC **2865","CLOSED - Money Market **5258"],"pp":["Money Market **0681","CLOSED - Savings **0410","CLOSED - Savings **5429"],"c":"VAB5975","su":"321842609","sp":"***-**-2609","e":[],"le":"uat"},{"u":"DONTUSE_SIT_56789","uu":"DONTUSE_SIT_56789","ui":101001984,"pu":"qwang88","pi":1859369,"up":["Money Market **3837","Savings **5198"],"pp":["Money Market **3837","Savings **5198"],"c":"WAG4768","su":"245859829","sp":"***-**-9829","e":[],"le":"uat"},{"u":"DONTUSE_STG_SIT_48327","uu":"DONTUSE_STG_SIT_48327","ui":"","pu":"Raging50","pi":2792,"up":["Checking **8586","Checking **8061","Savings **5726","Savings **3872","Savings **4979","CLOSED - Checking **3765"],"pp":["Checking **8586","Checking **8061","Savings **5726","Savings **3872","Savings **4979"],"c":"MAA8908","su":"","sp":"***-**-1535","e":[],"le":"stg"},{"u":"SanityUFBTestim_STG","uu":"","ui":"","pu":"","pi":"","up":[],"pp":[],"c":"","su":"","sp":"","e":["Not found in UAT, QA, or STG"],"le":""},{"u":"PuroApi_FierroAlv_77733_STG","uu":"","ui":"","pu":"","pi":"","up":[],"pp":[],"c":"","su":"","sp":"","e":["Not found in UAT, QA, or STG"],"le":""},{"u":"barnett","uu":"barnett","ui":100852436,"pu":"kbarnett","pi":1550011,"up":["Checking **6449","Checking **6464","Savings **5210","Self-Directed Trading - Axos Invest - 4728"],"pp":["Savings **5210"],"c":"BAJ9367","su":"484119141","sp":"***-**-9141","e":[],"le":"uat"},{"u":"jmoreno01","uu":"jmoreno01","ui":100347391,"pu":"cam93elcid","pi":1306853,"up":["Checking **0499","Money Market **4410","Savings **6559","Auto Loan **2054","Joint - Hagg Asset Management - 9773","Self-Directed Trading - Axos Invest - 1530","Self-Directed Trading - Axos Invest - 2003","Self-Directed Trading - Axos Invest - 2075","Self-Directed Trading - Axos Invest - 3548","Self-Directed Trading - Axos Invest - 4253","Self-Directed Trading - Axos Invest - 6377","Self-Directed Trading - Axos Invest - 8242","Self-Directed Trading - Axos Invest - 9132"],"pp":["Auto Loan **2054"],"c":"MAK9655","su":"193741175","sp":"***-**-1175","e":[],"le":"uat"},{"u":"terrymei","uu":"terrymei","ui":100852441,"pu":"tmeinecke","pi":1535648,"up":["Individual - Castilleja Financial Services - 2953"],"pp":[],"c":"MAL6241","su":"241354677","sp":"***-**-4677","e":[],"le":"uat"},{"u":"Robo-combination-lib1","uu":"Robo-combination-lib1","ui":100847015,"pu":"placeholder1547849","pi":1547849,"up":["Checking **2984","Savings **2976","CLOSED - Auto Loan **3715","Individual - Castilleja Financial Services - 2954","Self-Directed Trading - Axos Invest - 0404","Self-Directed Trading - Axos Invest - 9254"],"pp":["CLOSED - Auto Loan **3715"],"c":"RAF9924","su":"366048966","sp":"***-**-8966","e":[],"le":"uat"},{"u":"Robo-combination-lib2","uu":"Robo-combination-lib2","ui":100847022,"pu":"Martinsbrother","pi":2376066,"up":["Savings **7731","Individual - Castilleja Financial Services - 2955"],"pp":["Savings **7731"],"c":"SAQ1959","su":"329500962","sp":"***-**-0962","e":[],"le":"uat"},{"u":"RafaelHarris","uu":"RafaelHarris","ui":100848128,"pu":"Jeanne282928","pi":1519245,"up":["CLOSED - Checking **0025","CLOSED - Savings **0033","Individual - Castilleja Financial Services - 2957","Individual - Castilleja Financial Services - 9882"],"pp":[],"c":"HAH1793","su":"043668145","sp":"***-**-8145","e":[],"le":"uat"},{"u":"CeciliaMiranda","uu":"CeciliaMiranda","ui":100848139,"pu":"caseg488","pi":2375319,"up":["Checking **3070","Savings **3088","CLOSED - Checking **9257","Individual - Castilleja Financial Services - 2958","Individual - Castilleja Financial Services - 5878","IRA - Castilleja Financial Services - 6229","IRA - Castilleja Financial Services - 0784","IRA - Castilleja Financial Services - 0781","Individual - Castilleja Financial Services - 0780","Individual - Castilleja Financial Services - 2282","Individual - Castilleja Financial Services - 2294","Individual - Castilleja Financial Services - 2525"],"pp":["Checking **6215","Savings **6207"],"c":"SAQ1980","su":"625217785","sp":"***-**-7785","e":[],"le":"uat"},{"u":"GinaWalker","uu":"GinaWalker","ui":100848152,"pu":"mwentrcek","pi":1737628,"up":["Savings **5267"],"pp":["Savings **5267"],"c":"WAG1828","su":"467519257","sp":"***-**-9257","e":[],"le":"uat"},{"u":"MarioWells","uu":"MarioWells","ui":100848181,"pu":"fairfaxwright","pi":1737482,"up":["Savings **5606","Individual - Castilleja Financial Services - 2960"],"pp":["Savings **5606"],"c":"WAG1829","su":"619286307","sp":"***-**-6307","e":[],"le":"uat"},{"u":"MilesJames","uu":"MilesJames","ui":100848624,"pu":"placeholder1491881","pi":1491881,"up":["CLOSED - Business Checking **5122"],"pp":["CLOSED - Business Checking **5122"],"c":"JAE2619","su":"881799460","sp":"***-**-9460","e":[],"le":"uat"},{"u":"KatrinaWood","uu":"KatrinaWood","ui":100848631,"pu":"Pastmyshades1326","pi":1737101,"up":["Individual - Castilleja Financial Services - 2962"],"pp":[],"c":"WAG1845","su":"053724254","sp":"***-**-4254","e":[],"le":"uat"},{"u":"AaliyahMccoy","uu":"AaliyahMccoy","ui":100848642,"pu":"mtmoore64","pi":1546879,"up":["Savings **1160","Individual - Castilleja Financial Services - 2963"],"pp":["CLOSED - Savings **1160"],"c":"MAL6202","su":"299482033","sp":"***-**-2033","e":[],"le":"uat"},{"u":"Danayel","uu":"Danayel","ui":100320485,"pu":"placeholder1313159","pi":1313159,"up":["CLOSED - Checking **1793","Self-Directed Trading - Axos Invest - 1099","Self-Directed Trading - Axos Invest - 5592"],"pp":[],"c":"JAE0808","su":"306715052","sp":"***-**-5052","e":[],"le":"uat"},{"u":"ramay-uat-lib","uu":"ramay-uat-lib","ui":100891803,"pu":"RCRasmussen90","pi":2716018,"up":["Checking **2296","Joint - Castilleja Financial Services - 1229","Self-Directed Trading - Axos Invest - 8665"],"pp":[],"c":"RAJ1977","su":"035778786","sp":"***-**-8391","e":[],"le":"uat"},{"u":"THOMASONEILL-UAT-LIB","uu":"THOMASONEILL-UAT-LIB","ui":100891857,"pu":"travellone16","pi":2715404,"up":["Checking **9886","IRA - Arneson & Associates, LLC - 1239","Joint - Castilleja Financial Services - 1240","Individual - Castilleja Financial Services - 6161","Individual - Castilleja Financial Services - 6774","Qualified Plan - Castilleja Financial Services - 9836","Qualified Plan - Castilleja Financial Services - 9835","403b ROTH - Castilleja Financial Services - 9834","403b ROTH - Castilleja Financial Services - 9833"],"pp":["CLOSED - Checking **6729"],"c":"SAR6831","su":"459556424","sp":"***-**-5453","e":["PROD Investment: Request to https://udbadminapi.mybofi.local/api/olb/axosclearing/travellone16/accounts failed: fetch failed"],"le":"uat"},{"u":"newtestuser199","uu":"newtestuser199","ui":100891862,"pu":"icasiano13","pi":2717093,"up":["Joint - Castilleja Financial Services - 1240"],"pp":["Savings **5101","CLOSED - Savings **3384"],"c":"CAO1495","su":"446452949","sp":"***-**-2428","e":[],"le":"uat"},{"u":"jeans-uat-lib","uu":"jeans-uat-lib","ui":100891871,"pu":"klhunter26","pi":2714729,"up":["Checking **5527","C&I **1324","SBLOC **0861","IRA - Castilleja Financial Services - 1242","Individual - Castilleja Financial Services - 4287"],"pp":["Savings **4147"],"c":"HAL3171","su":"449228800","sp":"***-**-4036","e":[],"le":"uat"},{"u":"KARALEE-uat-lib","uu":"KARALEE-uat-lib","ui":100891875,"pu":"Auzzy1006","pi":"","up":["Checking **6537","Beneficiary IRA - Castilleja Financial Services - 1245","Beneficiary IRA - Castilleja Financial Services - 9710","403B - Castilleja Financial Services - 9714","403B - Castilleja Financial Services - 9715","Outside QP - Castilleja Financial Services - 9712","Outside QP - Castilleja Financial Services - 9711"],"pp":["Savings **0021","CLOSED - Money Market **9435"],"c":"FAG3142","su":"020657239","sp":"","e":[],"le":"uat"},{"u":"LEBLANC-uat-lib","uu":"LEBLANC-uat-lib","ui":100891873,"pu":"sferguson832","pi":2717271,"up":["Checking **9160","Checking **8571","Savings **8589","Savings **9178","IRA - Castilleja Financial Services - 1244"],"pp":["CLOSED - Checking **6992"],"c":"SAR6833","su":"489888720","sp":"***-**-0581","e":[],"le":"uat"},{"u":"washburn","uu":"washburn","ui":100924090,"pu":"placeholder2740583","pi":2740583,"up":["Roth IRA - Castilleja Financial Services - 7025"],"pp":[],"c":"WAJ1224","su":"383378658","sp":"***-**-7154","e":[],"le":"uat"},{"u":"kramer","uu":"kramer","ui":100927879,"pu":"placeholder2720359","pi":2720359,"up":["Checking **3544","Checking **3551","Overdraft Line of Credit **3544","Overdraft Line of Credit **3551","Beneficiary IRA - Castilleja Financial Services - 7026"],"pp":["IRA - Portfolio Medics, LLC - 0765"],"c":"KAH2514","su":"035748314","sp":"***-**-8489","e":[],"le":"uat"},{"u":"Sunday-uat-lib","uu":"Sunday-uat-lib","ui":100891824,"pu":"BreShonda","pi":2714709,"up":["Checking **8035","Money Market **8912","Savings **8904","Personal Loan **3165","Individual - Castilleja Financial Services - 1235","Individual - Castilleja Financial Services - 7079","SARSEP IRA - Castilleja Financial Services - 9853","SARSEP IRA - Castilleja Financial Services - 9852","Solo 401(k) - Castilleja Financial Services - 9849","Solo 401(k) - Castilleja Financial Services - 9847","Individual - Castilleja Financial Services - 2561","IRA - Castilleja Financial Services - 1236","Individual - Castilleja Financial Services - 2377","Individual - Reiber Investment Management LLC - 1190","Individual - Thews Investment Management - 6141","INDIVIDUAL - 1608","Self-Directed Trading - Axos Invest - 0657","Self-Directed Trading - Axos Invest - 3320"],"pp":["CLOSED - Checking **4022"],"c":"HAL3170","su":"080710312","sp":"***-**-3226","e":[],"le":"uat"},{"u":"VINITA-uat-lib","uu":"VINITA-uat-lib","ui":100891810,"pu":"StihlDragon","pi":2716904,"up":["Individual - Castilleja Financial Services - 1233","Individual - Castilleja Financial Services - 7074"],"pp":["Savings **4013"],"c":"WAJ0684","su":"472360799","sp":"***-**-5508","e":[],"le":"uat"},{"u":"ji-uat-lib","uu":"ji-uat-lib","ui":100891808,"pu":"E_Ash_2023","pi":2717196,"up":["Checking **0499","Money Market **5232","IRA - Savings **2981","Savings **6559","Mortgage **3661","C&I **9792","Overdraft Line of Credit **3767","Mortgage **4956","CLOSED - Checking **6472","IRA - Arneson & Associates, LLC - 1231","Individual - Castilleja Financial Services - 7072","IRA - Castilleja Financial Services - 4586","Individual - Castilleja Financial Services - 4596","Individual - Castilleja Financial Services - 4611","Individual - Thews Investment Management - 6140"],"pp":["Savings **6281","CLOSED - Checking **4196","CLOSED - Business Money Market **4204"],"c":"VAC6437","su":"066516239","sp":"***-**-7052","e":[],"le":"uat"},{"u":"NewbugtestRIA","uu":"NewbugtestRIA","ui":100927986,"pu":"placeholder2719626","pi":2719626,"up":["Checking **5536","Beneficiary Roth IRA - Castilleja Financial Services - 7028"],"pp":["Trust - PeachCap Tax & Advisory, LLC - 6273","IRA - PeachCap Tax & Advisory, LLC - 4089","ROTH IRA - PeachCap Tax & Advisory, LLC - 4340"],"c":"BAP1576","su":"389339675","sp":"***-**-5788","e":[],"le":"uat"},{"u":"Julia-uat-lib","uu":"Julia-uat-lib","ui":100929621,"pu":"ashpaner","pi":2673334,"up":["Checking **8546","Overdraft Line of Credit **8546","Individual - Castilleja Financial Services - 7030","Self-Directed Trading - Axos Invest - 9350"],"pp":["Savings **5162","Savings **8595"],"c":"SAR7473","su":"544798359","sp":"***-**-7721","e":[],"le":"uat"},{"u":"lisa-ria-uat","uu":"lisa-ria-uat","ui":100931106,"pu":"jvenuaaa5","pi":2723566,"up":["Checking **3556","Checking **7092","Checking **7993","Savings **3635","Savings **6284","Savings **0815","Savings **0898","Savings **0001","Overdraft Line of Credit **4872","Overdraft Line of Credit **6284","Overdraft Line of Credit **7092","Overdraft Line of Credit **7993","CLOSED - Checking **3726","CLOSED - Checking **4237","CLOSED - Checking **4872","CLOSED - Savings **5689","Company (Unincorporated) - Castilleja Financial Services - 7031","Individual - Castilleja Financial Services - 5579","Individual - Castilleja Financial Services - 5581","Roth IRA - Castilleja Financial Services - 5582","Roth IRA - Castilleja Financial Services - 5584","Company (Unincorporated) - Castilleja Financial Services - 5980","Company (Unincorporated) - Castilleja Financial Services - 5986","Company (Unincorporated) - Castilleja Financial Services - 5987","Company (Unincorporated) - Castilleja Financial Services - 5988"],"pp":["CLOSED - Checking **2808"],"c":"JAG0244","su":"597923129","sp":"***-**-2479","e":[],"le":"uat"},{"u":"SanityUserOnly","uu":"SanityUserOnly","ui":101064178,"pu":"dreckers","pi":2727063,"up":["Checking **3482","Checking **3267","Checking **3697","Money Market **3524","Savings **3490","Savings **3234","Savings **3275","Overdraft Line of Credit **3267","Overdraft Line of Credit **3697","Individual - Castilleja Financial Services - 8337","IRA - Castilleja Financial Services - 8338","SIMPLE IRA - Castilleja Financial Services - 9843","SIMPLE IRA - Castilleja Financial Services - 9842","SEP IRA - Castilleja Financial Services - 9840","SEP IRA - Castilleja Financial Services - 9838","Individual - Dimakopoulos Strategies Inc. - 2748","INDIVIDUAL - 4163","INDIVIDUAL - 5959","Self-Directed Trading - Axos Invest - 1719","Self-Directed Trading - Axos Invest - 3743","Self-Directed Trading - Axos Invest - 5945"],"pp":["CLOSED - Checking **1153"],"c":"RAJ2327","su":"556679424","sp":"***-**-2116","e":[],"le":"uat"},{"u":"Redd3-uat-lib","uu":"Redd3-uat-lib","ui":100707951,"pu":"Aredding3","pi":1500531,"up":["Checking **7608","Checking **0840","Checking **0264","Checking **0249","Checking **0256","Business Checking **6360","Savings **7616","Savings **0857","Overdraft Line of Credit **0249","Overdraft Line of Credit **0256","Overdraft Line of Credit **0264"],"pp":["Checking **0840","Checking **7608","Savings **0857","Savings **7616"],"c":"RAF9099","su":"292667377","sp":"***-**-7377","e":["UAT Investment: HTTP 500"],"le":"uat"},{"u":"brokawuatlib","uu":"BrokawUatLib","ui":100574119,"pu":"Thehappybyrd","pi":1425268,"up":["Savings **0119","CLOSED - Money Market **6485","Roth IRA - Bernet Wealth Management - 9612","IRA - Bernet Wealth Management - 2930","Individual - Castilleja Financial Services - 7833","Individual - Castilleja Financial Services - 4719","Individual - Castilleja Financial Services - 4849","Individual - Castilleja Financial Services - 4850","Individual - Castilleja Financial Services - 6215","Individual - Castilleja Financial Services - 0021","Individual - Castilleja Financial Services - 0066","Individual - Castilleja Financial Services - 0477","Individual - Castilleja Financial Services - 1487","Individual - Castilleja Financial Services - 2563","Individual - Castilleja Financial Services - 7771","Individual - Castilleja Financial Services - 7839","Individual - Castilleja Financial Services - 8125"],"pp":[],"c":"AAE4441","su":"140925822","sp":"***-**-5822","e":[],"le":"uat"},{"u":"ray-uat-negretty","uu":"Ray-uat-Negretty","ui":100771968,"pu":"Evelyn789","pi":1537170,"up":["Checking **7086","Checking **8035","Checking **5689","Checking **6074","Checking **9318","Checking **4663","Money Market **0223","Money Market **7962","Business Checking **1955","Savings **7094","Savings **9326","CLOSED - Checking **0166","Individual - Castilleja Financial Services - 5821","Individual - Castilleja Financial Services - 8606","Individual - Castilleja Financial Services - 8712","Individual - Castilleja Financial Services - 4135","Individual - Castilleja Financial Services - 4136","IRA - Castilleja Financial Services - 4391","IRA - Castilleja Financial Services - 4435","IRA - Castilleja Financial Services - 4443","IRA - Castilleja Financial Services - 4516","Individual - Castilleja Financial Services - 4526","IRA - Castilleja Financial Services - 4533","IRA - Negrette Strategies Inc. - 0687"],"pp":[],"c":"PAF7985","su":"253114524","sp":"***-**-4524","e":[],"le":"uat"},{"u":"syre-uat-lib","uu":"syre-uat-lib","ui":100575490,"pu":"jhonathan.urena@gmail.com","pi":1817430,"up":["Checking **7889","Savings **0119","Savings **3180","SBLOC **0212","Overdraft Line of Credit **7889","Individual - Castilleja Financial Services - 5806","Individual - Castilleja Financial Services - 2559","IRA - Hoffler Financial Group - 0199","Roth IRA - Hoffler Financial Group - 5134","Minor Custodial - Hoffler Financial Group - 1858","Minor Custodial - Hoffler Financial Group - 1887","Minor Custodial - Hoffler Financial Group - 1875","SEP IRA - Hoffler Financial Group - 6443","IRA - Hoffler Financial Group - 9849","Joint - Hoffler Financial Group - 9848","Individual - Hoffler Financial Group - 2566","Self-Directed Trading - Axos Invest - 7191"],"pp":["Savings **3180"],"c":"UAA3364","su":"598386160","sp":"***-**-6160","e":[],"le":"uat"},{"u":"rhodorauat","uu":"rhodorauat","ui":100559991,"pu":"szxBYuS0pjQ","pi":1359604,"up":["CLOSED - Checking **7108","Outside QP - Suebhongsang Strategies Inc. - 1749","Outside QP - Suebhongsang Strategies Inc. - 1766","IRA - Suebhongsang Strategies Inc. - 6450","Outside QP - Suebhongsang Strategies Inc. - 1755"],"pp":[],"c":"FAE0039","su":"202622253","sp":"***-**-2253","e":[],"le":"uat"},{"u":"melanie-uat-lib","uu":"melanie-uat-lib","ui":100578047,"pu":"GatorGirl369","pi":1497174,"up":["Checking **7509","CLOSED - Savings **7517","Qualified Plan - Bernet Wealth Management - 3333","Qualified Plan - Bernet Wealth Management - 5682","Qualified Plan - Bernet Wealth Management - 9303","Qualified Plan - Bernet Wealth Management - 4796"],"pp":["Checking **7509"],"c":"TAF3921","su":"590026652","sp":"***-**-6652","e":[],"le":"uat"},{"u":"LenetteUatLib","uu":"LenetteUatLib","ui":100574095,"pu":"chevysiphone19@gmail.com","pi":1370310,"up":["CLOSED - Checking **4068","Individual - Bernet Wealth Management - 2642","SEP IRA - Hoffler Financial Group - 5336","Limited Liability Part/Corp - Hoffler Financial Group - 0054"],"pp":[],"c":"DAF5098","su":"489110381","sp":"***-**-0381","e":[],"le":"uat"},{"u":"dabler-uat-lib","uu":"","ui":"","pu":"","pi":"","up":[],"pp":[],"c":"","su":"","sp":"","e":["Not found in UAT, QA, or STG"],"le":""},{"u":"UatNov1305","uu":"UatNov1305","ui":100558706,"pu":"placeholder1510671","pi":1510671,"up":["CLOSED - Checking **4434","IRA - Hoffler Financial Group - 5156","Trust - Hoffler Financial Group - 1589","SIMPLE IRA - Hoffler Financial Group - 6975","Solo 401(k) - Hoffler Financial Group - 8208","SUB - Hoffler Financial Group - 8958"],"pp":[],"c":"WAF7572","su":"234439231","sp":"***-**-9231","e":[],"le":"uat"},{"u":"Barnaby-uat-lib","uu":"Barnaby-uat-lib","ui":100578648,"pu":"johnniezea","pi":1371449,"up":["Savings **5468","Savings **1428","Savings **3183","CLOSED - Checking **6706","Qualified Plan - Amborn Capital Management, LLC - 5994","Solo 401(k) - Amborn Capital Management, LLC - 4739","Individual - Amborn Capital Management, LLC - 0584"],"pp":["CLOSED - Checking **6706","CLOSED - Savings **5468","CLOSED - Savings **1428","CLOSED - Savings **3183","Self-Directed Trading - Axos Invest - 1921"],"c":"ZAA6494","su":"769262373","sp":"***-**-2373","e":[],"le":"uat"},{"u":"lima-uat-lib","uu":"LIMA-uat-lib","ui":100558245,"pu":"Queenieliang","pi":1425436,"up":["Checking **0499","Checking **6604","Money Market **4410","Savings **6559","Savings **2482","Savings **0119","CD **6773","Overdraft Line of Credit **3767","Mortgage **5107","Mortgage **4956","C&I **0904","C&I **9792","C&I **9659","CLOSED - Business Checking **1318","IRA - Suebhongsang Strategies Inc. - 1839","Joint - Suebhongsang Strategies Inc. - 3017"],"pp":["Checking **6604","CLOSED - Mortgage **4956"],"c":"LAF6601","su":"000000000","sp":"***-**-0000","e":[],"le":"uat"},{"u":"motoharu-uat-lib","uu":"motoharu-uat-lib","ui":100579113,"pu":"NoahMadison","pi":1363187,"up":["Checking **0499","Money Market **4410","Savings **0119","Auto Loan **7854","Auto Loan **2468","CLOSED - Savings **6935"],"pp":["Checking **5475","Savings **5483"],"c":"MAL1125","su":"589939738","sp":"***-**-9738","e":["UAT Investment: Request to https://udbadminapi.uat.axosbank.com/api/olb/axosclearing/motoharu-uat-lib/accounts failed: The operation was aborted due to timeout"],"le":"uat"},{"u":"nicole-uat-lib","uu":"nicole-uat-lib","ui":100809836,"pu":"Ntabone5","pi":1737461,"up":["CLOSED - Checking **7595","Individual - Castilleja Financial Services - 5782","IRA - Dimakopoulos Strategies Inc. - 8152","Joint - Dimakopoulos Strategies Inc. - 8148"],"pp":["CLOSED - Checking **7595"],"c":"TAF6984","su":"613324240","sp":"***-**-4240","e":[],"le":"uat"},{"u":"Sheral-uat-lib","uu":"Sheral-uat-lib","ui":101140285,"pu":"clajarv33","pi":2748537,"up":["SIMPLE IRA - Sahajpal & Associates, LLC - 6744"],"pp":["Savings **8829"],"c":"AAG9679","su":"363863042","sp":"***-**-8577","e":[],"le":"uat"},{"u":"adrianmargin","uu":"AdrianMargin","ui":100140146,"pu":"Luis7649Mora","pi":998720,"up":["Checking **0499","Money Market **4410","Savings **0119","CLOSED - Savings **9770","Self-Directed Trading - Axos Invest - 0704","Self-Directed Trading - Axos Invest - 5815","Self-Directed Trading - Axos Invest - 9549"],"pp":[],"c":"MAJ5644","su":"058507895","sp":"***-**-7895","e":[],"le":"uat"},{"u":"anisha-uat-lib","uu":"anisha-uat-lib","ui":100851517,"pu":"cpuglia","pi":1336699,"up":["Checking **5073","Checking **9321","Mortgage **8973","Mortgage **1268","Self-Directed Trading - Axos Invest - 0005","Self-Directed Trading - Axos Invest - 8339"],"pp":["Checking **5073"],"c":"PAF5020","su":"003723759","sp":"***-**-3759","e":[],"le":"uat"},{"u":"APISPEC-uat-lib","uu":"APISPEC-uat-lib","ui":100717271,"pu":"placeholder2254121","pi":2254121,"up":["S Corporation - Kornblum & Associates, LLC - 2825"],"pp":["Individual - Investment Advisor - 0147"],"c":"2AA0735","su":"123456789","sp":"***-**-6789","e":[],"le":"uat"},{"u":"BEAR-uat-lib","uu":"BEAR-uat-lib","ui":100717223,"pu":"placeholder1515467","pi":1515467,"up":["Checking **8230","IRA - Sahajpal & Associates, LLC - 2859"],"pp":[],"c":"BAJ8250","su":"535784478","sp":"***-**-4478","e":[],"le":"uat"},{"u":"cup-uat-lib","uu":"cup-uat-lib","ui":100760299,"pu":"placeholder1633807","pi":1633807,"up":["Money Market **4234","Savings **1697","CD **9958","CLOSED - Savings **5861","Individual - Castilleja Financial Services - 9701","Individual - Trimpe Capital Management, LLC - 5291"],"pp":["Money Market **4234","Savings **1697"],"c":"VAB6292","su":"028441949","sp":"***-**-1949","e":[],"le":"uat"},{"u":"deby-uat-lib","uu":"deby-uat-lib","ui":100555689,"pu":"placeholder2078219","pi":2078219,"up":["Auto Loan **7727","Auto Loan **0490","Auto Loan **0169","CLOSED - Checking **7988","CLOSED - Personal Loan **1501","Individual - Dimakopoulos Strategies Inc. - 0955"],"pp":["Trust - Flexible Plan Investments, Ltd. - 7831"],"c":"SAN8050","su":"458749352","sp":"***-**-9352","e":[],"le":"uat"},{"u":"delfin-uat-lib","uu":"delfin-uat-lib","ui":100619421,"pu":"matthewyap15","pi":1415569,"up":["CLOSED - Savings **0210","IRA - Bernet Wealth Management - 4939","Qualified Plan - Bernet Wealth Management - 5105","Individual - Castilleja Financial Services - 6802"],"pp":["Self-Directed Trading - Axos Invest - 2033"],"c":"YAA6833","su":"751241935","sp":"***-**-1935","e":[],"le":"uat"},{"u":"EmeleneUatLib","uu":"EmeleneUatLib","ui":100600189,"pu":"jordan.reyes","pi":1398050,"up":["CLOSED - Checking **2801","Joint - Amborn Capital Management, LLC - 5079","IRA - Amborn Capital Management, LLC - 5099"],"pp":[],"c":"RAF7515","su":"640323049","sp":"***-**-3049","e":[],"le":"uat"},{"u":"Euzell-uat-lib","uu":"Euzell-uat-lib","ui":100574588,"pu":"CATHYWRAY13","pi":1518312,"up":["CLOSED - Checking **7179","Roth IRA - Sahajpal & Associates, LLC - 1057"],"pp":[],"c":"WAF7694","su":"342442522","sp":"***-**-2522","e":[],"le":"uat"},{"u":"FOK-uat-lib","uu":"FOK-uat-lib","ui":100619308,"pu":"Noahfegley","pi":1467735,"up":["Savings **7201","Outside QP - Bernet Wealth Management - 8146"],"pp":["Savings **7201"],"c":"FAE1033","su":"636524427","sp":"***-**-4427","e":[],"le":"uat"},{"u":"HAGG-uat-lib","uu":"HAGG-uat-lib","ui":100578015,"pu":"placeholder1345920","pi":1345920,"up":["CLOSED - Checking **5519","CLOSED - Checking **5709","CLOSED - Checking **5717","CLOSED - Savings **5535","IRA - Hoffler Financial Group - 4582","Joint - Sahajpal & Associates, LLC - 6423"],"pp":[],"c":"HAG8611","su":"018887029","sp":"***-**-7029","e":[],"le":"uat"},{"u":"heil-uat-lib","uu":"heil-uat-lib","ui":100538944,"pu":"nicolebre20","pi":1334265,"up":["CLOSED - Checking **0603"],"pp":[],"c":"DAF4631","su":"530439867","sp":"***-**-9867","e":[],"le":"uat"},{"u":"Henrikson-uat-lib","uu":"Henrikson-uat-lib","ui":100574549,"pu":"placeholder1342289","pi":1342289,"up":["OLD 403B - Hoffler Financial Group - 1911"],"pp":[],"c":"HAG8547","su":"354685149","sp":"***-**-5149","e":[],"le":"uat"},{"u":"holtsoi-uat-lib","uu":"holtsoi-uat-lib","ui":100615935,"pu":"placeholder1413520","pi":"","up":["Business Checking **7637"],"pp":["CLOSED - Business Checking **7637"],"c":"HAG9824","su":"874665430","sp":"","e":[],"le":"uat"},{"u":"janeva-uat-lib","uu":"janeva-uat-lib","ui":100557315,"pu":"Spankbank5","pi":1508798,"up":["Checking **3313","Checking **1130","Checking **5189","Overdraft Line of Credit **3313","Overdraft Line of Credit **1130","Overdraft Line of Credit **5189","CLOSED - Money Market **4880","CLOSED - Money Market **4898","IRA - Dimakopoulos Strategies Inc. - 0587"],"pp":[],"c":"WAF7521","su":"016622031","sp":"***-**-2031","e":[],"le":"uat"},{"u":"JARMAN-uat-lib","uu":"JARMAN-uat-lib","ui":100618269,"pu":"placeholder1399424","pi":1399424,"up":["Business Checking **9097"],"pp":["Business Checking **9097"],"c":"JAE1719","su":"881845714","sp":"***-**-5714","e":[],"le":"uat"},{"u":"Jennie-uat-lib","uu":"Jennie-uat-lib","ui":100574641,"pu":"BjornFunk98","pi":1364324,"up":["Checking **0499","Savings **0266","IRA - Castilleja Financial Services - 4121","Roth IRA - Sahajpal & Associates, LLC - 1054","Self-Directed Trading - Axos Invest - 6295"],"pp":["CLOSED - Checking **0499"],"c":"FAE0079","su":"514156907","sp":"***-**-6907","e":[],"le":"uat"},{"u":"kennum-uat-lib","uu":"kennum-uat-lib","ui":100607765,"pu":"placeholder1464101","pi":1464101,"up":["Savings **7912","Individual - Castilleja Financial Services - 6898","Joint - Pietro Capital Management, LLC - 3930"],"pp":[],"c":"KAE3814","su":"064649957","sp":"***-**-9957","e":["PROD Banking: Request to https://udbadminapi.mybofi.local/api/account/1464101/sorted?withAmounts=true&withClosed=true failed: fetch failed","PROD Investment: Request to https://udbadminapi.mybofi.local/api/olb/axosclearing/placeholder1464101/accounts failed: fetch failed"],"le":"uat"},{"u":"KIMMETT-uat-lib","uu":"KIMMETT-uat-lib","ui":100607361,"pu":"4bkloth","pi":1461948,"up":["CLOSED - CD **0825","Rollover Individual Retirement - Bernet Wealth Management - 7376","Individual - Bernet Wealth Management - 1056","Beneficiary IRA - Bernet Wealth Management - 1064"],"pp":[],"c":"KAE3786","su":"266231319","sp":"***-**-1319","e":["PROD Investment: Request to https://udbadminapi.mybofi.local/api/olb/axosclearing/4bkloth/accounts failed: fetch failed"],"le":"uat"},{"u":"Leverta-uat-Negretty","uu":"Leverta-uat-negretty","ui":100771972,"pu":"placeholder1528025","pi":"","up":["Beneficiary IRA - Negrette Strategies Inc. - 3278"],"pp":[],"c":"EAC7362","su":"207521460","sp":"","e":[],"le":"uat"},{"u":"MCOWEN-uat-lib","uu":"MCOWEN-uat-lib","ui":100707630,"pu":"placeholder1506416","pi":"","up":["CLOSED - Business Checking **1187"],"pp":[],"c":"MAL4843","su":"883757930","sp":"","e":[],"le":"uat"},{"u":"MikeUatLib","uu":"MikeUatLib","ui":100751576,"pu":"DCjtbR7k534","pi":1538599,"up":["CLOSED - Checking **4739","IRA - Sahajpal & Associates, LLC - 5223"],"pp":[],"c":"NAC7995","su":"121602580","sp":"***-**-2580","e":["PROD Banking: Request to https://udbadminapi.mybofi.local/api/account/1538599/sorted?withAmounts=true&withClosed=true failed: fetch failed","PROD Investment: Request to https://udbadminapi.mybofi.local/api/olb/axosclearing/DCjtbR7k534/accounts failed: fetch failed"],"le":"uat"},{"u":"Minerva-uat-Negretty","uu":"Minerva-uat-Negretty","ui":100771973,"pu":"PEWfap22","pi":1573163,"up":["CLOSED - Checking **3041","Joint - Negrette Strategies Inc. - 0007"],"pp":[],"c":"DAF8126","su":"324647004","sp":"***-**-7004","e":[],"le":"uat"},{"u":"MOIST-uat-lib","uu":"MOIST-uat-lib","ui":100553878,"pu":"Oxstrong+40","pi":1330476,"up":["CLOSED - Checking **4630","IRA - Suebhongsang Strategies Inc. - 6882"],"pp":[],"c":"MAL0292","su":"422292436","sp":"***-**-2436","e":[],"le":"uat"},{"u":"MOSCA-uat-lib","uu":"MOSCA-uat-lib","ui":100615765,"pu":"Jmundy47","pi":1428008,"up":["CLOSED - Savings **8248","Qualified Plan - Bernet Wealth Management - 6838"],"pp":["Checking **8230"],"c":"MAL2923","su":"644807975","sp":"***-**-7975","e":[],"le":"uat"},{"u":"posey-uat-lib","uu":"posey-uat-lib","ui":100605495,"pu":"placeholder1414080","pi":1414080,"up":["CLOSED - Business Checking **9245"],"pp":[],"c":"PAF6106","su":"882200879","sp":"***-**-0879","e":[],"le":"uat"},{"u":"rafirauat1","uu":"rafirauat1","ui":100991163,"pu":"ducee.eda@gmail.com","pi":831552,"up":["Checking **0517","Checking **5633","Checking **5666","Checking **5854","Checking **3345","Checking **6546","Money Market **0004","IRA - Savings **6186","Savings **5862","Savings **3352","CD **1897","IRA - Savings **3739","Overdraft Line of Credit **5633","Overdraft Line of Credit **5666","Mortgage **8876","Individual - Castilleja Financial Services - 0696","INDIVIDUAL - 7582","Self-Directed Trading - Axos Invest - 0019","Self-Directed Trading - Axos Invest - 0388","Self-Directed Trading - Axos Invest - 0462","Self-Directed Trading - Axos Invest - 0595","Self-Directed Trading - Axos Invest - 0925","Self-Directed Trading - Axos Invest - 1037","Self-Directed Trading - Axos Invest - 1528","Self-Directed Trading - Axos Invest - 1991","Self-Directed Trading - Axos Invest - 2008","Self-Directed Trading - Axos Invest - 2291","Self-Directed Trading - Axos Invest - 3074","Self-Directed Trading - Axos Invest - 3674","Self-Directed Trading - Axos Invest - 3704","Self-Directed Trading - Axos Invest - 3761","Self-Directed Trading - Axos Invest - 4037","Self-Directed Trading - Axos Invest - 4255","Self-Directed Trading - Axos Invest - 4531","Self-Directed Trading - Axos Invest - 4542","Self-Directed Trading - Axos Invest - 5939","Self-Directed Trading - Axos Invest - 6333","Self-Directed Trading - Axos Invest - 7330","Self-Directed Trading - Axos Invest - 7523","Self-Directed Trading - Axos Invest - 7770","Self-Directed Trading - Axos Invest - 7968","Self-Directed Trading - Axos Invest - 8064","Self-Directed Trading - Axos Invest - 8504","Self-Directed Trading - Axos Invest - 8973","Self-Directed Trading - Axos Invest - 9734","Self-Directed Trading - Axos Invest - 9768","Self-Directed Trading - Axos Invest - 9975"],"pp":["IRA - Savings **6186"],"c":"AAB2532","su":"264698234","sp":"***-**-8234","e":[],"le":"uat"},{"u":"RIAUserForTest6","uu":"RIAUserForTest6","ui":100579227,"pu":"placeholder2090973","pi":2090973,"up":["Individual - Hagg Asset Management - 7006","Individual - Hagg Asset Management - 7006","Individual - Irrev Financial Services - 1280","IRA - Irrev Financial Services - 6044","Joint - Irrev Financial Services - 6043"],"pp":["IRA - Flexible Plan Investments, Ltd. - 5316","IRA - No Designated RIA - 3734"],"c":"SAN9273","su":"522922659","sp":"***-**-2659","e":[],"le":"uat"},{"u":"ruacho-uat-lib","uu":"ruacho-uat-lib","ui":100684473,"pu":"placeholder1498029","pi":1498029,"up":["Savings **0925","Individual - Irrev Financial Services - 5167","Individual - Irrev Financial Services - 5105","Individual - Irrev Financial Services - 5142","Beneficiary IRA - Irrev Financial Services - 8175","Individual - Irrev Financial Services - 5168","OLD 403B ROTH - Irrev Financial Services - 8173","Individual - Irrev Financial Services - 5169","IRA - Irrev Financial Services - 1069","Individual - Irrev Financial Services - 0488","IRA - Oliphant Financial Services - 2995"],"pp":["Savings **0925"],"c":"RAF8974","su":"601144643","sp":"***-**-4643","e":[],"le":"uat"},{"u":"SANTORY-uat-lib","uu":"SANTORY-uat-lib","ui":100611281,"pu":"","pi":"","up":["Roth IRA - Hoffler Financial Group - 8823","Beneficiary IRA - Hoffler Financial Group - 4525","Individual - Hoffler Financial Group - 4524","OLD 403B - Hoffler Financial Group - 8943"],"pp":[],"c":"SAO2992","su":"783842114","sp":"","e":["PROD: Not found for CIF \"SAO2992\""],"le":"uat"},{"u":"SGARZI-uat-lib","uu":"SGARZI-uat-lib","ui":100684448,"pu":"placeholder2184310","pi":2184310,"up":["SEP IRA - Bernet Wealth Management - 1828","SUB - Bernet Wealth Management - 7247"],"pp":["IRA - Matson Money, Inc. - 9848"],"c":"SAO8790","su":"383521681","sp":"***-**-1681","e":[],"le":"uat"},{"u":"STEJOHNSON1991","uu":"STEJOHNSON1991","ui":1531,"pu":"SteJohnson1991","pi":3321,"up":["Checking **2223","Savings **0681","Money Market **4410","Checking **1078","Checking **8189","Checking **8528","Checking **1074","Savings **4486","Savings **8197","Savings **1066","CD **0162","CD **1558","CD **2259","CD **2242","Mortgage **3371","INDIVIDUAL - 6792","Self-Directed Trading - Axos Invest - 1822","Self-Directed Trading - Axos Invest - 2726","Self-Directed Trading - Axos Invest - 2763","Self-Directed Trading - Axos Invest - 8041","Self-Directed Trading - Axos Invest - 8862"],"pp":["Checking **2223","Savings **4486"],"c":"JAA2938","su":"228238981","sp":"***-**-8981","e":[],"le":"uat"},{"u":"suacho-uat-lib","uu":"suacho-uat-lib","ui":100820690,"pu":"ScFg2022+","pi":1543442,"up":["Checking **7749","Checking **3904","CLOSED - CD **2730","Individual - Dimakopoulos Strategies Inc. - 8979","Joint - Dimakopoulos Strategies Inc. - 9408"],"pp":[],"c":"BAJ9137","su":"311284341","sp":"***-**-4341","e":[],"le":"uat"},{"u":"Testgoalmp","uu":"Testgoalmp","ui":100089887,"pu":"kevnakiso","pi":979437,"up":["Checking **6542","Checking **0517","Checking **4277","Checking **9563","Savings **6559","Mortgage **9932","IRA_ROTH - 2310","INDIVIDUAL - 9174","Self-Directed Trading - Axos Invest - 3558","Self-Directed Trading - Axos Invest - 5996","Self-Directed Trading - Axos Invest - 9432","Self-Directed Trading - Axos Invest - 9596"],"pp":["Checking **6542","Checking **7740","Savings **6559","Savings **7732","Mortgage **9932"],"c":"NAC2858","su":"610568450","sp":"***-**-8450","e":[],"le":"uat"},{"u":"timdoh","uu":"TIMDOH","ui":1737,"pu":"placeholder1342604","pi":1342604,"up":["Checking **6744","Checking **7454","Money Market **1472","Checking **1662","Checking **1688","Checking **1696","Checking **1720","Checking **1746","Money Market **1761","Money Market **5788","Checking **4764","Checking **4309","Checking **2951","Savings **0119","Savings **1738","Savings **1753","Savings **5754","Savings **4772","CD **0667","Personal Loan **4613","Mortgage **8861","Mortgage **3371","Mortgage **1259","Mortgage **6645","Auto Loan **6413","Marine Loans **3510","Mortgage **6212","Mortgage **9708","HELOC **3067","HELOC **4660","Personal Loan **3035","Auto Loan **3742","Auto Loan **1863","Auto Loan **3987","SBLOC **0747","SBLOC **0259","CLOSED - Mortgage **2883","CLOSED - Auto Loan **5822","CLOSED - Auto Loan **9494","CLOSED - Auto Loan **9623","CLOSED - Auto Loan **6662","CLOSED - Auto Loan **7363","CLOSED - Personal Loan **2390","CLOSED - Personal Loan **3461","CLOSED - Auto Loan **9550","CLOSED - Personal Loan **5785","CLOSED - Personal Loan **5280","INDIVIDUAL - 3052","INDIVIDUAL - 8047","Self-Directed Trading - Axos Invest - 0150","Self-Directed Trading - Axos Invest - 0293","Self-Directed Trading - Axos Invest - 1630","Self-Directed Trading - Axos Invest - 1713","Self-Directed Trading - Axos Invest - 1716","Self-Directed Trading - Axos Invest - 1920","Self-Directed Trading - Axos Invest - 1987","Self-Directed Trading - Axos Invest - 2437","Self-Directed Trading - Axos Invest - 2983","Self-Directed Trading - Axos Invest - 3160","Self-Directed Trading - Axos Invest - 4100","Self-Directed Trading - Axos Invest - 4360","Self-Directed Trading - Axos Invest - 4816","Self-Directed Trading - Axos Invest - 5016","Self-Directed Trading - Axos Invest - 5123","Self-Directed Trading - Axos Invest - 5146","Self-Directed Trading - Axos Invest - 5370","Self-Directed Trading - Axos Invest - 6089","Self-Directed Trading - Axos Invest - 6356","Self-Directed Trading - Axos Invest - 6365","Self-Directed Trading - Axos Invest - 6504","Self-Directed Trading - Axos Invest - 7454","Self-Directed Trading - Axos Invest - 7630","Self-Directed Trading - Axos Invest - 8748","Self-Directed Trading - Axos Invest - 8765","Self-Directed Trading - Axos Invest - 9981"],"pp":[],"c":"DAA5146","su":"483808513","sp":"***-**-8513","e":["PROD Banking: HTTP 500"],"le":"uat"},{"u":"Tobianne403R","uu":"Tobianne403R","ui":100745004,"pu":"placeholder1524680","pi":1524680,"up":["Savings **9850","OLD 403B ROTH - Negrette Strategies Inc. - 5248"],"pp":["Savings **9850"],"c":"BAJ8529","su":"584491485","sp":"***-**-1485","e":[],"le":"uat"},{"u":"Tomasa-uat-lib","uu":"tomasa-uat-lib","ui":100579889,"pu":"placeholder1432306","pi":1432306,"up":["Beneficiary IRA - Saksa Asset Management - 4534","Beneficiary Roth IRA - Saksa Asset Management - 4541"],"pp":[],"c":"AAE4552","su":"227175020","sp":"***-**-5020","e":[],"le":"uat"},{"u":"TRAPMAN-uat-lib","uu":"TRAPMAN-uat-lib","ui":100766271,"pu":"PYLES4567","pi":1535655,"up":["CLOSED - Checking **4441","Individual - Castilleja Financial Services - 5170","Rollover Individual Retirement - Dimakopoulos Strategies Inc. - 9850"],"pp":[],"c":"PAF7963","su":"405152252","sp":"***-**-2252","e":[],"le":"uat"},{"u":"tamsyn-uat-lib","uu":"tamsyn-uat-lib","ui":100608737,"pu":"chrisco1991","pi":1393200,"up":["CLOSED - Checking **0335","CLOSED - Savings **0343","Beneficiary IRA - Saksa Asset Management - 2886","Beneficiary Roth IRA - Saksa Asset Management - 2888","Beneficiary IRA - Saksa Asset Management - 2887"],"pp":[],"c":"HAG9447","su":"253835131","sp":"***-**-5131","e":["PROD Investment: Request to https://udbadminapi.mybofi.local/api/olb/axosclearing/chrisco1991/accounts failed: fetch failed"],"le":"uat"},{"u":"Riadev","uu":"RiaDev","ui":1065440,"pu":"IzzyAxos","pi":"","up":["Checking **4196","Checking **4364","Checking **4380","Checking **4398","Checking **4406","Checking **4471","Checking **4497","Checking **4505","Checking **4513","Checking **4521","Checking **4539","Checking **4885","Checking **4893","Savings **3838","Savings **6914","Savings **8538","Overdraft Line of Credit **4398","Overdraft Line of Credit **4406","Overdraft Line of Credit **4513","Overdraft Line of Credit **4521","Overdraft Line of Credit **4539","Overdraft Line of Credit **4893","Individual - Castilleja Financial Services - 9593"],"pp":["Savings **8538"],"c":"BAJ3579","su":"591953037","sp":"","e":[],"le":"uat"},{"u":"melton-uat-lib","uu":"melton-uat-lib","ui":100554727,"pu":"Bradleymac81","pi":1334579,"up":["Auto Loan **7061","Individual - Castilleja Financial Services - 7631","Individual - Dimakopoulos Strategies Inc. - 0570"],"pp":[],"c":"MAL0366","su":"279861140","sp":"***-**-1140","e":["PROD Banking: Request to https://udbadminapi.mybofi.local/api/account/1334579/sorted?withAmounts=true&withClosed=true failed: fetch failed"],"le":"uat"},{"u":"jaruzel-lexman-lib","uu":"jaruzel-lexman-lib","ui":100693305,"pu":"Ljackson74","pi":1434188,"up":["Auto Loan **1401","Roth IRA - Sahajpal & Associates, LLC - 6758"],"pp":[],"c":"JAE2103","su":"213230329","sp":"***-**-0329","e":["PROD Banking: Request to https://udbadminapi.mybofi.local/api/account/1434188/sorted?withAmounts=true&withClosed=true failed: fetch failed"],"le":"uat"},{"u":"denby-uat-lib","uu":"denby-uat-lib","ui":100555665,"pu":"placeholder1338544","pi":1338544,"up":["Checking **8035","CLOSED - Auto Loan **6985","Limited Liability Part/Corp - Dimakopoulos Strategies Inc. - 7476","Limited Liability Part/Corp - Dimakopoulos Strategies Inc. - 7524"],"pp":["CLOSED - Auto Loan **6985"],"c":"MAL0455","su":"408230542","sp":"***-**-0542","e":[],"le":"uat"},{"u":"dawna-uat-lib","uu":"dawna-uat-lib","ui":100554510,"pu":"KIPLY9991","pi":1344767,"up":["Checking **1478","Savings **2482","IRA - Savings **7511","Mortgage **0192","Mortgage **5107","C&I **0904","CLOSED - Checking **2094","Roth IRA - Sahajpal & Associates, LLC - 1027","INDIVIDUAL - 3867"],"pp":[],"c":"DAF4736","su":"240295826","sp":"***-**-5826","e":[],"le":"uat"},{"u":"corfield-uat-lib","uu":"corfield-uat-lib","ui":100554639,"pu":"","pi":"","up":[],"pp":[],"c":"MAL0363","su":"099033121","sp":"","e":["PROD: Not found for CIF \"MAL0363\""],"le":"uat"},{"u":"bleuel-uat-lib","uu":"bleuel-uat-lib","ui":100575794,"pu":"Dipydogg","pi":1354025,"up":["Money Market **5363","IRA - Savings **0226","Business Savings **7750","Mortgage **2650","Mortgage **5107","C&I **9792","CLOSED - Checking **4189","Roth Solo 401(k) - Saksa Asset Management - 8804"],"pp":["Checking **6381","CLOSED - Checking **4189"],"c":"BAJ4431","su":"426417662","sp":"***-**-7662","e":[],"le":"uat"},{"u":"Abdon-uat-lib","uu":"abdon-uat-lib","ui":100558521,"pu":"khanoranny@gmail.com","pi":1366446,"up":["Checking **0810","Savings **0107","Savings **3849","Savings **1161","IRA - Savings **1510","IRA - Savings **6251","Business Checking **8997","Mortgage **7399","Mortgage **7894","Mortgage **6645","SBLOC **0523","SBLOC **0259","SBLOC **5554","CLOSED - Checking **0860","CLOSED - Personal Loan **3425","CLOSED - Personal Loan **5280","Individual - Castilleja Financial Services - 0534","Roth IRA - Sahajpal & Associates, LLC - 6497","Joint - Sahajpal & Associates, LLC - 6496","Self-Directed Trading - Axos Invest - 4745"],"pp":["CLOSED - Personal Loan **3425"],"c":"KAE2792","su":"603143497","sp":"***-**-3497","e":[],"le":"uat"},{"u":"Riapug","uu":"Riapug","ui":100558233,"pu":"jaybran2625","pi":1338092,"up":["Checking **0818","Money Market **8755","Money Market **8763","Savings **8730","IRA - Hoffler Financial Group - 2412","Roth IRA - Hoffler Financial Group - 0882","Roth IRA - Hoffler Financial Group - 2414","INDIVIDUAL - 7451"],"pp":["Checking **0818"],"c":"BAJ4121","su":"384826485","sp":"***-**-6485","e":[],"le":"uat"},{"u":"Anakayelo","uu":"Anakayelo","ui":100320492,"pu":"faivre","pi":1313127,"up":["Checking **0451","Checking **9693","Checking **1582","Checking **4816","Savings **9701","Savings **1194","Savings **4808","Savings **1620","Checking **1186","Checking **4651","Money Market **0004","Savings **1897","IRA - Savings **3739","Savings **3180","IRA - Savings **6186","Mortgage **6645","CLOSED - Checking **5906","CLOSED - Auto Loan **7363","CLOSED - Savings **0469","CLOSED - Savings **5914","Self-Directed Trading - Axos Invest - 7082","Self-Directed Trading - Axos Invest - 8873"],"pp":["Checking **0451"],"c":"JAE0810","su":"636603211","sp":"***-**-3210","e":[],"le":"uat"},{"u":"mpbuild","uu":"mpbuild","ui":100083033,"pu":"placeholder976942","pi":976942,"up":["Checking **0451","Money Market **0004","Business Checking **1732","Savings **0119","CLOSED - Checking **9018","Joint - Hagg Asset Management - 2264","INDIVIDUAL - 3266","Self-Directed Trading - Axos Invest - 4830","Self-Directed Trading - Axos Invest - 9458"],"pp":[],"c":"BAI0263","su":"204745092","sp":"***-**-5092","e":[],"le":"uat"},{"u":"arnett-uat-lib","uu":"arnett-uat-lib","ui":100589491,"pu":"placeholder1395793","pi":1395793,"up":["Checking **5854","Minor Custodial - Sahajpal & Associates, LLC - 8556","Minor Custodial - Sahajpal & Associates, LLC - 8553","Self-Directed Trading - Axos Invest - 7802"],"pp":["Money Market **5854"],"c":"DAF5457","su":"049404981","sp":"***-**-4981","e":[],"le":"uat"},{"u":"eclipse-uat-lib","uu":"eclipse-uat-lib","ui":100834449,"pu":"hernandestates","pi":1515837,"up":["Individual - Sahajpal & Associates, LLC - 6387"],"pp":[],"c":"HAH1715","su":"079867199","sp":"***-**-7199","e":[],"le":"uat"},{"u":"CARMELA-UAT-LIB","uu":"carmela-uat-lib","ui":100797659,"pu":"DREA19877","pi":1673158,"up":["CLOSED - Checking **4207","Individual - Bernet Wealth Management - 0475"],"pp":[],"c":"CAK3167","su":"151825708","sp":"***-**-5708","e":[],"le":"uat"},{"u":"IRISH-UAT-LIB","uu":"irish-uat-lib","ui":100798974,"pu":"Hannah.154","pi":1534535,"up":["CLOSED - Checking **1587","Joint - Bernet Wealth Management - 4325"],"pp":[],"c":"RAF9677","su":"544493460","sp":"***-**-3460","e":[],"le":"uat"},{"u":"suarezsdt","uu":"suarezSDT","ui":100491722,"pu":"placeholder2069608","pi":2069608,"up":["Checking **4001","Checking **6360","Mortgage **3371","IRA_TRADITIONAL - 2141","Self-Directed Trading - Axos Invest - 0234","Self-Directed Trading - Axos Invest - 0485","Self-Directed Trading - Axos Invest - 0692","Self-Directed Trading - Axos Invest - 0742","Self-Directed Trading - Axos Invest - 3623","Self-Directed Trading - Axos Invest - 5054","Self-Directed Trading - Axos Invest - 5743","Self-Directed Trading - Axos Invest - 5998","Self-Directed Trading - Axos Invest - 7075","Self-Directed Trading - Axos Invest - 7279"],"pp":["IRA - Mercer Global Advisors - 3821","Trust - Mercer Global Advisors - 6929"],"c":"SAN7179","su":"549804981","sp":"***-**-4981","e":[],"le":"uat"},{"u":"abnerantonio","uu":"ABNERANTONIO","ui":100216016,"pu":"Khaleh","pi":1169204,"up":["Checking **2030","Checking **1394","Checking **5192","Checking **4711","Savings **0207","Checking **0215","Checking **0038","Money Market **9929","Checking **0277","Checking **0319","Money Market **0811","Checking **6998","Checking **1061","Checking **5461","Savings **0251","Savings **0269","Savings **0285","Savings **6288","Savings **0327","Savings **9911","Savings **6980","Savings **7061","Savings **1079","Savings **5453","CD **9966","CD **9974","Mortgage **6945","HELOC **1284","Personal Loan **6516","Mortgage **4380","Mortgage **6664","Mortgage **2845","Mortgage **9696","Mortgage **0630","Auto Loan **3607","CLOSED - IRA - Savings **4578","CLOSED - Auto Loan **2473","CLOSED - Auto Loan **1695","CLOSED - Mortgage **0081","CLOSED - Mortgage **8877","CLOSED - Mortgage **3127","INDIVIDUAL - 1487","Self-Directed Trading - Axos Invest - 4759"],"pp":["Mortgage **6945"],"c":"HAG5411","su":"603874856","sp":"***-**-4856","e":[],"le":"uat"},{"u":"Genece-uat-lib","uu":"genece-uat-lib","ui":100579354,"pu":"placeholder2091295","pi":2091295,"up":["Beneficiary Roth IRA - Suebhongsang Strategies Inc. - 2485","Roth IRA - Suebhongsang Strategies Inc. - 2809","INDIVIDUAL - 7619"],"pp":["ROTH IRA - Matson Money, Inc. - 1843","IRA - Matson Money, Inc. - 2142"],"c":"SAN9300","su":"337443363","sp":"***-**-3363","e":[],"le":"uat"},{"u":"foley-qa-lib","uu":"foley-qa-lib","ui":100556447,"pu":"Foleye4258@gmail.com","pi":1343400,"up":["Savings **9306","CLOSED - Checking **8522","CLOSED - Savings **8530","Beneficiary IRA - Bernet Wealth Management - 5359"],"pp":[],"c":"FAD9891","su":"437596852","sp":"***-**-6852","e":[],"le":"uat"},{"u":"sunday-qa-lib","uu":"sunday-qa-lib","ui":"","pu":"BreShonda","pi":2714709,"up":["Checking **8035","Checking **8912","Savings **8904","Personal Loan **3165","Individual - Castilleja Financial Services - 1235","IRA - Castilleja Financial Services - 1236","Individual - Thews Investment Management - 6141","INDIVIDUAL - 3320","INDIVIDUAL - 1608"],"pp":["CLOSED - Checking **4022"],"c":"HAL3170","su":"","sp":"***-**-3226","e":[],"le":"qa"},{"u":"THOMASONEILL-QA-LIB","uu":"THOMASONEILL-QA-LIB","ui":"","pu":"travellone16","pi":2715404,"up":["Checking **9886","IRA - Arneson & Associates, LLC - 1239","Joint - Castilleja Financial Services - 1240"],"pp":["CLOSED - Checking **6729"],"c":"SAR6831","su":"","sp":"***-**-5453","e":[],"le":"qa"},{"u":"jeans-qa-lib","uu":"jeans-qa-lib","ui":"","pu":"klhunter26","pi":2714729,"up":["Checking **5527","C&I **1324","SBLOC **0861","IRA - Castilleja Financial Services - 1242"],"pp":["Savings **4147"],"c":"HAL3171","su":"","sp":"***-**-4036","e":[],"le":"qa"},{"u":"karalee-qa-lib","uu":"karalee-qa-lib","ui":"","pu":"Auzzy1006","pi":2714116,"up":["Checking **6537","Individual - Arneson & Associates, LLC - 5775","Beneficiary IRA - Castilleja Financial Services - 1245"],"pp":["Savings **0021","CLOSED - Money Market **9435"],"c":"FAG3142","su":"","sp":"***-**-5872","e":[],"le":"qa"},{"u":"leblanc-qa-lib","uu":"leblanc-qa-lib","ui":"","pu":"sferguson832","pi":2717271,"up":["Checking **9160","Checking **8571","Savings **9178","Savings **8589","IRA - Castilleja Financial Services - 1244"],"pp":["CLOSED - Checking **6992"],"c":"SAR6833","su":"","sp":"***-**-0581","e":[],"le":"qa"},{"u":"not enrolled","uu":"","ui":"","pu":"","pi":"","up":[],"pp":[],"c":"","su":"","sp":"","e":["Not found in UAT, QA, or STG"],"le":""},{"u":"ernestina-qa-lib","uu":"ernestina-qa-lib","ui":"","pu":"dreckers","pi":2727063,"up":["Checking **3524","Checking **3482","Checking **3267","Checking **3697","Savings **3490","Overdraft Line of Credit **3267","Overdraft Line of Credit **3697","CLOSED - Overdraft Line of Credit **3267","CLOSED - Overdraft Line of Credit **3697","Individual - Castilleja Financial Services - 8337","IRA - Castilleja Financial Services - 8338","IRA_ROTH - 1719","IRA_TRADITIONAL - 3743","INDIVIDUAL - 5945","INDIVIDUAL - 4163","INDIVIDUAL - 5959"],"pp":["CLOSED - Checking **1153"],"c":"RAJ2327","su":"","sp":"***-**-2116","e":[],"le":"qa"},{"u":"ruskey-qa-lib","uu":"Ruskey-qa-lib","ui":"","pu":"Aredding3","pi":1500531,"up":["Checking **7608","Checking **0840","Checking **0249","Checking **0256","Checking **0264","Business Checking **6360","Savings **7616","Savings **0857","Overdraft Line of Credit **0249","Overdraft Line of Credit **0256","Overdraft Line of Credit **0264","CLOSED - Overdraft Line of Credit **0249","CLOSED - Overdraft Line of Credit **0256","CLOSED - Overdraft Line of Credit **0264"],"pp":["Checking **0840","Checking **7608","Savings **0857","Savings **7616"],"c":"RAF9099","su":"","sp":"***-**-7377","e":["QA Investment: HTTP 500"],"le":"qa"},{"u":"orval-qa-lb","uu":"","ui":"","pu":"","pi":"","up":[],"pp":[],"c":"","su":"","sp":"","e":["Not found in UAT, QA, or STG"],"le":""},{"u":"RYCHTARSKY","uu":"RYCHTARSKY","ui":100798176,"pu":"placeholder1533257","pi":1533257,"up":["Checking **8959","Money Market **7062","Business Checking **3011","Savings **8740","Mortgage **8601","Mortgage **2420","Mortgage **8577","Individual - Bernet Wealth Management - 0946","Roth IRA - Bernet Wealth Management - 0943","IRA - Bernet Wealth Management - 0945","Self-Directed Trading - Axos Invest - 5460"],"pp":["Mortgage **8601","Mortgage **2420","CLOSED - Mortgage **8577"],"c":"RAF9642","su":"391462755","sp":"***-**-2755","e":[],"le":"uat"}];
 
         // localStorage overrides hardcoded data (localStorage is more recent)
         try {
@@ -1629,6 +1657,34 @@
             let c = inv ? 'ud-inv' : 'ud-bank';
             if (cl) c += ' ud-closed';
             return c;
+        }
+
+        function countProducts(prods) {
+            if (!prods || prods.length === 0) return null;
+            let deposit = 0, closed = 0, investment = 0;
+            prods.forEach(p => {
+                const isClosed = p.startsWith('CLOSED');
+                const isInv = p.includes(' - ') && !p.includes('**');
+                if (isClosed) closed++;
+                else if (isInv) investment++;
+                else deposit++;
+            });
+            return { deposit, closed, investment, total: prods.length };
+        }
+
+        function prodCountBadges(counts) {
+            if (!counts) return '';
+            const parts = [];
+            if (counts.deposit > 0) parts.push(`<span style="display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;background:#dbeafe;color:#1e40af;">${counts.deposit} deposit</span>`);
+            if (counts.closed > 0) parts.push(`<span style="display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;background:#fee2e2;color:#991b1b;">${counts.closed} closed</span>`);
+            if (counts.investment > 0) parts.push(`<span style="display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;background:#fef3c7;color:#92400e;">${counts.investment} invest</span>`);
+            return `<div style="margin-bottom:4px;display:flex;gap:3px;flex-wrap:wrap;align-items:center;">${parts.join('')}<span style="font-size:9px;color:#94a3b8;font-weight:600;">(${counts.total})</span></div>`;
+        }
+
+        function getTeamForUser(username) {
+            const item = state.items.find(i => i.value === username);
+            if (!item) return null;
+            return state.teams.find(t => t.id === item.teamId) || null;
         }
 
         let udCurrentTab = 'found';
@@ -1714,6 +1770,12 @@
                     if (typeof va === 'number') return udSortDir === 'asc' ? va - vb : vb - va;
                     return udSortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
                 });
+            } else {
+                rows = [...rows].sort((a, b) => {
+                    const aFound = a.c ? 0 : 1;
+                    const bFound = b.c ? 0 : 1;
+                    return aFound - bFound;
+                });
             }
             return rows;
         }
@@ -1725,12 +1787,25 @@
             return '<option value="">All</option>' + envs.map(e => `<option value="${e}"${udEnvFilter===e?' selected':''}>${e.toUpperCase()}</option>`).join('');
         }
 
+        function buildTeamLegend() {
+            if (!state.teams || state.teams.length === 0) return '';
+            let legend = '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 12px;background:#f8fafc;border:1px solid var(--border-color);border-radius:8px;margin-bottom:8px;">';
+            legend += '<span style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-right:4px;">Teams:</span>';
+            state.teams.forEach(team => {
+                legend += `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-primary);font-weight:500;"><span style="width:10px;height:10px;border-radius:50%;background:${team.color};display:inline-block;flex-shrink:0;border:1px solid rgba(0,0,0,0.1);"></span>${team.name}</span>`;
+            });
+            legend += '</div>';
+            return legend;
+        }
+
         function renderUserDetailsTable() {
             updateTabCounts();
             const rows = getFilteredRows();
             const cifEnvMap = buildCifEnvMap();
             const eC = { UAT:'#1E3860', STG:'#7c3aed', QA:'#0891b2' };
             const eBg = { UAT:'#e8eef7', STG:'#ede9fe', QA:'#cffafe' };
+
+            document.getElementById('udTeamLegend').innerHTML = buildTeamLegend();
 
             let html = '<table class="ud-table"><thead><tr>';
             html += '<th class="ud-th ud-th-num">#</th>';
@@ -1742,18 +1817,27 @@
             html += `<th class="ud-th ud-th-prod ud-col-user ud-th-sort" onclick="toggleSort('pUser')">Prod - User ${sortArrow('pUser')}</th>`;
             html += `<th class="ud-th ud-th-prod ud-col-prods ud-th-sort" onclick="toggleSort('pProd')">Prod - Products ${sortArrow('pProd')}</th>`;
             html += `<th class="ud-th ud-th-prod ud-col-ssn ud-th-sort" onclick="toggleSort('pSsn')">Prod - SSN ${sortArrow('pSsn')}</th>`;
+            html += '<th class="ud-th" style="width:36px;background:#4b5563;"></th>';
             html += '</tr>';
             html += '<tr class="ud-filter-row"><th></th><th></th>';
             html += `<th><select class="ud-filter-select" onchange="onEnvFilter(this.value)">${buildEnvOptions()}</select></th>`;
-            html += '<th></th><th></th><th></th><th></th><th></th><th></th></tr>';
+            html += '<th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr>';
             html += '</thead><tbody>';
 
             rows.forEach((r, i) => {
                 const hasErr = r.e.length > 0 && !r.c;
                 const rc = hasErr ? ' class="ud-err-row"' : '';
-                const uatProds = r.up.length > 0 ? r.up.map(p => `<span class="ud-tag ${classifyProd(p)}">${p}</span>`).join('') : '<span class="ud-tag ud-none">No accounts</span>';
-                const prodProds = r.pp.length > 0 ? r.pp.map(p => `<span class="ud-tag ${classifyProd(p)}">${p}</span>`).join('') : '<span class="ud-tag ud-none">No accounts</span>';
-                const uatUser = r.uu ? `<div class="ud-user">${r.uu}</div>${r.ui ? '<div class="ud-id">UDB ID: '+r.ui+'</div>' : ''}` : (hasErr ? `<div class="ud-user" style="color:#ef4444">${r.u}</div><div class="ud-id" style="color:#ef4444">${r.e[0]}</div>` : '<span style="color:#94a3b8">N/A</span>');
+                const team = getTeamForUser(r.u);
+                const teamDot = team ? `<span style="width:10px;height:10px;border-radius:50%;background:${team.color};display:inline-block;flex-shrink:0;border:1px solid rgba(0,0,0,0.1);margin-right:4px;vertical-align:middle;" title="${team.name}"></span>` : '';
+
+                const uatCounts = countProducts(r.up);
+                const prodCounts = countProducts(r.pp);
+                const uatCountHtml = uatCounts ? prodCountBadges(uatCounts) : '';
+                const prodCountHtml = prodCounts ? prodCountBadges(prodCounts) : '';
+
+                const uatProds = r.up.length > 0 ? uatCountHtml + r.up.map(p => `<span class="ud-tag ${classifyProd(p)}">${p}</span>`).join('') : '<span class="ud-tag ud-none">No accounts</span>';
+                const prodProds = r.pp.length > 0 ? prodCountHtml + r.pp.map(p => `<span class="ud-tag ${classifyProd(p)}">${p}</span>`).join('') : '<span class="ud-tag ud-none">No accounts</span>';
+                const uatUser = r.uu ? `<div class="ud-user">${teamDot}${r.uu}</div>${r.ui ? '<div class="ud-id">UDB ID: '+r.ui+'</div>' : ''}` : (hasErr ? `<div class="ud-user" style="color:#ef4444">${teamDot}${r.u}</div><div class="ud-id" style="color:#ef4444">${r.e[0]}</div>` : `${teamDot}<span style="color:#94a3b8">N/A</span>`);
                 const prodUser = r.pu ? `<div class="ud-user">${r.pu}</div>${r.pi ? '<div class="ud-id">UDB ID: '+r.pi+'</div>' : ''}` : '<span style="color:#94a3b8">N/A</span>';
                 const envLabel = (r.le || 'uat').toUpperCase();
                 const envBadge = `<span class="ud-env-badge" style="background:${eBg[envLabel]||'#f1f5f9'};color:${eC[envLabel]||'#64748b'};">${envLabel}</span>`;
@@ -1776,6 +1860,7 @@
                 html += `<td class="ud-td ud-prod-border">${prodUser}</td>`;
                 html += `<td class="ud-td ud-prods ud-prod-border">${prodProds}</td>`;
                 html += `<td class="ud-td ud-ssn ud-prod-border">${fmtSsn(r.sp)}</td>`;
+                html += `<td class="ud-td" style="text-align:center;padding:4px;"><button onclick="deleteFromReport('${r.u.replace(/'/g,"\\'")}')" style="background:none;border:none;cursor:pointer;font-size:15px;opacity:0.4;transition:opacity 0.15s;" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.4'" title="Remove from report">🗑️</button></td>`;
                 html += '</tr>';
             });
 
@@ -1785,13 +1870,18 @@
 
             const total = USER_DETAILS_DATA.length;
             const found = USER_DETAILS_DATA.filter(r => r.c).length;
-            document.getElementById('udReportStats').textContent = `${found} found / ${total-found} not found / ${total} total`;
+            const notFound = total - found;
+            document.getElementById('udReportStats').textContent = `${found} found / ${notFound} not found / ${total} total`;
+            const delNfBtn = document.getElementById('udDeleteNotFoundBtn');
+            if (delNfBtn) delNfBtn.style.display = notFound > 0 ? '' : 'none';
 
             if (typeof updateUdExportTeamSelect === 'function') updateUdExportTeamSelect();
         }
 
         const SYNC_SERVER_URL = 'http://localhost:3456';
         let udSyncing = false;
+        let udSyncAbortController = null;
+        let udSyncStopped = false;
 
         async function saveReportToHtml() {
             // Save to local server (patches the HTML file on disk)
@@ -1814,25 +1904,79 @@
 
         async function saveUserDetailsToCloud() {
             if (!USE_CLOUD_SYNC) return;
+            const timestamp = new Date().toISOString();
+            try { localStorage.setItem('ud_data_timestamp', timestamp); } catch {}
             try {
                 await fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'text/plain' },
                     body: JSON.stringify({
                         action: 'save',
                         data: {
                             teams: state.teams,
                             items: state.items,
-                            lastUpdated: new Date().toISOString()
+                            lastUpdated: timestamp
                         },
                         userDetails: USER_DETAILS_DATA,
                         updatedBy: 'JackHenry Manager'
                     })
                 });
-                console.log('☁️ User Details Report saved to cloud (' + USER_DETAILS_DATA.length + ' users)');
+                console.log('☁️ User Details Report saved to cloud (' + USER_DETAILS_DATA.length + ' users, ts: ' + timestamp + ')');
             } catch (err) {
                 console.log('Could not save user details to cloud:', err.message);
+            }
+            verifyCloudSave(timestamp);
+        }
+
+        async function verifyCloudSave(expectedTimestamp) {
+            if (!USE_CLOUD_SYNC) return;
+            try {
+                await new Promise(r => setTimeout(r, 4000));
+                const controller = new AbortController();
+                setTimeout(() => controller.abort(), 8000);
+                const resp = await fetch(GOOGLE_SCRIPT_URL, { method: 'GET', redirect: 'follow', signal: controller.signal });
+                if (!resp.ok) return;
+                const result = await resp.json();
+                if (result.success) {
+                    const cloudUd = (result.userDetails && Array.isArray(result.userDetails)) ? result.userDetails : [];
+                    const cloudFound = cloudUd.filter(r => r.c).length;
+                    const localFound = USER_DETAILS_DATA.filter(r => r.c).length;
+                    if (cloudFound >= localFound) {
+                        console.log('✅ Cloud save verified — cloud has ' + cloudFound + ' found users');
+                    } else {
+                        console.warn('⚠️ Cloud has fewer found users (' + cloudFound + ') than local (' + localFound + ') — re-pushing...');
+                        retrySaveToCloud();
+                    }
+                }
+            } catch (err) {
+                console.log('Could not verify cloud save:', err.message);
+            }
+        }
+
+        async function retrySaveToCloud() {
+            if (!USE_CLOUD_SYNC) return;
+            const timestamp = new Date().toISOString();
+            try { localStorage.setItem('ud_data_timestamp', timestamp); } catch {}
+            try {
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify({
+                        action: 'save',
+                        data: {
+                            teams: state.teams,
+                            items: state.items,
+                            lastUpdated: timestamp
+                        },
+                        userDetails: USER_DETAILS_DATA,
+                        updatedBy: 'JackHenry Manager'
+                    })
+                });
+                console.log('☁️ Retry cloud save completed (' + USER_DETAILS_DATA.length + ' users, ts: ' + timestamp + ')');
+            } catch (err) {
+                console.error('❌ Retry cloud save failed:', err.message);
             }
         }
 
@@ -1850,6 +1994,8 @@
             const removedUsers = [...reportUsernames].filter(u => !importedUsernames.has(u));
             const status = document.getElementById('udSyncStatus');
             if (!status) return;
+
+            let html = '';
             const parts = [];
             if (newUsers.length > 0) {
                 parts.push(`🆕 ${newUsers.length} new user${newUsers.length > 1 ? 's' : ''}`);
@@ -1858,21 +2004,145 @@
                 parts.push(`🗑️ ${removedUsers.length} removed user${removedUsers.length > 1 ? 's' : ''}`);
             }
             if (parts.length > 0) {
-                status.textContent = parts.join('  •  ') + ' — click "Sync New Users" with ✅ Include existing to update';
-                status.style.color = '#d97706';
-            } else {
-                status.textContent = '';
+                html = `<span>${parts.join('  •  ')}</span>`;
+                if (removedUsers.length > 0) {
+                    html += ` <button onclick="removeStaleUsersFromReport()" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer;margin-left:6px;" title="Remove ${removedUsers.length} users that are no longer in any team from the report">🗑️ Remove from report</button>`;
+                    html += ` <span style="color:#94a3b8;font-size:11px;margin-left:2px;">or sync with ✅ Include existing</span>`;
+                }
             }
+            status.innerHTML = html;
+            if (parts.length > 0) status.style.color = '#d97706';
         }
 
-        document.addEventListener('DOMContentLoaded', () => { updateUdStats(); updateTabCounts(); });
+        function removeStaleUsersFromReport() {
+            if (typeof state === 'undefined' || !state.items) return;
+            const importedUsernames = new Set(state.items.map(i => i.value));
+            const before = USER_DETAILS_DATA.length;
+            const kept = USER_DETAILS_DATA.filter(r => importedUsernames.has(r.u));
+            const removedCount = before - kept.length;
+            if (removedCount === 0) {
+                showToast('Info', 'No stale users to remove', 'info');
+                return;
+            }
+            USER_DETAILS_DATA.length = 0;
+            USER_DETAILS_DATA.push(...kept);
+
+            try { localStorage.setItem('ud_data', JSON.stringify(USER_DETAILS_DATA)); } catch {}
+            try { localStorage.setItem('ud_data_timestamp', new Date().toISOString()); } catch {}
+            renderUserDetailsTable();
+            updateUdStats();
+            updateTabCounts();
+            checkForNewUsers();
+            saveReportToHtml();
+            showToast('Removed', `${removedCount} stale users removed from report`, 'success');
+        }
+
+        let udDeletedFromReportUsers = [];
+
+        function deleteAllNotFoundFromReport() {
+            const notFound = USER_DETAILS_DATA.filter(r => !r.c);
+            if (notFound.length === 0) { showToast('Info', 'No "not found" users to remove', 'info'); return; }
+            const usernames = notFound.map(r => r.u);
+            const kept = USER_DETAILS_DATA.filter(r => r.c);
+            USER_DETAILS_DATA.length = 0;
+            USER_DETAILS_DATA.push(...kept);
+            udDeletedFromReportUsers.push(...usernames);
+            try { localStorage.setItem('ud_data', JSON.stringify(USER_DETAILS_DATA)); } catch {}
+            try { localStorage.setItem('ud_data_timestamp', new Date().toISOString()); } catch {}
+            renderUserDetailsTable();
+            updateUdStats();
+            updateTabCounts();
+            showDeletedFromReportBar();
+            saveReportToHtml();
+            saveUserDetailsToCloud();
+            showToast('Removed', `${usernames.length} "not found" users removed from report`, 'success');
+        }
+
+        let _udDeleteSaveTimer = null;
+        function deleteFromReport(username) {
+            const idx = USER_DETAILS_DATA.findIndex(r => r.u === username);
+            if (idx === -1) return;
+            USER_DETAILS_DATA.splice(idx, 1);
+            udDeletedFromReportUsers.push(username);
+            try { localStorage.setItem('ud_data', JSON.stringify(USER_DETAILS_DATA)); } catch {}
+            try { localStorage.setItem('ud_data_timestamp', new Date().toISOString()); } catch {}
+            renderUserDetailsTable();
+            updateUdStats();
+            updateTabCounts();
+            showDeletedFromReportBar();
+            showToast('Removed', `"${username}" removed from report`, 'success');
+            clearTimeout(_udDeleteSaveTimer);
+            _udDeleteSaveTimer = setTimeout(() => { saveReportToHtml(); saveUserDetailsToCloud(); }, 1500);
+        }
+
+        function showDeletedFromReportBar() {
+            const count = udDeletedFromReportUsers.length;
+            const bar = document.getElementById('udDeletedFromReportBar');
+            const barTop = document.getElementById('udDeletedFromReportBarTop');
+            if (count === 0) {
+                if (bar) bar.style.display = 'none';
+                if (barTop) barTop.style.display = 'none';
+                return;
+            }
+            const msg = `🗑️ ${count} removed user${count > 1 ? 's' : ''} — also remove from Import & Manager?`;
+            if (bar) { document.getElementById('udDeletedFromReportInfo').textContent = msg; bar.style.display = 'flex'; }
+            if (barTop) { document.getElementById('udDeletedFromReportInfoTop').textContent = msg; barTop.style.display = 'flex'; }
+        }
+
+        function removeDeletedFromImport() {
+            if (typeof state === 'undefined' || !state.items) return;
+            const toRemove = new Set(udDeletedFromReportUsers);
+            const before = state.items.length;
+            state.items = state.items.filter(i => !toRemove.has(i.value));
+            const removed = before - state.items.length;
+            markDuplicates();
+            saveToStorage();
+            renderItems();
+            renderTeams();
+            updateStats();
+            updateExportTeamSelect();
+            clearDeletedFromReportList();
+            checkForNewUsers();
+            saveReportToHtml();
+            showToast('Removed', `${removed} user(s) also removed from Import & Manager`, 'success');
+        }
+
+        function clearDeletedFromReportList() {
+            udDeletedFromReportUsers = [];
+            const bar = document.getElementById('udDeletedFromReportBar');
+            const barTop = document.getElementById('udDeletedFromReportBarTop');
+            if (bar) bar.style.display = 'none';
+            if (barTop) barTop.style.display = 'none';
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateUdStats(); updateTabCounts();
+            const existingCb = document.getElementById('udSyncExisting');
+            const notFoundCb = document.getElementById('udSyncOnlyNotFound');
+            if (existingCb && notFoundCb) {
+                existingCb.addEventListener('change', () => { if (existingCb.checked) notFoundCb.checked = false; });
+                notFoundCb.addEventListener('change', () => { if (notFoundCb.checked) existingCb.checked = false; });
+            }
+        });
 
         let lastNotFoundUsernames = [];
+
+        function stopSync() {
+            if (!udSyncing) return;
+            udSyncStopped = true;
+            if (udSyncAbortController) udSyncAbortController.abort();
+            const stopBtn = document.getElementById('udStopSyncBtn');
+            stopBtn.textContent = '⏳ Stopping...';
+            stopBtn.disabled = true;
+        }
 
         async function syncUserDetails() {
             if (udSyncing) return;
             udSyncing = true;
+            udSyncStopped = false;
+            udSyncAbortController = new AbortController();
             const btn = document.getElementById('udSyncBtn');
+            const stopBtn = document.getElementById('udStopSyncBtn');
             const status = document.getElementById('udSyncStatus');
             const progress = document.getElementById('udSyncProgress');
             const bar = document.getElementById('udProgressBar');
@@ -1886,6 +2156,9 @@
             btn.disabled = true;
             btn.textContent = '⏳ Syncing...';
             btn.style.opacity = '0.6';
+            stopBtn.style.display = 'inline-block';
+            stopBtn.disabled = false;
+            stopBtn.textContent = '⏹ Stop';
             status.textContent = '';
 
             try {
@@ -1897,21 +2170,33 @@
                 btn.disabled = false;
                 btn.textContent = '🔄 Sync New Users';
                 btn.style.opacity = '1';
+                stopBtn.style.display = 'none';
                 udSyncing = false;
                 return;
             }
 
             const includeExisting = document.getElementById('udSyncExisting').checked;
+            const onlyNotFound = document.getElementById('udSyncOnlyNotFound').checked;
             const allUsernames = state.items.map(i => i.value).filter(Boolean);
             const existingUsernames = new Set(USER_DETAILS_DATA.filter(r => r.c).map(r => r.u));
-            const toSync = includeExisting ? allUsernames : allUsernames.filter(u => !existingUsernames.has(u));
+            const notFoundUsernames = USER_DETAILS_DATA.filter(r => !r.c).map(r => r.u);
+
+            let toSync;
+            if (onlyNotFound) {
+                toSync = notFoundUsernames.length > 0 ? notFoundUsernames : allUsernames.filter(u => !existingUsernames.has(u));
+            } else if (includeExisting) {
+                toSync = allUsernames;
+            } else {
+                toSync = allUsernames.filter(u => !existingUsernames.has(u));
+            }
 
             if (toSync.length === 0) {
-                status.textContent = 'All users already synced!';
+                status.textContent = onlyNotFound ? 'No not-found users to sync!' : 'All users already synced!';
                 status.style.color = '#16a34a';
                 btn.disabled = false;
                 btn.textContent = '🔄 Sync New Users';
                 btn.style.opacity = '1';
+                stopBtn.style.display = 'none';
                 udSyncing = false;
                 return;
             }
@@ -1923,7 +2208,7 @@
             etaEl.textContent = '';
             carEl.style.left = '0%';
             smokeEl.style.left = '0%';
-            status.textContent = `Syncing ${toSync.length} user${toSync.length !== 1 ? 's' : ''}...`;
+            status.textContent = `Syncing ${toSync.length} user${toSync.length !== 1 ? 's' : ''}${onlyNotFound ? ' (not-found only)' : ''}...`;
             status.style.color = '#1E3860';
             const syncStartTime = Date.now();
             let progressDone = 0;
@@ -1945,20 +2230,28 @@
                 else etaEl.textContent = `~${Math.ceil(remaining / 60)}m ${remaining % 60}s remaining`;
             }
 
+            let finalResults = [];
+            let progressResults = [];
+            let wasStopped = false;
+
             try {
                 const resp = await fetch(SYNC_SERVER_URL + '/api/lookup', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ usernames: toSync }),
+                    signal: udSyncAbortController.signal,
                 });
 
                 const reader = resp.body.getReader();
                 const decoder = new TextDecoder();
                 let buffer = '';
-                let finalResults = [];
-                let progressResults = [];
 
                 while (true) {
+                    if (udSyncStopped) {
+                        wasStopped = true;
+                        reader.cancel();
+                        break;
+                    }
                     const { done, value } = await reader.read();
                     if (done) break;
                     buffer += decoder.decode(value, { stream: true });
@@ -1984,56 +2277,82 @@
                         } catch {}
                     }
                 }
+            } catch (err) {
+                if (err.name === 'AbortError' || udSyncStopped) {
+                    wasStopped = true;
+                } else {
+                    console.error('Sync error:', err);
+                    status.textContent = '⚠️ Sync failed — VPN + local server required';
+                    status.style.color = '#dc2626';
+                }
+            }
 
+            if (wasStopped && finalResults.length === 0 && progressResults.length > 0) {
+                finalResults = progressResults.map(pr => {
+                    const existing = USER_DETAILS_DATA.find(r => r.u === pr.u);
+                    if (existing && pr.found) return existing;
+                    return existing || { u: pr.u, uu: '', ui: '', pu: '', pi: '', up: [], pp: [], c: '', su: '', sp: '', e: ['Sync stopped'], le: '' };
+                });
+            }
+
+            if (wasStopped) {
+                const completedCount = progressResults.length;
+                const pct = toSync.length > 0 ? Math.round((completedCount / toSync.length) * 100) : 0;
+                updateCarPosition(pct);
+                etaEl.textContent = '⏹ Stopped';
+                text.textContent = `${completedCount}/${toSync.length} (stopped)`;
+                status.textContent = `Stopped after ${completedCount}/${toSync.length} users`;
+                status.style.color = '#d97706';
+            } else {
                 updateCarPosition(100);
                 etaEl.textContent = '🏁 Finished!';
                 text.textContent = `${toSync.length}/${toSync.length}`;
+            }
 
-                let syncFoundCount = 0;
-                if (finalResults.length > 0) {
-                    const existingMap = new Map(USER_DETAILS_DATA.map(r => [r.u, r]));
-                    for (const r of finalResults) {
-                        existingMap.set(r.u, r);
+            let syncFoundCount = 0;
+            if (finalResults.length > 0) {
+                const existingMap = new Map(USER_DETAILS_DATA.map(r => [r.u, r]));
+                for (const r of finalResults) {
+                    existingMap.set(r.u, r);
+                }
+                if (includeExisting && !onlyNotFound) {
+                    const currentUsernames = new Set(allUsernames);
+                    for (const key of existingMap.keys()) {
+                        if (!currentUsernames.has(key)) existingMap.delete(key);
                     }
-                    // If "Include existing" is checked, remove users no longer in the import list
-                    if (includeExisting) {
-                        const currentUsernames = new Set(allUsernames);
-                        for (const key of existingMap.keys()) {
-                            if (!currentUsernames.has(key)) existingMap.delete(key);
-                        }
-                    }
-                    USER_DETAILS_DATA.length = 0;
-                    USER_DETAILS_DATA.push(...existingMap.values());
-                    try { localStorage.setItem('ud_data', JSON.stringify(USER_DETAILS_DATA)); } catch {}
+                }
+                USER_DETAILS_DATA.length = 0;
+                USER_DETAILS_DATA.push(...existingMap.values());
+                try { localStorage.setItem('ud_data', JSON.stringify(USER_DETAILS_DATA)); } catch {}
+                try { localStorage.setItem('ud_data_timestamp', new Date().toISOString()); } catch {}
 
-                    syncFoundCount = finalResults.filter(r => r.c).length;
-                    const notFound = finalResults.length - syncFoundCount;
+                syncFoundCount = finalResults.filter(r => r.c).length;
+                const notFound = finalResults.length - syncFoundCount;
+                if (!wasStopped) {
                     status.textContent = `Done! ${syncFoundCount} found, ${notFound} not found`;
                     status.style.color = '#16a34a';
-
-                    lastNotFoundUsernames = finalResults.filter(r => !r.c).map(r => r.u);
-                    showSyncReport(finalResults, progressResults, syncStartTime);
-                    saveReportToHtml();
-                } else {
-                    status.textContent = 'No results received';
-                    status.style.color = '#f59e0b';
                 }
 
-                setUdTab(syncFoundCount > 0 ? 'found' : 'all');
-                renderUserDetailsTable();
-                updateUdStats();
-                updateTabCounts();
-            } catch (err) {
-                console.error('Sync error:', err);
-                status.textContent = '⚠️ Sync failed — VPN + local server required';
-                status.style.color = '#dc2626';
+                lastNotFoundUsernames = finalResults.filter(r => !r.c).map(r => r.u);
+                showSyncReport(finalResults, progressResults, syncStartTime, wasStopped);
+                saveReportToHtml();
+            } else if (!wasStopped) {
+                status.textContent = 'No results received';
+                status.style.color = '#f59e0b';
             }
+
+            setUdTab(syncFoundCount > 0 ? 'found' : 'all');
+            renderUserDetailsTable();
+            updateUdStats();
+            updateTabCounts();
 
             setTimeout(() => { progress.style.display = 'none'; }, 4000);
             btn.disabled = false;
             btn.textContent = '🔄 Sync New Users';
             btn.style.opacity = '1';
+            stopBtn.style.display = 'none';
             udSyncing = false;
+            udSyncAbortController = null;
         }
 
         function syncReportProdTags(prods) {
@@ -2041,7 +2360,7 @@
             return prods.map(p => `<span class="ud-tag ${classifyProd(p)}" style="font-size:10px;padding:1px 6px;margin:1px 2px;">${p}</span>`).join('');
         }
 
-        function showSyncReport(results, progressResults, startTime) {
+        function showSyncReport(results, progressResults, startTime, wasStopped) {
             const reportEl = document.getElementById('udSyncReport');
             const statsEl = document.getElementById('udSyncReportStats');
             const detailsEl = document.getElementById('udSyncReportDetails');
@@ -2067,6 +2386,11 @@
                 <div style="flex:1;background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #e0e7ff;text-align:center;">
                     <div style="font-size:28px;font-weight:800;color:#1E3860;">${durationStr}</div>
                     <div style="font-size:12px;color:#2a5090;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Duration</div>
+                </div>
+                ${wasStopped ? `<div style="flex:1;background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #fef3c7;text-align:center;">
+                    <div style="font-size:28px;font-weight:800;color:#d97706;">⏹</div>
+                    <div style="font-size:12px;color:#f59e0b;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Stopped</div>
+                </div>` : ''}
                 </div>
                 <div style="flex:1;background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #fef3c7;text-align:center;">
                     <div style="font-size:28px;font-weight:800;color:#d97706;">${results.length}</div>
@@ -2260,6 +2584,7 @@
                     USER_DETAILS_DATA.length = 0;
                     USER_DETAILS_DATA.push(...existingMap.values());
                     try { localStorage.setItem('ud_data', JSON.stringify(USER_DETAILS_DATA)); } catch {}
+                    try { localStorage.setItem('ud_data_timestamp', new Date().toISOString()); } catch {}
 
                     renderUserDetailsTable();
                     updateUdStats();
@@ -2418,17 +2743,33 @@
                             lastUpdated: state.lastUpdated
                         }));
 
-                        // Load User Details Report from cloud (cloud is source of truth — replace, don't merge)
-                        if (result.userDetails && Array.isArray(result.userDetails) && result.userDetails.length > 0) {
+                        // Load User Details: keep whichever source has MORE found users
+                        const cloudUd = (result.userDetails && Array.isArray(result.userDetails)) ? result.userDetails : [];
+                        const localFoundCount = USER_DETAILS_DATA.filter(r => r.c).length;
+                        const cloudFoundCount = cloudUd.filter(r => r.c).length;
+
+                        if (cloudUd.length > 0 && cloudFoundCount >= localFoundCount) {
                             USER_DETAILS_DATA.length = 0;
-                            USER_DETAILS_DATA.push(...result.userDetails);
+                            USER_DETAILS_DATA.push(...cloudUd);
                             try { localStorage.setItem('ud_data', JSON.stringify(USER_DETAILS_DATA)); } catch {}
-                            if (typeof renderUserDetailsTable === 'function') {
-                                renderUserDetailsTable();
-                                updateUdStats();
-                                updateTabCounts();
-                            }
-                            console.log('✅ User Details loaded from cloud: ' + result.userDetails.length + ' users');
+                            try { localStorage.setItem('ud_data_timestamp', new Date().toISOString()); } catch {}
+                            console.log('✅ User Details loaded from cloud: ' + cloudUd.length + ' users (' + cloudFoundCount + ' found — cloud >= local ' + localFoundCount + ')');
+                        } else if (USER_DETAILS_DATA.length > 0) {
+                            console.log('🛡️ Local user details are better (local: ' + localFoundCount + ' found, cloud: ' + cloudFoundCount + ' found) — keeping local data (' + USER_DETAILS_DATA.length + ' users)');
+                            setTimeout(() => saveUserDetailsToCloud(), 2000);
+                        } else if (cloudUd.length > 0) {
+                            USER_DETAILS_DATA.length = 0;
+                            USER_DETAILS_DATA.push(...cloudUd);
+                            try { localStorage.setItem('ud_data', JSON.stringify(USER_DETAILS_DATA)); } catch {}
+                            try { localStorage.setItem('ud_data_timestamp', new Date().toISOString()); } catch {}
+                            console.log('✅ User Details loaded from cloud: ' + cloudUd.length + ' users (no local data)');
+                        } else {
+                            console.log('📝 No user details in cloud or local');
+                        }
+                        if (typeof renderUserDetailsTable === 'function') {
+                            renderUserDetailsTable();
+                            updateUdStats();
+                            updateTabCounts();
                         }
                         
                         showSyncStatus('synced');
@@ -2477,7 +2818,7 @@
                 const response = await fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'text/plain' },
                     body: JSON.stringify({
                         action: 'save',
                         data: {
@@ -2538,18 +2879,27 @@
                         lastUpdated: state.lastUpdated
                     }));
 
-                    // Also sync User Details Report from cloud (cloud is source of truth — replace, don't merge)
+                    // Sync User Details: keep whichever source has more found users
                     let udCount = 0;
-                    if (result.userDetails && Array.isArray(result.userDetails) && result.userDetails.length > 0) {
+                    const syncCloudUd = (result.userDetails && Array.isArray(result.userDetails)) ? result.userDetails : [];
+                    const syncLocalFound = USER_DETAILS_DATA.filter(r => r.c).length;
+                    const syncCloudFound = syncCloudUd.filter(r => r.c).length;
+
+                    if (syncCloudUd.length > 0 && syncCloudFound >= syncLocalFound) {
                         USER_DETAILS_DATA.length = 0;
-                        USER_DETAILS_DATA.push(...result.userDetails);
+                        USER_DETAILS_DATA.push(...syncCloudUd);
                         try { localStorage.setItem('ud_data', JSON.stringify(USER_DETAILS_DATA)); } catch {}
+                        try { localStorage.setItem('ud_data_timestamp', new Date().toISOString()); } catch {}
+                        udCount = syncCloudUd.length;
+                        console.log('✅ User Details synced from cloud: ' + udCount + ' users (' + syncCloudFound + ' found)');
+                    } else if (USER_DETAILS_DATA.length > 0) {
                         udCount = USER_DETAILS_DATA.length;
-                        renderUserDetailsTable();
-                        updateUdStats();
-                        updateTabCounts();
-                        console.log('✅ User Details synced from cloud: ' + udCount + ' users');
+                        console.log('🛡️ Local user details are better (local: ' + syncLocalFound + ' found, cloud: ' + syncCloudFound + ' found) — keeping local (' + udCount + ' users)');
+                        setTimeout(() => saveUserDetailsToCloud(), 2000);
                     }
+                    renderUserDetailsTable();
+                    updateUdStats();
+                    updateTabCounts();
                     
                     updateStats();
                     renderTeams();
@@ -3561,16 +3911,26 @@
         }
 
         function udRowToArray(r) {
+            const lowerCounts = countProducts(r.up);
+            const prodCounts = countProducts(r.pp);
             return [
                 r.u || '',
                 r.c || '',
                 (r.le || '').toUpperCase(),
                 r.uu || '',
                 r.ui || '',
+                (r.up || []).length,
+                lowerCounts ? lowerCounts.deposit : 0,
+                lowerCounts ? lowerCounts.closed : 0,
+                lowerCounts ? lowerCounts.investment : 0,
                 (r.up || []).join(', '),
                 r.su || '',
                 r.pu || '',
                 r.pi || '',
+                (r.pp || []).length,
+                prodCounts ? prodCounts.deposit : 0,
+                prodCounts ? prodCounts.closed : 0,
+                prodCounts ? prodCounts.investment : 0,
                 (r.pp || []).join(', '),
                 r.sp || '',
                 (r.e || []).join('; ')
@@ -3579,9 +3939,31 @@
 
         const UD_EXPORT_HEADERS = [
             'Username', 'CIF', 'Lower Env', 'Lower UDB User', 'Lower UDB ID',
+            'Lower # Products', 'Lower # Deposit', 'Lower # Closed', 'Lower # Investment',
             'Lower Products', 'Lower SSN/Tax ID',
-            'PROD UDB User', 'PROD UDB ID', 'PROD Products', 'PROD SSN/Tax ID', 'Errors'
+            'PROD UDB User', 'PROD UDB ID',
+            'PROD # Products', 'PROD # Deposit', 'PROD # Closed', 'PROD # Investment',
+            'PROD Products', 'PROD SSN/Tax ID', 'Errors'
         ];
+
+        function sortExportData(data) {
+            const sortOrder = document.getElementById('udExportSortOrder')?.value || 'none';
+            if (sortOrder === 'none') return data;
+            const sorted = [...data];
+            sorted.sort((a, b) => {
+                let va, vb;
+                switch (sortOrder) {
+                    case 'total-desc': va = (b.up||[]).length + (b.pp||[]).length; vb = (a.up||[]).length + (a.pp||[]).length; return va - vb;
+                    case 'total-asc':  va = (a.up||[]).length + (a.pp||[]).length; vb = (b.up||[]).length + (b.pp||[]).length; return va - vb;
+                    case 'lower-desc': return (b.up||[]).length - (a.up||[]).length;
+                    case 'lower-asc':  return (a.up||[]).length - (b.up||[]).length;
+                    case 'prod-desc':  return (b.pp||[]).length - (a.pp||[]).length;
+                    case 'prod-asc':   return (a.pp||[]).length - (b.pp||[]).length;
+                    default: return 0;
+                }
+            });
+            return sorted;
+        }
 
         function udExportAllXls() {
             if (USER_DETAILS_DATA.length === 0) {
@@ -3592,23 +3974,24 @@
             let totalExported = 0;
 
             state.teams.forEach(team => {
-                const data = getUdDataForTeam(team.id);
+                const data = sortExportData(getUdDataForTeam(team.id));
                 if (data.length === 0) return;
                 const rows = data.map(udRowToArray);
                 const ws = XLSX.utils.aoa_to_sheet([UD_EXPORT_HEADERS, ...rows]);
-                ws['!cols'] = UD_EXPORT_HEADERS.map(() => ({ wch: 22 }));
+                ws['!cols'] = UD_EXPORT_HEADERS.map((_, i) => ({ wch: i === 9 || i === 17 ? 40 : 18 }));
+                ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length, c: UD_EXPORT_HEADERS.length - 1 } }) };
                 const sheetName = team.name.substring(0, 31).replace(/[\\\/\?\*\[\]]/g, '_');
                 XLSX.utils.book_append_sheet(wb, ws, sheetName);
                 totalExported += data.length;
             });
 
-            // Also add users not in any team
             const allTeamUsernames = new Set(state.items.map(i => i.value));
-            const unassigned = USER_DETAILS_DATA.filter(r => !allTeamUsernames.has(r.u));
+            const unassigned = sortExportData(USER_DETAILS_DATA.filter(r => !allTeamUsernames.has(r.u)));
             if (unassigned.length > 0) {
                 const rows = unassigned.map(udRowToArray);
                 const ws = XLSX.utils.aoa_to_sheet([UD_EXPORT_HEADERS, ...rows]);
-                ws['!cols'] = UD_EXPORT_HEADERS.map(() => ({ wch: 22 }));
+                ws['!cols'] = UD_EXPORT_HEADERS.map((_, i) => ({ wch: i === 9 || i === 17 ? 40 : 18 }));
+                ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length, c: UD_EXPORT_HEADERS.length - 1 } }) };
                 XLSX.utils.book_append_sheet(wb, ws, 'Unassigned');
                 totalExported += unassigned.length;
             }
@@ -3618,8 +4001,9 @@
                 return;
             }
 
+            const sortLabel = document.getElementById('udExportSortOrder')?.value || 'none';
             XLSX.writeFile(wb, `UserDetails_AllTeams_${new Date().toISOString().slice(0,10)}.xlsx`);
-            showToast('Exported', `${totalExported} user details across ${state.teams.length} teams exported`, 'success');
+            showToast('Exported', `${totalExported} user details across ${state.teams.length} teams exported${sortLabel !== 'none' ? ' (sorted)' : ''}`, 'success');
         }
 
         function udExportAllTxt() {
@@ -3630,28 +4014,32 @@
             let text = '';
 
             state.teams.forEach(team => {
-                const data = getUdDataForTeam(team.id);
+                const data = sortExportData(getUdDataForTeam(team.id));
                 if (data.length === 0) return;
                 text += `\n=== ${team.name} (${data.length} users) ===\n`;
                 data.forEach(r => {
+                    const lc = countProducts(r.up);
+                    const pc = countProducts(r.pp);
                     text += `\n${r.u}  |  CIF: ${r.c || 'N/A'}  |  Env: ${(r.le || '').toUpperCase()}\n`;
                     text += `  Lower: ${r.uu || 'N/A'} (UDB ID: ${r.ui || 'N/A'})  SSN: ${r.su || 'N/A'}\n`;
-                    text += `  Lower Products: ${(r.up || []).join(', ') || 'None'}\n`;
+                    text += `  Lower Products (${lc ? lc.total : 0}): ${(r.up || []).join(', ') || 'None'}\n`;
                     text += `  PROD:  ${r.pu || 'N/A'} (UDB ID: ${r.pi || 'N/A'})  SSN: ${r.sp || 'N/A'}\n`;
-                    text += `  PROD Products: ${(r.pp || []).join(', ') || 'None'}\n`;
+                    text += `  PROD Products (${pc ? pc.total : 0}): ${(r.pp || []).join(', ') || 'None'}\n`;
                 });
             });
 
             const allTeamUsernames = new Set(state.items.map(i => i.value));
-            const unassigned = USER_DETAILS_DATA.filter(r => !allTeamUsernames.has(r.u));
+            const unassigned = sortExportData(USER_DETAILS_DATA.filter(r => !allTeamUsernames.has(r.u)));
             if (unassigned.length > 0) {
                 text += `\n=== Unassigned (${unassigned.length} users) ===\n`;
                 unassigned.forEach(r => {
+                    const lc = countProducts(r.up);
+                    const pc = countProducts(r.pp);
                     text += `\n${r.u}  |  CIF: ${r.c || 'N/A'}  |  Env: ${(r.le || '').toUpperCase()}\n`;
                     text += `  Lower: ${r.uu || 'N/A'} (UDB ID: ${r.ui || 'N/A'})  SSN: ${r.su || 'N/A'}\n`;
-                    text += `  Lower Products: ${(r.up || []).join(', ') || 'None'}\n`;
+                    text += `  Lower Products (${lc ? lc.total : 0}): ${(r.up || []).join(', ') || 'None'}\n`;
                     text += `  PROD:  ${r.pu || 'N/A'} (UDB ID: ${r.pi || 'N/A'})  SSN: ${r.sp || 'N/A'}\n`;
-                    text += `  PROD Products: ${(r.pp || []).join(', ') || 'None'}\n`;
+                    text += `  PROD Products (${pc ? pc.total : 0}): ${(r.pp || []).join(', ') || 'None'}\n`;
                 });
             }
 
@@ -3672,14 +4060,15 @@
                 return;
             }
             const team = state.teams.find(t => t.id === teamId);
-            const data = getUdDataForTeam(teamId);
+            const data = sortExportData(getUdDataForTeam(teamId));
             if (data.length === 0) {
                 showToast('Error', 'No user details for this team', 'error');
                 return;
             }
             const rows = data.map(udRowToArray);
             const ws = XLSX.utils.aoa_to_sheet([UD_EXPORT_HEADERS, ...rows]);
-            ws['!cols'] = UD_EXPORT_HEADERS.map(() => ({ wch: 22 }));
+            ws['!cols'] = UD_EXPORT_HEADERS.map((_, i) => ({ wch: i === 9 || i === 17 ? 40 : 18 }));
+            ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length, c: UD_EXPORT_HEADERS.length - 1 } }) };
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, 'User Details');
             const fileName = `UserDetails_${team.name.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0,10)}.xlsx`;
@@ -3694,18 +4083,20 @@
                 return;
             }
             const team = state.teams.find(t => t.id === teamId);
-            const data = getUdDataForTeam(teamId);
+            const data = sortExportData(getUdDataForTeam(teamId));
             if (data.length === 0) {
                 showToast('Error', 'No user details for this team', 'error');
                 return;
             }
             let text = `=== ${team.name} — User Details (${data.length} users) ===\n`;
             data.forEach(r => {
+                const lc = countProducts(r.up);
+                const pc = countProducts(r.pp);
                 text += `\n${r.u}  |  CIF: ${r.c || 'N/A'}  |  Env: ${(r.le || '').toUpperCase()}\n`;
                 text += `  Lower: ${r.uu || 'N/A'} (UDB ID: ${r.ui || 'N/A'})  SSN: ${r.su || 'N/A'}\n`;
-                text += `  Lower Products: ${(r.up || []).join(', ') || 'None'}\n`;
+                text += `  Lower Products (${lc ? lc.total : 0}): ${(r.up || []).join(', ') || 'None'}\n`;
                 text += `  PROD:  ${r.pu || 'N/A'} (UDB ID: ${r.pi || 'N/A'})  SSN: ${r.sp || 'N/A'}\n`;
-                text += `  PROD Products: ${(r.pp || []).join(', ') || 'None'}\n`;
+                text += `  PROD Products (${pc ? pc.total : 0}): ${(r.pp || []).join(', ') || 'None'}\n`;
             });
             const blob = new Blob([text.trim()], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
