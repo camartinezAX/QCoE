@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>The Future of Quality Engineering | Axos QCOE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --orange:#FAA74A;--navy:#1E3860;
+  --bg:#060d18;--bg2:#0b1726;--bg3:#0f1f34;
+  --card-bg:rgba(22,42,72,0.35);--card-border:rgba(250,167,74,0.1);
+  --text:#e8ecf2;--text2:#8fa0b8;--text3:#506580;
+  --grad:linear-gradient(135deg,#FAA74A,#f97316);
+  --hd:'Space Grotesk',system-ui,sans-serif;
+  --bd:'Inter',system-ui,sans-serif;
+  --ease:cubic-bezier(.4,0,.2,1);
+}
+html{scroll-behavior:smooth;scroll-padding-top:80px}
+body{font-family:var(--bd);background:var(--bg);color:var(--text);line-height:1.7;overflow-x:hidden}
+::selection{background:rgba(250,167,74,.3);color:#fff}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--navy);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--orange)}
+
+canvas#bg{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
+
+/* ── NAV ── */
+.nav{position:fixed;top:0;left:0;right:0;z-index:1000;padding:.7rem 2rem;display:flex;align-items:center;justify-content:space-between;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);background:rgba(6,13,24,.75);border-bottom:1px solid rgba(250,167,74,.06);transition:all .3s var(--ease)}
+.nav.scrolled{background:rgba(6,13,24,.95);border-bottom-color:rgba(250,167,74,.15)}
+.nav-logo{font-family:var(--hd);font-weight:700;font-size:1.2rem;color:var(--orange);letter-spacing:-.5px;display:flex;align-items:center;gap:.5rem}
+.nav-logo .dot{width:7px;height:7px;border-radius:50%;background:var(--orange);animation:pulse-dot 2s ease infinite}
+.nav-links{display:flex;gap:.15rem}
+.nav-links a{color:var(--text2);text-decoration:none;font-size:.78rem;font-weight:500;padding:.35rem .7rem;border-radius:6px;transition:all .2s var(--ease);letter-spacing:.2px}
+.nav-links a:hover,.nav-links a.active{color:var(--orange);background:rgba(250,167,74,.07)}
+.hamburger{display:none;flex-direction:column;gap:4px;cursor:pointer;padding:8px}
+.hamburger span{width:20px;height:2px;background:var(--text2);border-radius:2px;transition:.3s}
+
+/* ── HERO ── */
+.hero{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:6rem 2rem 4rem;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 30% 30%,rgba(250,167,74,.06) 0%,transparent 50%),radial-gradient(ellipse at 70% 70%,rgba(30,56,96,.12) 0%,transparent 50%);animation:aurora 18s ease-in-out infinite alternate;z-index:-1}
+@keyframes aurora{0%{transform:translate(0,0) scale(1)}50%{transform:translate(-2%,1%) scale(1.02)}100%{transform:translate(1%,-1%) scale(.99)}}
+.hero-badge{display:inline-flex;align-items:center;gap:.5rem;padding:.35rem .9rem;border-radius:50px;background:rgba(250,167,74,.07);border:1px solid rgba(250,167,74,.12);color:var(--orange);font-size:.7rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2rem;animation:fadeUp .8s var(--ease) .2s both}
+.hero-badge .pulse{width:5px;height:5px;border-radius:50%;background:var(--orange);animation:pulse-dot 2s ease infinite}
+.hero h1{font-family:var(--hd);font-size:clamp(2.5rem,6vw,4.8rem);font-weight:700;line-height:1.08;letter-spacing:-2px;margin-bottom:1.5rem;animation:fadeUp .8s var(--ease) .4s both}
+.hero h1 .grad{background:var(--grad);background-size:200% 200%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:gradShift 5s ease infinite}
+.hero-sub{font-size:clamp(1rem,2vw,1.3rem);color:var(--text2);max-width:680px;margin-bottom:3rem;font-weight:300;animation:fadeUp .8s var(--ease) .6s both}
+.hero-cta{display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;animation:fadeUp .8s var(--ease) .8s both}
+.btn{display:inline-flex;align-items:center;gap:.5rem;padding:.8rem 1.8rem;border-radius:10px;font-family:var(--bd);font-weight:600;font-size:.88rem;text-decoration:none;transition:all .3s var(--ease);cursor:pointer;border:none}
+.btn-p{background:var(--grad);color:var(--bg);box-shadow:0 4px 24px rgba(250,167,74,.25)}
+.btn-p:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(250,167,74,.4)}
+.btn-o{background:transparent;color:var(--orange);border:1px solid rgba(250,167,74,.25)}
+.btn-o:hover{background:rgba(250,167,74,.07);border-color:var(--orange)}
+.hero-scroll{position:absolute;bottom:2rem;display:flex;flex-direction:column;align-items:center;gap:.4rem;color:var(--text3);font-size:.65rem;letter-spacing:1.2px;text-transform:uppercase;animation:fadeUp .8s var(--ease) 1.2s both}
+.scroll-line{width:1px;height:36px;background:linear-gradient(to bottom,var(--orange),transparent);animation:scrollP 2s ease infinite}
+
+/* ── SECTIONS ── */
+section{position:relative;z-index:1;padding:6rem 2rem}
+.container{max-width:1080px;margin:0 auto}
+.sec-label{display:inline-flex;align-items:center;gap:.5rem;color:var(--orange);font-size:.68rem;font-weight:600;letter-spacing:2px;text-transform:uppercase;margin-bottom:.75rem}
+.sec-label::before{content:'';width:22px;height:1px;background:var(--orange)}
+.sec-title{font-family:var(--hd);font-size:clamp(1.9rem,4vw,2.8rem);font-weight:700;letter-spacing:-1px;margin-bottom:.75rem;line-height:1.15}
+.sec-sub{font-size:1.05rem;color:var(--text2);max-width:680px;line-height:1.7;margin-bottom:2.5rem}
+.divider{width:50px;height:3px;background:var(--grad);border-radius:2px;margin:0 auto 2.5rem;opacity:.4}
+
+/* ── GLASS ── */
+.glass{background:var(--card-bg);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--card-border);border-radius:14px;transition:all .35s var(--ease)}
+.glass:hover{border-color:rgba(250,167,74,.22);box-shadow:0 0 35px rgba(250,167,74,.05);transform:translateY(-2px)}
+
+/* ── REVEAL ── */
+.rv{opacity:0;transform:translateY(30px);transition:opacity .7s var(--ease),transform .7s var(--ease)}
+.rv.on{opacity:1;transform:translateY(0)}
+.d1{transition-delay:.1s}.d2{transition-delay:.2s}.d3{transition-delay:.3s}.d4{transition-delay:.4s}.d5{transition-delay:.5s}.d6{transition-delay:.6s}
+
+/* ── QUOTE ── */
+.quote{position:relative;padding:1.75rem 2rem;margin:2rem 0;border-left:3px solid var(--orange);background:rgba(250,167,74,.03);border-radius:0 12px 12px 0}
+.quote p{font-size:1.05rem;font-style:italic;color:var(--text);line-height:1.8}
+.quote .attr{margin-top:.6rem;font-size:.82rem;color:var(--orange);font-style:normal;font-weight:600}
+
+/* ── SHIFT CARDS ── */
+.shift-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:2rem}
+.s-card{padding:1.5rem;display:flex;gap:1rem;align-items:flex-start}
+.s-card .ico{flex-shrink:0;width:44px;height:44px;border-radius:10px;background:rgba(250,167,74,.08);display:flex;align-items:center;justify-content:center;font-size:1.2rem}
+.s-card h3{font-family:var(--hd);font-size:1rem;font-weight:600;margin-bottom:.4rem}
+.s-card p{font-size:.85rem;color:var(--text2);line-height:1.6}
+
+/* ── TIMELINE ── */
+.timeline{position:relative;padding:2rem 0}
+.timeline::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:2px;background:linear-gradient(to bottom,transparent,var(--orange),transparent);transform:translateX(-50%)}
+.tl-item{position:relative;display:flex;margin-bottom:2.5rem}
+.tl-item:nth-child(odd){justify-content:flex-start;padding-right:calc(50% + 1.5rem)}
+.tl-item:nth-child(even){justify-content:flex-end;padding-left:calc(50% + 1.5rem)}
+.tl-dot{position:absolute;left:50%;transform:translateX(-50%);width:12px;height:12px;border-radius:50%;background:var(--bg);border:2px solid var(--orange);z-index:2;transition:.3s}
+.tl-item.on .tl-dot{background:var(--orange);box-shadow:0 0 16px rgba(250,167,74,.5)}
+.tl-box{padding:1.25rem;max-width:400px;width:100%}
+.tl-year{font-family:var(--hd);font-size:.75rem;color:var(--orange);font-weight:700;letter-spacing:.8px;margin-bottom:.3rem}
+.tl-text{font-size:.85rem;color:var(--text2);line-height:1.6}
+
+/* ── METR ── */
+.metr{margin-top:2.5rem;padding:2rem;text-align:center}
+.metr-bars{display:flex;align-items:flex-end;justify-content:center;gap:1.25rem;height:200px;margin:1.5rem 0}
+.metr-col{display:flex;flex-direction:column;align-items:center;gap:.5rem;flex:1;max-width:90px}
+.metr-val{font-family:var(--hd);font-size:.8rem;font-weight:700;color:var(--orange)}
+.metr-fill{width:100%;border-radius:6px 6px 0 0;background:var(--grad);transition:height 1.5s var(--ease);height:0}
+.metr-lbl{font-size:.65rem;color:var(--text3);text-align:center;line-height:1.3}
+.metr-note{font-size:.85rem;color:var(--text2);margin-top:.75rem}
+.metr-note strong{color:var(--orange)}
+
+/* ── TESTGENNIE PIPELINE ── */
+.pipeline-flow{padding:2rem 1.5rem;margin:2rem 0;text-align:center}
+.pipeline-flow h4{font-family:var(--hd);font-size:.7rem;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:1.25rem}
+.pipeline-flow .desc{font-size:.82rem;color:var(--text2);max-width:580px;margin:0 auto 1.25rem;text-align:center;line-height:1.6}
+.pf-row{display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:nowrap}
+.pf-node{display:flex;flex-direction:column;align-items:center;gap:.4rem;z-index:2;flex-shrink:0}
+.pf-ico{width:52px;height:52px;border-radius:12px;background:rgba(250,167,74,.07);border:1px solid rgba(250,167,74,.15);display:flex;align-items:center;justify-content:center;font-size:1.2rem;transition:.4s}
+.pf-ico.glow{background:rgba(250,167,74,.1);border-color:rgba(250,167,74,.3);animation:nodeGlow 3s ease-in-out infinite}
+.pf-lbl{font-size:.55rem;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.6px}
+.pf-conn{flex:1;height:2px;background:linear-gradient(90deg,rgba(250,167,74,.04),rgba(250,167,74,.15),rgba(250,167,74,.04));position:relative;min-width:24px;max-width:80px}
+.pf-dot{position:absolute;width:4px;height:4px;border-radius:50%;background:var(--orange);top:-1px;box-shadow:0 0 6px rgba(250,167,74,.5);animation:dotFlow 2.5s linear infinite}
+@keyframes dotFlow{0%{left:-4px;opacity:0}8%{opacity:1}92%{opacity:1}100%{left:calc(100% + 4px);opacity:0}}
+@keyframes nodeGlow{0%,100%{box-shadow:0 0 8px rgba(250,167,74,.06)}50%{box-shadow:0 0 22px rgba(250,167,74,.18)}}
+
+/* ── INITIATIVE SHOWCASE ── */
+.init-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1.5rem}
+.init-card{padding:0;overflow:hidden;display:flex;flex-direction:column}
+.init-card .init-anim{height:110px;background:rgba(6,13,24,.5);border-bottom:1px solid rgba(250,167,74,.06);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.init-card .init-body{padding:1.5rem;flex:1;display:flex;flex-direction:column}
+.init-card h3{font-family:var(--hd);font-size:.95rem;font-weight:600;margin-bottom:.4rem}
+.init-card p{font-size:.82rem;color:var(--text2);line-height:1.6;flex:1}
+.init-tag{display:inline-block;margin-top:.75rem;padding:.2rem .55rem;border-radius:4px;font-size:.6rem;font-weight:600;letter-spacing:.4px;text-transform:uppercase}
+.tag-m{background:rgba(250,167,74,.08);color:var(--orange)}
+.tag-a{background:rgba(74,222,128,.08);color:#4ade80}
+.tag-p{background:rgba(96,165,250,.08);color:#60a5fa}
+
+/* ── ANIMATION: AI Coding ── */
+.anim-aicoding{width:88%;max-width:280px;border-radius:6px;border:1px solid rgba(250,167,74,.1);overflow:hidden}
+.aic-bar{height:16px;background:rgba(250,167,74,.04);border-bottom:1px solid rgba(250,167,74,.06);display:flex;align-items:center;gap:3px;padding:0 6px}
+.aic-bar span{width:4px;height:4px;border-radius:50%;background:rgba(250,167,74,.15)}
+.aic-bar .aic-title{margin-left:auto;font-size:.3rem;color:var(--text3);font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+.aic-body{padding:6px 8px;background:rgba(6,13,24,.5);font-family:'Courier New',monospace;font-size:.45rem;line-height:1.7}
+.aic-body .ln{opacity:0;color:rgba(250,167,74,.5);animation:aiType .5s var(--ease) forwards;animation-delay:calc(var(--i) * .35s);white-space:nowrap;overflow:hidden}
+.aic-body .kw{color:var(--orange)}.aic-body .st{color:#4ade80}
+.aic-body .indent{padding-left:.8rem}
+.aic-label{display:flex;align-items:center;gap:4px;padding:4px 8px;font-size:.35rem;font-weight:700;color:var(--orange);letter-spacing:.3px;text-transform:uppercase;border-top:1px solid rgba(250,167,74,.06);background:rgba(250,167,74,.03)}
+.aic-label .aic-dot{width:5px;height:5px;border-radius:50%;background:var(--orange);animation:blink 1.2s ease infinite}
+@keyframes aiType{from{opacity:0;max-width:0}to{opacity:1;max-width:300px}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* ── ANIMATION: Grid Assembly ── */
+.anim-grid{display:flex;flex-wrap:wrap;gap:3px;width:92%;max-width:380px;justify-content:center}
+.anim-grid .blk{height:20px;padding:0 6px;border-radius:3px;background:rgba(250,167,74,.06);border:1px solid rgba(250,167,74,.08);display:flex;align-items:center;justify-content:center;font-size:.35rem;font-weight:700;color:rgba(250,167,74,.6);letter-spacing:.3px;text-transform:uppercase;opacity:0;animation:blkIn .4s var(--ease) forwards;animation-delay:calc(var(--i) * .1s)}
+.anim-grid .blk.w2{padding:0 12px}
+.anim-grid .blk.w4{width:100%;justify-content:center}
+@keyframes blkIn{from{opacity:0;transform:scale(.7) translateY(6px)}to{opacity:1;transform:scale(1) translateY(0)}}
+
+/* ── ANIMATION: Hub Network ── */
+.anim-hub{width:100px;height:100px;position:relative}
+.hub-c{position:absolute;top:50%;left:50%;width:28px;height:28px;transform:translate(-50%,-50%);border-radius:50%;background:rgba(250,167,74,.12);border:1.5px solid rgba(250,167,74,.3);display:flex;align-items:center;justify-content:center;font-size:.4rem;font-weight:700;color:var(--orange);animation:hubPulse 3s ease-in-out infinite;z-index:2}
+.hub-sat{position:absolute;width:14px;height:14px;border-radius:50%;background:rgba(250,167,74,.08);border:1px solid rgba(250,167,74,.2);top:50%;left:50%;transform:translate(-50%,-50%) rotate(var(--a)) translateY(-38px) rotate(calc(-1 * var(--a)));animation:satPulse 4s ease-in-out infinite;animation-delay:calc(var(--d) * 1s)}
+.hub-line{position:absolute;top:50%;left:50%;width:38px;height:1px;background:linear-gradient(90deg,rgba(250,167,74,.15),rgba(250,167,74,.04));transform-origin:left center;transform:rotate(var(--a))}
+@keyframes hubPulse{0%,100%{box-shadow:0 0 8px rgba(250,167,74,.1)}50%{box-shadow:0 0 20px rgba(250,167,74,.25)}}
+@keyframes satPulse{0%,100%{opacity:.5;transform:translate(-50%,-50%) rotate(var(--a)) translateY(-38px) rotate(calc(-1 * var(--a))) scale(.8)}50%{opacity:1;transform:translate(-50%,-50%) rotate(var(--a)) translateY(-38px) rotate(calc(-1 * var(--a))) scale(1.1)}}
+
+/* ── ANIMATION: Document Stack ── */
+.anim-docs{display:flex;flex-direction:column;gap:4px;width:75%;max-width:180px}
+.anim-docs .doc{height:20px;border-radius:4px;background:rgba(250,167,74,.05);border:1px solid rgba(250,167,74,.08);display:flex;align-items:center;padding:0 .5rem;font-size:.4rem;font-weight:600;color:rgba(250,167,74,.5);letter-spacing:.3px;opacity:0;animation:docSlide .5s var(--ease) forwards;animation-delay:calc(var(--i) * .3s)}
+@keyframes docSlide{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
+
+/* ── ANIMATION: Transform (Form → Summary) ── */
+.anim-tf{display:flex;align-items:center;gap:.6rem}
+.tf-box{width:36px;height:36px;border-radius:8px;background:rgba(250,167,74,.07);border:1px solid rgba(250,167,74,.12);display:flex;align-items:center;justify-content:center;font-size:.9rem}
+.tf-arrow{display:flex;align-items:center;gap:2px;color:var(--orange);font-size:.7rem;opacity:.6}
+.tf-arrow .bolt{animation:boltFlash 2s ease-in-out infinite}
+@keyframes boltFlash{0%,100%{opacity:.3;transform:scale(.9)}50%{opacity:1;transform:scale(1.2)}}
+.tf-time{font-family:var(--hd);font-size:.5rem;font-weight:700;color:var(--orange);background:rgba(250,167,74,.08);padding:2px 6px;border-radius:4px;margin-left:4px}
+
+/* ── ANIMATION: TestGennie Mini Pipeline ── */
+.anim-tg{display:flex;align-items:center;gap:0;width:90%;max-width:320px}
+.tg-step{display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0;opacity:0;animation:tgFadeIn .5s var(--ease) forwards;animation-delay:calc(var(--i) * .3s)}
+.tg-ico{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:.7rem;transition:.3s}
+.tg-ico.form{background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.15)}
+.tg-ico.ai{background:rgba(250,167,74,.1);border:1px solid rgba(250,167,74,.2);animation:tgAiPulse 2.5s ease-in-out infinite}
+.tg-ico.out{background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.15)}
+.tg-lbl{font-size:.32rem;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.tg-conn{flex:1;height:2px;background:rgba(250,167,74,.06);position:relative;min-width:14px;max-width:30px}
+.tg-conn .tg-dot{position:absolute;width:4px;height:4px;border-radius:50%;background:var(--orange);top:-1px;box-shadow:0 0 5px rgba(250,167,74,.4);animation:dotFlow 2s linear infinite;animation-delay:var(--d,0s)}
+@keyframes tgFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes tgAiPulse{0%,100%{box-shadow:0 0 6px rgba(250,167,74,.05)}50%{box-shadow:0 0 18px rgba(250,167,74,.2)}}
+
+/* ── ANIMATION: Bridge (Cursor ↔ ADO) ── */
+.anim-bridge{display:flex;align-items:center;gap:0;width:80%;max-width:200px}
+.br-node{display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0}
+.br-ico{width:32px;height:32px;border-radius:8px;background:rgba(250,167,74,.07);border:1px solid rgba(250,167,74,.12);display:flex;align-items:center;justify-content:center;font-size:.75rem}
+.br-lbl{font-size:.4rem;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.br-conn{flex:1;height:2px;background:rgba(250,167,74,.08);position:relative;min-width:40px;margin:0 .5rem}
+.br-pulse{position:absolute;top:-2px;width:8px;height:6px;border-radius:3px;background:var(--orange);box-shadow:0 0 8px rgba(250,167,74,.4);animation:bridgePulse 2s linear infinite}
+@keyframes bridgePulse{0%{left:-8px;opacity:0}10%{opacity:1}90%{opacity:1}100%{left:calc(100% + 8px);opacity:0}}
+
+/* ── ANIMATION: Pipeline Stages ── */
+.anim-pipe{display:flex;align-items:center;gap:0;width:85%;max-width:220px}
+.pipe-n{height:24px;padding:0 .4rem;border-radius:4px;font-size:.4rem;font-weight:700;text-transform:uppercase;letter-spacing:.3px;display:flex;align-items:center;gap:3px;flex-shrink:0}
+.pipe-n.done{background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.15);color:#4ade80}
+.pipe-n.act{background:rgba(250,167,74,.08);border:1px solid rgba(250,167,74,.15);color:var(--orange);animation:pipeGlow 2s ease-in-out infinite}
+.pipe-c{flex:1;height:2px;background:rgba(74,222,128,.1);position:relative;min-width:12px}
+.pipe-c .pd{position:absolute;width:4px;height:4px;border-radius:50%;background:#4ade80;top:-1px;animation:dotFlow 1.8s linear infinite}
+@keyframes pipeGlow{0%,100%{box-shadow:0 0 4px rgba(250,167,74,.1)}50%{box-shadow:0 0 12px rgba(250,167,74,.25)}}
+
+/* ── ANIMATION: Browser Recorder ── */
+.anim-rec{width:80%;max-width:200px;border-radius:6px;border:1px solid rgba(250,167,74,.1);overflow:hidden}
+.rec-bar{height:18px;background:rgba(250,167,74,.04);border-bottom:1px solid rgba(250,167,74,.06);display:flex;align-items:center;justify-content:space-between;padding:0 6px}
+.rec-bar .dots{display:flex;gap:3px}
+.rec-bar .dots span{width:5px;height:5px;border-radius:50%;background:rgba(250,167,74,.15)}
+.rec-ind{display:flex;align-items:center;gap:3px;font-size:.35rem;font-weight:700;color:#ef4444;letter-spacing:.5px;text-transform:uppercase}
+.rec-ind .red{width:5px;height:5px;border-radius:50%;background:#ef4444;animation:recBlink 1s ease infinite}
+@keyframes recBlink{0%,100%{opacity:1}50%{opacity:.2}}
+.rec-body{height:65px;position:relative;background:rgba(6,13,24,.4)}
+.rec-click{position:absolute;width:16px;height:16px;border-radius:50%;border:2px solid var(--orange);top:var(--y);left:var(--x);opacity:0;animation:clickRipple 2.5s ease-in-out infinite;animation-delay:var(--d,0s)}
+@keyframes clickRipple{0%{transform:scale(0);opacity:0}15%{transform:scale(1);opacity:.8}30%{transform:scale(1.5);opacity:0}100%{opacity:0}}
+
+/* ── ANIMATION: Mini Chart ── */
+.anim-chart{display:flex;align-items:flex-end;gap:5px;height:70px}
+.chart-col{width:18px;position:relative;height:100%}
+.chart-fill{position:absolute;bottom:0;left:0;right:0;border-radius:3px 3px 0 0;background:var(--grad);height:var(--h);animation:chartPulse 3.5s ease-in-out infinite;animation-delay:var(--d);transform-origin:bottom}
+@keyframes chartPulse{0%,100%{transform:scaleY(1);opacity:.55}50%{transform:scaleY(1.15);opacity:1}}
+
+/* ── IMPACT SECTION ── */
+.impact{background:linear-gradient(180deg,var(--bg) 0%,rgba(30,56,96,.06) 50%,var(--bg) 100%)}
+.metrics-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1.25rem;margin-bottom:2.5rem}
+.m-card{text-align:center;padding:1.75rem 1rem}
+.m-card .m-val{font-family:var(--hd);font-size:clamp(1.8rem,3.5vw,2.6rem);font-weight:700;color:var(--orange);line-height:1}
+.m-card.glow .m-val{text-shadow:0 0 16px rgba(250,167,74,.35)}
+.m-card .m-unit{font-size:.8rem;color:var(--orange);font-weight:500;opacity:.65}
+.m-card .m-lbl{font-size:.75rem;color:var(--text2);margin-top:.4rem;line-height:1.4}
+.breakdown{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1.5rem}
+.bd-card{padding:1.75rem}
+.bd-card h3{font-family:var(--hd);font-size:1rem;font-weight:600;margin-bottom:1rem;display:flex;align-items:center;gap:.4rem}
+.prog-item{margin-bottom:1rem}
+.prog-item .pi-top{display:flex;justify-content:space-between;margin-bottom:.3rem}
+.prog-item .pi-l{font-size:.8rem;color:var(--text2)}
+.prog-item .pi-v{font-size:.8rem;color:var(--orange);font-weight:600;font-family:var(--hd)}
+.prog-bar{height:5px;background:rgba(250,167,74,.08);border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;background:var(--grad);border-radius:3px;transition:width 1.5s var(--ease);width:0}
+
+/* ── IMPACT MINI BARS ── */
+.impact-bars{display:flex;gap:8px;justify-content:center;align-items:flex-end;height:100px;margin:1.5rem 0 .5rem}
+.ib-col{text-align:center;width:38px}
+.ib-track{height:80px;background:rgba(250,167,74,.03);border-radius:4px 4px 0 0;position:relative;margin-bottom:3px}
+.ib-fill{position:absolute;bottom:0;left:0;right:0;border-radius:4px 4px 0 0;background:var(--grad);transform-origin:bottom;animation:ibPulse 3s ease-in-out infinite;animation-delay:var(--d)}
+.ib-lbl{font-size:.4rem;color:var(--text3);text-transform:uppercase;letter-spacing:.2px;white-space:nowrap}
+@keyframes ibPulse{0%,100%{transform:scaleY(1);opacity:.55}50%{transform:scaleY(1.2);opacity:1}}
+
+.annual{margin-top:2rem;padding:1.75rem;background:rgba(250,167,74,.04);border:1px solid rgba(250,167,74,.12);border-radius:12px;text-align:center}
+.annual .a-num{font-family:var(--hd);font-size:2.2rem;font-weight:700;color:var(--orange);animation:counterGlow 3s ease-in-out infinite}
+.annual .a-lbl{font-size:.85rem;color:var(--text2);margin-top:.2rem}
+
+/* ── VISION ── */
+.v-pipeline{margin:2.5rem 0;padding:1.5rem;overflow-x:auto}
+.v-pipe{display:flex;align-items:stretch;gap:0;min-width:850px}
+.v-stage{flex:1;position:relative;padding:1.25rem .75rem;text-align:center;display:flex;flex-direction:column;align-items:center}
+.v-stage::after{content:'';position:absolute;right:-10px;top:50%;transform:translateY(-50%);width:20px;height:2px;background:rgba(250,167,74,.2)}
+.v-stage:last-child::after{display:none}
+.v-ico{width:48px;height:48px;border-radius:12px;background:rgba(250,167,74,.08);border:1px solid rgba(250,167,74,.12);display:flex;align-items:center;justify-content:center;font-size:1.2rem;margin-bottom:.6rem;position:relative;transition:.3s}
+.v-stage:hover .v-ico{background:rgba(250,167,74,.12);border-color:rgba(250,167,74,.25);box-shadow:0 0 20px rgba(250,167,74,.1);transform:scale(1.06)}
+.v-dot{position:absolute;width:7px;height:7px;border-radius:50%;background:var(--orange);right:-14px;top:50%;transform:translateY(-50%);opacity:0;animation:flowP 3s ease infinite}
+.v-stage:nth-child(1) .v-dot{animation-delay:0s}
+.v-stage:nth-child(2) .v-dot{animation-delay:.35s}
+.v-stage:nth-child(3) .v-dot{animation-delay:.7s}
+.v-stage:nth-child(4) .v-dot{animation-delay:1.05s}
+.v-stage:nth-child(5) .v-dot{animation-delay:1.4s}
+.v-stage:nth-child(6) .v-dot{animation-delay:1.75s}
+.v-stage:last-child .v-dot{display:none}
+.v-title{font-family:var(--hd);font-size:.75rem;font-weight:600;margin-bottom:.3rem}
+.v-desc{font-size:.65rem;color:var(--text2);line-height:1.4}
+
+.vision-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:2rem}
+.vis-card{padding:1.5rem}
+.vis-card h3{font-family:var(--hd);font-size:.95rem;font-weight:600;margin-bottom:.6rem;display:flex;align-items:center;gap:.4rem}
+.vis-card ul{list-style:none}
+.vis-card li{font-size:.82rem;color:var(--text2);padding:.25rem 0 .25rem 1.1rem;position:relative;line-height:1.5}
+.vis-card li::before{content:'';position:absolute;left:0;top:.55rem;width:5px;height:5px;border-radius:50%;background:var(--orange);opacity:.45}
+
+/* ── ACCORDION ── */
+.acc{margin-top:1.5rem}
+.acc-item{border:1px solid rgba(250,167,74,.06);border-radius:10px;margin-bottom:.6rem;overflow:hidden;transition:.3s}
+.acc-item:hover,.acc-item.open{border-color:rgba(250,167,74,.18)}
+.acc-btn{width:100%;background:none;border:none;color:var(--text);padding:1.1rem 1.25rem;font-family:var(--bd);font-size:.9rem;font-weight:500;text-align:left;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:1rem;transition:.2s}
+.acc-btn:hover{color:var(--orange)}
+.acc-btn .acc-x{font-size:1.1rem;color:var(--orange);transition:.3s;flex-shrink:0}
+.acc-item.open .acc-x{transform:rotate(45deg)}
+.acc-body{max-height:0;overflow:hidden;transition:max-height .4s var(--ease)}
+.acc-inner{padding:0 1.25rem 1.1rem;font-size:.87rem;color:var(--text2);line-height:1.7}
+
+/* ── ROADMAP ── */
+.roadmap{position:relative;margin-top:2rem}
+.rm-phase{display:flex;gap:1.5rem;margin-bottom:1.5rem;align-items:flex-start}
+.rm-marker{flex-shrink:0;width:70px;text-align:center}
+.rm-badge{display:inline-block;padding:.25rem .6rem;border-radius:5px;font-family:var(--hd);font-size:.65rem;font-weight:700;letter-spacing:.4px;text-transform:uppercase;background:rgba(250,167,74,.08);color:var(--orange);border:1px solid rgba(250,167,74,.15)}
+.rm-months{display:block;font-size:.6rem;color:var(--text3);margin-top:.2rem}
+.rm-body{flex:1;padding:1.25rem;min-width:0}
+.rm-body h3{font-family:var(--hd);font-size:.95rem;font-weight:600;margin-bottom:.6rem}
+.rm-body ul{list-style:none}
+.rm-body li{font-size:.82rem;color:var(--text2);padding:.25rem 0 .25rem 1.1rem;position:relative;line-height:1.5}
+.rm-body li::before{content:'';position:absolute;left:0;top:.55rem;width:5px;height:5px;border-radius:50%;border:1.5px solid var(--orange);background:transparent}
+
+.res-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;margin-top:1.5rem}
+.res-card{padding:1rem;display:flex;gap:.75rem;align-items:flex-start}
+.res-card .ri{flex-shrink:0;width:32px;height:32px;border-radius:7px;background:rgba(250,167,74,.08);display:flex;align-items:center;justify-content:center;font-size:.85rem}
+.res-card h4{font-family:var(--hd);font-size:.8rem;font-weight:600;margin-bottom:.2rem}
+.res-card p{font-size:.72rem;color:var(--text2);line-height:1.5}
+
+/* ── LEADERSHIP ── */
+.lead-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1.5rem;counter-reset:lead}
+.l-card{padding:1.5rem;counter-increment:lead}
+.l-card::before{content:counter(lead,decimal-leading-zero);font-family:var(--hd);font-size:1.8rem;font-weight:700;color:rgba(250,167,74,.12);display:block;margin-bottom:.4rem}
+.l-card h3{font-family:var(--hd);font-size:.9rem;font-weight:600;margin-bottom:.4rem}
+.l-card p{font-size:.82rem;color:var(--text2);line-height:1.6}
+
+.tools-note{margin-top:2.5rem;padding:1.5rem;background:rgba(250,167,74,.03);border:1px solid rgba(250,167,74,.1);border-radius:14px;display:flex;gap:1.5rem;align-items:center}
+.tools-note .tn-ico{flex-shrink:0;font-size:2rem}
+.tools-note h3{font-family:var(--hd);font-size:1rem;font-weight:600;margin-bottom:.4rem}
+.tools-note p{font-size:.85rem;color:var(--text2);line-height:1.6}
+
+/* ── CTA ── */
+.cta{text-align:center;padding:7rem 2rem;position:relative;overflow:hidden}
+.cta::before{content:'';position:absolute;top:50%;left:50%;width:700px;height:700px;transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(250,167,74,.07) 0%,rgba(250,167,74,.02) 30%,transparent 60%);animation:ctaPulse 6s ease-in-out infinite;pointer-events:none}
+@keyframes ctaPulse{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.6}50%{transform:translate(-50%,-50%) scale(1.12);opacity:1}}
+.cta-stats{display:flex;justify-content:center;gap:2.5rem;margin-bottom:2.5rem;flex-wrap:wrap}
+.cta-stat .cs-v{font-family:var(--hd);font-size:1.8rem;font-weight:700;color:var(--orange)}
+.cta-stat .cs-l{font-size:.7rem;color:var(--text2);margin-top:.15rem}
+
+.btt{position:fixed;bottom:1.5rem;right:1.5rem;z-index:900;width:40px;height:40px;border-radius:10px;background:rgba(250,167,74,.12);border:1px solid rgba(250,167,74,.2);color:var(--orange);font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transform:translateY(16px);transition:.3s;backdrop-filter:blur(8px)}
+.btt.vis{opacity:1;transform:translateY(0)}
+.btt:hover{background:rgba(250,167,74,.2);transform:translateY(-2px)}
+
+.footer{position:relative;z-index:1;padding:2.5rem 2rem;text-align:center;border-top:1px solid rgba(250,167,74,.06)}
+.footer p{font-size:.75rem;color:var(--text3)}
+.footer .fb{color:var(--orange);font-family:var(--hd);font-weight:600}
+
+/* ── KEYFRAMES ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(25px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.65)}}
+@keyframes scrollP{0%{opacity:1;height:36px}50%{opacity:.3;height:22px}100%{opacity:1;height:36px}}
+@keyframes flowP{0%{opacity:0;transform:translateY(-50%) translateX(-8px) scale(.5)}25%{opacity:1;transform:translateY(-50%) translateX(0) scale(1)}75%{opacity:1;transform:translateY(-50%) translateX(8px) scale(1)}100%{opacity:0;transform:translateY(-50%) translateX(16px) scale(.5)}}
+@keyframes gradShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+@keyframes counterGlow{0%,100%{text-shadow:0 0 8px rgba(250,167,74,0)}50%{text-shadow:0 0 16px rgba(250,167,74,.25)}}
+
+/* ── RESPONSIVE ── */
+@media(max-width:1024px){
+  .shift-grid,.breakdown,.vision-grid,.lead-grid{grid-template-columns:1fr}
+  .metrics-row{grid-template-columns:repeat(2,1fr)}
+  .init-grid{grid-template-columns:1fr}
+  .timeline::before{left:16px}
+  .tl-item{padding-right:0!important;padding-left:3rem!important;justify-content:flex-start!important}
+  .tl-dot{left:16px!important}
+}
+@media(max-width:768px){
+  .nav-links{display:none;position:fixed;inset:0;background:rgba(6,13,24,.97);flex-direction:column;align-items:center;justify-content:center;gap:.8rem;z-index:999}
+  .nav-links.open{display:flex}
+  .nav-links a{font-size:1rem;padding:.6rem 1.2rem}
+  .hamburger{display:flex;z-index:1000}
+  section{padding:3.5rem 1.25rem}
+  .metrics-row{grid-template-columns:1fr 1fr}
+  .v-pipe{min-width:550px;font-size:.8rem}
+  .rm-phase{flex-direction:column;gap:.6rem}
+  .tools-note{flex-direction:column;text-align:center}
+  .cta-stats{gap:1.2rem}
+  .res-grid{grid-template-columns:1fr}
+}
+@media(max-width:480px){
+  .metrics-row{grid-template-columns:1fr}
+  .hero h1{font-size:2.1rem;letter-spacing:-1px}
+}
+</style>
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+
+<!-- NAV -->
+<nav class="nav" id="nav">
+  <div class="nav-logo"><span class="dot"></span> AXOS QCOE</div>
+  <div class="nav-links" id="navLinks">
+    <a href="#hero">Home</a><a href="#shift">The Shift</a><a href="#evidence">Evidence</a>
+    <a href="#journey">Our Journey</a><a href="#impact">Impact</a><a href="#vision">Vision</a>
+    <a href="#upskilling">Upskilling</a><a href="#action">Take Action</a>
+  </div>
+  <div class="hamburger" id="hamburger" onclick="document.getElementById('navLinks').classList.toggle('open')">
+    <span></span><span></span><span></span>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero" id="hero">
+  <div class="hero-badge"><span class="pulse"></span> QCOE Strategic Vision &mdash; March 2026</div>
+  <h1>
+    <span style="display:block">The Future of</span>
+    <span style="display:block"><span class="grad">Quality Engineering</span></span>
+  </h1>
+  <p class="hero-sub">How AI is transforming testing at Axos &mdash; what we've built, what we've saved, and the roadmap for what comes next.</p>
+  <div class="hero-cta">
+    <a href="#shift" class="btn btn-p">Explore Our Vision &darr;</a>
+    <a href="#impact" class="btn btn-o">See the Impact</a>
+  </div>
+  <div class="hero-scroll"><span>Scroll</span><div class="scroll-line"></div></div>
+</header>
+
+<!-- THE SHIFT -->
+<section id="shift">
+  <div class="container">
+    <div class="rv">
+      <span class="sec-label">The Inflection Point</span>
+      <h2 class="sec-title">The Shift Is Here</h2>
+      <p class="sec-sub">At QCOE, we have been closely studying how the future of testing is evolving. We believe that many traditional, manual quality assurance tasks will increasingly be performed by artificial intelligence. The evidence is unmistakable &mdash; and the pace is accelerating.</p>
+    </div>
+    <div class="quote rv d1">
+      <p>&ldquo;On February 5, 2026, OpenAI released GPT-5.3 Codex and Anthropic released Claude Opus 4.6 on the same day. These represented a massive leap. I describe what I want in plain English, walk away for four hours, and come back to finished, polished work &mdash; no corrections needed.&rdquo;</p>
+      <div class="attr">&mdash; Matt Shumer, CEO of OthersideAI (HyperWrite)</div>
+    </div>
+    <div class="rv d2" style="margin-top:1.5rem">
+      <p style="font-size:1rem;color:var(--text2);line-height:1.8;margin-bottom:1.25rem">AI labs focused on coding first because AI that writes code helps build the next, smarter version of itself. Now that coding is largely solved, they are moving to <strong style="color:var(--text)">everything else</strong>: law, finance, medicine, accounting, consulting, writing, design, analysis, customer service. The people building these systems estimate 1&ndash;5 years for massive disruption across all knowledge work.</p>
+      <p style="font-size:1rem;color:var(--text);line-height:1.8;font-weight:500">The Quality Engineer will be more essential than ever &mdash; not for executing repetitive manual tasks, but for providing the <span style="color:var(--orange)">judgment, context, domain expertise, and strategic oversight</span> that transforms AI output into genuine quality assurance.</p>
+    </div>
+    <div class="shift-grid">
+      <div class="glass s-card rv d1"><div class="ico">&#9889;</div><div><h3>AI Writes Its Own Code</h3><p>OpenAI's GPT-5.3 Codex documentation states it was &ldquo;instrumental in creating itself&rdquo; &mdash; debugging its own training, managing deployment, and diagnosing test results. Each generation builds the next.</p></div></div>
+      <div class="glass s-card rv d2"><div class="ico">&#128200;</div><div><h3>Exponential, Not Linear</h3><p>Autonomous AI task duration doubles every 4&ndash;7 months. At this rate: independent work for days within a year, weeks within two, month-long projects within three.</p></div></div>
+      <div class="glass s-card rv d3"><div class="ico">&#127919;</div><div><h3>50% Entry-Level Impact</h3><p>Anthropic's CEO predicts AI will affect 50% of entry-level white-collar jobs within 1&ndash;5 years. Many in the industry consider this estimate conservative.</p></div></div>
+      <div class="glass s-card rv d4"><div class="ico">&#128161;</div><div><h3>No Field Is Immune</h3><p>This is different from previous automation because AI is a general substitute for cognitive work &mdash; it gets better at everything simultaneously. The only question is when, not if.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- EVIDENCE -->
+<section id="evidence" style="background:linear-gradient(180deg,var(--bg),rgba(30,56,96,.05),var(--bg))">
+  <div class="container">
+    <div class="rv">
+      <span class="sec-label">Hard Data</span>
+      <h2 class="sec-title">The Evidence Is Undeniable</h2>
+      <p class="sec-sub">If you tried AI in 2023&ndash;2024, your experience is completely outdated. The models available today are unrecognizable from even six months ago. The debate about whether AI is &ldquo;hitting a wall&rdquo; is over.</p>
+    </div>
+    <div class="timeline">
+      <div class="tl-item rv"><div class="tl-dot"></div><div class="glass tl-box"><div class="tl-year">2022</div><div class="tl-text">AI couldn't do basic arithmetic reliably. Most tools were novelties, producing inconsistent and unreliable outputs.</div></div></div>
+      <div class="tl-item rv d1"><div class="tl-dot"></div><div class="glass tl-box"><div class="tl-year">2023</div><div class="tl-text">AI passed the bar exam. ChatGPT reached 100M users. The world started paying attention, but capabilities were still limited.</div></div></div>
+      <div class="tl-item rv d2"><div class="tl-dot"></div><div class="glass tl-box"><div class="tl-year">2024</div><div class="tl-text">Could write working software and explain graduate-level science. Coding assistants became standard tools for developers.</div></div></div>
+      <div class="tl-item rv d3"><div class="tl-dot"></div><div class="glass tl-box"><div class="tl-year">Late 2025</div><div class="tl-text">Top engineers handed over most coding work to AI. METR measured AI completing tasks that take human experts nearly 5 hours.</div></div></div>
+      <div class="tl-item rv d4"><div class="tl-dot"></div><div class="glass tl-box"><div class="tl-year">February 5, 2026</div><div class="tl-text">GPT-5.3 Codex and Claude Opus 4.6 released on the same day. New models made everything before them feel like a different era entirely.</div></div></div>
+    </div>
+    <div class="glass metr rv">
+      <h3 style="font-family:var(--hd);font-size:1rem;margin-bottom:.4rem">METR: AI Autonomous Task Duration</h3>
+      <p style="font-size:.82rem;color:var(--text2);margin-bottom:1.25rem">How long can AI work independently without human help? Doubling every 4&ndash;7 months.</p>
+      <div class="metr-bars" id="metrBars">
+        <div class="metr-col"><div class="metr-val">10 min</div><div class="metr-fill" data-h="12"></div><div class="metr-lbl">Early 2025</div></div>
+        <div class="metr-col"><div class="metr-val">1 hr</div><div class="metr-fill" data-h="35"></div><div class="metr-lbl">Mid 2025</div></div>
+        <div class="metr-col"><div class="metr-val">~3 hrs</div><div class="metr-fill" data-h="70"></div><div class="metr-lbl">Late 2025</div></div>
+        <div class="metr-col"><div class="metr-val">~5 hrs</div><div class="metr-fill" data-h="110"></div><div class="metr-lbl">Nov 2025</div></div>
+        <div class="metr-col"><div class="metr-val">Days?</div><div class="metr-fill" data-h="145"></div><div class="metr-lbl">2026 Proj.</div></div>
+        <div class="metr-col"><div class="metr-val">Weeks?</div><div class="metr-fill" data-h="170"></div><div class="metr-lbl">2027 Proj.</div></div>
+      </div>
+      <p class="metr-note">If the current doubling rate holds, AI will work independently for <strong>days within a year</strong> and <strong>weeks within two</strong>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- OUR JOURNEY -->
+<section id="journey">
+  <div class="container">
+    <div class="rv">
+      <span class="sec-label">What We've Built</span>
+      <h2 class="sec-title">Our AI Journey at Axos</h2>
+      <p class="sec-sub">At Axos, we are already moving forward with this vision. Our transition from QA to Quality Engineering established a foundation of technical excellence. We've built a strong automation footprint. Now, we're leveraging AI to accelerate everything.</p>
+    </div>
+
+    <!-- TestGennie Pipeline -->
+    <div class="glass pipeline-flow rv d2">
+      <h4>TestGennie &mdash; Our MVP, Rolled Out Across QCOE</h4>
+      <p class="desc">Our flagship AI initiative, adopted by all QE teams. HTML forms generate structured prompts that feed into Cursor AI with markdown rules, which creates test cases and bugs directly in ADO via MCP &mdash; with full traceability and quality standards.</p>
+      <div class="pf-row">
+        <div class="pf-node"><div class="pf-ico">&#128221;</div><div class="pf-lbl">HTML Form</div></div>
+        <div class="pf-conn"><div class="pf-dot" style="animation-delay:0s"></div><div class="pf-dot" style="animation-delay:.8s"></div></div>
+        <div class="pf-node"><div class="pf-ico">&#128203;</div><div class="pf-lbl">Prompt</div></div>
+        <div class="pf-conn"><div class="pf-dot" style="animation-delay:.3s"></div><div class="pf-dot" style="animation-delay:1.1s"></div></div>
+        <div class="pf-node"><div class="pf-ico glow">&#9889;</div><div class="pf-lbl">Cursor AI</div></div>
+        <div class="pf-conn"><div class="pf-dot" style="animation-delay:.5s"></div><div class="pf-dot" style="animation-delay:1.3s"></div></div>
+        <div class="pf-node"><div class="pf-ico">&#128279;</div><div class="pf-lbl">MCP</div></div>
+        <div class="pf-conn"><div class="pf-dot" style="animation-delay:.7s"></div></div>
+        <div class="pf-node"><div class="pf-ico">&#9989;</div><div class="pf-lbl">ADO Output</div></div>
+      </div>
+      <div style="display:flex;justify-content:center;gap:.6rem;margin-top:1rem;flex-wrap:wrap">
+        <span class="init-tag tag-m">Measured &mdash; 22,605 min/mo saved</span>
+        <span class="init-tag tag-a">Rolled Out to All QE Teams</span>
+      </div>
+    </div>
+
+    <h3 style="font-family:var(--hd);font-size:1.05rem;margin:2rem 0 1rem" class="rv d3">Beyond TestGennie &mdash; Our Full AI Initiative Portfolio</h3>
+
+    <!-- INITIATIVE CARDS WITH ANIMATIONS -->
+    <div class="init-grid">
+
+      <!-- 1. TestGennie -->
+      <div class="glass init-card rv d1">
+        <div class="init-anim">
+          <div class="anim-tg">
+            <div class="tg-step" style="--i:0"><div class="tg-ico form">&#128221;</div><div class="tg-lbl">Form</div></div>
+            <div class="tg-conn"><div class="tg-dot" style="--d:0s"></div></div>
+            <div class="tg-step" style="--i:1"><div class="tg-ico form">&#128203;</div><div class="tg-lbl">Prompt</div></div>
+            <div class="tg-conn"><div class="tg-dot" style="--d:.4s"></div></div>
+            <div class="tg-step" style="--i:2"><div class="tg-ico ai">&#9889;</div><div class="tg-lbl">Cursor</div></div>
+            <div class="tg-conn"><div class="tg-dot" style="--d:.8s"></div></div>
+            <div class="tg-step" style="--i:3"><div class="tg-ico ai">&#128279;</div><div class="tg-lbl">MCP</div></div>
+            <div class="tg-conn"><div class="tg-dot" style="--d:1.2s"></div></div>
+            <div class="tg-step" style="--i:4"><div class="tg-ico out">&#9989;</div><div class="tg-lbl">ADO</div></div>
+          </div>
+        </div>
+        <div class="init-body">
+          <h3>TestGennie &mdash; Test Case &amp; Bug Creation</h3>
+          <p>Our rolled-out MVP. Generates ADO test cases and bug reports through a structured Form &rarr; Prompt &rarr; Cursor &rarr; MCP &rarr; ADO pipeline. Tags every artifact for traceability. February 2026 alone: 20,910 minutes saved on test cases, 1,695 minutes saved on bugs.</p>
+          <span class="init-tag tag-m">376 hrs 45 min/mo saved (ADO-tracked)</span>
+        </div>
+      </div>
+
+      <!-- 2. Script Generation -->
+      <div class="glass init-card rv d2">
+        <div class="init-anim">
+          <div class="anim-aicoding">
+            <div class="aic-bar"><span></span><span></span><span></span><span class="aic-title">Cursor AI</span></div>
+            <div class="aic-body">
+              <div class="ln" style="--i:0"><span class="kw">import</span> { test } <span class="kw">from</span> <span class="st">'playwright'</span>;</div>
+              <div class="ln" style="--i:1"><span class="kw">test</span>(<span class="st">'login flow'</span>, async () =&gt; {</div>
+              <div class="ln indent" style="--i:2"><span class="kw">await</span> page.goto(<span class="st">'/login'</span>);</div>
+              <div class="ln indent" style="--i:3"><span class="kw">await</span> page.fill(<span class="st">'#user'</span>,d);</div>
+              <div class="ln" style="--i:4">});</div>
+            </div>
+            <div class="aic-label"><span class="aic-dot"></span> AI generating script...</div>
+          </div>
+        </div>
+        <div class="init-body">
+          <h3>Automation Script Generation</h3>
+          <p>AI-generated scripts for Appium (mobile), Playwright (web), and Core Services Postman API collections. Markdown rules provide framework context so the AI generates scripts that follow team conventions. What used to take 3&ndash;4 hours per script (or a full day for newer QEs) now takes 30&ndash;60 minutes.</p>
+          <span class="init-tag tag-m">~35 hrs/mo saved (75% faster per script)</span>
+        </div>
+      </div>
+
+      <!-- 3. Web Framework -->
+      <div class="glass init-card rv d3">
+        <div class="init-anim">
+          <div class="anim-grid">
+            <div class="blk" style="--i:0">Pages</div>
+            <div class="blk" style="--i:1">Locators</div>
+            <div class="blk" style="--i:2">Fixtures</div>
+            <div class="blk" style="--i:3">Config</div>
+            <div class="blk" style="--i:4">Tests</div>
+            <div class="blk" style="--i:5">Data</div>
+            <div class="blk" style="--i:6">Reports</div>
+            <div class="blk" style="--i:7">Allure</div>
+            <div class="blk w2" style="--i:8">BrowserStack</div>
+            <div class="blk w2" style="--i:9">ADO Pipeline</div>
+            <div class="blk w2" style="--i:10">Teams Notif.</div>
+            <div class="blk w2" style="--i:11">ADO Dashboard</div>
+            <div class="blk w4" style="--i:12">&#9989; COMPLETE &mdash; 1 DAY</div>
+          </div>
+        </div>
+        <div class="init-body">
+          <h3>Web Framework in One Day</h3>
+          <p>Complete Playwright web framework built from scratch in a single day: project structure, BrowserStack integration, local testing, ADO pipeline, Teams channel notifications, and ADO dashboard. Work that traditionally takes 3&ndash;4 weeks.</p>
+          <span class="init-tag tag-m">120 hrs saved (3&ndash;4 weeks &rarr; 1 day)</span>
+        </div>
+      </div>
+
+      <!-- 4. Central User Hub -->
+      <div class="glass init-card rv d4">
+        <div class="init-anim">
+          <div class="anim-hub">
+            <div class="hub-c">HUB</div>
+            <div class="hub-line" style="--a:0deg"></div>
+            <div class="hub-line" style="--a:60deg"></div>
+            <div class="hub-line" style="--a:120deg"></div>
+            <div class="hub-line" style="--a:180deg"></div>
+            <div class="hub-line" style="--a:240deg"></div>
+            <div class="hub-line" style="--a:300deg"></div>
+            <div class="hub-sat" style="--a:0deg;--d:0"></div>
+            <div class="hub-sat" style="--a:60deg;--d:.4"></div>
+            <div class="hub-sat" style="--a:120deg;--d:.8"></div>
+            <div class="hub-sat" style="--a:180deg;--d:1.2"></div>
+            <div class="hub-sat" style="--a:240deg;--d:1.6"></div>
+            <div class="hub-sat" style="--a:300deg;--d:2"></div>
+          </div>
+        </div>
+        <div class="init-body">
+          <h3>Central User Hub</h3>
+          <p>A centralized hub where team members register test usernames. Via API, it retrieves products (accounts), UDB IDs, CIFs, and the equivalent production user. Eliminates hours of manual environment lookups per refresh cycle, with plans to automate JHA refresh exclusion management.</p>
+          <span class="init-tag tag-m">~15 hrs/mo saved (manual lookups eliminated)</span>
+        </div>
+      </div>
+
+      <!-- 5. Operational Automation -->
+      <div class="glass init-card rv d1">
+        <div class="init-anim">
+          <div class="anim-docs">
+            <div class="doc" style="--i:0">&#128202; Bi-weekly Report</div>
+            <div class="doc" style="--i:1">&#128221; PR Description</div>
+            <div class="doc" style="--i:2">&#128231; Email Draft</div>
+            <div class="doc" style="--i:3">&#128200; Sprint Plan</div>
+          </div>
+        </div>
+        <div class="init-body">
+          <h3>Operational Automation</h3>
+          <p>AI generates bi-weekly reports, Confluence page content, code commits, ADO PR titles and descriptions, framework merge conflict resolutions, team guidelines, presentations, diagrams, emails, and planning documentation. Tasks that used to take hours are completed in minutes.</p>
+          <span class="init-tag tag-m">~40 hrs/mo saved (80% faster deliverables)</span>
+        </div>
+      </div>
+
+      <!-- 6. Interview Automation -->
+      <div class="glass init-card rv d2">
+        <div class="init-anim">
+          <div class="anim-tf">
+            <div class="tf-box">&#128101;</div>
+            <div class="tf-arrow"><span class="bolt" style="animation:boltFlash 2s ease-in-out infinite">&#9889;</span></div>
+            <div class="tf-box">&#128196;</div>
+            <div class="tf-time">10 sec</div>
+          </div>
+        </div>
+        <div class="init-body">
+          <h3>Interview Process Automation</h3>
+          <p>An HTML form captures candidate assessment data, generates a structured prompt fed into Cursor, which produces a comprehensive manager-ready summary in 10&ndash;30 seconds. What used to take 15&ndash;20 minutes of manual write-up per candidate is now instant &mdash; and consistent across all evaluators.</p>
+          <span class="init-tag tag-m">~2 hrs/mo saved (instant summaries)</span>
+        </div>
+      </div>
+
+      <!-- 7. ADO MCP Integration -->
+      <div class="glass init-card rv d3">
+        <div class="init-anim">
+          <div class="anim-bridge">
+            <div class="br-node"><div class="br-ico">&#128187;</div><div class="br-lbl">Cursor</div></div>
+            <div class="br-conn"><div class="br-pulse"></div></div>
+            <div class="br-node"><div class="br-ico">&#128279;</div><div class="br-lbl">MCP</div></div>
+            <div class="br-conn"><div class="br-pulse" style="animation-delay:.8s"></div></div>
+            <div class="br-node"><div class="br-ico">&#128203;</div><div class="br-lbl">ADO</div></div>
+          </div>
+        </div>
+        <div class="init-body">
+          <h3>ADO MCP Integration</h3>
+          <p>Model Context Protocol integration enables direct Azure DevOps access from within Cursor &mdash; query work items, edit data, retrieve any information across the organization without leaving the IDE. What used to require navigating multiple ADO screens now happens in a single prompt.</p>
+          <span class="init-tag tag-m">~15 hrs/mo saved (instant ADO access)</span>
+        </div>
+      </div>
+
+      <!-- 8. Pipeline Intelligence -->
+      <div class="glass init-card rv d4">
+        <div class="init-anim">
+          <div class="anim-pipe">
+            <div class="pipe-n done">&#10003; Build</div>
+            <div class="pipe-c"><div class="pd"></div></div>
+            <div class="pipe-n done">&#10003; Test</div>
+            <div class="pipe-c"><div class="pd" style="animation-delay:.5s"></div></div>
+            <div class="pipe-n act">&#128276; Notify</div>
+          </div>
+        </div>
+        <div class="init-body">
+          <h3>Pipeline Intelligence</h3>
+          <p>PowerBI-driven Teams notifications for ADO pipeline status. QE daily hour tracker monitors task hour completion, providing real-time visibility into team productivity and accountability. Replaces manual status checks and follow-ups.</p>
+          <span class="init-tag tag-m">~10 hrs/mo saved (automated monitoring)</span>
+        </div>
+      </div>
+
+      <!-- 9. Browser Recorder -->
+      <div class="glass init-card rv d1">
+        <div class="init-anim">
+          <div class="anim-rec">
+            <div class="rec-bar">
+              <div class="dots"><span></span><span></span><span></span></div>
+              <div class="rec-ind"><div class="red"></div>REC</div>
+            </div>
+            <div class="rec-body">
+              <div class="rec-click" style="--x:25%;--y:30%;--d:0s"></div>
+              <div class="rec-click" style="--x:60%;--y:55%;--d:.8s"></div>
+              <div class="rec-click" style="--x:40%;--y:70%;--d:1.6s"></div>
+            </div>
+          </div>
+        </div>
+        <div class="init-body">
+          <h3>Browser Recorder Extension</h3>
+          <p>AI-assisted Playwright recorder browser extension that captures user interactions and generates automation scripts following framework conventions. Records clicks, fills, selects, and keyboard actions &mdash; exporting ready-to-use locator, page, and spec files.</p>
+          <span class="init-tag tag-p">In Progress &mdash; est. ~20 hrs/mo when active</span>
+        </div>
+      </div>
+
+      <!-- 10. Work Item Tracking -->
+      <div class="glass init-card rv d2">
+        <div class="init-anim">
+          <div class="anim-chart">
+            <div class="chart-col"><div class="chart-fill" style="height:55px;--d:0s"></div></div>
+            <div class="chart-col"><div class="chart-fill" style="height:38px;--d:.2s"></div></div>
+            <div class="chart-col"><div class="chart-fill" style="height:62px;--d:.4s"></div></div>
+            <div class="chart-col"><div class="chart-fill" style="height:30px;--d:.6s"></div></div>
+            <div class="chart-col"><div class="chart-fill" style="height:50px;--d:.8s"></div></div>
+            <div class="chart-col"><div class="chart-fill" style="height:42px;--d:1s"></div></div>
+          </div>
+        </div>
+        <div class="init-body">
+          <h3>QE Work Item Tracking</h3>
+          <p>Automated daily and weekly work item trackers provide visibility into team workload distribution, completion rates, and capacity planning across all active projects and sprints. Eliminates manual spreadsheet tracking entirely.</p>
+          <span class="init-tag tag-m">~8 hrs/mo saved (zero manual tracking)</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- IMPACT -->
+<section id="impact" class="impact">
+  <div class="container">
+    <div class="rv">
+      <span class="sec-label">Measured Results</span>
+      <h2 class="sec-title">The Impact in Numbers</h2>
+      <p class="sec-sub">These aren't projections &mdash; these are measured results tracked through ADO in February 2026 alone. The data speaks for itself.</p>
+    </div>
+    <div class="metrics-row">
+      <div class="glass m-card rv d1"><div class="m-val"><span class="counter" data-target="500">0</span><span class="m-unit">+</span></div><div class="m-unit">hours/month</div><div class="m-lbl">Total manual effort eliminated across all initiatives</div></div>
+      <div class="glass m-card rv d2"><div class="m-val"><span class="counter" data-target="22605">0</span></div><div class="m-unit">min (Feb &rsquo;26)</div><div class="m-lbl">Test cases + bugs alone (ADO-tracked)</div></div>
+      <div class="glass m-card rv d3"><div class="m-val"><span class="counter" data-target="63">0</span></div><div class="m-unit">business days/mo</div><div class="m-lbl">Total equivalent workdays reclaimed</div></div>
+      <div class="glass m-card rv d4"><div class="m-val"><span class="counter" data-target="1">0</span></div><div class="m-unit">day</div><div class="m-lbl">To build a full web framework (vs. 3&ndash;4 weeks)</div></div>
+    </div>
+    <div class="breakdown">
+      <div class="glass bd-card rv">
+        <h3><span style="color:var(--orange)">&#9201;</span> Monthly Savings by Initiative</h3>
+        <div class="prog-item"><div class="pi-top"><span class="pi-l">Test Case Creation (ADO-tracked)</span><span class="pi-v">348 hrs 30 min</span></div><div class="prog-bar"><div class="prog-fill" data-w="100"></div></div></div>
+        <div class="prog-item"><div class="pi-top"><span class="pi-l">Operational Automation</span><span class="pi-v">~40 hrs</span></div><div class="prog-bar"><div class="prog-fill" data-w="11"></div></div></div>
+        <div class="prog-item"><div class="pi-top"><span class="pi-l">Automation Script Generation</span><span class="pi-v">~35 hrs</span></div><div class="prog-bar"><div class="prog-fill" data-w="10"></div></div></div>
+        <div class="prog-item"><div class="pi-top"><span class="pi-l">Bug Creation (ADO-tracked)</span><span class="pi-v">28 hrs 15 min</span></div><div class="prog-bar"><div class="prog-fill" data-w="8"></div></div></div>
+        <div class="prog-item"><div class="pi-top"><span class="pi-l">Central User Hub</span><span class="pi-v">~15 hrs</span></div><div class="prog-bar"><div class="prog-fill" data-w="4"></div></div></div>
+        <div class="prog-item"><div class="pi-top"><span class="pi-l">ADO MCP Integration</span><span class="pi-v">~15 hrs</span></div><div class="prog-bar"><div class="prog-fill" data-w="4"></div></div></div>
+        <div class="prog-item"><div class="pi-top"><span class="pi-l">Pipeline + Tracking + Interviews</span><span class="pi-v">~20 hrs</span></div><div class="prog-bar"><div class="prog-fill" data-w="6"></div></div></div>
+      </div>
+      <div class="glass bd-card rv d2">
+        <h3><span style="color:var(--orange)">&#128640;</span> What This Means</h3>
+        <p style="font-size:.87rem;color:var(--text2);line-height:1.8;margin-bottom:.75rem">In February alone, tracked AI savings from test case and bug creation equaled <strong style="color:var(--text)">47 full business days</strong> &mdash; that's <strong style="color:var(--orange)">9.4 work weeks</strong>, or the equivalent of <strong style="color:var(--orange)">~2.4 months</strong> of one person working full-time.</p>
+        <p style="font-size:.87rem;color:var(--text2);line-height:1.8;margin-bottom:.75rem">When you add script generation (<strong style="color:var(--text)">75% faster per script</strong>), operational automation, the central user hub, ADO MCP integration, pipeline intelligence, and work item tracking, the total climbs to <strong style="color:var(--orange)">500+ hours monthly</strong>.</p>
+        <p style="font-size:.87rem;color:var(--text2);line-height:1.8;margin-bottom:.75rem">The web framework alone &mdash; built in <strong style="color:var(--orange)">one day</strong> instead of three to four weeks &mdash; represents <strong style="color:var(--text)">120 hours</strong> of development time recaptured.</p>
+        <div class="impact-bars">
+          <div class="ib-col"><div class="ib-track"><div class="ib-fill" style="height:60px;--d:0s"></div></div><div class="ib-lbl">TC Gen</div></div>
+          <div class="ib-col"><div class="ib-track"><div class="ib-fill" style="height:30px;--d:.25s"></div></div><div class="ib-lbl">Ops</div></div>
+          <div class="ib-col"><div class="ib-track"><div class="ib-fill" style="height:26px;--d:.5s"></div></div><div class="ib-lbl">Scripts</div></div>
+          <div class="ib-col"><div class="ib-track"><div class="ib-fill" style="height:21px;--d:.75s"></div></div><div class="ib-lbl">Bugs</div></div>
+          <div class="ib-col"><div class="ib-track"><div class="ib-fill" style="height:12px;--d:1s"></div></div><div class="ib-lbl">Hub</div></div>
+          <div class="ib-col"><div class="ib-track"><div class="ib-fill" style="height:12px;--d:1.25s"></div></div><div class="ib-lbl">MCP</div></div>
+          <div class="ib-col"><div class="ib-track"><div class="ib-fill" style="height:15px;--d:1.5s"></div></div><div class="ib-lbl">Other</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="annual rv" style="margin-top:2rem">
+      <div class="a-num"><span class="counter" data-target="6000" data-suffix="+">0</span></div>
+      <div class="a-lbl">Estimated hours saved annually across all QCOE AI initiatives</div>
+      <p style="font-size:.75rem;color:var(--text3);margin-top:.4rem">Equivalent to <strong style="color:var(--orange)">~3 full-time employees</strong> &mdash; from AI adoption in one team alone</p>
+    </div>
+  </div>
+</section>
+
+<!-- VISION -->
+<section id="vision">
+  <div class="container">
+    <div class="rv">
+      <span class="sec-label">Where We're Headed</span>
+      <h2 class="sec-title">The Vision: AI-Native Quality Engineering</h2>
+      <p class="sec-sub">Imagine AI woven into every stage of the software delivery lifecycle &mdash; from sprint planning to production monitoring. This isn't science fiction. Each capability below is either available today or within near-term reach.</p>
+    </div>
+    <div class="glass v-pipeline rv">
+      <div class="v-pipe">
+        <div class="v-stage"><div class="v-ico">&#128203;<div class="v-dot"></div></div><div class="v-title">Planning</div><div class="v-desc">AI analyzes PBIs, suggests test scenarios, estimates complexity</div></div>
+        <div class="v-stage"><div class="v-ico">&#127912;<div class="v-dot"></div></div><div class="v-title">Design</div><div class="v-desc">Monitors Figma changes, generates visual regression baselines</div></div>
+        <div class="v-stage"><div class="v-ico">&#128451;<div class="v-dot"></div></div><div class="v-title">Test Data</div><div class="v-desc">Generates realistic, compliant synthetic data automatically</div></div>
+        <div class="v-stage"><div class="v-ico">&#9881;<div class="v-dot"></div></div><div class="v-title">Automation</div><div class="v-desc">Generates and updates scripts from code changes</div></div>
+        <div class="v-stage"><div class="v-ico">&#128295;<div class="v-dot"></div></div><div class="v-title">Pipeline</div><div class="v-desc">Monitors runs, diagnoses failures, creates bugs</div></div>
+        <div class="v-stage"><div class="v-ico">&#128640;<div class="v-dot"></div></div><div class="v-title">Release</div><div class="v-desc">Scores deployment risk, triggers relevant test suites</div></div>
+        <div class="v-stage"><div class="v-ico">&#128225;</div><div class="v-title">Monitor</div><div class="v-desc">Detects anomalies, alerts, suggests rollback</div></div>
+      </div>
+    </div>
+    <div class="vision-grid">
+      <div class="glass vis-card rv d1"><h3><span style="color:var(--orange)">&#128203;</span> Planning &amp; Grooming</h3><ul><li>AI analyzes PBI descriptions and acceptance criteria before grooming sessions</li><li>Automatically suggests test scenarios based on requirements and historical defect patterns</li><li>Proposes story point estimates based on complexity analysis of similar past items</li><li>Identifies risk areas from historical data to focus QE attention where it matters most</li></ul></div>
+      <div class="glass vis-card rv d2"><h3><span style="color:var(--orange)">&#128451;</span> Test Data Generation</h3><ul><li>AI generates realistic test data based on production patterns while maintaining privacy compliance</li><li>Creates edge-case data automatically, including boundary conditions and negative scenarios</li><li>Manages test environment data refreshes with intelligent user and account selection</li><li>Synthetic data generation eliminates the dependency on production data copies</li></ul></div>
+      <div class="glass vis-card rv d3"><h3><span style="color:var(--orange)">&#128295;</span> Pipeline Intelligence</h3><ul><li>AI monitors pipeline runs in real-time, analyzing logs for failure root cause</li><li>On failure: automatically creates ADO bugs with full context, stack traces, and suggested fixes</li><li>Predicts deployment risk based on change analysis and historical failure patterns</li><li>Reduces downtime by detecting issues before they reach production</li></ul></div>
+      <div class="glass vis-card rv d4"><h3><span style="color:var(--orange)">&#128225;</span> Meeting &amp; Collaboration Intelligence</h3><ul><li>AI transcribes and summarizes grooming sessions, extracting action items automatically</li><li>Creates ADO work items from meeting discussions with proper categorization</li><li>Generates sprint retrospective insights from team data and velocity trends</li><li>Facilitates Dev + QE + SDET collaboration with shared AI-generated context</li></ul></div>
+    </div>
+    <div class="quote rv" style="margin-top:2rem">
+      <p>Each of these capabilities is technically feasible today. The path from where we are to full AI-native QE is not about waiting for technology &mdash; it's about building the integrations, establishing the workflows, and developing the organizational muscle to use them effectively.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CONCERNS -->
+<section id="concerns" style="background:linear-gradient(180deg,var(--bg),rgba(30,56,96,.03),var(--bg))">
+  <div class="container">
+    <div class="rv">
+      <span class="sec-label">Honest Conversations</span>
+      <h2 class="sec-title">Addressing the Elephant in the Room</h2>
+      <p class="sec-sub">Change creates pushback. That's natural. But the answers to the most common objections are already in the data. Let's address them head-on.</p>
+    </div>
+    <div class="acc">
+      <div class="acc-item rv d1"><button class="acc-btn" onclick="toggleAcc(this)"><span>&ldquo;I tried AI and it wasn't that good.&rdquo;</span><span class="acc-x">+</span></button><div class="acc-body"><div class="acc-inner"><p>If you tried ChatGPT in 2023 or 2024, your experience is completely outdated. The models available today are unrecognizable from even six months ago. The free tier is over a year behind what paying users have access to &mdash; judging AI by the free version is like evaluating smartphones by using a flip phone.</p><p style="margin-top:.6rem"><strong style="color:var(--text)">The model matters enormously.</strong> Claude 4.6 Opus in Cursor produces fundamentally different results than a basic Copilot suggestion. Investing $20&ndash;50/month per engineer in premium AI tools pays for itself many times over.</p></div></div></div>
+      <div class="acc-item rv d2"><button class="acc-btn" onclick="toggleAcc(this)"><span>&ldquo;I do it faster manually.&rdquo;</span><span class="acc-x">+</span></button><div class="acc-body"><div class="acc-inner"><p>For some individual tasks today, that may be true. But the compound effect is what matters. One automated framework in one day replaces three to four weeks of manual work. One test case generation system saves 43 business days in a single month.</p><p style="margin-top:.6rem">Six months from now, the tasks you can do faster manually today will be done faster by AI. The investment in learning AI workflows now creates a compounding advantage that only grows over time.</p></div></div></div>
+      <div class="acc-item rv d3"><button class="acc-btn" onclick="toggleAcc(this)"><span>&ldquo;We can't eliminate manual effort entirely.&rdquo;</span><span class="acc-x">+</span></button><div class="acc-body"><div class="acc-inner"><p><strong style="color:var(--text)">We agree &mdash; and that's not the goal.</strong> Human judgment, context, domain expertise, and oversight remain absolutely essential. The quality of AI output is directly proportional to the quality of human input.</p><p style="margin-top:.6rem">What we are eliminating is the <em>traditional always-manual approach</em>. The QE role evolves from executing repetitive tasks to orchestrating AI-powered quality processes. The human-in-the-loop is what makes AI output truly valuable.</p></div></div></div>
+      <div class="acc-item rv d4"><button class="acc-btn" onclick="toggleAcc(this)"><span>&ldquo;My field is immune to AI disruption.&rdquo;</span><span class="acc-x">+</span></button><div class="acc-body"><div class="acc-inner"><p>No knowledge work performed on a computer is immune in the medium term. Heavily regulated industries and roles requiring licensed accountability will take longer to displace &mdash; but they are time-buyers, not permanent shields.</p><p style="margin-top:.6rem">The most resilient professionals won't be those in &ldquo;safe&rdquo; fields &mdash; they'll be those who learned to leverage AI to multiply their expertise. Adaptability is the only durable advantage.</p></div></div></div>
+      <div class="acc-item rv d5"><button class="acc-btn" onclick="toggleAcc(this)"><span>&ldquo;We haven't figured out how to do this yet.&rdquo;</span><span class="acc-x">+</span></button><div class="acc-body"><div class="acc-inner"><p>That's precisely the point of this initiative. The fact that we haven't fully figured it out doesn't mean we should set it aside &mdash; it means we need to actively explore, experiment, and invest in finding the way.</p><p style="margin-top:.6rem">QCOE has already proven the model works: we identified opportunities, experimented, measured results, and scaled what worked. The same approach applies to every team and every workflow.</p></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- UPSKILLING -->
+<section id="upskilling">
+  <div class="container">
+    <div class="rv">
+      <span class="sec-label">The Path Forward</span>
+      <h2 class="sec-title">6&ndash;12 Month Upskilling Plan</h2>
+      <p class="sec-sub">A structured, Axos-specific roadmap for every Quality Engineer. Not generic courses &mdash; practical skills that apply directly to our business, our tools, and our workflows.</p>
+    </div>
+    <div class="roadmap">
+      <div class="rm-phase rv"><div class="rm-marker"><span class="rm-badge">Phase 1</span><span class="rm-months">Months 1&ndash;2</span></div><div class="glass rm-body"><h3>Foundation &mdash; Learn the Tools</h3><ul><li>Use Cursor IDE with Claude 4.6 Opus &mdash; understand why model selection matters</li><li>Learn effective prompting: be specific, provide context, iterate on feedback</li><li>Practice daily: use AI for emails, documentation, planning, and error analysis</li><li>Complete &ldquo;Prompt Engineering for Developers&rdquo; (DeepLearning.AI &mdash; free)</li><li>Explore AI for code review: feed real PRs and learn to evaluate AI suggestions</li><li><strong>Commitment: 1 hour per day experimenting with AI tools</strong></li></ul></div></div>
+      <div class="rm-phase rv d1"><div class="rm-marker"><span class="rm-badge">Phase 2</span><span class="rm-months">Months 3&ndash;4</span></div><div class="glass rm-body"><h3>Integration &mdash; Apply to Daily Work</h3><ul><li>Integrate AI into your test case creation workflow using QCOE markdown rules</li><li>Use AI for automation script generation: Playwright, Appium, or API scripts</li><li>Leverage AI for ADO work item management through MCP integrations</li><li>Learn to create effective markdown rules and context files for your team</li><li>Practice AI-assisted debugging: feed error logs and stack traces to AI for analysis</li><li><strong>Goal: 30% of routine tasks should involve AI assistance</strong></li></ul></div></div>
+      <div class="rm-phase rv d2"><div class="rm-marker"><span class="rm-badge">Phase 3</span><span class="rm-months">Months 5&ndash;6</span></div><div class="glass rm-body"><h3>Advanced Application &mdash; Build &amp; Innovate</h3><ul><li>Build AI-powered testing tools and utilities specific to your team's needs</li><li>Create team-specific prompt libraries and reusable templates</li><li>Implement AI monitoring for pipeline health and test suite optimization</li><li>Explore MCP integrations: connect AI to BrowserStack, ADO, Confluence, and more</li><li>Contribute to QCOE's AI initiative backlog with new ideas and implementations</li><li><strong>Goal: Propose and implement at least one AI initiative for your team</strong></li></ul></div></div>
+      <div class="rm-phase rv d3"><div class="rm-marker"><span class="rm-badge">Phase 4</span><span class="rm-months">Months 7&ndash;12</span></div><div class="glass rm-body"><h3>Mastery &amp; Leadership &mdash; Lead the Change</h3><ul><li>Lead AI adoption initiatives within your team and across partner teams</li><li>Develop training materials for peers based on your hands-on experience</li><li>Identify and propose new AI integration opportunities in the SDLC</li><li>Mentor others in AI-assisted QE practices and effective prompting</li><li>Contribute to organizational AI strategy and cross-team knowledge sharing</li><li><strong>Goal: Become the AI champion your team relies on</strong></li></ul></div></div>
+    </div>
+    <h3 style="font-family:var(--hd);font-size:1.1rem;margin-top:2.5rem;margin-bottom:.4rem" class="rv">Recommended Resources &mdash; Courses &amp; Certifications</h3>
+    <p style="font-size:.85rem;color:var(--text2);margin-bottom:1.25rem" class="rv">Not generic filler &mdash; these are the actual highest-rated, most practical courses and industry-recognized certifications available right now. Prioritized by impact.</p>
+    <div class="res-grid">
+      <div class="glass res-card rv d1"><div class="ri">&#127941;</div><div><h4>ISTQB CT-AI &mdash; Certified Tester AI Testing</h4><p><strong>Certification</strong> &mdash; The industry-recognized QE + AI credential. Covers AI fundamentals, ML testing, bias detection, adversarial testing. 40-question exam. <em>This is the one that goes on your resume.</em></p></div></div>
+      <div class="glass res-card rv d2"><div class="ri">&#128218;</div><div><h4>Prompt Engineering Specialization &mdash; Coursera</h4><p><strong>4.8/5 (3,345 reviews)</strong> &mdash; Dr. Jules White. 3-course series, ~4 weeks. Covers advanced prompt patterns, chain-of-thought, few-shot. <em>The best structured prompting course out there.</em></p></div></div>
+      <div class="glass res-card rv d3"><div class="ri">&#9889;</div><div><h4>ChatGPT Prompt Engineering for Developers &mdash; DeepLearning.AI</h4><p><strong>Free, ~1.5 hours</strong> &mdash; Andrew Ng + OpenAI. Quick, practical, no fluff. <em>Start here if you only have one afternoon.</em></p></div></div>
+      <div class="glass res-card rv d4"><div class="ri">&#127941;</div><div><h4>AI+ Quality Assurance &mdash; AICERTs</h4><p><strong>Certification</strong> &mdash; 40-hour comprehensive program. AI-powered testing tools, intelligent automation, defect prediction. 50-question exam. <em>For QEs who want the deep dive.</em></p></div></div>
+      <div class="glass res-card rv d5"><div class="ri">&#128187;</div><div><h4>Generative AI in Software Testing &mdash; Coursera/Simplilearn</h4><p><strong>~7 hours, beginner</strong> &mdash; Test planning automation, synthetic test data generation. 10 assignments with shareable certificate.</p></div></div>
+      <div class="glass res-card rv d6"><div class="ri">&#128736;</div><div><h4>QCOE Internal: Cursor AI + MCP Mastery Workshop</h4><p><strong>Axos-specific, hands-on</strong> &mdash; Our own workshop covering Cursor IDE setup, markdown rules, MCP integrations. <em>Nothing teaches like your own codebase.</em></p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- LEADERSHIP -->
+<section id="leadership" style="background:linear-gradient(180deg,var(--bg),rgba(30,56,96,.04),var(--bg))">
+  <div class="container">
+    <div class="rv">
+      <span class="sec-label">For Managers &amp; Leads</span>
+      <h2 class="sec-title">The Leadership Playbook</h2>
+      <p class="sec-sub">Managers and leads play a critical role in this transformation. AI adoption doesn't happen by mandate &mdash; it happens by example, investment, and creating the right environment.</p>
+    </div>
+    <div class="lead-grid">
+      <div class="glass l-card rv d1"><h3>Champion by Example</h3><p>Use AI tools yourself before asking your team to adopt them. Lead with visible enthusiasm and share what works. Your team follows your behavior, not your memos.</p></div>
+      <div class="glass l-card rv d2"><h3>Allocate Dedicated Time</h3><p>Block actual calendar time for AI experimentation. &ldquo;When you have time&rdquo; means never. Protected learning time signals that this is a genuine priority, not a side project.</p></div>
+      <div class="glass l-card rv d3"><h3>Invest in the Right Tools</h3><p>The model makes an enormous difference. Claude 4.6 Opus in Cursor vs. basic Copilot is the difference between an intern and a senior engineer. The $20&ndash;50/month cost per person pays for itself in hours, not days.</p></div>
+      <div class="glass l-card rv d4"><h3>Measure and Celebrate Wins</h3><p>Track time saved. Publicize successes. When someone builds a framework in one day or saves 43 business days of test case creation, make sure the organization knows.</p></div>
+      <div class="glass l-card rv d5"><h3>Create Safe Experimentation Spaces</h3><p>Not every AI experiment will succeed. Normalize failure as learning. The teams that experiment most will find the breakthroughs. Penalizing failed experiments kills innovation.</p></div>
+      <div class="glass l-card rv d6"><h3>Redefine Success Metrics</h3><p>Shift from measuring hours worked to measuring outcomes delivered. An engineer who ships in 2 AI-assisted hours what used to take 2 weeks should be celebrated, not questioned for working fewer hours.</p></div>
+      <div class="glass l-card rv d1"><h3>Build AI-Literate Teams</h3><p>Structured upskilling beats generic training. Use the QCOE roadmap. Tailor learning paths to your team's actual tools and workflows &mdash; not theoretical courses disconnected from daily work.</p></div>
+      <div class="glass l-card rv d2"><h3>Prepare for Role Evolution</h3><p>Communicate that the QE role is evolving, not disappearing. Frame AI as an amplifier of expertise, not a replacement. Help team members see the opportunity in the transition.</p></div>
+    </div>
+    <div class="tools-note rv" style="margin-top:2rem">
+      <div class="tn-ico">&#128736;</div>
+      <div>
+        <h3>A Note on Tooling: The Model Matters</h3>
+        <p>Not all AI tools deliver equal results. Using a basic free-tier chatbot is a fundamentally different experience from using Claude 4.6 Opus with structured context in Cursor IDE. The difference in output quality, accuracy, and usefulness is not incremental &mdash; it's transformational. Investing in premium AI tools for your team is one of the highest-ROI decisions a leader can make right now. The cost is measured in dollars per month; the return is measured in days of work reclaimed.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="action" class="cta">
+  <div class="container">
+    <div class="rv">
+      <span class="sec-label">The Path Forward</span>
+      <h2 class="sec-title" style="max-width:750px;margin:0 auto .75rem">The Change Is Here.<br><span class="grad">Adapt or Be Left Behind.</span></h2>
+      <p class="sec-sub" style="margin:0 auto 2.5rem">The facts are there. AI capability only increases, year over year, model over model. The competitive advantage goes to those who engage early &mdash; not with fear, but with curiosity and urgency. At Axos QCOE, we are not waiting for the future. We are building it.</p>
+    </div>
+    <div class="cta-stats rv d1">
+      <div class="cta-stat"><div class="cs-v">500+</div><div class="cs-l">Hours saved monthly</div></div>
+      <div class="cta-stat"><div class="cs-v">10+</div><div class="cs-l">Active AI initiatives</div></div>
+      <div class="cta-stat"><div class="cs-v">~3</div><div class="cs-l">FTEs worth of annual savings</div></div>
+    </div>
+    <div class="rv d2">
+      <p style="font-size:1.05rem;color:var(--text2);max-width:600px;margin:0 auto 1.75rem;line-height:1.8">Every day you wait to engage is a day someone else gets ahead. Start today. One hour. One experiment. One step forward.</p>
+    </div>
+    <div class="rv d3" style="display:flex;justify-content:center;gap:.8rem;flex-wrap:wrap">
+      <a href="#upskilling" class="btn btn-p">Start Your Upskilling Journey</a>
+      <a href="#journey" class="btn btn-o">Review Our Initiatives</a>
+    </div>
+  </div>
+</section>
+
+<button class="btt" id="btt" onclick="window.scrollTo({top:0,behavior:'smooth'})">&uarr;</button>
+
+<footer class="footer">
+  <p><span class="fb">Axos QCOE</span> &bull; Strategic Vision Document &bull; March 2026</p>
+  <p style="margin-top:.35rem">Quality Center of Excellence &mdash; Leading the AI Transformation in Quality Engineering</p>
+</footer>
+
+<script>
+(function(){
+  const c=document.getElementById('bg'),ctx=c.getContext('2d');
+  let w,h,pts=[];
+  const N=window.innerWidth<768?35:70,D=140,O='250,167,74',W='200,210,225';
+  function resize(){w=c.width=window.innerWidth;h=c.height=window.innerHeight}
+  window.addEventListener('resize',resize);resize();
+  class P{constructor(){this.reset()}reset(){this.x=Math.random()*w;this.y=Math.random()*h;this.vx=(Math.random()-.5)*.35;this.vy=(Math.random()-.5)*.35;this.r=Math.random()*1.3+.4;this.col=Math.random()>.75?O:W;this.a=Math.random()*.25+.08}update(){this.x+=this.vx;this.y+=this.vy;if(this.x<0||this.x>w)this.vx*=-1;if(this.y<0||this.y>h)this.vy*=-1}draw(){ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);ctx.fillStyle=`rgba(${this.col},${this.a})`;ctx.fill()}}
+  for(let i=0;i<N;i++)pts.push(new P());
+  function loop(){ctx.clearRect(0,0,w,h);for(let i=0;i<pts.length;i++){pts[i].update();pts[i].draw();for(let j=i+1;j<pts.length;j++){const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.sqrt(dx*dx+dy*dy);if(d<D){const a=(1-d/D)*.06;ctx.beginPath();ctx.moveTo(pts[i].x,pts[i].y);ctx.lineTo(pts[j].x,pts[j].y);ctx.strokeStyle=`rgba(${O},${a})`;ctx.lineWidth=.4;ctx.stroke()}}}requestAnimationFrame(loop)}
+  loop();
+})();
+
+(function(){
+  const obs=new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting)x.target.classList.add('on')})},{threshold:.08,rootMargin:'0px 0px -30px 0px'});
+  document.querySelectorAll('.rv').forEach(el=>obs.observe(el));
+})();
+
+(function(){
+  const cs=document.querySelectorAll('.counter');
+  const cobs=new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting&&!x.target.dataset.done){x.target.dataset.done='1';anim(x.target)}})},{threshold:.5});
+  cs.forEach(c=>cobs.observe(c));
+  function anim(el){const t=+el.dataset.target,s=el.dataset.suffix||'',dur=2000,st=performance.now();const card=el.closest('.m-card');if(card)card.classList.add('glow');function u(now){const p=Math.min((now-st)/dur,1),e=1-Math.pow(1-p,3),v=Math.round(e*t);el.textContent=v.toLocaleString()+s;if(p<1)requestAnimationFrame(u)}requestAnimationFrame(u)}
+})();
+
+(function(){
+  const bars=document.querySelectorAll('.prog-fill');
+  const bobs=new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting)x.target.style.width=x.target.dataset.w+'%'})},{threshold:.3});
+  bars.forEach(b=>bobs.observe(b));
+})();
+
+(function(){
+  const mf=document.querySelectorAll('.metr-fill');
+  const mobs=new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting&&!x.target.dataset.done){x.target.dataset.done='1';x.target.style.height=x.target.dataset.h+'px'}})},{threshold:.2});
+  mf.forEach(b=>{b.style.height='0';mobs.observe(b)});
+})();
+
+(function(){
+  const nav=document.getElementById('nav'),links=document.querySelectorAll('.nav-links a'),secs=document.querySelectorAll('section[id],header[id]'),btt=document.getElementById('btt');
+  window.addEventListener('scroll',()=>{
+    nav.classList.toggle('scrolled',window.scrollY>50);
+    if(btt)btt.classList.toggle('vis',window.scrollY>500);
+    let cur='';secs.forEach(s=>{if(window.scrollY>=s.offsetTop-120)cur=s.id});
+    links.forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+cur));
+  });
+})();
+
+document.querySelectorAll('.nav-links a').forEach(a=>a.addEventListener('click',()=>document.getElementById('navLinks').classList.remove('open')));
+
+function toggleAcc(btn){
+  const item=btn.parentElement,body=item.querySelector('.acc-body'),open=item.classList.contains('open');
+  document.querySelectorAll('.acc-item.open').forEach(i=>{i.classList.remove('open');i.querySelector('.acc-body').style.maxHeight='0'});
+  if(!open){item.classList.add('open');body.style.maxHeight=body.scrollHeight+'px'}
+}
+
+(function(){
+  const tl=document.querySelectorAll('.tl-item');
+  const tobs=new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting)x.target.classList.add('on')})},{threshold:.4});
+  tl.forEach(d=>tobs.observe(d));
+})();
+</script>
+</body>
+</html>
