@@ -847,8 +847,8 @@
                     </div>
                     <div class="form-group" style="flex: 1;">
                         <label>&nbsp;</label>
-                        <button class="btn-primary" style="width: 100%; padding: 12px;" onclick="showAddPersonModal()">
-                            ➕ Add Person
+                        <button class="btn-primary" style="width: 100%; padding: 12px;" onclick="showManageTeamModal()">
+                            👥 Manage Team
                         </button>
                     </div>
                     <div class="form-group" style="flex: 1;">
@@ -1209,17 +1209,41 @@
     </div>
 </div>
 
-<!-- Add Person Modal -->
-<div class="modal-overlay" id="addPersonModal">
-    <div class="modal">
-        <h3>➕ Add New Team Member</h3>
-        <div class="form-group">
-            <label>Full Name</label>
-            <input type="text" id="newPersonName" placeholder="e.g., John Doe">
-        </div>
-        <div class="modal-actions">
-            <button class="btn-danger" onclick="hideAddPersonModal()">Cancel</button>
-            <button class="btn-success" onclick="addNewPerson()">Add Person</button>
+<!-- Manage Team Modal -->
+<div class="modal-overlay" id="manageTeamModal">
+    <div class="modal" style="width: 500px;">
+        <h3>👥 Manage Team Members</h3>
+        <div id="manageTeamContent">
+            <!-- Password gate -->
+            <div id="teamPasswordGate">
+                <div class="form-group">
+                    <label>Admin Password</label>
+                    <input type="password" id="teamAdminPassword" placeholder="Enter admin password" onkeydown="if(event.key==='Enter') verifyTeamPassword()">
+                </div>
+                <div class="modal-actions">
+                    <button class="btn-danger" onclick="hideManageTeamModal()">Cancel</button>
+                    <button class="btn-success" onclick="verifyTeamPassword()">🔓 Unlock</button>
+                </div>
+            </div>
+            <!-- Team management (shown after password) -->
+            <div id="teamManagementPanel" style="display: none;">
+                <div style="margin-bottom: 16px;">
+                    <h4 style="margin: 0 0 12px 0; font-size: 14px; color: #64748b;">Current Team Members</h4>
+                    <div id="teamMembersList">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+                <div style="border-top: 2px solid #e2e8f0; padding-top: 16px;">
+                    <h4 style="margin: 0 0 12px 0; font-size: 14px; color: #64748b;">Add New Member</h4>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="newPersonName" placeholder="Full Name (e.g., John Doe)" style="flex: 1; padding: 10px 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;" onkeydown="if(event.key==='Enter') addNewPerson()">
+                        <button class="btn-success" style="padding: 10px 20px;" onclick="addNewPerson()">➕ Add</button>
+                    </div>
+                </div>
+                <div class="modal-actions" style="margin-top: 20px;">
+                    <button class="btn-danger" onclick="hideManageTeamModal()">Close</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -1982,19 +2006,94 @@
     // =====================
     function populatePeopleDropdown() {
         const select = document.getElementById('selectedPerson');
-        select.innerHTML = data.people.map(p => 
+        const activePeople = data.people.filter(p => !p.removed);
+        select.innerHTML = activePeople.map(p => 
             `<option value="${p.id}">${p.name}</option>`
         ).join('');
     }
     
-    function showAddPersonModal() {
-        document.getElementById('addPersonModal').classList.add('show');
-        document.getElementById('newPersonName').focus();
+    function showManageTeamModal() {
+        document.getElementById('manageTeamModal').classList.add('show');
+        document.getElementById('teamPasswordGate').style.display = 'block';
+        document.getElementById('teamManagementPanel').style.display = 'none';
+        document.getElementById('teamAdminPassword').value = '';
+        document.getElementById('teamAdminPassword').focus();
     }
     
-    function hideAddPersonModal() {
-        document.getElementById('addPersonModal').classList.remove('show');
-        document.getElementById('newPersonName').value = '';
+    function hideManageTeamModal() {
+        document.getElementById('manageTeamModal').classList.remove('show');
+        document.getElementById('teamAdminPassword').value = '';
+    }
+    
+    function verifyTeamPassword() {
+        const password = document.getElementById('teamAdminPassword').value;
+        if (password === 'Jcmt1107') {
+            document.getElementById('teamPasswordGate').style.display = 'none';
+            document.getElementById('teamManagementPanel').style.display = 'block';
+            renderTeamMembersList();
+        } else {
+            alert('❌ Incorrect password');
+            document.getElementById('teamAdminPassword').value = '';
+            document.getElementById('teamAdminPassword').focus();
+        }
+    }
+    
+    function renderTeamMembersList() {
+        const container = document.getElementById('teamMembersList');
+        const activePeople = data.people.filter(p => !p.removed);
+        const removedPeople = data.people.filter(p => p.removed);
+        
+        let html = activePeople.map(person => `
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: #f0fdf4; border-radius: 8px; margin-bottom: 6px;">
+                <span style="font-weight: 600; color: #1e293b;">👤 ${person.name}</span>
+                <button onclick="removePerson('${person.id}')" style="padding: 4px 12px; background: #fee2e2; border: 1px solid #fca5a5; border-radius: 6px; color: #dc2626; font-size: 12px; cursor: pointer; font-weight: 600;">Remove</button>
+            </div>
+        `).join('');
+        
+        if (removedPeople.length > 0) {
+            html += '<h4 style="margin: 16px 0 8px 0; font-size: 13px; color: #94a3b8;">Removed Members</h4>';
+            html += removedPeople.map(person => `
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: #f8fafc; border-radius: 8px; margin-bottom: 6px; opacity: 0.7;">
+                    <span style="font-weight: 500; color: #94a3b8; text-decoration: line-through;">👤 ${person.name}</span>
+                    <button onclick="restorePerson('${person.id}')" style="padding: 4px 12px; background: #d1fae5; border: 1px solid #6ee7b7; border-radius: 6px; color: #059669; font-size: 12px; cursor: pointer; font-weight: 600;">Restore</button>
+                </div>
+            `).join('');
+        }
+        
+        container.innerHTML = html;
+    }
+    
+    function removePerson(personId) {
+        const person = data.people.find(p => p.id === personId);
+        if (!person) return;
+        
+        if (confirm(`Remove ${person.name} from the team? Their historical data will be preserved.`)) {
+            person.removed = true;
+            if (currentPersonFilter === personId) currentPersonFilter = 'all';
+            renderTeamMembersList();
+            populatePeopleDropdown();
+            renderPersonTabs();
+            renderTestList();
+            populateLogOwnerFilter();
+            renderDailyEntries();
+            updateWeeklySummary();
+            showSaveStatus(false);
+        }
+    }
+    
+    function restorePerson(personId) {
+        const person = data.people.find(p => p.id === personId);
+        if (!person) return;
+        
+        person.removed = false;
+        renderTeamMembersList();
+        populatePeopleDropdown();
+        renderPersonTabs();
+        renderTestList();
+        populateLogOwnerFilter();
+        renderDailyEntries();
+        updateWeeklySummary();
+        showSaveStatus(false);
     }
     
     function addNewPerson() {
@@ -2007,11 +2106,13 @@
         const id = name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
         data.people.push({ id, name });
         
+        document.getElementById('newPersonName').value = '';
+        renderTeamMembersList();
         populatePeopleDropdown();
-        document.getElementById('selectedPerson').value = id;
-        hideAddPersonModal();
-        showSaveStatus(false);
         renderPersonTabs();
+        populateLogOwnerFilter();
+        updateWeeklySummary();
+        showSaveStatus(false);
     }
     
     // =====================
@@ -2269,7 +2370,7 @@
             </div>
         `;
         
-        data.people.forEach(person => {
+        data.people.filter(p => !p.removed).forEach(person => {
             const count = getPersonEffectiveCount(person.id);
             html += `
                 <div class="person-tab ${currentPersonFilter === person.id ? 'active' : ''}" 
@@ -2693,8 +2794,15 @@
     // Populate log owner filter dropdown
     function populateLogOwnerFilter() {
         const select = document.getElementById('logOwnerFilter');
+        const activePeople = data.people.filter(p => !p.removed);
         select.innerHTML = '<option value="all">All Team</option>' + 
-            data.people.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            activePeople.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+        // If current filter was a removed person, reset to all
+        const validIds = ['all', ...activePeople.map(p => p.id)];
+        if (!validIds.includes(logOwnerFilter)) {
+            logOwnerFilter = 'all';
+        }
+        select.value = logOwnerFilter;
     }
     
     // Apply log filters (owner and entry type)
@@ -3054,7 +3162,7 @@
         
         // Individual stats with platform-aware counting
         const individualStats = document.getElementById('individualStats');
-        individualStats.innerHTML = data.people.map(person => {
+        individualStats.innerHTML = data.people.filter(p => !p.removed).map(person => {
             const personTests = weekTests.filter(t => t.ownerId === person.id);
             
             let personTotal = 0, personCompleted = 0;
