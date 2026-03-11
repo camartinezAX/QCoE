@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QE Bi-Weekly Report Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#1E3860;--navy-light:#2a4a7a;--gold:#FAA74A;--gold-light:#fbb86c;
+  --bg:#f0f2f5;--card:#ffffff;--border:#e2e8f0;--text:#1f2937;--text2:#64748b;
+  --success:#10b981;--warn:#f59e0b;--danger:#ef4444;--purple:#8b5cf6;
+  --radius:10px;--radius-lg:16px;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 4px 12px rgba(0,0,0,.08);
+  --shadow-lg:0 10px 40px rgba(0,0,0,.12);
+}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column}
+button{cursor:pointer;font-family:inherit}
+input,textarea,select{font-family:inherit;font-size:13px}
+
+/* ── HEADER ── */
+.header{background:linear-gradient(135deg,var(--navy) 0%,#162d4d 50%,var(--navy-light) 100%);color:#fff;padding:0 24px;height:56px;display:flex;align-items:center;gap:14px;flex-shrink:0;z-index:100;box-shadow:0 2px 12px rgba(30,56,96,.3)}
+.header img{height:30px;width:30px;border-radius:8px;box-shadow:0 0 0 2px rgba(255,255,255,.2)}
+.header h1{font-family:'Outfit',sans-serif;font-size:17px;font-weight:700;flex:1;letter-spacing:-.3px}
+.header h1 span{color:var(--gold);font-family:'Inter',sans-serif;font-weight:500;font-size:12px;margin-left:8px;opacity:.85}
+.hdr-btn{background:rgba(255,255,255,.1);backdrop-filter:blur(8px);color:#fff;border:1px solid rgba(255,255,255,.12);padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;transition:all .2s ease}
+.hdr-btn:hover{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.25);transform:translateY(-1px)}
+.hdr-btn svg{width:14px;height:14px;fill:currentColor}
+
+/* ── MAIN LAYOUT ── */
+.main{display:flex;flex:1;overflow:hidden;transition:margin-right .3s cubic-bezier(.4,0,.2,1)}
+.editor-panel{width:42%;min-width:360px;border-right:1px solid var(--border);display:flex;flex-direction:column;background:#fff}
+.preview-panel{flex:1;display:flex;flex-direction:column;background:var(--bg)}
+
+/* ── EDITOR ── */
+.editor-head{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;background:linear-gradient(to bottom,#fff,#fafbfc)}
+.editor-head h2{font-size:14px;font-weight:700;color:var(--navy);flex:1;font-family:'Outfit',sans-serif}
+.editor-body{flex:1;overflow-y:auto;padding:0;display:flex;flex-direction:column}
+
+/* Sections */
+.section{border-bottom:1px solid #f1f5f9}
+.section-hdr{padding:12px 20px;display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;transition:all .15s ease}
+.section-hdr:hover{background:linear-gradient(to right,#f8fafc,#fff)}
+.section-hdr h3{font-size:13px;font-weight:700;color:var(--navy);flex:1}
+.section-hdr .toggle{font-size:9px;color:var(--text2);transition:transform .25s ease;display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;background:#f1f5f9}
+.section-hdr .toggle.open{transform:rotate(180deg);background:#e2e8f0}
+.section-hdr .section-badge{font-size:10px;padding:2px 8px;border-radius:99px;background:linear-gradient(135deg,#eff6ff,#dbeafe);color:var(--navy);font-weight:600}
+.section-hdr .optional-badge{font-size:10px;padding:2px 8px;border-radius:99px;background:linear-gradient(135deg,#fef3c7,#fde68a);color:#92400e;font-weight:600}
+.section-body{padding:0 20px 16px;display:none;animation:slideDown .2s ease}
+.section-body.open{display:block}
+@keyframes slideDown{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+
+/* Form elements */
+.form-row{display:flex;gap:12px;margin-bottom:10px}
+.form-group{flex:1;display:flex;flex-direction:column;gap:4px}
+.form-group label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
+.form-group input,.form-group textarea,.form-group select{padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;transition:all .2s ease;color:var(--text);background:#fff}
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(250,167,74,.12)}
+.form-group input[type="date"]{padding:8px 12px;color:var(--text);appearance:none;-webkit-appearance:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%2364748b' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z'/%3E%3C/svg%3E") no-repeat right 12px center / 14px;padding-right:36px}
+.form-group input[type="date"]::-webkit-calendar-picker-indicator{opacity:0;position:absolute;right:0;width:100%;height:100%;cursor:pointer}
+.form-group textarea{resize:vertical;min-height:60px}
+.form-group select{background:#fff;cursor:pointer}
+
+/* Dynamic lists */
+.list-items{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.list-item{display:flex;align-items:center;gap:6px}
+.list-item input{flex:1}
+.list-item .remove-btn{width:28px;height:28px;border-radius:6px;border:1px solid #fecaca;background:#fef2f2;color:var(--danger);font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s ease}
+.list-item .remove-btn:hover{background:#fee2e2;transform:scale(1.05)}
+.add-btn{display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border:1.5px dashed var(--border);border-radius:8px;background:transparent;color:var(--text2);font-size:12px;font-weight:600;transition:all .2s ease}
+.add-btn:hover{border-color:var(--gold);color:var(--gold);background:#fffbf0;transform:translateY(-1px)}
+
+/* Tables */
+.editable-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px}
+.editable-table th{background:linear-gradient(135deg,var(--navy),var(--navy-light));color:#fff;padding:8px 6px;text-align:left;font-weight:600;font-size:11px;white-space:nowrap}
+.editable-table th:first-child{border-radius:8px 0 0 0}
+.editable-table th:last-child{border-radius:0 8px 0 0}
+.editable-table td{padding:4px;border-bottom:1px solid #f1f5f9}
+.editable-table td input,.editable-table td select{width:100%;padding:6px;border:1px solid #e5e7eb;border-radius:6px;font-size:12px}
+.editable-table td input:focus,.editable-table td select:focus{outline:none;border-color:var(--gold)}
+.editable-table tr:hover td{background:#fafbfc}
+.editable-table .row-remove{width:24px;height:24px;border-radius:6px;border:none;background:#fef2f2;color:var(--danger);font-size:12px;cursor:pointer;transition:all .15s}
+.editable-table .row-remove:hover{background:#fee2e2;transform:scale(1.08)}
+
+/* Section toggle */
+.section-toggle{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.section-toggle label{font-size:12px;color:var(--text2);font-weight:600}
+.toggle-switch{position:relative;width:36px;height:20px}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-switch .slider{position:absolute;inset:0;background:#d1d5db;border-radius:99px;cursor:pointer;transition:.25s ease}
+.toggle-switch .slider::before{content:'';position:absolute;left:2px;bottom:2px;width:16px;height:16px;background:#fff;border-radius:50%;transition:.25s ease;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.toggle-switch input:checked+.slider{background:var(--success)}
+.toggle-switch input:checked+.slider::before{transform:translateX(16px)}
+
+/* ── PREVIEW ── */
+.preview-head{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;background:#fff}
+.preview-head h2{font-size:14px;font-weight:700;color:var(--navy);flex:1;font-family:'Outfit',sans-serif}
+.pill{font-size:11px;padding:5px 14px;border-radius:99px;border:none;font-weight:600;cursor:pointer;transition:all .2s ease}
+.pill.active{background:linear-gradient(135deg,var(--navy),var(--navy-light));color:#fff;box-shadow:0 2px 8px rgba(30,56,96,.25)}
+.pill:not(.active){background:#e5e7eb;color:var(--text2)}
+.pill:not(.active):hover{background:#d1d5db}
+.preview-body{flex:1;overflow-y:auto;padding:20px;display:flex;justify-content:center}
+.preview-frame{width:720px;background:#fff;box-shadow:var(--shadow-lg);border-radius:8px;overflow:hidden;align-self:flex-start}
+.preview-frame iframe{width:100%;border:none;display:block}
+
+/* ── ACTION BAR ── */
+.action-bar{flex-shrink:0;padding:10px 24px;background:#fff;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;z-index:50;box-shadow:0 -2px 10px rgba(0,0,0,.04);transition:margin-right .3s cubic-bezier(.4,0,.2,1)}
+.action-bar .spacer{flex:1}
+.act-btn{padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;border:none;display:flex;align-items:center;gap:6px;transition:all .2s ease}
+.act-btn:hover{transform:translateY(-1px)}
+.act-btn.primary{background:linear-gradient(135deg,var(--navy),var(--navy-light));color:#fff;box-shadow:0 2px 8px rgba(30,56,96,.25)}
+.act-btn.primary:hover{box-shadow:0 4px 14px rgba(30,56,96,.35)}
+.act-btn.gold{background:linear-gradient(135deg,var(--gold),var(--gold-light));color:#fff;box-shadow:0 2px 8px rgba(250,167,74,.3)}
+.act-btn.gold:hover{box-shadow:0 4px 14px rgba(250,167,74,.4)}
+.act-btn.outline{background:transparent;border:1.5px solid var(--border);color:var(--text)}
+.act-btn.outline:hover{background:#f9fafb;border-color:#cbd5e1}
+.act-btn svg{width:14px;height:14px;fill:currentColor}
+
+/* ── MODALS ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(4px);z-index:1000;display:none;align-items:center;justify-content:center;opacity:0;transition:opacity .25s ease}
+.modal-overlay.show{display:flex;opacity:1}
+.modal{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);max-width:640px;width:95%;max-height:85vh;display:flex;flex-direction:column;animation:modalIn .25s ease}
+@keyframes modalIn{from{opacity:0;transform:scale(.96) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.modal-hdr{padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center}
+.modal-hdr h2{font-size:16px;font-weight:700;color:var(--navy);flex:1;font-family:'Outfit',sans-serif}
+.modal-close{width:32px;height:32px;border-radius:8px;border:none;background:#f1f5f9;font-size:18px;display:flex;align-items:center;justify-content:center;color:var(--text2);transition:all .15s}
+.modal-close:hover{background:#e2e8f0;transform:scale(1.05)}
+.modal-body{padding:24px;overflow-y:auto;flex:1}
+.modal-foot{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+
+/* Import area */
+.import-zone{border:2px dashed var(--border);border-radius:var(--radius-lg);padding:40px;text-align:center;transition:all .25s ease;cursor:pointer;margin-bottom:16px;background:#fafbfc}
+.import-zone:hover{border-color:var(--gold);background:#fffbf0}
+.import-zone.dragover{border-color:var(--gold);background:#fffbf0;transform:scale(1.01)}
+.import-zone p{color:var(--text2);font-size:14px;margin-bottom:6px}
+.import-zone small{color:#9ca3af;font-size:12px}
+.import-textarea{width:100%;min-height:220px;padding:14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;line-height:1.6;resize:vertical;font-family:'JetBrains Mono',monospace,monospace}
+.import-textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(250,167,74,.12)}
+
+/* ── CHAT DRAWER ── */
+.chat-fab{position:fixed;bottom:70px;right:24px;width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold-light));color:#fff;border:none;box-shadow:0 4px 18px rgba(250,167,74,.4);font-size:22px;z-index:200;transition:all .25s ease;display:flex;align-items:center;justify-content:center}
+.chat-fab:hover{transform:scale(1.1) rotate(-5deg);box-shadow:0 6px 24px rgba(250,167,74,.5)}
+.chat-fab.hidden{display:none}
+.chat-drawer{position:fixed;right:0;top:56px;bottom:0;width:320px;background:#fff;box-shadow:-4px 0 30px rgba(0,0,0,.12);z-index:300;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1)}
+.chat-drawer.open{transform:translateX(0)}
+body.chat-open .main{margin-right:320px}
+body.chat-open .action-bar{margin-right:320px}
+body.chat-open .chat-fab{display:none}
+.chat-hdr{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;background:linear-gradient(to bottom,#fff,#fafbfc)}
+.chat-hdr h3{font-size:14px;font-weight:700;color:var(--navy);flex:1;font-family:'Outfit',sans-serif}
+.chat-hdr-btn{width:30px;height:30px;border-radius:8px;border:none;background:#f1f5f9;font-size:14px;display:flex;align-items:center;justify-content:center;color:var(--text2);transition:all .15s}
+.chat-hdr-btn:hover{background:#e2e8f0}
+.chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.chat-msg{max-width:88%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.5;animation:msgIn .2s ease}
+@keyframes msgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.chat-msg.user{background:linear-gradient(135deg,var(--navy),var(--navy-light));color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.chat-msg.ai{background:#f1f5f9;color:var(--text);align-self:flex-start;border-bottom-left-radius:4px}
+.chat-msg.system{background:linear-gradient(135deg,#eff6ff,#dbeafe);color:var(--navy);align-self:center;text-align:center;font-size:12px;font-style:italic;max-width:100%;border-radius:var(--radius)}
+.chat-input-row{padding:12px;border-top:1px solid var(--border);display:flex;gap:8px;background:#fafbfc}
+.chat-input-row input{flex:1;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;background:#fff}
+.chat-input-row input:focus{outline:none;border-color:var(--gold)}
+.chat-send{width:38px;height:38px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--gold),var(--gold-light));color:#fff;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s}
+.chat-send:hover{transform:scale(1.05)}
+.chat-send:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:70px;left:50%;transform:translateX(-50%) translateY(20px);padding:12px 24px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:all .3s ease;pointer-events:none;backdrop-filter:blur(8px)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.success{background:rgba(6,95,70,.92);color:#fff}
+.toast.error{background:rgba(153,27,27,.92);color:#fff}
+.toast.info{background:rgba(30,56,96,.92);color:#fff}
+
+/* ── SETTINGS FORM ── */
+.settings-row{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.settings-row label{font-size:13px;font-weight:600;color:var(--text);min-width:100px}
+.settings-row input,.settings-row select{flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px}
+.settings-row input:focus,.settings-row select:focus{outline:none;border-color:var(--gold)}
+.settings-note{font-size:11px;color:var(--text2);margin-top:-8px;margin-bottom:16px;padding-left:112px}
+
+/* ── SPINNER ── */
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── MVP EASTER EGG ── */
+@keyframes mvpBounce{
+  0%{transform:scale(0) rotate(-20deg);opacity:0}
+  8%{transform:scale(1.4) rotate(12deg);opacity:1}
+  14%{transform:scale(.9) rotate(-8deg)}
+  20%{transform:scale(1.1) rotate(5deg)}
+  26%{transform:scale(1) rotate(0);opacity:1}
+  80%{transform:scale(1) rotate(0);opacity:1}
+  100%{transform:translateY(120vh) scale(.4) rotate(60deg);opacity:0}
+}
+@keyframes toastFade{0%{opacity:0;transform:translateX(-50%) translateY(20px)}6%{opacity:1;transform:translateX(-50%) translateY(0)}90%{opacity:1;transform:translateX(-50%) translateY(0)}100%{opacity:0;transform:translateX(-50%) translateY(-10px)}}
+.mvp-gif{position:fixed;z-index:10000;pointer-events:none;width:130px;border-radius:12px;animation:mvpBounce 4.5s ease-in forwards}
+.mvp-toast-msg{position:fixed;bottom:120px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--navy),var(--navy-light));color:#fff;padding:16px 28px;border-radius:14px;z-index:10001;font-size:14px;font-weight:600;text-align:center;box-shadow:var(--shadow-lg);animation:toastFade 7s ease forwards}
+.mvp-toast-msg span{color:var(--gold)}
+
+/* ── FOOTER ── */
+.qcoe-footer{background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#0f172a 100%);padding:20px 24px;text-align:center;border-top:1px solid rgba(250,167,74,.2);margin-top:auto}
+.qcoe-footer .confidential{background:rgba(250,167,74,.08);border:1px solid rgba(250,167,74,.15);border-radius:8px;padding:8px 16px;margin-bottom:14px;display:inline-block}
+.qcoe-footer .confidential span{color:var(--gold);font-size:11px;font-weight:600;letter-spacing:.5px}
+.qcoe-footer .powered{color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px}
+.qcoe-footer .brands{font-family:'Outfit',sans-serif;font-size:18px;font-weight:700;margin-bottom:10px}
+.qcoe-footer .brands .q{color:var(--gold)}
+.qcoe-footer .brands .c{color:#94a3b8}
+.qcoe-footer .brands .x{color:#475569;font-size:14px;margin:0 8px}
+.qcoe-footer .tagline{color:#475569;font-size:11px;margin-bottom:4px}
+.qcoe-footer .version{color:#334155;font-size:10px}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:99px}
+::-webkit-scrollbar-thumb:hover{background:#94a3b8}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <img src="https://companieslogo.com/img/orig/AX.D-45977c0c.png?t=1720244490" alt="Axos">
+  <h1>QE Report Generator <span>Bi-Weekly Status Report</span></h1>
+  <button class="hdr-btn" onclick="openImportModal()">
+    <svg viewBox="0 0 20 20"><path d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"/></svg>
+    Import
+  </button>
+  <button class="hdr-btn" onclick="openSettingsModal()">
+    <svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg>
+    Settings
+  </button>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div class="main">
+  <div class="editor-panel">
+    <div class="editor-head"><h2>Report Editor</h2></div>
+    <div class="editor-body" id="editorBody"></div>
+  </div>
+  <div class="preview-panel">
+    <div class="preview-head">
+      <h2>Email Preview</h2>
+      <button class="pill active" onclick="openPreviewTab()" title="Open in new tab">Open in Tab</button>
+    </div>
+    <div class="preview-body">
+      <div class="preview-frame"><iframe id="previewIframe" title="Preview"></iframe></div>
+    </div>
+  </div>
+</div>
+
+<!-- ACTION BAR -->
+<div class="action-bar">
+  <button class="act-btn outline" onclick="resetReport()" title="Clear all and start fresh">
+    <svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/></svg>
+    Reset
+  </button>
+  <div class="spacer"></div>
+  <button class="act-btn outline" onclick="downloadHTML()">
+    <svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+    Download HTML
+  </button>
+  <button class="act-btn outline" onclick="copyHTMLSource()">
+    <svg viewBox="0 0 20 20"><path d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z"/></svg>
+    Copy Source
+  </button>
+  <button class="act-btn gold" onclick="copyFormatted()">
+    <svg viewBox="0 0 20 20"><path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/><path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/></svg>
+    Copy for Email
+  </button>
+</div>
+
+<!-- CHAT FAB -->
+<button class="chat-fab" onclick="toggleChat()" title="AI Assistant">&#128172;</button>
+
+<!-- CHAT DRAWER -->
+<div class="chat-drawer" id="chatDrawer">
+  <div class="chat-hdr">
+    <h3>&#10024; AI Assistant</h3>
+    <button class="chat-hdr-btn" onclick="clearChat()" title="Clear chat">&#128465;</button>
+    <button class="chat-hdr-btn" onclick="toggleChat()" title="Close">&times;</button>
+  </div>
+  <div class="chat-messages" id="chatMessages">
+    <div class="chat-msg system">Paste your raw report text here and I'll parse it, or ask me to modify any section of your report. Requires OpenAI API key in Settings.</div>
+  </div>
+  <div class="chat-input-row">
+    <input id="chatInput" placeholder="e.g. Add a Risks section with..." onkeydown="if(event.key==='Enter')sendChat()">
+    <button class="chat-send" onclick="sendChat()" id="chatSendBtn">&#10148;</button>
+  </div>
+</div>
+
+<!-- IMPORT MODAL -->
+<div class="modal-overlay" id="importModal">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-hdr">
+      <h2>Import Report</h2>
+      <button class="modal-close" onclick="closeModal('importModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="import-zone" id="importZone">
+        <p style="font-size:24px;margin-bottom:8px">&#128196;</p>
+        <p><strong>Drag & drop</strong> a text file or HTML file here</p>
+        <small>Or paste your report text below</small>
+      </div>
+      <textarea class="import-textarea" id="importText" placeholder="Paste the raw report text here (from email, document, exported HTML, etc.)..."></textarea>
+    </div>
+    <div class="modal-foot">
+      <button class="act-btn outline" onclick="clearImportText()" title="Clear the text area" style="margin-right:auto">&#128465; Clear All</button>
+      <button class="act-btn outline" onclick="closeModal('importModal')">Cancel</button>
+      <button class="act-btn outline" onclick="parseImport(false)" title="Parse using regex patterns (no API key needed)">&#9889; Quick Parse</button>
+      <button class="act-btn gold" onclick="parseImport(true)" id="aiParseBtn">&#129302; AI Parse</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-hdr">
+      <h2>Settings</h2>
+      <button class="modal-close" onclick="closeModal('settingsModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="settings-row">
+        <label>AI Provider</label>
+        <select id="settingsProvider" onchange="saveSettings()">
+          <option value="openai">OpenAI</option>
+          <option value="azure">Azure OpenAI</option>
+        </select>
+      </div>
+      <div class="settings-row">
+        <label>API Key</label>
+        <input type="password" id="settingsApiKey" placeholder="sk-..." onchange="saveSettings()">
+      </div>
+      <p class="settings-note">Stored locally in your browser. Never sent anywhere except the AI provider.</p>
+      <div class="settings-row" id="azureEndpointRow" style="display:none">
+        <label>Azure Endpoint</label>
+        <input id="settingsAzureEndpoint" placeholder="https://your-resource.openai.azure.com" onchange="saveSettings()">
+      </div>
+      <div class="settings-row" id="azureDeploymentRow" style="display:none">
+        <label>Deployment</label>
+        <input id="settingsAzureDeployment" placeholder="gpt-4o" onchange="saveSettings()">
+      </div>
+      <div class="settings-row">
+        <label>Model</label>
+        <select id="settingsModel" onchange="saveSettings()">
+          <option value="gpt-4o-mini">GPT-4o Mini (fast, cheap)</option>
+          <option value="gpt-4o">GPT-4o (best quality)</option>
+          <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
+          <option value="gpt-4.1">GPT-4.1</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="act-btn primary" onclick="closeModal('settingsModal')">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+const DEFAULT_REPORT = {
+  teamName:'',sprintNumber:'',sprintStartDate:'',sprintEndDate:'',
+  qeManager:'',qeLead:'',qualityEngineers:[''],openReqs:'No',followingTDD:'No',
+  sprintGoal:'',teamHighlights:[''],teamMVP:{names:'',highlights:'',noMVP:false},
+  showExecutiveSummary:false,executiveSummary:'',
+  showSprintDelivery:true,
+  sprintDelivery:[{task:'',engineer:'',pbisWorked:'',automatedScenarios:'',manualPct:'',aiUsage:'Yes'}],
+  showAutomation:true,
+  automationCoverage:[{application:'',status:'In Progress',coveragePct:'',targetPct:'',targetDate:'',trend:'Up',owner:'',notes:''}],
+  showRisks:false,risksAndBlockers:[''],
+  showAITools:true,
+  aiToolUsage:[{tool:'',useCase:'',pbis:'',timeSaved:'',howUsed:''}],
+  customSections:[],signatureName:'',signatureTitle:'',signatureTeam:'',signatureEmail:''
+};
+let report = JSON.parse(JSON.stringify(DEFAULT_REPORT));
+let expandedSections = new Set(['team-overview','sprint-info','sprint-goal']);
+let previewDebounce = null;
+let mvpEasterEggCooldown = false;
+
+// ─── DATE HELPERS ───
+function mmddToIso(d){if(!d)return '';const p=d.split('/');return p.length===3?`${p[2].length===2?'20'+p[2]:p[2]}-${p[0].padStart(2,'0')}-${p[1].padStart(2,'0')}`:'';}
+function isoToMmdd(d){if(!d)return '';const p=d.split('-');return p.length===3?`${p[1]}/${p[2]}/${p[0]}`:'';}
+function autoEndDate(isoStart){if(!isoStart)return '';const d=new Date(isoStart+'T12:00:00');d.setDate(d.getDate()+11);return d.toISOString().split('T')[0];}
+function setStartDate(isoVal){
+  report.sprintStartDate=isoToMmdd(isoVal);
+  report.sprintEndDate=isoToMmdd(autoEndDate(isoVal));
+  renderEditor();schedulePreview();
+}
+function parseHumanDate(str){
+  const months={january:'01',february:'02',march:'03',april:'04',may:'05',june:'06',july:'07',august:'08',september:'09',october:'10',november:'11',december:'12'};
+  const m=str.match(/(\w+)\s+(\d{1,2}),?\s*(\d{4})/);
+  if(m){const mon=months[m[1].toLowerCase()];if(mon)return `${mon}/${m[2].padStart(2,'0')}/${m[3]}`;}
+  return str;
+}
+
+// ─── SETTINGS ───
+function loadSettings(){const s=JSON.parse(localStorage.getItem('rg_settings')||'{}');document.getElementById('settingsProvider').value=s.provider||'openai';document.getElementById('settingsApiKey').value=s.apiKey||'';document.getElementById('settingsModel').value=s.model||'gpt-4o-mini';document.getElementById('settingsAzureEndpoint').value=s.azureEndpoint||'';document.getElementById('settingsAzureDeployment').value=s.azureDeployment||'';toggleAzureFields();}
+function saveSettings(){const s={provider:document.getElementById('settingsProvider').value,apiKey:document.getElementById('settingsApiKey').value,model:document.getElementById('settingsModel').value,azureEndpoint:document.getElementById('settingsAzureEndpoint').value,azureDeployment:document.getElementById('settingsAzureDeployment').value};localStorage.setItem('rg_settings',JSON.stringify(s));toggleAzureFields();}
+function getSettings(){return JSON.parse(localStorage.getItem('rg_settings')||'{}');}
+function toggleAzureFields(){const a=document.getElementById('settingsProvider').value==='azure';document.getElementById('azureEndpointRow').style.display=a?'flex':'none';document.getElementById('azureDeploymentRow').style.display=a?'flex':'none';}
+
+// ─── UI RENDERING ───
+function renderEditor(){
+  const d=report;
+  const startIso=mmddToIso(d.sprintStartDate);
+  const endIso=mmddToIso(d.sprintEndDate);
+  const html=[
+    renderSection('team-overview','&#128101; Team Overview','',`
+      <div class="form-row"><div class="form-group"><label>Team Name</label><input value="${esc(d.teamName)}" oninput="u('teamName',this.value)"></div></div>
+      <div class="form-row">
+        <div class="form-group"><label>QE Manager</label><input value="${esc(d.qeManager)}" oninput="u('qeManager',this.value)"></div>
+        <div class="form-group"><label>QE Lead</label><input value="${esc(d.qeLead)}" oninput="u('qeLead',this.value)"></div>
+      </div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label>Quality Engineers</label>
+        <div class="list-items">${d.qualityEngineers.map((e,i)=>`<div class="list-item"><input value="${esc(e)}" oninput="uArr('qualityEngineers',${i},this.value)"><button class="remove-btn" onclick="removeArr('qualityEngineers',${i})">&times;</button></div>`).join('')}</div>
+        <button class="add-btn" onclick="addArr('qualityEngineers','')">+ Add Engineer</button>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Open Req's</label><select onchange="u('openReqs',this.value)"><option${d.openReqs==='No'?' selected':''}>No</option><option${d.openReqs==='Yes'?' selected':''}>Yes</option></select></div>
+        <div class="form-group"><label>Following TDD</label><select onchange="u('followingTDD',this.value)"><option${d.followingTDD==='No'?' selected':''}>No</option><option${d.followingTDD==='Yes'?' selected':''}>Yes</option><option${d.followingTDD==='N/A'?' selected':''}>N/A</option></select></div>
+      </div>`),
+    renderSection('sprint-info','&#128197; Sprint Info','',`
+      <div class="form-row">
+        <div class="form-group"><label>Sprint Number</label><input value="${esc(d.sprintNumber)}" oninput="u('sprintNumber',this.value)" placeholder="e.g. 5"></div>
+        <div class="form-group"><label>Start Date</label><input type="date" value="${startIso}" onchange="setStartDate(this.value)"></div>
+        <div class="form-group"><label>End Date</label><input type="date" value="${endIso}" onchange="u('sprintEndDate',isoToMmdd(this.value));schedulePreview()"></div>
+      </div>`),
+    renderSection('sprint-goal','&#127919; Sprint Goal','',`
+      <div class="form-group"><label>Goal Description</label><textarea oninput="u('sprintGoal',this.value)" rows="3">${esc(d.sprintGoal)}</textarea></div>`),
+    renderSection('highlights','&#11088; Team Highlights','',`
+      <div class="form-group"><label>Highlights</label>
+        <div class="list-items">${d.teamHighlights.map((e,i)=>`<div class="list-item"><input value="${esc(e)}" oninput="uArr('teamHighlights',${i},this.value)"><button class="remove-btn" onclick="removeArr('teamHighlights',${i})">&times;</button></div>`).join('')}</div>
+        <button class="add-btn" onclick="addArr('teamHighlights','')">+ Add Highlight</button>
+      </div>`),
+    renderSection('mvp','&#127942; Team MVP','',`
+      <div style="background:linear-gradient(135deg,#faf5ff,#f3e8ff);border-radius:10px;padding:12px 14px;margin-bottom:10px;border-left:3px solid var(--purple)">
+        <p style="font-size:11px;color:var(--purple);font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">&#127942; Sprint MVP &mdash; One per sprint!</p>
+        <div class="section-toggle" style="margin-bottom:10px"><label class="toggle-switch"><input type="checkbox" ${d.teamMVP.noMVP?'':'checked'} onchange="toggleNoMVP(!this.checked)"><span class="slider"></span></label><label>We have an MVP this sprint</label></div>
+        ${d.teamMVP.noMVP?`<div style="text-align:center;padding:18px 10px;background:linear-gradient(135deg,#fef2f2,#fff1f2);border-radius:8px;border:1px dashed #f87171"><p style="font-size:28px;margin:0 0 6px">&#128148;</p><p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#dc2626">No MVP Selected</p><p style="margin:0;font-size:11px;color:#ef4444">Every sprint deserves a winner &mdash; consider recognizing someone!</p></div>`:`<div class="form-group" style="margin-bottom:8px"><label>MVP Name</label><input value="${esc(d.teamMVP.names)}" oninput="checkMVPInput(this.value)" placeholder="One team member name"></div>
+        <div class="form-group"><label>Why this person is the MVP</label><textarea oninput="u('teamMVP.highlights',this.value)" rows="2" placeholder="What made them stand out this sprint?">${esc(d.teamMVP.highlights)}</textarea></div>`}
+      </div>`),
+    renderSection('executive-summary','&#128220; Executive Summary','optional',`
+      <div class="section-toggle"><label class="toggle-switch"><input type="checkbox" ${d.showExecutiveSummary?'checked':''} onchange="u('showExecutiveSummary',this.checked)"><span class="slider"></span></label><label>Include this section</label></div>
+      ${d.showExecutiveSummary?`<div class="form-group"><label>Summary</label><textarea oninput="u('executiveSummary',this.value)" rows="4">${esc(d.executiveSummary)}</textarea></div>`:''}`),
+    renderSection('sprint-delivery','&#128640; Sprint Delivery Snapshot','',`
+      <div class="section-toggle"><label class="toggle-switch"><input type="checkbox" ${d.showSprintDelivery?'checked':''} onchange="u('showSprintDelivery',this.checked)"><span class="slider"></span></label><label>Include this section</label></div>
+      ${d.showSprintDelivery?`<div style="overflow-x:auto"><table class="editable-table"><thead><tr><th>Task</th><th>Engineer</th><th>PBIs</th><th>Auto</th><th>Manual %</th><th>AI</th><th></th></tr></thead><tbody>${d.sprintDelivery.map((r,i)=>`<tr>
+        <td><input value="${esc(r.task)}" oninput="uTbl('sprintDelivery',${i},'task',this.value)"></td>
+        <td><input value="${esc(r.engineer)}" oninput="uTbl('sprintDelivery',${i},'engineer',this.value)"></td>
+        <td><input value="${esc(r.pbisWorked)}" oninput="uTbl('sprintDelivery',${i},'pbisWorked',this.value)" style="width:50px"></td>
+        <td><input value="${esc(r.automatedScenarios)}" oninput="uTbl('sprintDelivery',${i},'automatedScenarios',this.value)" style="width:50px"></td>
+        <td><input value="${esc(r.manualPct)}" oninput="uTbl('sprintDelivery',${i},'manualPct',this.value)" style="width:60px"></td>
+        <td><select onchange="uTbl('sprintDelivery',${i},'aiUsage',this.value)"><option${r.aiUsage==='Yes'?' selected':''}>Yes</option><option${r.aiUsage==='No'?' selected':''}>No</option></select></td>
+        <td><button class="row-remove" onclick="removeTblRow('sprintDelivery',${i})">&times;</button></td></tr>`).join('')}</tbody></table></div>
+      <button class="add-btn" onclick="addTblRow('sprintDelivery',{task:'',engineer:'',pbisWorked:'',automatedScenarios:'',manualPct:'',aiUsage:'Yes'})">+ Add Row</button>`:''}`),
+    renderSection('automation','&#9881;&#65039; Automation Coverage','',`
+      <div class="section-toggle"><label class="toggle-switch"><input type="checkbox" ${d.showAutomation?'checked':''} onchange="u('showAutomation',this.checked)"><span class="slider"></span></label><label>Include this section</label></div>
+      ${d.showAutomation?`<div style="overflow-x:auto"><table class="editable-table"><thead><tr><th>Application</th><th>Status</th><th>Cov %</th><th>Target %</th><th>Target Date</th><th>Trend</th><th>Owner</th><th>Notes</th><th></th></tr></thead><tbody>${d.automationCoverage.map((r,i)=>`<tr>
+        <td><input value="${esc(r.application)}" oninput="uTbl('automationCoverage',${i},'application',this.value)"></td>
+        <td><select onchange="uTbl('automationCoverage',${i},'status',this.value)">${['Not Started','In Progress','Completed','Blocked','On Hold'].map(s=>`<option${r.status===s?' selected':''}>${s}</option>`).join('')}</select></td>
+        <td><input value="${esc(r.coveragePct)}" oninput="uTbl('automationCoverage',${i},'coveragePct',this.value)" style="width:55px"></td>
+        <td><input value="${esc(r.targetPct)}" oninput="uTbl('automationCoverage',${i},'targetPct',this.value)" style="width:55px"></td>
+        <td><input value="${esc(r.targetDate)}" oninput="uTbl('automationCoverage',${i},'targetDate',this.value)" style="width:85px"></td>
+        <td><select onchange="uTbl('automationCoverage',${i},'trend',this.value)">${['Up','Down','Flat'].map(s=>`<option${r.trend===s?' selected':''}>${s}</option>`).join('')}</select></td>
+        <td><input value="${esc(r.owner)}" oninput="uTbl('automationCoverage',${i},'owner',this.value)"></td>
+        <td><input value="${esc(r.notes)}" oninput="uTbl('automationCoverage',${i},'notes',this.value)"></td>
+        <td><button class="row-remove" onclick="removeTblRow('automationCoverage',${i})">&times;</button></td></tr>`).join('')}</tbody></table></div>
+      <button class="add-btn" onclick="addTblRow('automationCoverage',{application:'',status:'In Progress',coveragePct:'',targetPct:'',targetDate:'',trend:'Up',owner:'',notes:''})">+ Add Row</button>`:''}`),
+    renderSection('risks','&#9888;&#65039; Risks & Blockers','optional',`
+      <div class="section-toggle"><label class="toggle-switch"><input type="checkbox" ${d.showRisks?'checked':''} onchange="u('showRisks',this.checked)"><span class="slider"></span></label><label>Include this section</label></div>
+      ${d.showRisks?`<div class="form-group"><label>Risk / Blocker Items</label>
+        <div class="list-items">${d.risksAndBlockers.map((e,i)=>`<div class="list-item"><input value="${esc(e)}" oninput="uArr('risksAndBlockers',${i},this.value)"><button class="remove-btn" onclick="removeArr('risksAndBlockers',${i})">&times;</button></div>`).join('')}</div>
+        <button class="add-btn" onclick="addArr('risksAndBlockers','')">+ Add Item</button></div>`:''}`),
+    renderSection('ai-tools','&#129302; AI Tool Usage & KPIs','',`
+      <div class="section-toggle"><label class="toggle-switch"><input type="checkbox" ${d.showAITools?'checked':''} onchange="u('showAITools',this.checked)"><span class="slider"></span></label><label>Include this section</label></div>
+      ${d.showAITools?`<div style="overflow-x:auto"><table class="editable-table"><thead><tr><th>Tool</th><th>Use Case</th><th>PBIs</th><th>Time Saved</th><th>How We Used the Time</th><th></th></tr></thead><tbody>${d.aiToolUsage.map((r,i)=>`<tr>
+        <td><input value="${esc(r.tool)}" oninput="uTbl('aiToolUsage',${i},'tool',this.value)"></td>
+        <td><input value="${esc(r.useCase)}" oninput="uTbl('aiToolUsage',${i},'useCase',this.value)"></td>
+        <td><input value="${esc(r.pbis)}" oninput="uTbl('aiToolUsage',${i},'pbis',this.value)" style="width:55px"></td>
+        <td><input value="${esc(r.timeSaved)}" oninput="uTbl('aiToolUsage',${i},'timeSaved',this.value)" style="width:75px"></td>
+        <td><input value="${esc(r.howUsed)}" oninput="uTbl('aiToolUsage',${i},'howUsed',this.value)"></td>
+        <td><button class="row-remove" onclick="removeTblRow('aiToolUsage',${i})">&times;</button></td></tr>`).join('')}</tbody></table></div>
+      <button class="add-btn" onclick="addTblRow('aiToolUsage',{tool:'',useCase:'',pbis:'',timeSaved:'',howUsed:''})">+ Add Row</button>`:''}`),
+    renderCustomSections(),
+    renderSection('add-custom','+ Add Custom Section','',`
+      <div class="form-row"><div class="form-group"><label>Section Title</label><input id="newSectionTitle" placeholder="e.g. Release Notes..."></div><div class="form-group"><label>Type</label><select id="newSectionType"><option value="text">Text Block</option><option value="list">Bullet List</option></select></div></div>
+      <button class="add-btn" onclick="addCustomSection()">+ Create Section</button>`),
+    renderSection('signature','&#9997;&#65039; Signature','',`
+      <div class="form-row"><div class="form-group"><label>Full Name</label><input value="${esc(d.signatureName)}" oninput="u('signatureName',this.value)"></div><div class="form-group"><label>Title / Role</label><input value="${esc(d.signatureTitle)}" oninput="u('signatureTitle',this.value)" placeholder="e.g. QE Lead"></div></div>
+      <div class="form-row"><div class="form-group"><label>Team / Department</label><input value="${esc(d.signatureTeam)}" oninput="u('signatureTeam',this.value)"></div><div class="form-group"><label>Email (optional)</label><input value="${esc(d.signatureEmail)}" oninput="u('signatureEmail',this.value)"></div></div>`)
+  ];
+  const footerHtml='<div style="padding-bottom:60px"></div><div class="qcoe-footer"><div class="confidential"><span>&#128274; CONFIDENTIAL &mdash; This tool is proprietary to Axos Bank. Do not share outside the organization without authorization.</span></div><div class="powered">POWERED BY</div><div class="brands"><span class="q">QCoE</span> <span class="x">&times;</span> <span class="c">Cursor AI</span></div><div class="tagline">&#9997;&#65039; AI-Powered Report Generation &rarr; &#10024; Streamlined workflow</div><div class="version">&copy; 2025&ndash;2026 Axos Bank. All rights reserved. | QE Report Generator v2.0</div></div>';
+  document.getElementById('editorBody').innerHTML=html.join('')+footerHtml;
+}
+function renderSection(id,title,badge,content){
+  const open=expandedSections.has(id);
+  const bh=badge==='optional'?'<span class="optional-badge">Optional</span>':(badge?`<span class="section-badge">${badge}</span>`:'');
+  return `<div class="section"><div class="section-hdr" onclick="toggleSection('${id}')"><h3>${title}</h3>${bh}<span class="toggle ${open?'open':''}">&#9660;</span></div><div class="section-body ${open?'open':''}">${content}</div></div>`;
+}
+function renderCustomSections(){
+  return report.customSections.map((cs,ci)=>{
+    const c=cs.type==='list'?`<div class="form-group"><div class="list-items">${(cs.items||['']).map((it,ii)=>`<div class="list-item"><input value="${esc(it)}" oninput="uCustomItem(${ci},${ii},this.value)"><button class="remove-btn" onclick="removeCustomItem(${ci},${ii})">&times;</button></div>`).join('')}</div><button class="add-btn" onclick="addCustomItem(${ci})">+ Add Item</button></div>`:`<div class="form-group"><label>Content</label><textarea oninput="uCustomText(${ci},this.value)" rows="3">${esc(cs.text||'')}</textarea></div>`;
+    return renderSection(`custom-${ci}`,esc(cs.title)+` <button class="remove-btn" onclick="event.stopPropagation();removeCustomSection(${ci})" style="display:inline-flex;width:22px;height:22px;font-size:12px;vertical-align:middle;margin-left:8px">&times;</button>`,'',c);
+  }).join('');
+}
+
+// ─── MVP CHECK ───
+let mvpCheckTimer=null;
+function detectMVPSeparator(val){
+  const separators=[
+    {idx:()=>val.indexOf(',')},
+    {idx:()=>val.indexOf(';')},
+    {idx:()=>{const m=val.match(/\s+&\s+/);return m?m.index:-1;}},
+    {idx:()=>{const m=val.match(/\s+and\s+/i);return m?m.index:-1;}},
+    {idx:()=>{const m=val.match(/\s+-\s+/);return m?m.index:-1;}}
+  ];
+  for(const s of separators){const i=s.idx();if(i>0)return i;}
+  return -1;
+}
+function checkMVPInput(val){
+  clearTimeout(mvpCheckTimer);
+  const sepIdx=detectMVPSeparator(val);
+  if(sepIdx>0){
+    val=val.substring(0,sepIdx).trim();
+    const inp=document.querySelector('[placeholder="One team member name"]');
+    if(inp){inp.value=val;inp.setSelectionRange(val.length,val.length);}
+    if(!mvpEasterEggCooldown){triggerMVPEasterEgg();}
+  }
+  report.teamMVP.names=val;
+  schedulePreview();
+}
+function triggerMVPEasterEgg(){
+  if(mvpEasterEggCooldown)return;
+  mvpEasterEggCooldown=true;
+  const gifUrl='https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExM2ltczQ0cWY4dW9nYjczYjJwaWxtcTAxMng4dW9ndGJleHMwNDduYiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/uIGfoVAK9iU1y/giphy.gif';
+  const count=5+Math.floor(Math.random()*3);
+  const positions=[];
+  for(let i=0;i<count;i++){
+    let x,y,tooClose;
+    do{x=5+Math.random()*80;y=5+Math.random()*60;tooClose=positions.some(p=>Math.abs(p.x-x)<18&&Math.abs(p.y-y)<18);}while(tooClose&&positions.length<20);
+    positions.push({x,y});
+    setTimeout(()=>{
+      const img=document.createElement('img');
+      img.src=gifUrl;img.className='mvp-gif';
+      img.style.left=x+'%';img.style.top=y+'%';
+      document.body.appendChild(img);
+      setTimeout(()=>img.remove(),4500);
+    },i*800);
+  }
+  const msg=document.createElement('div');
+  msg.className='mvp-toast-msg';
+  msg.innerHTML='&#127942; Only <span>ONE MVP</span> per sprint!<br><span style="font-size:12px;opacity:.8;font-weight:400">Don\'t worry, we know they\'re ALL winners! &#128588;</span>';
+  document.body.appendChild(msg);
+  setTimeout(()=>msg.remove(),7000);
+  setTimeout(()=>{mvpEasterEggCooldown=false;},8000);
+}
+
+function toggleNoMVP(val){report.teamMVP.noMVP=val;renderEditor();schedulePreview();}
+
+// ─── UPDATE HELPERS ───
+function u(path,val){const ps=path.split('.');let o=report;for(let i=0;i<ps.length-1;i++)o=o[ps[i]];o[ps[ps.length-1]]=val;schedulePreview();if(path.startsWith('show'))renderEditor();}
+function uArr(key,idx,val){report[key][idx]=val;schedulePreview();}
+function addArr(key,val){report[key].push(val);renderEditor();schedulePreview();}
+function removeArr(key,idx){report[key].splice(idx,1);if(!report[key].length)report[key].push('');renderEditor();schedulePreview();}
+function uTbl(key,row,col,val){report[key][row][col]=val;schedulePreview();}
+function addTblRow(key,t){report[key].push({...t});renderEditor();schedulePreview();}
+function removeTblRow(key,idx){report[key].splice(idx,1);if(!report[key].length){const tmpl=key==='sprintDelivery'?{task:'',engineer:'',pbisWorked:'',automatedScenarios:'',manualPct:'',aiUsage:'Yes'}:key==='automationCoverage'?{application:'',status:'In Progress',coveragePct:'',targetPct:'',targetDate:'',trend:'Up',owner:'',notes:''}:{tool:'',useCase:'',pbis:'',timeSaved:'',howUsed:''};report[key].push(tmpl);}renderEditor();schedulePreview();}
+function addCustomSection(){const t=document.getElementById('newSectionTitle').value.trim();const ty=document.getElementById('newSectionType').value;if(!t)return toast('Enter a section title','error');report.customSections.push({title:t,type:ty,text:'',items:['']});expandedSections.add(`custom-${report.customSections.length-1}`);renderEditor();schedulePreview();}
+function removeCustomSection(ci){report.customSections.splice(ci,1);renderEditor();schedulePreview();}
+function uCustomText(ci,val){report.customSections[ci].text=val;schedulePreview();}
+function uCustomItem(ci,ii,val){report.customSections[ci].items[ii]=val;schedulePreview();}
+function addCustomItem(ci){report.customSections[ci].items.push('');renderEditor();schedulePreview();}
+function removeCustomItem(ci,ii){report.customSections[ci].items.splice(ii,1);if(!report.customSections[ci].items.length)report.customSections[ci].items.push('');renderEditor();schedulePreview();}
+function toggleSection(id){if(expandedSections.has(id))expandedSections.delete(id);else expandedSections.add(id);renderEditor();}
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ─── PREVIEW ───
+function schedulePreview(){clearTimeout(previewDebounce);previewDebounce=setTimeout(updatePreview,200);localStorage.setItem('rg_report',JSON.stringify(report));}
+function updatePreview(){const html=generateEmailHTML();const iframe=document.getElementById('previewIframe');const doc=iframe.contentDocument||iframe.contentWindow.document;doc.open();doc.write(html);doc.close();setTimeout(()=>{iframe.style.height=doc.body.scrollHeight+'px';},100);setTimeout(()=>{iframe.style.height=doc.body.scrollHeight+'px';},500);}
+
+// ─── EMAIL HTML GENERATION ───
+function generateEmailHTML(){
+  const d=report;
+  const dateDisplay=formatDateRange(d.sprintStartDate,d.sprintEndDate);
+  const trendIcon=(t)=>t==='Up'?'&#8593;':t==='Down'?'&#8595;':'&#8596;';
+  const statusColor=(s)=>{if(s==='Completed')return{bg:'#ecfdf5',text:'#065f46'};if(s==='In Progress')return{bg:'#fffbeb',text:'#92400e'};if(s==='Blocked')return{bg:'#fef2f2',text:'#991b1b'};if(s==='On Hold')return{bg:'#f3f4f6',text:'#4b5563'};return{bg:'#f3f4f6',text:'#4b5563'};};
+  let sections='';
+  const qeList=d.qualityEngineers.filter(e=>e.trim()).join(', ');
+  sections+=sectionHeader('Team Overview');
+  sections+=`<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:25px;border-collapse:collapse;">${overviewRow('Team Name',d.teamName,true)}${overviewRow('QE Manager',d.qeManager)}${overviewRow('QE Lead',d.qeLead)}${overviewRow('Quality Engineers',qeList)}${overviewRow("Open Req's",d.openReqs)}${overviewRow('Following TDD',d.followingTDD,false,true)}</table>`;
+  if(d.sprintGoal.trim()){sections+=sectionHeader('Sprint Goal');sections+=`<table width="100%" cellpadding="16" cellspacing="0" border="0" style="margin-bottom:25px;background-color:#eff6ff;border-left:4px solid #FAA74A;"><tr><td>${d.sprintNumber?`<p style="margin:0 0 6px 0;font-size:12px;font-weight:bold;color:#FAA74A;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.5px;">Sprint ${escHtml(d.sprintNumber)}</p>`:''}<p style="margin:0;font-size:14px;color:#374151;line-height:1.7;font-family:Arial,sans-serif;">${escHtml(d.sprintGoal)}</p></td></tr></table>`;}
+  const highlights=d.teamHighlights.filter(h=>h.trim());
+  if(highlights.length){sections+=sectionHeader('Team Highlights');sections+=`<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:25px;">${highlights.map(h=>`<tr><td style="padding:6px 0 6px 16px;font-size:13px;color:#374151;font-family:Arial,sans-serif;line-height:1.6;">&#10003; ${escHtml(h)}</td></tr>`).join('')}</table>`;}
+  if(d.teamMVP.noMVP){sections+=sectionHeader('Team MVP &#127942;');sections+=`<table width="100%" cellpadding="14" cellspacing="0" border="0" style="margin-bottom:25px;background-color:#fef2f2;border-left:4px solid #f87171;"><tr><td style="text-align:center;"><p style="margin:0 0 4px 0;font-size:22px;">&#128148;</p><p style="margin:0 0 4px 0;font-size:14px;font-weight:bold;color:#dc2626;font-family:Arial,sans-serif;">No MVP Selected This Sprint</p><p style="margin:0;font-size:12px;color:#ef4444;font-family:Arial,sans-serif;">Every sprint deserves a winner &mdash; let&#39;s make sure we recognize someone next time!</p></td></tr></table>`;}
+  else if(d.teamMVP.names.trim()){sections+=sectionHeader('Team MVP &#127942;');sections+=`<table width="100%" cellpadding="14" cellspacing="0" border="0" style="margin-bottom:25px;background-color:#faf5ff;border-left:4px solid #8b5cf6;"><tr><td><p style="margin:0 0 4px 0;font-size:14px;font-weight:bold;color:#5b21b6;font-family:Arial,sans-serif;">${escHtml(d.teamMVP.names)}</p>${d.teamMVP.highlights?`<p style="margin:0;font-size:13px;color:#6b21a8;font-family:Arial,sans-serif;line-height:1.5;">${escHtml(d.teamMVP.highlights)}</p>`:''}</td></tr></table>`;}
+  if(d.showExecutiveSummary&&d.executiveSummary.trim()){sections+=sectionHeader('Executive Summary');sections+=`<table width="100%" cellpadding="16" cellspacing="0" border="0" style="margin-bottom:25px;background-color:#f8fafc;"><tr><td><p style="margin:0;font-size:14px;color:#374151;line-height:1.7;font-family:Arial,sans-serif;">${escHtml(d.executiveSummary).replace(/\n/g,'<br>')}</p></td></tr></table>`;}
+  const deliveryRows=d.showSprintDelivery?d.sprintDelivery.filter(r=>r.engineer.trim()||r.task.trim()):[];
+  if(deliveryRows.length){sections+=sectionHeader('Sprint Delivery Snapshot');sections+=`<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:25px;border-collapse:collapse;"><tr><td style="padding:10px 8px;background-color:#1E3860;color:#ffffff;font-size:11px;font-weight:bold;font-family:Arial,sans-serif;border:1px solid #1E3860;">Task</td><td style="padding:10px 8px;background-color:#1E3860;color:#ffffff;font-size:11px;font-weight:bold;font-family:Arial,sans-serif;border:1px solid #1E3860;">Engineer</td><td style="padding:10px 8px;background-color:#1E3860;color:#ffffff;font-size:11px;font-weight:bold;font-family:Arial,sans-serif;border:1px solid #1E3860;text-align:center;">PBIs</td><td style="padding:10px 8px;background-color:#1E3860;color:#ffffff;font-size:11px;font-weight:bold;font-family:Arial,sans-serif;border:1px solid #1E3860;text-align:center;">Automated</td><td style="padding:10px 8px;background-color:#1E3860;color:#ffffff;font-size:11px;font-weight:bold;font-family:Arial,sans-serif;border:1px solid #1E3860;text-align:center;">Manual %</td><td style="padding:10px 8px;background-color:#1E3860;color:#ffffff;font-size:11px;font-weight:bold;font-family:Arial,sans-serif;border:1px solid #1E3860;text-align:center;">AI Usage</td></tr>${deliveryRows.map((r,i)=>{const bg=i%2===0?'#f8fafc':'#ffffff';return`<tr><td style="padding:8px;background-color:${bg};font-size:12px;color:#374151;font-family:Arial,sans-serif;border:1px solid #e2e8f0;">${escHtml(r.task)}</td><td style="padding:8px;background-color:${bg};font-size:12px;color:#374151;font-family:Arial,sans-serif;border:1px solid #e2e8f0;">${escHtml(r.engineer)}</td><td style="padding:8px;background-color:${bg};font-size:12px;color:#374151;font-family:Arial,sans-serif;border:1px solid #e2e8f0;text-align:center;">${escHtml(r.pbisWorked)}</td><td style="padding:8px;background-color:${bg};font-size:12px;color:#374151;font-family:Arial,sans-serif;border:1px solid #e2e8f0;text-align:center;">${escHtml(r.automatedScenarios)}</td><td style="padding:8px;background-color:${bg};font-size:12px;color:#374151;font-family:Arial,sans-serif;border:1px solid #e2e8f0;text-align:center;">${escHtml(r.manualPct)}</td><td style="padding:8px;background-color:${bg};font-size:12px;color:#374151;font-family:Arial,sans-serif;border:1px solid #e2e8f0;text-align:center;">${escHtml(r.aiUsage)}</td></tr>`;}).join('')}</table>`;}
+  const autoRows=d.showAutomation?d.automationCoverage.filter(r=>r.application.trim()):[];
+  if(autoRows.length){sections+=sectionHeader('Automation Coverage');sections+=`<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:25px;border-collapse:collapse;"><tr><td style="padding:10px 6px;background-color:#1E3860;color:#ffffff;font-size:10px;font-weight:bold;font-family:Arial,sans-serif;border:1px solid #1E3860;">Application</td><td style="padding:10px 6px;background-color:#1E3860;color:#ffffff;font-size:10px;font-weight:bold;font-family:Arial,sans-serif;border:1px solid #1E3860;">Status</td><td style="padding:10px 6px;background-color:#1E3860;color:#ffffff;font-size:10px;font-weight:bold;font-family:Arial,sans-serif;border:1px solid #1E3860;text-align:center;">Coverage %</td><td style="padding:10px 6px;background-color:#1E3860;color:#ffffff;font-size:10px;font-weight:bold;font-family:Arial,sans-serif;border:1px solid #1E3860;text-align:center;">Target %</td><td style="padding:10px 6px;background-color:#1E3860;color:#ffffff;font-size:10px;font-weight:bold;font-family:Arial,sans-serif;border:1px solid #1E3860;">Target Date</td><td style="padding:10px 6px;background-color:#1E3860;color:#ffffff;font-size:10px;font-weight:bold;font-family:Arial,sans-serif;border:1px solid #1E3860;text-align:center;">Trend</td><td style="padding:10px 6px;background-color:#1E3860;color:#ffffff;font-size:10px;font-weight:bold;font-family:Arial,sans-serif;border:1px solid #1E3860;">Owner</td><td style="padding:10px 6px;background-color:#1E3860;color:#ffffff;font-size:10px;font-weight:bold;font-family:Arial,sans-serif;border:1px solid #1E3860;">Notes</td></tr>${autoRows.map((r,i)=>{const bg=i%2===0?'#f8fafc':'#ffffff';const sc=statusColor(r.status);return`<tr><td style="padding:7px 6px;background-color:${bg};font-size:11px;color:#374151;font-family:Arial,sans-serif;border:1px solid #e2e8f0;">${escHtml(r.application)}</td><td style="padding:7px 6px;background-color:${bg};font-size:11px;font-family:Arial,sans-serif;border:1px solid #e2e8f0;"><span style="display:inline-block;padding:2px 8px;background-color:${sc.bg};color:${sc.text};font-size:10px;font-weight:bold;border-radius:3px;">${escHtml(r.status)}</span></td><td style="padding:7px 6px;background-color:${bg};font-size:11px;color:#374151;font-family:Arial,sans-serif;border:1px solid #e2e8f0;text-align:center;font-weight:bold;">${escHtml(r.coveragePct)}</td><td style="padding:7px 6px;background-color:${bg};font-size:11px;color:#374151;font-family:Arial,sans-serif;border:1px solid #e2e8f0;text-align:center;">${escHtml(r.targetPct)}</td><td style="padding:7px 6px;background-color:${bg};font-size:11px;color:#374151;font-family:Arial,sans-serif;border:1px solid #e2e8f0;">${escHtml(r.targetDate)}</td><td style="padding:7px 6px;background-color:${bg};font-size:11px;color:#374151;font-family:Arial,sans-serif;border:1px solid #e2e8f0;text-align:center;">${trendIcon(r.trend)}</td><td style="padding:7px 6px;background-color:${bg};font-size:11px;color:#374151;font-family:Arial,sans-serif;border:1px solid #e2e8f0;">${escHtml(r.owner)}</td><td style="padding:7px 6px;background-color:${bg};font-size:11px;color:#6b7280;font-family:Arial,sans-serif;border:1px solid #e2e8f0;font-style:italic;">${escHtml(r.notes)}</td></tr>`;}).join('')}</table>`;}
+  const risks=d.showRisks?d.risksAndBlockers.filter(r=>r.trim()):[];
+  if(risks.length){sections+=sectionHeader('Risks &amp; Blockers');sections+=`<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:25px;"><tr><td width="4" style="background-color:#f59e0b;"></td><td style="background-color:#fffbeb;padding:0;"><table width="100%" cellpadding="0" cellspacing="0" border="0">${risks.map(r=>`<tr><td style="padding:10px 16px;border-bottom:1px solid #fef3c7;font-size:13px;color:#92400e;font-family:Arial,sans-serif;line-height:1.5;">&#9888; ${escHtml(r)}</td></tr>`).join('')}</table></td></tr></table>`;}
+  const aiRows=d.showAITools?d.aiToolUsage.filter(r=>r.tool.trim()):[];
+  if(aiRows.length){sections+=sectionHeader('AI Tool Usage &amp; KPIs');sections+=`<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:25px;border-collapse:collapse;"><tr><td style="padding:10px 8px;background-color:#1E3860;color:#ffffff;font-size:11px;font-weight:bold;font-family:Arial,sans-serif;border:1px solid #1E3860;">Tool</td><td style="padding:10px 8px;background-color:#1E3860;color:#ffffff;font-size:11px;font-weight:bold;font-family:Arial,sans-serif;border:1px solid #1E3860;">Use Case</td><td style="padding:10px 8px;background-color:#1E3860;color:#ffffff;font-size:11px;font-weight:bold;font-family:Arial,sans-serif;border:1px solid #1E3860;text-align:center;">PBIs</td><td style="padding:10px 8px;background-color:#1E3860;color:#ffffff;font-size:11px;font-weight:bold;font-family:Arial,sans-serif;border:1px solid #1E3860;">Time Saved</td><td style="padding:10px 8px;background-color:#1E3860;color:#ffffff;font-size:11px;font-weight:bold;font-family:Arial,sans-serif;border:1px solid #1E3860;">How We Used the Time</td></tr>${aiRows.map((r,i)=>{const bg=i%2===0?'#f8fafc':'#ffffff';return`<tr><td style="padding:8px;background-color:${bg};font-size:12px;color:#374151;font-family:Arial,sans-serif;border:1px solid #e2e8f0;font-weight:bold;">${escHtml(r.tool)}</td><td style="padding:8px;background-color:${bg};font-size:12px;color:#374151;font-family:Arial,sans-serif;border:1px solid #e2e8f0;">${escHtml(r.useCase)}</td><td style="padding:8px;background-color:${bg};font-size:12px;color:#374151;font-family:Arial,sans-serif;border:1px solid #e2e8f0;text-align:center;">${escHtml(r.pbis)}</td><td style="padding:8px;background-color:${bg};font-size:12px;color:#374151;font-family:Arial,sans-serif;border:1px solid #e2e8f0;">${escHtml(r.timeSaved)}</td><td style="padding:8px;background-color:${bg};font-size:12px;color:#374151;font-family:Arial,sans-serif;border:1px solid #e2e8f0;">${escHtml(r.howUsed)}</td></tr>`;}).join('')}</table>`;}
+  d.customSections.forEach(cs=>{sections+=sectionHeader(escHtml(cs.title));if(cs.type==='list'){const items=(cs.items||[]).filter(i=>i.trim());if(items.length)sections+=`<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:25px;">${items.map(it=>`<tr><td style="padding:6px 0 6px 16px;font-size:13px;color:#374151;font-family:Arial,sans-serif;line-height:1.6;">&#8226; ${escHtml(it)}</td></tr>`).join('')}</table>`;}else{if((cs.text||'').trim())sections+=`<table width="100%" cellpadding="16" cellspacing="0" border="0" style="margin-bottom:25px;background-color:#f8fafc;"><tr><td><p style="margin:0;font-size:14px;color:#374151;line-height:1.7;font-family:Arial,sans-serif;">${escHtml(cs.text).replace(/\n/g,'<br>')}</p></td></tr></table>`;}});
+  let signatureHtml='';
+  if(d.signatureName.trim()){signatureHtml=`<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:30px;border-top:1px solid #e5e7eb;"><tr><td align="center" style="padding-top:20px;"><p style="margin:0 0 3px 0;font-size:14px;font-weight:bold;color:#1E3860;font-family:Arial,sans-serif;">${escHtml(d.signatureName)}${d.signatureTitle?` <span style="font-weight:normal;color:#64748b;">|</span> ${escHtml(d.signatureTitle)}`:''}</p>${d.signatureTeam?`<p style="margin:0 0 3px 0;font-size:13px;color:#64748b;font-family:Arial,sans-serif;">${escHtml(d.signatureTeam)}</p>`:''}<p style="margin:0;font-size:13px;font-weight:600;font-family:Arial,sans-serif;"><span style="color:#1E3860;">A</span><span style="color:#FAA74A;">x</span><span style="color:#1E3860;">os Bank</span></p>${d.signatureEmail?`<p style="margin:4px 0 0 0;font-size:12px;color:#64748b;font-family:Arial,sans-serif;">${escHtml(d.signatureEmail)}</p>`:''}</td></tr></table>`;}
+  return `<!DOCTYPE html><html lang="en" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta http-equiv="X-UA-Compatible" content="IE=edge"><!--[if mso]><style type="text/css">table {border-collapse:collapse;}td {padding:0;}</style><![endif]--><title>QE Bi-Weekly Status Report - ${escHtml(d.teamName)}</title></head><body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background-color:#f4f6f9;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;"><table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f4f6f9" style="background-color:#f4f6f9;"><tr><td align="center" style="padding:20px 0;"><table width="700" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="background-color:#ffffff;"><tr><td bgcolor="#1E3860" style="background-color:#1E3860;padding:30px 40px;text-align:center;"><img src="https://companieslogo.com/img/orig/AX.D-45977c0c.png?t=1720244490" alt="Axos Bank" width="50" height="50" style="display:block;margin:0 auto 15px auto;height:50px;"><h1 style="margin:0;font-size:24px;font-weight:bold;color:#ffffff;font-family:Arial,sans-serif;">QE Bi-Weekly Status Report</h1><p style="margin:10px 0 0 0;font-size:16px;color:#FAA74A;font-weight:600;font-family:Arial,sans-serif;">${escHtml(d.teamName||'Team Name')}</p><p style="margin:12px 0 0 0;font-size:13px;color:#94a3b8;font-family:Arial,sans-serif;">${dateDisplay}</p></td></tr><tr><td style="padding:30px 40px;">${sections}${signatureHtml}</td></tr><tr><td bgcolor="#1E3860" style="background-color:#1E3860;padding:20px 40px;text-align:center;"><p style="margin:0;color:#94a3b8;font-size:11px;font-family:Arial,sans-serif;">Confidential - For Internal Use Only</p></td></tr></table></td></tr></table></body></html>`;
+}
+function sectionHeader(t){return`<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:15px;"><tr><td style="border-bottom:3px solid #FAA74A;padding-bottom:10px;"><h2 style="margin:0;font-size:20px;font-weight:bold;color:#1E3860;font-family:Arial,sans-serif;">${t}</h2></td></tr></table>`;}
+function overviewRow(l,v,first,last){const r=first?'border-radius:4px 4px 0 0;':(last?'border-radius:0 0 4px 4px;':'');return`<tr><td style="padding:10px 14px;background-color:#f8fafc;border-bottom:1px solid #e2e8f0;width:35%;font-weight:bold;color:#1E3860;font-size:13px;font-family:Arial,sans-serif;${r}">${l}</td><td style="padding:10px 14px;background-color:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:13px;color:#374151;font-family:Arial,sans-serif;">${escHtml(v)}</td></tr>`;}
+function formatDateRange(s,e){if(!s&&!e)return '';const fmt=(d)=>{if(!d)return '';const c=d.replace(/\./g,'/');const p=c.split('/');if(p.length===3){const months=['January','February','March','April','May','June','July','August','September','October','November','December'];const m=parseInt(p[0],10);const day=parseInt(p[1],10);const yr=p[2].length===2?'20'+p[2]:p[2];if(m>=1&&m<=12)return`${months[m-1]} ${day}, ${yr}`;}return d;};return`${fmt(s)}${s&&e?' - ':''}${fmt(e)}`;}
+
+// ─── HTML IMPORT PARSER ───
+function parseExportedHTML(htmlStr){
+  const parser=new DOMParser();
+  const doc=parser.parseFromString(htmlStr,'text/html');
+  const result=JSON.parse(JSON.stringify(DEFAULT_REPORT));
+  function findLabelValue(label){
+    const tds=doc.querySelectorAll('td');
+    for(const td of tds){const txt=td.textContent.trim();if(txt===label){const next=td.nextElementSibling;if(next)return next.textContent.trim();}}
+    return '';
+  }
+  const title=doc.querySelector('title');
+  if(title){const m=title.textContent.match(/Report\s*-\s*(.+)/);if(m)result.teamName=m[1].trim();}
+  result.teamName=findLabelValue('Team Name')||result.teamName;
+  result.qeManager=findLabelValue('QE Manager');
+  result.qeLead=findLabelValue('QE Lead');
+  const qeStr=findLabelValue('Quality Engineers');
+  if(qeStr)result.qualityEngineers=qeStr.split(',').map(e=>e.trim()).filter(Boolean);
+  result.openReqs=findLabelValue("Open Req's")||'No';
+  result.followingTDD=findLabelValue('Following TDD')||'No';
+  const allPs=doc.querySelectorAll('p');
+  for(const p of allPs){const style=p.getAttribute('style')||'';if(style.includes('#94a3b8')&&p.textContent.includes(' - ')){const txt=p.textContent.trim();const parts=txt.split(' - ');if(parts.length===2){result.sprintStartDate=parseHumanDate(parts[0].trim());result.sprintEndDate=parseHumanDate(parts[1].trim());}break;}}
+  const h2s=doc.querySelectorAll('h2');
+  for(const h2 of h2s){
+    const st=h2.textContent.trim();
+    const parentTable=h2.closest('table');
+    if(!parentTable)continue;
+    let nextTbl=parentTable.nextElementSibling;
+    while(nextTbl&&nextTbl.tagName!=='TABLE')nextTbl=nextTbl.nextElementSibling;
+    if(!nextTbl)continue;
+    if(/Sprint Goal/i.test(st)){
+      const pEls=nextTbl.querySelectorAll('p');
+      for(const p of pEls){const s=p.getAttribute('style')||'';if(s.includes('text-transform')){const sm=p.textContent.match(/Sprint\s*(\d+)/i);if(sm)result.sprintNumber=sm[1];}else if(p.textContent.trim().length>3)result.sprintGoal=p.textContent.trim();}
+    }
+    if(/Team Highlights/i.test(st)){
+      const items=Array.from(nextTbl.querySelectorAll('td')).map(td=>td.textContent.trim().replace(/^[\u2713\u2714\u2611\u2612✓☑]+\s*/,'')).filter(t=>t.length>2);
+      if(items.length)result.teamHighlights=items;
+    }
+    if(/Team MVP/i.test(st)){const ps=nextTbl.querySelectorAll('p');if(ps.length>0)result.teamMVP.names=ps[0].textContent.trim();if(ps.length>1)result.teamMVP.highlights=ps[1].textContent.trim();}
+    if(/Sprint Delivery/i.test(st)){
+      const rows=nextTbl.querySelectorAll('tr');const delivery=[];
+      for(let i=1;i<rows.length;i++){const cells=rows[i].querySelectorAll('td');if(cells.length>=6)delivery.push({task:cells[0].textContent.trim(),engineer:cells[1].textContent.trim(),pbisWorked:cells[2].textContent.trim(),automatedScenarios:cells[3].textContent.trim(),manualPct:cells[4].textContent.trim(),aiUsage:cells[5].textContent.trim()||'Yes'});}
+      if(delivery.length){result.showSprintDelivery=true;result.sprintDelivery=delivery;}
+    }
+    if(/Automation Coverage/i.test(st)){
+      const rows=nextTbl.querySelectorAll('tr');const coverage=[];
+      for(let i=1;i<rows.length;i++){const cells=rows[i].querySelectorAll('td');if(cells.length>=8){const tc=cells[5].textContent.trim();let trend='Flat';if(tc==='\u2191'||tc.charCodeAt(0)===8593)trend='Up';else if(tc==='\u2193'||tc.charCodeAt(0)===8595)trend='Down';coverage.push({application:cells[0].textContent.trim(),status:cells[1].textContent.trim(),coveragePct:cells[2].textContent.trim(),targetPct:cells[3].textContent.trim(),targetDate:cells[4].textContent.trim(),trend:trend,owner:cells[6].textContent.trim(),notes:cells[7].textContent.trim()});}}
+      if(coverage.length){result.showAutomation=true;result.automationCoverage=coverage;}
+    }
+    if(/Risks?\s*[&]?\s*Blockers?/i.test(st)){
+      const items=Array.from(nextTbl.querySelectorAll('td')).map(td=>td.textContent.trim().replace(/^[\u26A0\u2757!]+\s*/,'')).filter(t=>t.length>3);
+      if(items.length){result.showRisks=true;result.risksAndBlockers=items;}
+    }
+    if(/AI Tool Usage/i.test(st)){
+      const rows=nextTbl.querySelectorAll('tr');const tools=[];
+      for(let i=1;i<rows.length;i++){const cells=rows[i].querySelectorAll('td');if(cells.length>=5)tools.push({tool:cells[0].textContent.trim(),useCase:cells[1].textContent.trim(),pbis:cells[2].textContent.trim(),timeSaved:cells[3].textContent.trim(),howUsed:cells[4].textContent.trim()});}
+      if(tools.length){result.showAITools=true;result.aiToolUsage=tools;}
+    }
+  }
+  return result;
+}
+
+// ─── IMPORT & PARSING ───
+function openImportModal(){document.getElementById('importModal').classList.add('show');}
+function openSettingsModal(){document.getElementById('settingsModal').classList.add('show');}
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+function clearImportText(){document.getElementById('importText').value='';toast('Cleared','info');}
+
+const importZone=document.getElementById('importZone');
+importZone.addEventListener('dragover',e=>{e.preventDefault();importZone.classList.add('dragover');});
+importZone.addEventListener('dragleave',()=>importZone.classList.remove('dragover'));
+importZone.addEventListener('drop',e=>{e.preventDefault();importZone.classList.remove('dragover');const f=e.dataTransfer.files[0];if(f){const r=new FileReader();r.onload=ev=>{document.getElementById('importText').value=ev.target.result;};r.readAsText(f);}});
+importZone.addEventListener('click',()=>{const inp=document.createElement('input');inp.type='file';inp.accept='.txt,.html,.htm,.md';inp.onchange=()=>{const r=new FileReader();r.onload=ev=>{document.getElementById('importText').value=ev.target.result;};r.readAsText(inp.files[0]);};inp.click();});
+
+function isHTMLContent(text){return /^\s*<!DOCTYPE|^\s*<html/i.test(text)&&/<\/html>/i.test(text);}
+
+function parseImport(useAI){
+  const text=document.getElementById('importText').value.trim();
+  if(!text)return toast('Paste or drop some report text first','error');
+  if(isHTMLContent(text)){
+    const parsed=parseExportedHTML(text);
+    applyParsed(parsed);closeModal('importModal');toast('HTML report parsed! All sections imported.','success');
+    return;
+  }
+  if(useAI){aiParse(text);}
+  else{
+    const parsed=basicParse(text);
+    applyParsed(parsed);closeModal('importModal');toast('Report parsed! Review and edit as needed.','success');
+  }
+}
+
+function basicParse(text){
+  const clean=text.replace(/<[^>]*>/g,' ').replace(/&nbsp;/gi,' ').replace(/\s+/g,' ');
+  const lines=text.replace(/<br\s*\/?>/gi,'\n').replace(/<\/?(p|div|tr|td|th|li|h[1-6])[^>]*>/gi,'\n').replace(/<[^>]*>/g,'').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').split('\n').map(l=>l.trim()).filter(Boolean);
+  const result=JSON.parse(JSON.stringify(DEFAULT_REPORT));
+  const findVal=(patterns)=>{for(const p of patterns){for(const line of lines){const re=new RegExp(p+'[:\\s]+(.+)','i');const m=line.match(re);if(m)return m[1].trim();}}return '';};
+  result.teamName=findVal(['Team Name','Team']);
+  result.qeManager=findVal(['QE Manager','QA Manager','Manager']);
+  result.qeLead=findVal(['QE Lead','QA Lead','Lead']);
+  result.openReqs=findVal(["Open Req"])||'No';
+  result.followingTDD=findVal(['Following TDD','TDD'])||'No';
+  const sprintMatch=clean.match(/Sprint\s*(?:Number)?[:\s]*(\d+)/i);
+  if(sprintMatch)result.sprintNumber=sprintMatch[1];
+  const datePatterns=[/(\d{1,2}[\/\.]\d{1,2}[\/\.]\d{2,4})\s*[-\u2013to]+\s*(\d{1,2}[\/\.]\d{1,2}[\/\.]\d{2,4})/i];
+  for(const dp of datePatterns){const dm=clean.match(dp);if(dm){result.sprintStartDate=dm[1].replace(/\./g,'/');result.sprintEndDate=dm[2].replace(/\./g,'/');break;}}
+  const qeIdx=lines.findIndex(l=>/quality engineer|team member/i.test(l));
+  if(qeIdx>=0){const eng=[];for(let i=qeIdx+1;i<lines.length&&i<qeIdx+15;i++){const line=lines[i].trim();if(/^(open req|following tdd|sprint|team highlight|team mvp|high-level|automation coverage|ai tool)/i.test(line))break;if(line.length>2&&line.length<60&&!/^\d+$/.test(line)&&!/^(yes|no|n\/a)$/i.test(line))eng.push(line.replace(/^[\d\.\)\-]+\s*/,''));}if(eng.length)result.qualityEngineers=eng;}
+  const goalIdx=lines.findIndex(l=>/sprint goal/i.test(l));
+  if(goalIdx>=0){const gl=[];const same=lines[goalIdx].replace(/^.*sprint goal[:\s]*/i,'').trim();if(same.length>5)gl.push(same);for(let i=goalIdx+1;i<lines.length&&i<goalIdx+8;i++){const line=lines[i];if(/^(high-level|team highlight|team mvp|automation|sprint delivery|executive)/i.test(line))break;if(line.length>5)gl.push(line);}result.sprintGoal=gl.join(' ').trim();}
+  const hlIdx=lines.findIndex(l=>/team highlight/i.test(l));
+  if(hlIdx>=0){const hls=[];for(let i=hlIdx+1;i<lines.length&&i<hlIdx+20;i++){const line=lines[i];if(/^(team mvp|sprint delivery|sprint goal|automation coverage|high-level|executive|risks?\s*[&and]|best regards|thanks)/i.test(line))break;if(line.length>5)hls.push(line.replace(/^[\u2022\u00B7\-\*]+\s*/,''));}if(hls.length)result.teamHighlights=hls;}
+  const mvpIdx=lines.findIndex(l=>/team mvp/i.test(l));
+  if(mvpIdx>=0&&mvpIdx+1<lines.length){const ml=[];for(let i=mvpIdx+1;i<lines.length&&i<mvpIdx+5;i++){const line=lines[i];if(/^(sprint delivery|automation coverage|high-level|ai tool|risks?\s*[&and]|best regards|thanks)/i.test(line))break;if(line.length>3)ml.push(line);}if(ml.length){result.teamMVP.names=ml[0];if(ml.length>1)result.teamMVP.highlights=ml.slice(1).join(' ');}}
+  const riskIdx=lines.findIndex(l=>/risks?\s*[&and]*\s*blockers?/i.test(l));
+  if(riskIdx>=0){const ri=[];for(let i=riskIdx+1;i<lines.length&&i<riskIdx+10;i++){const line=lines[i];if(/^(team highlight|sprint delivery|automation coverage|high-level|ai tool|focus for|best regards|thanks|regards,?$|signature)/i.test(line))break;if(line.length>5)ri.push(line.replace(/^[\u2022\u00B7\-\*]+\s*/,''));}if(ri.length){result.showRisks=true;result.risksAndBlockers=ri;}}
+  const sigPatterns=[/best regards[,\s]*\n*(.+)/i,/thanks[,\s]*\n*(.+)/i,/regards[,\s]*\n*(.+)/i];
+  for(const sp of sigPatterns){const sm=text.replace(/<[^>]*>/g,'\n').match(sp);if(sm){const sn=sm[1].trim().split('\n')[0].trim();if(sn.length>2&&sn.length<50){result.signatureName=sn;break;}}}
+  return result;
+}
+
+async function aiParse(text){
+  const settings=getSettings();
+  if(!settings.apiKey){toast('Set your API key in Settings first','error');return;}
+  const btn=document.getElementById('aiParseBtn');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Parsing...';
+  try{
+    const isHtml=isHTMLContent(text);
+    const schema=JSON.stringify({teamName:'string',sprintNumber:'string',sprintStartDate:'MM/DD/YYYY',sprintEndDate:'MM/DD/YYYY',qeManager:'string',qeLead:'string',qualityEngineers:['string'],openReqs:'Yes|No',followingTDD:'Yes|No|N/A',sprintGoal:'string',teamHighlights:['string'],teamMVP:{names:'string',highlights:'string'},executiveSummary:'string or empty',sprintDelivery:[{task:'string',engineer:'string',pbisWorked:'string',automatedScenarios:'string',manualPct:'string',aiUsage:'Yes|No'}],automationCoverage:[{application:'string',status:'Not Started|In Progress|Completed|Blocked|On Hold',coveragePct:'string',targetPct:'string',targetDate:'string',trend:'Up|Down|Flat',owner:'string',notes:'string'}],risksAndBlockers:['string or empty array'],aiToolUsage:[{tool:'string',useCase:'string',pbis:'string',timeSaved:'string',howUsed:'string'}],signatureName:'string',signatureTitle:'string'});
+    const sysContent=`You extract structured data from QE bi-weekly status reports. ${isHtml?'The input is an HTML report - extract visible text content from the HTML structure.':''} Return ONLY valid JSON matching this schema:\n${schema}\nUse MM/DD/YYYY for dates. If a field cannot be determined, use empty string. For arrays, use empty array if no data found. Strip HTML tags from values.`;
+    const messages=[{role:'system',content:sysContent},{role:'user',content:`Extract structured report data:\n\n${text.substring(0,8000)}`}];
+    const data=await callAI(messages);
+    let parsed;const content=data.choices[0].message.content;
+    const jsonMatch=content.match(/```json?\s*([\s\S]*?)```/)||content.match(/(\{[\s\S]*\})/);
+    if(jsonMatch)parsed=JSON.parse(jsonMatch[1]);else parsed=JSON.parse(content);
+    applyParsed(parsed);closeModal('importModal');toast('AI parsing complete! Review your report.','success');
+  }catch(err){console.error(err);toast('AI parse failed: '+err.message,'error');}
+  finally{btn.disabled=false;btn.innerHTML='&#129302; AI Parse';}
+}
+
+function applyParsed(p){
+  const d=report;
+  if(p.teamName)d.teamName=p.teamName;
+  if(p.sprintNumber)d.sprintNumber=String(p.sprintNumber);
+  if(p.sprintStartDate)d.sprintStartDate=p.sprintStartDate;
+  if(p.sprintEndDate)d.sprintEndDate=p.sprintEndDate;
+  if(p.qeManager)d.qeManager=p.qeManager;
+  if(p.qeLead)d.qeLead=p.qeLead;
+  if(p.qualityEngineers&&p.qualityEngineers.length)d.qualityEngineers=p.qualityEngineers;
+  if(p.openReqs)d.openReqs=p.openReqs;
+  if(p.followingTDD)d.followingTDD=p.followingTDD;
+  if(p.sprintGoal)d.sprintGoal=p.sprintGoal;
+  if(p.teamHighlights&&p.teamHighlights.length)d.teamHighlights=p.teamHighlights;
+  if(p.teamMVP){if(p.teamMVP.names)d.teamMVP.names=p.teamMVP.names;if(p.teamMVP.highlights)d.teamMVP.highlights=p.teamMVP.highlights;}
+  if(p.executiveSummary){d.showExecutiveSummary=true;d.executiveSummary=p.executiveSummary;}
+  if(p.sprintDelivery&&p.sprintDelivery.length){d.showSprintDelivery=true;d.sprintDelivery=p.sprintDelivery;}
+  if(p.automationCoverage&&p.automationCoverage.length){d.showAutomation=true;d.automationCoverage=p.automationCoverage;}
+  if(p.risksAndBlockers&&p.risksAndBlockers.length&&p.risksAndBlockers.some(r=>r.trim())){d.showRisks=true;d.risksAndBlockers=p.risksAndBlockers;}
+  if(p.aiToolUsage&&p.aiToolUsage.length){d.showAITools=true;d.aiToolUsage=p.aiToolUsage;}
+  if(p.signatureName)d.signatureName=p.signatureName;
+  if(p.signatureTitle)d.signatureTitle=p.signatureTitle;
+  expandedSections=new Set(['team-overview','sprint-info','sprint-goal','highlights','mvp','sprint-delivery','automation','ai-tools']);
+  if(d.showRisks)expandedSections.add('risks');
+  if(d.showExecutiveSummary)expandedSections.add('executive-summary');
+  renderEditor();schedulePreview();
+}
+
+// ─── AI CHAT ───
+let chatMessages=[];
+function toggleChat(){
+  const drawer=document.getElementById('chatDrawer');
+  drawer.classList.toggle('open');
+  document.body.classList.toggle('chat-open');
+  if(drawer.classList.contains('open'))document.getElementById('chatInput').focus();
+  setTimeout(updatePreview,350);
+}
+function clearChat(){
+  chatMessages=[];
+  const container=document.getElementById('chatMessages');
+  container.innerHTML='<div class="chat-msg system">Chat cleared. Ask me to modify your report or paste text to parse.</div>';
+}
+async function sendChat(){
+  const input=document.getElementById('chatInput');const msg=input.value.trim();if(!msg)return;
+  const settings=getSettings();if(!settings.apiKey){toast('Set your API key in Settings first','error');return;}
+  addChatMsg('user',msg);input.value='';
+  const sendBtn=document.getElementById('chatSendBtn');sendBtn.disabled=true;sendBtn.innerHTML='<span class="spinner" style="width:14px;height:14px;border-width:2px"></span>';
+  try{
+    const reportJson=JSON.stringify(report,null,2);
+    const systemPrompt=`You are an AI assistant that helps modify QE Bi-Weekly Status Reports at Axos Bank.\n\nCurrent report data (JSON):\n${reportJson}\n\nRULES:\n1. When the user asks to modify the report, respond with ONLY a JSON object:\n   {"action":"update","changes":{...only changed fields...},"message":"What I changed"}\n2. For arrays, return the COMPLETE updated array.\n3. To add a custom section, add to customSections: {title:"string",type:"text"|"list",text:"string",items:["string"]}\n4. To enable/disable sections, set show* to true/false.\n5. For questions, respond: {"action":"message","message":"your answer"}\n6. IMPORTANT: teamMVP.names should contain ONLY ONE person name. Never set multiple names.\n7. NEVER set teamMVP.noMVP to true. The MVP section ALWAYS appears in the report. If the user asks to hide or remove the MVP section, respond with a message saying the MVP section is required.\n8. Keep responses concise.`;
+    chatMessages.push({role:'user',content:msg});
+    const messages=[{role:'system',content:systemPrompt},...chatMessages.slice(-10)];
+    const data=await callAI(messages);const content=data.choices[0].message.content;
+    let response;try{const jm=content.match(/```json?\s*([\s\S]*?)```/)||content.match(/(\{[\s\S]*\})/);response=JSON.parse(jm?jm[1]:content);}catch{response={action:'message',message:content};}
+    chatMessages.push({role:'assistant',content:content});
+    if(response.action==='update'&&response.changes){Object.keys(response.changes).forEach(key=>{if(key==='teamMVP')Object.assign(report.teamMVP,response.changes.teamMVP);else if(typeof response.changes[key]==='object'&&!Array.isArray(response.changes[key])&&report[key]&&typeof report[key]==='object'&&!Array.isArray(report[key]))Object.assign(report[key],response.changes[key]);else report[key]=response.changes[key];});renderEditor();schedulePreview();addChatMsg('ai',response.message||'Report updated!');}
+    else{addChatMsg('ai',response.message||content);}
+  }catch(err){console.error(err);addChatMsg('ai','Error: '+err.message);}
+  finally{sendBtn.disabled=false;sendBtn.innerHTML='&#10148;';}
+}
+function addChatMsg(type,text){const c=document.getElementById('chatMessages');const div=document.createElement('div');div.className=`chat-msg ${type}`;div.textContent=text;c.appendChild(div);c.scrollTop=c.scrollHeight;}
+
+// ─── AI API HELPER ───
+async function callAI(messages){
+  const s=getSettings();let url,headers,body;
+  if(s.provider==='azure'){const ep=s.azureEndpoint.replace(/\/+$/,'');const dep=s.azureDeployment||'gpt-4o';url=`${ep}/openai/deployments/${dep}/chat/completions?api-version=2024-08-01-preview`;headers={'Content-Type':'application/json','api-key':s.apiKey};body={messages,temperature:0.3};}
+  else{url='https://api.openai.com/v1/chat/completions';headers={'Content-Type':'application/json','Authorization':`Bearer ${s.apiKey}`};body={model:s.model||'gpt-4o-mini',messages,temperature:0.3};}
+  const res=await fetch(url,{method:'POST',headers,body:JSON.stringify(body)});
+  if(!res.ok){const et=await res.text();throw new Error(`API ${res.status}: ${et.substring(0,200)}`);}
+  return await res.json();
+}
+
+// ─── EXPORT ───
+function copyFormatted(){
+  const html=generateEmailHTML();const temp=document.createElement('div');temp.innerHTML=html;temp.style.cssText='position:fixed;left:-9999px;top:0;opacity:0';document.body.appendChild(temp);
+  try{const blob=new Blob([html],{type:'text/html'});const ci=new ClipboardItem({'text/html':blob,'text/plain':new Blob([temp.innerText],{type:'text/plain'})});navigator.clipboard.write([ci]).then(()=>toast('Formatted HTML copied! Paste directly into Outlook.','success')).catch(()=>fallbackCopy(temp));}catch{fallbackCopy(temp);}
+  setTimeout(()=>document.body.removeChild(temp),100);
+}
+function fallbackCopy(el){const r=document.createRange();r.selectNodeContents(el);const s=window.getSelection();s.removeAllRanges();s.addRange(r);document.execCommand('copy');s.removeAllRanges();toast('Report copied! Paste into Outlook.','success');}
+function copyHTMLSource(){navigator.clipboard.writeText(generateEmailHTML()).then(()=>toast('HTML source copied!','success')).catch(()=>toast('Failed to copy','error'));}
+function downloadHTML(){const html=generateEmailHTML();const name=`BiWeekly_${report.teamName.replace(/\s+/g,'_')||'Report'}_${report.sprintStartDate.replace(/\//g,'')||'draft'}.html`;const blob=new Blob([html],{type:'text/html'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();URL.revokeObjectURL(url);toast('Downloaded '+name,'success');}
+function openPreviewTab(){const html=generateEmailHTML();const blob=new Blob([html],{type:'text/html'});window.open(URL.createObjectURL(blob),'_blank');}
+function resetReport(){if(!confirm('Clear all data and start fresh?'))return;report=JSON.parse(JSON.stringify(DEFAULT_REPORT));expandedSections=new Set(['team-overview','sprint-info','sprint-goal']);renderEditor();schedulePreview();localStorage.removeItem('rg_report');toast('Report reset','info');}
+
+// ─── TOAST ───
+function toast(msg,type){const el=document.getElementById('toast');el.textContent=msg;el.className=`toast ${type} show`;clearTimeout(el._timer);el._timer=setTimeout(()=>el.classList.remove('show'),3500);}
+
+// ─── INIT ───
+function init(){
+  loadSettings();
+  const saved=localStorage.getItem('rg_report');
+  if(saved){try{const p=JSON.parse(saved);report={...JSON.parse(JSON.stringify(DEFAULT_REPORT)),...p};if(p.teamMVP)report.teamMVP={...DEFAULT_REPORT.teamMVP,...p.teamMVP};}catch{}}
+  renderEditor();updatePreview();
+  document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='i'){e.preventDefault();openImportModal();}});
+  document.querySelectorAll('.modal-overlay').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('show');});});
+}
+init();
+</script>
+</body>
+</html>
