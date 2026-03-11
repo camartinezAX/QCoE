@@ -122,7 +122,7 @@ input,textarea,select{font-family:inherit;font-size:13px}
 /* ── MODALS ── */
 .modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(4px);z-index:1000;display:none;align-items:center;justify-content:center;opacity:0;transition:opacity .25s ease}
 .modal-overlay.show{display:flex;opacity:1}
-.modal{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);max-width:640px;width:95%;max-height:85vh;display:flex;flex-direction:column;animation:modalIn .25s ease}
+.modal{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);max-width:640px;width:95%;max-height:85vh;display:flex;flex-direction:column;animation:modalIn .25s ease;position:relative;overflow:hidden}
 @keyframes modalIn{from{opacity:0;transform:scale(.96) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
 .modal-hdr{padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center}
 .modal-hdr h2{font-size:16px;font-weight:700;color:var(--navy);flex:1;font-family:'Outfit',sans-serif}
@@ -183,6 +183,34 @@ body.chat-open .chat-fab{display:none}
 /* ── SPINNER ── */
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── F1 LOADER ── */
+.pump-overlay{position:absolute;inset:0;background:#1E3860;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:0 0 12px 12px;opacity:0;pointer-events:none;transition:opacity .3s}
+.pump-overlay.active{opacity:1;pointer-events:auto}
+.pump-overlay.done .pump-bar-fill{background:#10b981!important}
+.pump-overlay.done .pump-car{animation:carBounce .12s ease-in-out infinite;transform:scaleX(-1)}
+.pump-overlay.done .pump-smoke{animation:none!important;opacity:0!important}
+.pump-overlay.done .pump-text{animation:none}
+.pump-overlay.done .pump-text::after{content:'COMPLETE!';color:#fff}
+.pump-overlay.done .pump-check{opacity:1;transform:scale(1)}
+.pump-scene{position:relative;width:380px;height:60px;margin-bottom:16px}
+.pump-bar-track{position:absolute;bottom:0;left:0;right:0;height:18px;background:rgba(255,255,255,.12);border-radius:9px;overflow:visible}
+.pump-bar-fill{height:100%;background:#FAA74A;border-radius:9px;width:0;animation:pumpFill 12s cubic-bezier(.3,.1,.3,1) forwards;position:relative;overflow:visible;transition:width .7s ease-out,background .3s ease}
+.pump-car{position:absolute;right:-18px;top:-26px;font-size:32px;line-height:1;z-index:3;animation:carBounce .12s ease-in-out infinite;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3));transform:scaleX(-1)}
+.pump-smoke{position:absolute;right:12px;top:-18px;font-size:18px;line-height:1;opacity:0;z-index:2}
+.pump-smoke.s1{animation:smokePuff .7s ease-out .0s infinite}
+.pump-smoke.s2{animation:smokePuff .7s ease-out .25s infinite;font-size:14px;right:16px;top:-12px}
+.pump-smoke.s3{animation:smokePuff .7s ease-out .5s infinite;font-size:16px;right:8px;top:-20px}
+.pump-road{position:absolute;bottom:0;left:0;right:0;height:18px;border-radius:9px;overflow:hidden}
+.pump-road::after{content:'';position:absolute;top:8px;left:0;right:0;height:2px;background:repeating-linear-gradient(90deg,rgba(255,255,255,.35) 0,rgba(255,255,255,.35) 12px,transparent 12px,transparent 24px);animation:roadScroll .4s linear infinite}
+.pump-text{font-family:'Outfit',sans-serif;font-size:15px;font-weight:700;color:rgba(255,255,255,.85);letter-spacing:4px;text-transform:uppercase;margin-top:8px;position:relative}
+.pump-text::after{content:'PARSING...';animation:loadDots 1.5s steps(4) infinite}
+.pump-check{position:absolute;top:50%;left:50%;transform:scale(0);margin:-30px 0 0 -30px;width:60px;height:60px;background:rgba(255,255,255,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:30px;opacity:0;transition:all .4s cubic-bezier(.175,.885,.32,1.275)}
+@keyframes pumpFill{0%{width:0}100%{width:85%}}
+@keyframes carBounce{0%,100%{transform:scaleX(-1) translateY(0)}50%{transform:scaleX(-1) translateY(-2px)}}
+@keyframes smokePuff{0%{opacity:.7;transform:translateX(0) scale(.6)}50%{opacity:.4;transform:translateX(-14px) scale(1)}100%{opacity:0;transform:translateX(-28px) scale(1.3)}}
+@keyframes roadScroll{0%{transform:translateX(0)}100%{transform:translateX(-24px)}}
+@keyframes loadDots{0%{content:'PARSING'}25%{content:'PARSING.'}50%{content:'PARSING..'}75%{content:'PARSING...'}}
 
 /* ── MVP EASTER EGG ── */
 @keyframes mvpBounce{
@@ -306,11 +334,27 @@ body.chat-open .chat-fab{display:none}
       </div>
       <textarea class="import-textarea" id="importText" placeholder="Paste the raw report text here (from email, document, exported HTML, etc.)..."></textarea>
     </div>
-    <div class="modal-foot">
+    <div class="modal-foot" id="importFooter">
       <button class="act-btn outline" onclick="clearImportText()" title="Clear the text area" style="margin-right:auto">&#128465; Clear All</button>
       <button class="act-btn outline" onclick="closeModal('importModal')">Cancel</button>
       <button class="act-btn outline" onclick="parseImport(false)" title="Parse using regex patterns (no API key needed)">&#9889; Quick Parse</button>
       <button class="act-btn gold" onclick="parseImport(true)" id="aiParseBtn">&#129302; AI Parse</button>
+    </div>
+    <!-- PUMP LOADER -->
+    <div class="pump-overlay" id="pumpLoader">
+      <div class="pump-check">&#10003;</div>
+      <div class="pump-scene">
+        <div class="pump-bar-track">
+          <div class="pump-road"></div>
+          <div class="pump-bar-fill" id="pumpBarFill">
+            <span class="pump-car">&#127950;</span>
+            <span class="pump-smoke s1">&#128168;</span>
+            <span class="pump-smoke s2">&#128168;</span>
+            <span class="pump-smoke s3">&#128168;</span>
+          </div>
+        </div>
+      </div>
+      <div class="pump-text"></div>
     </div>
   </div>
 </div>
@@ -355,6 +399,25 @@ body.chat-open .chat-fab{display:none}
     </div>
     <div class="modal-foot">
       <button class="act-btn primary" onclick="closeModal('settingsModal')">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN GATE MODAL -->
+<div class="modal-overlay" id="adminGateModal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-hdr">
+      <h2>&#128274; Admin Access</h2>
+      <button class="modal-close" onclick="closeModal('adminGateModal')">&times;</button>
+    </div>
+    <div class="modal-body" style="text-align:center">
+      <p style="font-size:13px;color:var(--text2);margin:0 0 16px">Settings are restricted to administrators.<br>Enter the admin password to continue.</p>
+      <input type="password" id="adminPassInput" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')verifyAdmin()" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;text-align:center;box-sizing:border-box">
+      <p id="adminError" style="display:none;color:#dc2626;font-size:12px;font-weight:600;margin:8px 0 0">&#10060; Incorrect password. Try again.</p>
+    </div>
+    <div class="modal-foot" style="gap:8px">
+      <button class="act-btn" onclick="closeModal('adminGateModal')">Cancel</button>
+      <button class="act-btn primary" onclick="verifyAdmin()">&#128275; Unlock</button>
     </div>
   </div>
 </div>
@@ -681,7 +744,24 @@ function parseExportedHTML(htmlStr){
 
 // ─── IMPORT & PARSING ───
 function openImportModal(){document.getElementById('importModal').classList.add('show');}
-function openSettingsModal(){document.getElementById('settingsModal').classList.add('show');}
+let adminUnlocked=false;
+function openSettingsModal(){
+  if(adminUnlocked){document.getElementById('settingsModal').classList.add('show');return;}
+  document.getElementById('adminGateModal').classList.add('show');
+  setTimeout(()=>{const inp=document.getElementById('adminPassInput');if(inp){inp.value='';inp.focus();}},100);
+}
+function verifyAdmin(){
+  const inp=document.getElementById('adminPassInput');
+  const v=inp?inp.value:'';
+  if(v===atob('SmNtdDExMDc=')){
+    adminUnlocked=true;closeModal('adminGateModal');
+    document.getElementById('settingsModal').classList.add('show');
+    toast('Admin access granted','success');
+  } else {
+    const el=document.getElementById('adminError');if(el){el.style.display='block';}
+    inp.value='';inp.focus();
+  }
+}
 function closeModal(id){document.getElementById(id).classList.remove('show');}
 function clearImportText(){document.getElementById('importText').value='';toast('Cleared','info');}
 
@@ -737,11 +817,40 @@ function basicParse(text){
   return result;
 }
 
+function showPumpLoader(){
+  const loader=document.getElementById('pumpLoader');
+  const fill=document.getElementById('pumpBarFill');
+  const footer=document.getElementById('importFooter');
+  loader.classList.remove('done');
+  fill.style.width='';
+  fill.style.animation='none';fill.offsetHeight;fill.style.animation='pumpFill 12s cubic-bezier(.3,.1,.3,1) forwards';
+  loader.classList.add('active');
+  footer.style.display='none';
+}
+function hidePumpLoader(success){
+  const loader=document.getElementById('pumpLoader');
+  const footer=document.getElementById('importFooter');
+  if(success){
+    const fill=document.getElementById('pumpBarFill');
+    const cur=getComputedStyle(fill).width;
+    fill.style.animation='none';
+    fill.style.width=cur;
+    fill.offsetHeight;
+    fill.style.width='100%';
+    setTimeout(()=>{loader.classList.add('done');},700);
+    setTimeout(()=>{loader.classList.remove('active');footer.style.display='';},2200);
+    setTimeout(()=>{loader.classList.remove('done');fill.style.width='';fill.style.transition='';},2500);
+  } else {
+    loader.classList.remove('active');footer.style.display='';
+    setTimeout(()=>{loader.classList.remove('done');},350);
+  }
+}
 async function aiParse(text){
   const settings=getSettings();
   if(!settings.apiKey){toast('Set your API key in Settings first','error');return;}
   const btn=document.getElementById('aiParseBtn');
-  btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Parsing...';
+  btn.disabled=true;
+  showPumpLoader();
   try{
     const isHtml=isHTMLContent(text);
     const schema=JSON.stringify({teamName:'string',sprintNumber:'string',sprintStartDate:'MM/DD/YYYY',sprintEndDate:'MM/DD/YYYY',qeManager:'string',qeLead:'string',qualityEngineers:['string'],openReqs:'Yes|No',followingTDD:'Yes|No|N/A',sprintGoal:'string',teamHighlights:['string'],teamMVP:{names:'string',highlights:'string'},executiveSummary:'string or empty',sprintDelivery:[{task:'string',engineer:'string',pbisWorked:'string',automatedScenarios:'string',manualPct:'string',aiUsage:'Yes|No'}],automationCoverage:[{application:'string',status:'Not Started|In Progress|Completed|Blocked|On Hold',coveragePct:'string',targetPct:'string',targetDate:'string',trend:'Up|Down|Flat',owner:'string',notes:'string'}],risksAndBlockers:['string or empty array'],aiToolUsage:[{tool:'string',useCase:'string',pbis:'string',timeSaved:'string',howUsed:'string'}],signatureName:'string',signatureTitle:'string'});
@@ -751,8 +860,9 @@ async function aiParse(text){
     let parsed;const content=data.choices[0].message.content;
     const jsonMatch=content.match(/```json?\s*([\s\S]*?)```/)||content.match(/(\{[\s\S]*\})/);
     if(jsonMatch)parsed=JSON.parse(jsonMatch[1]);else parsed=JSON.parse(content);
-    applyParsed(parsed);closeModal('importModal');toast('AI parsing complete! Review your report.','success');
-  }catch(err){console.error(err);toast('AI parse failed: '+err.message,'error');}
+    hidePumpLoader(true);
+    setTimeout(()=>{applyParsed(parsed);closeModal('importModal');toast('AI parsing complete! Review your report.','success');},1600);
+  }catch(err){console.error(err);hidePumpLoader(false);toast('AI parse failed: '+err.message,'error');}
   finally{btn.disabled=false;btn.innerHTML='&#129302; AI Parse';}
 }
 
@@ -769,7 +879,7 @@ function applyParsed(p){
   if(p.followingTDD)d.followingTDD=p.followingTDD;
   if(p.sprintGoal)d.sprintGoal=p.sprintGoal;
   if(p.teamHighlights&&p.teamHighlights.length)d.teamHighlights=p.teamHighlights;
-  if(p.teamMVP){if(p.teamMVP.names)d.teamMVP.names=p.teamMVP.names;if(p.teamMVP.highlights)d.teamMVP.highlights=p.teamMVP.highlights;}
+  if(p.teamMVP){if(p.teamMVP.names){const sepIdx=detectMVPSeparator(p.teamMVP.names);d.teamMVP.names=sepIdx>0?p.teamMVP.names.substring(0,sepIdx).trim():p.teamMVP.names;if(sepIdx>0)setTimeout(()=>triggerMVPEasterEgg(),600);}if(p.teamMVP.highlights)d.teamMVP.highlights=p.teamMVP.highlights;}
   if(p.executiveSummary){d.showExecutiveSummary=true;d.executiveSummary=p.executiveSummary;}
   if(p.sprintDelivery&&p.sprintDelivery.length){d.showSprintDelivery=true;d.sprintDelivery=p.sprintDelivery;}
   if(p.automationCoverage&&p.automationCoverage.length){d.showAutomation=true;d.automationCoverage=p.automationCoverage;}
@@ -810,7 +920,7 @@ async function sendChat(){
     const data=await callAI(messages);const content=data.choices[0].message.content;
     let response;try{const jm=content.match(/```json?\s*([\s\S]*?)```/)||content.match(/(\{[\s\S]*\})/);response=JSON.parse(jm?jm[1]:content);}catch{response={action:'message',message:content};}
     chatMessages.push({role:'assistant',content:content});
-    if(response.action==='update'&&response.changes){Object.keys(response.changes).forEach(key=>{if(key==='teamMVP')Object.assign(report.teamMVP,response.changes.teamMVP);else if(typeof response.changes[key]==='object'&&!Array.isArray(response.changes[key])&&report[key]&&typeof report[key]==='object'&&!Array.isArray(report[key]))Object.assign(report[key],response.changes[key]);else report[key]=response.changes[key];});renderEditor();schedulePreview();addChatMsg('ai',response.message||'Report updated!');}
+    if(response.action==='update'&&response.changes){Object.keys(response.changes).forEach(key=>{if(key==='teamMVP'){Object.assign(report.teamMVP,response.changes.teamMVP);if(report.teamMVP.names){const si=detectMVPSeparator(report.teamMVP.names);if(si>0){report.teamMVP.names=report.teamMVP.names.substring(0,si).trim();setTimeout(()=>triggerMVPEasterEgg(),600);}}}else if(typeof response.changes[key]==='object'&&!Array.isArray(response.changes[key])&&report[key]&&typeof report[key]==='object'&&!Array.isArray(report[key]))Object.assign(report[key],response.changes[key]);else report[key]=response.changes[key];});renderEditor();schedulePreview();addChatMsg('ai',response.message||'Report updated!');}
     else{addChatMsg('ai',response.message||content);}
   }catch(err){console.error(err);addChatMsg('ai','Error: '+err.message);}
   finally{sendBtn.disabled=false;sendBtn.innerHTML='&#10148;';}
