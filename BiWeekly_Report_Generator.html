@@ -102,8 +102,27 @@ input,textarea,select{font-family:inherit;font-size:13px}
 .pill.active{background:linear-gradient(135deg,var(--navy),var(--navy-light));color:#fff;box-shadow:0 2px 8px rgba(30,56,96,.25)}
 .pill:not(.active){background:#e5e7eb;color:var(--text2)}
 .pill:not(.active):hover{background:#d1d5db}
-.preview-body{flex:1;overflow-y:auto;padding:20px;display:flex;justify-content:center}
-.preview-frame{width:720px;background:#fff;box-shadow:var(--shadow-lg);border-radius:8px;overflow:hidden;align-self:flex-start}
+.preview-body{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;align-items:center}
+.email-meta{width:720px;background:#fff;border-radius:10px 10px 0 0;box-shadow:0 -2px 12px rgba(0,0,0,.06);border:1px solid var(--border);border-bottom:none;flex-shrink:0;overflow:hidden}
+.email-meta-row{display:flex;align-items:center;padding:8px 16px;gap:8px;border-bottom:1px solid #f1f5f9;font-size:12px}
+.email-meta-row:last-child{border-bottom:none}
+.email-meta-label{font-weight:700;color:var(--navy);min-width:58px;font-size:11px;text-transform:uppercase;letter-spacing:.3px;flex-shrink:0}
+.email-meta-val{flex:1;color:var(--text);word-break:break-word;line-height:1.5}
+.email-meta-val .em-tag{display:inline-block;background:#eff6ff;color:var(--navy);padding:2px 8px;border-radius:4px;font-size:11px;margin:2px 2px;font-weight:500;white-space:nowrap}
+.email-meta-val .em-tag.team{background:linear-gradient(135deg,#fdf4ff,#fae8ff);color:var(--purple);border:1px solid #e9d5ff;position:relative;padding-right:36px}
+.em-tag.team .em-tag-btn{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border:none;background:none;cursor:pointer;font-size:10px;padding:0;line-height:1;border-radius:50%;transition:background .15s;color:var(--purple);opacity:.6;position:absolute;top:50%;transform:translateY(-50%)}
+.em-tag.team .em-tag-btn:hover{opacity:1;background:rgba(139,92,246,.12)}
+.em-tag.team .em-edit{right:18px}
+.em-tag.team .em-del{right:3px}
+.email-meta-val .em-optional{display:inline-flex;align-items:center;gap:4px;background:linear-gradient(135deg,#fdf4ff,#fae8ff);color:var(--purple);padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px dashed #c084fc;transition:all .2s}
+.email-meta-val .em-optional:hover{background:#f3e8ff;border-color:var(--purple)}
+.em-input-wrap{display:none;position:relative;margin-left:4px;width:280px}
+.em-input-wrap.visible{display:inline-flex}
+.email-meta-val input.em-team-input{border:1px solid #e2e8f0;border-radius:6px;padding:4px 8px;font-size:11px;width:100%;position:relative;z-index:1;background:transparent}
+.em-ghost{position:absolute;left:0;top:0;padding:4px 8px;font-size:11px;color:#c0c0c0;pointer-events:none;white-space:pre;font-family:inherit;line-height:inherit;z-index:0}
+.email-meta-copy{background:none;border:1px solid #e2e8f0;color:var(--text2);padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;flex-shrink:0;display:flex;align-items:center;gap:4px}
+.email-meta-copy:hover{background:var(--navy);color:#fff;border-color:var(--navy)}
+.preview-frame{width:720px;background:#fff;box-shadow:var(--shadow-lg);border-radius:0 0 8px 8px;overflow:hidden;align-self:center;flex-shrink:0}
 .preview-frame iframe{width:100%;border:none;display:block}
 
 /* ── ACTION BAR ── */
@@ -274,6 +293,18 @@ body.chat-open .chat-fab{display:none}
       <button class="pill active" onclick="openPreviewTab()" title="Open in new tab">Open in Tab</button>
     </div>
     <div class="preview-body">
+      <div class="email-meta" id="emailMeta">
+        <div class="email-meta-row">
+          <span class="email-meta-label">Subject</span>
+          <span class="email-meta-val" id="emailSubject" style="font-weight:600;color:var(--navy)">—</span>
+          <button class="email-meta-copy" onclick="copyMeta('subject')" title="Copy subject">&#128203; Copy</button>
+        </div>
+        <div class="email-meta-row">
+          <span class="email-meta-label">To</span>
+          <span class="email-meta-val" id="emailRecipients"></span>
+          <button class="email-meta-copy" onclick="copyMeta('to')" title="Copy recipients">&#128203; Copy</button>
+        </div>
+      </div>
       <div class="preview-frame"><iframe id="previewIframe" title="Preview"></iframe></div>
     </div>
   </div>
@@ -452,13 +483,119 @@ function autoEndDate(isoStart){if(!isoStart)return '';const d=new Date(isoStart+
 function setStartDate(isoVal){
   report.sprintStartDate=isoToMmdd(isoVal);
   report.sprintEndDate=isoToMmdd(autoEndDate(isoVal));
-  renderEditor();schedulePreview();
+  const endInput=document.querySelector('input[type="date"][onchange*="sprintEndDate"]');
+  if(endInput)endInput.value=autoEndDate(isoVal);
+  schedulePreview();
 }
 function parseHumanDate(str){
   const months={january:'01',february:'02',march:'03',april:'04',may:'05',june:'06',july:'07',august:'08',september:'09',october:'10',november:'11',december:'12'};
   const m=str.match(/(\w+)\s+(\d{1,2}),?\s*(\d{4})/);
   if(m){const mon=months[m[1].toLowerCase()];if(mon)return `${mon}/${m[2].padStart(2,'0')}/${m[3]}`;}
   return str;
+}
+
+// ─── EMAIL SUBJECT & RECIPIENTS ───
+const BASE_RECIPIENTS='QE Leads Consumer <qeleads_consumer@axosbank.com>; QE Management Consumer <qemanagement_consumer@axosbank.com>; Kevin Hearn <KHearn@axosbank.com>; Jonathan Crane <jcrane@axosbank.com>';
+let teamEmailList=[];
+function generateSubject(){
+  const d=report;
+  const team=(d.teamName||'').trim();
+  const s=d.sprintStartDate||'';
+  const e=d.sprintEndDate||'';
+  if(!team&&!s)return '';
+  const sp=s.split('/');const ep=e.split('/');
+  const sShort=sp.length===3?`${sp[0]}/${sp[1]}`:'';
+  const eShort=ep.length===3?`${ep[0]}/${ep[1]}`:'';
+  const sSlash=sp.length===3?`${parseInt(sp[0])}/${sp[1]}/${sp[2].slice(-2)}`:'';
+  const eSlash=ep.length===3?`${parseInt(ep[0])}/${ep[1]}/${ep[2].slice(-2)}`:'';
+  const sDot=sp.length===3?`${sp[0]}.${sp[1]}.${sp[2]}`:'';
+  const eDot=ep.length===3?`${ep[0]}.${ep[1]}.${ep[2]}`:'';
+  const tl=team.toLowerCase();
+  if(tl==='qcoe')return `QCOE - Bi Weekly Report - ${sShort} - ${eShort}`;
+  if(tl==='robo')return `ROBO Bi-Weekly report ${sSlash} to ${eSlash}`;
+  if(/enrollment.*white\s*label\s*1/i.test(team))return `Enrollment -White Label 1- QE Bi-Weekly Report -Sprint ${d.sprintNumber||'?'} (${sDot} - ${eDot})`;
+  return `${team} - Bi-Weekly Report - ${sShort} - ${eShort}`;
+}
+function getTeamEmailsStr(){return teamEmailList.join('; ');}
+function getFullRecipients(){
+  const extra=getTeamEmailsStr();
+  return extra?BASE_RECIPIENTS+'; '+extra:BASE_RECIPIENTS;
+}
+function updateEmailMeta(){
+  const subj=generateSubject();
+  const el=document.getElementById('emailSubject');
+  if(el)el.textContent=subj||'Fill in Team Name & Dates to generate';
+  const rEl=document.getElementById('emailRecipients');
+  if(!rEl)return;
+  const base=BASE_RECIPIENTS.split(';').map(r=>r.trim());
+  let html=base.map(r=>`<span class="em-tag">${escHtml(r)}</span>`).join(' ');
+  teamEmailList.forEach((addr,i)=>{
+    html+=` <span class="em-tag team">${escHtml(addr)}<button class="em-tag-btn em-edit" title="Edit" onclick="editTeamEmail(${i})">&#9998;</button><button class="em-tag-btn em-del" title="Remove" onclick="removeTeamEmail(${i})">&times;</button></span>`;
+  });
+  html+=` <span class="em-optional" onclick="showAddTeamEmail()" title="Add a team email (recommended)">+ Team Emails</span>`;
+  html+=`<span class="em-input-wrap" id="teamEmailWrap"><input class="em-team-input" id="teamEmailInput" placeholder="e.g. Name &lt;user@axosbank.com&gt;" oninput="updateEmailGhost()" onkeydown="handleEmailKey(event)"><span class="em-ghost" id="emailGhost"></span></span>`;
+  rEl.innerHTML=html;
+}
+let _editingIdx=-1;
+function showAddTeamEmail(){
+  _editingIdx=-1;
+  const wrap=document.getElementById('teamEmailWrap');
+  if(wrap){wrap.classList.add('visible');const inp=document.getElementById('teamEmailInput');inp.value='';inp.placeholder='e.g. Name <user@axosbank.com>';inp.focus();}
+}
+function editTeamEmail(idx){
+  _editingIdx=idx;
+  const wrap=document.getElementById('teamEmailWrap');
+  if(wrap){wrap.classList.add('visible');const inp=document.getElementById('teamEmailInput');inp.value=teamEmailList[idx]||'';inp.placeholder='Edit email...';inp.focus();updateEmailGhost();}
+}
+function removeTeamEmail(idx){
+  teamEmailList.splice(idx,1);
+  updateEmailMeta();schedulePreview();
+}
+function commitTeamEmail(){
+  const inp=document.getElementById('teamEmailInput');
+  if(!inp)return;
+  const val=inp.value.trim();
+  if(!val){const wrap=document.getElementById('teamEmailWrap');if(wrap)wrap.classList.remove('visible');_editingIdx=-1;return;}
+  if(_editingIdx>=0&&_editingIdx<teamEmailList.length){teamEmailList[_editingIdx]=val;}
+  else{teamEmailList.push(val);}
+  _editingIdx=-1;
+  updateEmailMeta();schedulePreview();
+}
+const EMAIL_DOMAINS=['@axosbank.com','@bofifederalbank.com'];
+function getEmailSuggestion(val){
+  if(!val)return '';
+  const atIdx=val.lastIndexOf('@');
+  if(atIdx<1)return '';
+  const partial=val.substring(atIdx);
+  if(partial.length<2)return '';
+  for(const d of EMAIL_DOMAINS){if(d.startsWith(partial)&&d!==partial)return d.substring(partial.length);}
+  return '';
+}
+function updateEmailGhost(){
+  const inp=document.getElementById('teamEmailInput');
+  const ghost=document.getElementById('emailGhost');
+  if(!inp||!ghost)return;
+  const suggestion=getEmailSuggestion(inp.value);
+  ghost.textContent=suggestion?inp.value+suggestion:'';
+}
+function looksLikeCompleteEmail(val){return /@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}>?\s*$/.test(val.trim());}
+function handleEmailKey(e){
+  if(e.key==='Enter'){e.preventDefault();commitTeamEmail();return;}
+  if(e.key==='Escape'){const wrap=document.getElementById('teamEmailWrap');if(wrap)wrap.classList.remove('visible');_editingIdx=-1;return;}
+  if(e.key===' '||e.key===';'){
+    const val=e.target.value.trim();
+    if(looksLikeCompleteEmail(val)){e.preventDefault();commitTeamEmail();return;}
+  }
+  if(e.key==='Tab'){
+    const suggestion=getEmailSuggestion(e.target.value);
+    if(suggestion){e.preventDefault();e.target.value+=suggestion;updateEmailGhost();}
+  }
+}
+function copyMeta(type){
+  let text='';
+  if(type==='subject')text=generateSubject();
+  else text=getFullRecipients();
+  navigator.clipboard.writeText(text).then(()=>toast(type==='subject'?'Subject copied!':'Recipients copied!','success'));
 }
 
 // ─── SETTINGS ───
@@ -645,7 +782,7 @@ function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').repla
 function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 // ─── PREVIEW ───
-function schedulePreview(){clearTimeout(previewDebounce);previewDebounce=setTimeout(updatePreview,200);localStorage.setItem('rg_report',JSON.stringify(report));}
+function schedulePreview(){clearTimeout(previewDebounce);previewDebounce=setTimeout(updatePreview,200);const save={...report,_teamEmails:teamEmailList};localStorage.setItem('rg_report',JSON.stringify(save));updateEmailMeta();}
 function updatePreview(){const html=generateEmailHTML();const iframe=document.getElementById('previewIframe');const doc=iframe.contentDocument||iframe.contentWindow.document;doc.open();doc.write(html);doc.close();setTimeout(()=>{iframe.style.height=doc.body.scrollHeight+'px';},100);setTimeout(()=>{iframe.style.height=doc.body.scrollHeight+'px';},500);}
 
 // ─── EMAIL HTML GENERATION ───
@@ -675,7 +812,7 @@ function generateEmailHTML(){
   d.customSections.forEach(cs=>{sections+=sectionHeader(escHtml(cs.title));if(cs.type==='list'){const items=(cs.items||[]).filter(i=>i.trim());if(items.length)sections+=`<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:25px;">${items.map(it=>`<tr><td style="padding:6px 0 6px 16px;font-size:13px;color:#374151;font-family:Arial,sans-serif;line-height:1.6;">&#8226; ${escHtml(it)}</td></tr>`).join('')}</table>`;}else{if((cs.text||'').trim())sections+=`<table width="100%" cellpadding="16" cellspacing="0" border="0" style="margin-bottom:25px;background-color:#f8fafc;"><tr><td><p style="margin:0;font-size:14px;color:#374151;line-height:1.7;font-family:Arial,sans-serif;">${escHtml(cs.text).replace(/\n/g,'<br>')}</p></td></tr></table>`;}});
   let signatureHtml='';
   if(d.signatureName.trim()){signatureHtml=`<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:30px;border-top:1px solid #e5e7eb;"><tr><td align="center" style="padding-top:20px;"><p style="margin:0 0 3px 0;font-size:14px;font-weight:bold;color:#1E3860;font-family:Arial,sans-serif;">${escHtml(d.signatureName)}${d.signatureTitle?` <span style="font-weight:normal;color:#64748b;">|</span> ${escHtml(d.signatureTitle)}`:''}</p>${d.signatureTeam?`<p style="margin:0 0 3px 0;font-size:13px;color:#64748b;font-family:Arial,sans-serif;">${escHtml(d.signatureTeam)}</p>`:''}<p style="margin:0;font-size:13px;font-weight:600;font-family:Arial,sans-serif;"><span style="color:#1E3860;">A</span><span style="color:#FAA74A;">x</span><span style="color:#1E3860;">os Bank</span></p>${d.signatureEmail?`<p style="margin:4px 0 0 0;font-size:12px;color:#64748b;font-family:Arial,sans-serif;">${escHtml(d.signatureEmail)}</p>`:''}</td></tr></table>`;}
-  return `<!DOCTYPE html><html lang="en" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta http-equiv="X-UA-Compatible" content="IE=edge"><!--[if mso]><style type="text/css">table {border-collapse:collapse;}td {padding:0;}</style><![endif]--><title>QE Bi-Weekly Status Report - ${escHtml(d.teamName)}</title></head><body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background-color:#f4f6f9;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;"><table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f4f6f9" style="background-color:#f4f6f9;"><tr><td align="center" style="padding:20px 0;"><table width="700" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="background-color:#ffffff;"><tr><td bgcolor="#1E3860" style="background-color:#1E3860;padding:30px 40px;text-align:center;"><img src="https://companieslogo.com/img/orig/AX.D-45977c0c.png?t=1720244490" alt="Axos Bank" width="50" height="50" style="display:block;margin:0 auto 15px auto;height:50px;"><h1 style="margin:0;font-size:24px;font-weight:bold;color:#ffffff;font-family:Arial,sans-serif;">QE Bi-Weekly Status Report</h1><p style="margin:10px 0 0 0;font-size:16px;color:#FAA74A;font-weight:600;font-family:Arial,sans-serif;">${escHtml(d.teamName||'Team Name')}</p><p style="margin:12px 0 0 0;font-size:13px;color:#94a3b8;font-family:Arial,sans-serif;">${dateDisplay}</p></td></tr><tr><td style="padding:30px 40px;">${sections}${signatureHtml}</td></tr><tr><td bgcolor="#1E3860" style="background-color:#1E3860;padding:20px 40px;text-align:center;"><p style="margin:0;color:#94a3b8;font-size:11px;font-family:Arial,sans-serif;">Confidential - For Internal Use Only</p></td></tr></table></td></tr></table></body></html>`;
+  return `<!DOCTYPE html><html lang="en" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta http-equiv="X-UA-Compatible" content="IE=edge"><!--[if mso]><style type="text/css">table {border-collapse:collapse;}td {padding:0;}</style><![endif]--><title>QE Bi-Weekly Status Report - ${escHtml(d.teamName)}</title>${teamEmailList.length?`<meta name="x-team-emails" content="${escHtml(teamEmailList.join('; '))}">`:''}</head><body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background-color:#f4f6f9;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;"><table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f4f6f9" style="background-color:#f4f6f9;"><tr><td align="center" style="padding:20px 0;"><table width="700" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="background-color:#ffffff;"><tr><td bgcolor="#1E3860" style="background-color:#1E3860;padding:30px 40px;text-align:center;"><img src="https://companieslogo.com/img/orig/AX.D-45977c0c.png?t=1720244490" alt="Axos Bank" width="50" height="50" style="display:block;margin:0 auto 15px auto;height:50px;"><h1 style="margin:0;font-size:24px;font-weight:bold;color:#ffffff;font-family:Arial,sans-serif;">QE Bi-Weekly Status Report</h1><p style="margin:10px 0 0 0;font-size:16px;color:#FAA74A;font-weight:600;font-family:Arial,sans-serif;">${escHtml(d.teamName||'Team Name')}</p><p style="margin:12px 0 0 0;font-size:13px;color:#94a3b8;font-family:Arial,sans-serif;">${dateDisplay}</p></td></tr><tr><td style="padding:30px 40px;">${sections}${signatureHtml}</td></tr><tr><td bgcolor="#1E3860" style="background-color:#1E3860;padding:20px 40px;text-align:center;"><p style="margin:0;color:#94a3b8;font-size:11px;font-family:Arial,sans-serif;">Confidential - For Internal Use Only</p></td></tr></table></td></tr></table></body></html>`;
 }
 function sectionHeader(t){return`<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:15px;"><tr><td style="border-bottom:3px solid #FAA74A;padding-bottom:10px;"><h2 style="margin:0;font-size:20px;font-weight:bold;color:#1E3860;font-family:Arial,sans-serif;">${t}</h2></td></tr></table>`;}
 function overviewRow(l,v,first,last){const r=first?'border-radius:4px 4px 0 0;':(last?'border-radius:0 0 4px 4px;':'');return`<tr><td style="padding:10px 14px;background-color:#f8fafc;border-bottom:1px solid #e2e8f0;width:35%;font-weight:bold;color:#1E3860;font-size:13px;font-family:Arial,sans-serif;${r}">${l}</td><td style="padding:10px 14px;background-color:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:13px;color:#374151;font-family:Arial,sans-serif;">${escHtml(v)}</td></tr>`;}
@@ -691,6 +828,8 @@ function parseExportedHTML(htmlStr){
     for(const td of tds){const txt=td.textContent.trim();if(txt===label){const next=td.nextElementSibling;if(next)return next.textContent.trim();}}
     return '';
   }
+  const teamEmailsMeta=doc.querySelector('meta[name="x-team-emails"]');
+  if(teamEmailsMeta){const raw=teamEmailsMeta.getAttribute('content')||'';teamEmailList=raw.split(';').map(s=>s.trim()).filter(Boolean);}
   const title=doc.querySelector('title');
   if(title){const m=title.textContent.match(/Report\s*-\s*(.+)/);if(m)result.teamName=m[1].trim();}
   result.teamName=findLabelValue('Team Name')||result.teamName;
@@ -777,6 +916,8 @@ function parseImport(useAI){
   const text=document.getElementById('importText').value.trim();
   if(!text)return toast('Paste or drop some report text first','error');
   if(isHTMLContent(text)){
+    const metaMatch=text.match(/<meta\s+name="x-team-emails"\s+content="([^"]*)"/i);
+    if(metaMatch){const raw=metaMatch[1].replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>');teamEmailList=raw.split(';').map(s=>s.trim()).filter(Boolean);}
     const parsed=parseExportedHTML(text);
     applyParsed(parsed);closeModal('importModal');toast('HTML report parsed! All sections imported.','success');
     return;
@@ -947,7 +1088,7 @@ function fallbackCopy(el){const r=document.createRange();r.selectNodeContents(el
 function copyHTMLSource(){navigator.clipboard.writeText(generateEmailHTML()).then(()=>toast('HTML source copied!','success')).catch(()=>toast('Failed to copy','error'));}
 function downloadHTML(){const html=generateEmailHTML();const name=`BiWeekly_${report.teamName.replace(/\s+/g,'_')||'Report'}_${report.sprintStartDate.replace(/\//g,'')||'draft'}.html`;const blob=new Blob([html],{type:'text/html'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();URL.revokeObjectURL(url);toast('Downloaded '+name,'success');}
 function openPreviewTab(){const html=generateEmailHTML();const blob=new Blob([html],{type:'text/html'});window.open(URL.createObjectURL(blob),'_blank');}
-function resetReport(){if(!confirm('Clear all data and start fresh?'))return;report=JSON.parse(JSON.stringify(DEFAULT_REPORT));expandedSections=new Set(['team-overview','sprint-info','sprint-goal']);renderEditor();schedulePreview();localStorage.removeItem('rg_report');toast('Report reset','info');}
+function resetReport(){if(!confirm('Clear all data and start fresh?'))return;report=JSON.parse(JSON.stringify(DEFAULT_REPORT));teamEmailList=[];expandedSections=new Set(['team-overview','sprint-info','sprint-goal']);renderEditor();schedulePreview();localStorage.removeItem('rg_report');toast('Report reset','info');}
 
 // ─── TOAST ───
 function toast(msg,type){const el=document.getElementById('toast');el.textContent=msg;el.className=`toast ${type} show`;clearTimeout(el._timer);el._timer=setTimeout(()=>el.classList.remove('show'),3500);}
@@ -956,8 +1097,8 @@ function toast(msg,type){const el=document.getElementById('toast');el.textConten
 function init(){
   loadSettings();
   const saved=localStorage.getItem('rg_report');
-  if(saved){try{const p=JSON.parse(saved);report={...JSON.parse(JSON.stringify(DEFAULT_REPORT)),...p};if(p.teamMVP)report.teamMVP={...DEFAULT_REPORT.teamMVP,...p.teamMVP};}catch{}}
-  renderEditor();updatePreview();
+  if(saved){try{const p=JSON.parse(saved);if(p._teamEmails)teamEmailList=p._teamEmails;delete p._teamEmails;report={...JSON.parse(JSON.stringify(DEFAULT_REPORT)),...p};if(p.teamMVP)report.teamMVP={...DEFAULT_REPORT.teamMVP,...p.teamMVP};}catch{}}
+  renderEditor();updatePreview();updateEmailMeta();
   document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='i'){e.preventDefault();openImportModal();}});
   document.querySelectorAll('.modal-overlay').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('show');});});
 }
