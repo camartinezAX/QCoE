@@ -2254,23 +2254,48 @@ SAMPLE TICKETS (up to 50 of current view):
 ${JSON.stringify(ticketSummary, null, 1)}
 
 ACTIONS - Return ONLY a JSON object for dashboard actions:
-1. Apply filters: {"action":"filter","keyword":"down AND uat","state":"","year":"","envs":["uat"],"message":"Filtered to UAT downtime tickets"}
-   - keyword: keyword expression (supports AND/OR/parentheses). Empty string to clear.
+1. Apply filters: {"action":"filter","keyword":"...","state":"","year":"","envs":[...],"message":"..."}
+   - keyword: boolean expression (AND/OR/parentheses). Empty string to clear.
    - state: exact state value or empty for all.
    - year: exact year or empty for all.
    - envs: array of env codes or empty array for all.
    - Only include fields you want to change.
 2. Clear all filters: {"action":"clear_filters","message":"Cleared all filters"}
-3. Open a ticket: {"action":"show_ticket","ticket":"RITM0363068","message":"Opening ticket RITM0363068"}
+3. Open a ticket: {"action":"show_ticket","ticket":"RITM0363068","message":"Opening ticket..."}
 4. Quick search: {"action":"search","query":"some text","message":"Searching for..."}
 5. Just answer/analyze (no action): {"action":"message","message":"Your analysis here..."}
 
+KEYWORD FILTER PRECISION - THIS IS CRITICAL:
+The keyword filter searches across ALL fields of every ticket. You MUST build precise filters.
+
+STRATEGY: Use the "envs" field for environment filtering (uat, qa, stg, prod, dev) and keyword for the ISSUE TYPE.
+
+GOOD examples:
+- "Show me UAT/QA environments that are down":
+  keyword: "down OR outage OR unavailable OR not responding OR not loading OR not able to login OR disruption"
+  envs: ["uat","qa"]
+- "Show me slow environments":
+  keyword: "slow OR slowness OR timeout OR latency OR performance"
+  envs: ["uat","qa","stg"]
+- "Show tickets about environments being down or having issues in UAT, QA, STG":
+  keyword: "down OR outage OR unavailable OR not responding OR disruption OR not loading OR slow OR not stable OR not working"
+  envs: ["uat","qa","stg"]
+
+BAD examples - NEVER do these:
+- keyword: "issues" (TOO BROAD - matches "Pipeline issue", "Deploy Issues", requests about IPs)
+- keyword: "uat OR qa" (WRONG - use envs field for environments, not keyword)
+- keyword: "issues OR slowness" (TOO VAGUE - "issues" matches everything)
+- keyword: "down OR issues" ("issues" pollutes the results)
+
+AVOID these words in keyword filters because they are too generic: "issue", "issues", "problem", "request", "server", "environment"
+PREFER these specific words: "down", "outage", "unavailable", "not responding", "disruption", "slow", "slowness", "timeout", "not loading", "not working", "not stable", "not able to login", "503", "500", "error", "failure"
+
 RULES:
-- When user asks to filter/show/find tickets, USE ACTIONS to control the dashboard.
+- When user asks to filter/show/find tickets, USE ACTIONS.
 - When user asks questions or analysis, respond with action:"message".
 - Be concise. Use bullet points for analysis. Reference ticket numbers.
-- For keyword filters use the boolean syntax: down AND (uat OR qa), outage OR disruption, etc.
 - ALWAYS include a "message" field explaining what you did.
+- ALWAYS explain the keyword you chose and why in your message.
 - Return ONLY valid JSON. No markdown, no code fences.`;
 
         aiChatHistory.push({ role: 'user', content: msg });
