@@ -392,6 +392,35 @@
         .toast.success { border-left: 4px solid var(--success); }
         .toast.error { border-left: 4px solid var(--error); }
 
+        /* F1 Loader */
+        .f1-overlay { position:fixed;inset:0;background:rgba(10,14,26,0.92);backdrop-filter:blur(8px);z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s; }
+        .f1-overlay.active { opacity:1;pointer-events:auto; }
+        .f1-overlay.done .f1-bar-fill { background:var(--success)!important; }
+        .f1-overlay.done .f1-car { animation:f1Bounce .12s ease-in-out infinite;transform:scaleX(-1); }
+        .f1-overlay.done .f1-smoke { animation:none!important;opacity:0!important; }
+        .f1-overlay.done .f1-text::after { content:'LOADED!';color:#fff; }
+        .f1-overlay.done .f1-text { animation:none; }
+        .f1-overlay.done .f1-check { opacity:1;transform:scale(1); }
+        .f1-scene { position:relative;width:400px;height:60px;margin-bottom:16px; }
+        .f1-bar-track { position:absolute;bottom:0;left:0;right:0;height:18px;background:rgba(255,255,255,.08);border-radius:9px;overflow:visible; }
+        .f1-bar-fill { height:100%;background:var(--axos-orange);border-radius:9px;width:0;animation:f1Fill 10s cubic-bezier(.3,.1,.3,1) forwards;position:relative;overflow:visible;transition:width .7s ease-out,background .3s ease; }
+        .f1-car { position:absolute;right:-18px;top:-26px;font-size:32px;line-height:1;z-index:3;animation:f1Bounce .12s ease-in-out infinite;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4));transform:scaleX(-1); }
+        .f1-smoke { position:absolute;right:12px;top:-18px;font-size:18px;line-height:1;opacity:0;z-index:2; }
+        .f1-smoke.s1 { animation:f1Smoke .7s ease-out 0s infinite; }
+        .f1-smoke.s2 { animation:f1Smoke .7s ease-out .25s infinite;font-size:14px;right:16px;top:-12px; }
+        .f1-smoke.s3 { animation:f1Smoke .7s ease-out .5s infinite;font-size:16px;right:8px;top:-20px; }
+        .f1-road { position:absolute;bottom:0;left:0;right:0;height:18px;border-radius:9px;overflow:hidden; }
+        .f1-road::after { content:'';position:absolute;top:8px;left:0;right:0;height:2px;background:repeating-linear-gradient(90deg,rgba(255,255,255,.35) 0,rgba(255,255,255,.35) 12px,transparent 12px,transparent 24px);animation:f1Road .4s linear infinite; }
+        .f1-text { font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:700;color:rgba(255,255,255,.85);letter-spacing:4px;text-transform:uppercase;margin-top:8px;position:relative; }
+        .f1-text::after { content:'FETCHING...';animation:f1Dots 1.5s steps(4) infinite; }
+        .f1-check { position:absolute;top:50%;left:50%;transform:scale(0);margin:-30px 0 0 -30px;width:60px;height:60px;background:rgba(255,255,255,.1);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:30px;opacity:0;transition:all .4s cubic-bezier(.175,.885,.32,1.275); }
+        .f1-subtitle { color:var(--text-muted);font-size:13px;margin-top:16px;letter-spacing:1px; }
+        @keyframes f1Fill { 0%{width:0} 100%{width:85%} }
+        @keyframes f1Bounce { 0%,100%{transform:scaleX(-1) translateY(0)} 50%{transform:scaleX(-1) translateY(-2px)} }
+        @keyframes f1Smoke { 0%{opacity:.7;transform:translateX(0) scale(.6)} 50%{opacity:.4;transform:translateX(-14px) scale(1)} 100%{opacity:0;transform:translateX(-28px) scale(1.3)} }
+        @keyframes f1Road { 0%{transform:translateX(0)} 100%{transform:translateX(-24px)} }
+        @keyframes f1Dots { 0%{content:'FETCHING'} 25%{content:'FETCHING.'} 50%{content:'FETCHING..'} 75%{content:'FETCHING...'} }
+
         .ai-fab { position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;border:none;background:linear-gradient(135deg,var(--axos-orange),var(--axos-orange-dark));color:#fff;font-size:22px;cursor:pointer;z-index:400;box-shadow:0 4px 20px rgba(250,167,74,0.4);transition:all .2s;display:flex;align-items:center;justify-content:center; }
         .ai-fab:hover { transform:scale(1.1);box-shadow:0 6px 30px rgba(250,167,74,0.5); }
         body.ai-open .ai-fab { display:none; }
@@ -683,6 +712,24 @@
     </div>
 </div>
 
+<!-- F1 Loader -->
+<div class="f1-overlay" id="f1Loader">
+    <div class="f1-check">✓</div>
+    <div class="f1-scene">
+        <div class="f1-bar-track">
+            <div class="f1-road"></div>
+            <div class="f1-bar-fill" id="f1BarFill">
+                <span class="f1-car">🏎</span>
+                <span class="f1-smoke s1">💨</span>
+                <span class="f1-smoke s2">💨</span>
+                <span class="f1-smoke s3">💨</span>
+            </div>
+        </div>
+    </div>
+    <div class="f1-text"></div>
+    <div class="f1-subtitle" id="f1Subtitle">Connecting to ServiceNow...</div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"><span id="toastMsg"></span></div>
 
@@ -703,6 +750,33 @@ function updateClock() {
 updateClock();
 setInterval(updateClock, 30000);
 
+function showF1Loader(subtitle) {
+    const loader = document.getElementById('f1Loader');
+    const fill = document.getElementById('f1BarFill');
+    const sub = document.getElementById('f1Subtitle');
+    loader.classList.remove('done');
+    fill.style.width = '';
+    fill.style.animation = 'none'; fill.offsetHeight; fill.style.animation = 'f1Fill 10s cubic-bezier(.3,.1,.3,1) forwards';
+    if (subtitle) sub.textContent = subtitle;
+    loader.classList.add('active');
+}
+
+function hideF1Loader(success) {
+    const loader = document.getElementById('f1Loader');
+    if (success) {
+        const fill = document.getElementById('f1BarFill');
+        const cur = getComputedStyle(fill).width;
+        fill.style.animation = 'none';
+        fill.style.width = cur;
+        fill.offsetHeight;
+        fill.style.width = '100%';
+        loader.classList.add('done');
+        setTimeout(() => { loader.classList.remove('active', 'done'); }, 1600);
+    } else {
+        loader.classList.remove('active', 'done');
+    }
+}
+
 function showToast(msg, type = 'success') {
     const t = document.getElementById('toast');
     t.className = 'toast ' + type + ' show';
@@ -714,20 +788,27 @@ async function autoFetch() {
     const statusEl = document.getElementById('authStatus');
     const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     const proxyBase = isLocal ? '' : 'http://localhost:8080';
+    showF1Loader('Connecting to ServiceNow...');
     try {
         const resp = await fetch(proxyBase + '/api/snow', { signal: AbortSignal.timeout(8000) });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        document.getElementById('f1Subtitle').textContent = 'Loading ticket data...';
         const data = await resp.json();
         const records = data.result || [];
 
         if (records.length === 0) {
+            hideF1Loader(false);
             showFallbackMode('No tickets returned from ServiceNow. The query may need adjusting.');
             return;
         }
 
-        loadRecords(records);
-        showToast(`Loaded ${allTickets.length} tickets automatically`);
+        hideF1Loader(true);
+        setTimeout(() => {
+            loadRecords(records);
+            showToast(`Loaded ${allTickets.length} tickets automatically`);
+        }, 1200);
     } catch (err) {
+        hideF1Loader(false);
         const ghMsg = isLocal
             ? 'Could not auto-load. Run "python3 run_dashboard.py" to start with live data.'
             : 'To load live data, run <code style="color:var(--axos-orange);">python3 run_dashboard.py</code> on your machine first, then refresh.';
@@ -762,18 +843,21 @@ async function refreshData() {
     const statusEl = document.getElementById('authStatus');
     const btn = document.getElementById('refreshBtn');
     btn.disabled = true;
-    btn.innerHTML = '<span class="fetch-spinner"></span> Refreshing...';
-    statusEl.className = 'auth-status';
-    statusEl.textContent = 'Refreshing from ServiceNow...';
+    showF1Loader('Refreshing from ServiceNow...');
 
     try {
         const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
         const proxyBase = isLocal ? '' : 'http://localhost:8080';
+        document.getElementById('f1Subtitle').textContent = 'Fetching fresh data...';
         const resp = await fetch(proxyBase + '/api/refresh');
         const data = await resp.json();
-        loadRecords(data.result || []);
-        showToast('Data refreshed from ServiceNow');
+        hideF1Loader(true);
+        setTimeout(() => {
+            loadRecords(data.result || []);
+            showToast('Data refreshed from ServiceNow');
+        }, 1200);
     } catch (err) {
+        hideF1Loader(false);
         statusEl.className = 'auth-status err';
         statusEl.textContent = 'Refresh failed: ' + err.message;
         showToast('Could not refresh data', 'error');
