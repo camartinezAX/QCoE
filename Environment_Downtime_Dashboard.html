@@ -1,0 +1,2226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Environment Downtime Dashboard - Axos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --axos-navy: #1E3860;
+            --axos-navy-dark: #152844;
+            --axos-navy-light: #2a4a7a;
+            --axos-orange: #FAA74A;
+            --axos-orange-light: #fdd9a8;
+            --axos-orange-dark: #e8922a;
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-tertiary: #1f2937;
+            --bg-card: #161d2e;
+            --border-color: #2d3748;
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --success: #10b981;
+            --success-bg: rgba(16, 185, 129, 0.1);
+            --warning: #f59e0b;
+            --warning-bg: rgba(245, 158, 11, 0.1);
+            --error: #ef4444;
+            --error-bg: rgba(239, 68, 68, 0.1);
+            --info: #3b82f6;
+            --info-bg: rgba(59, 130, 246, 0.1);
+            --purple: #8b5cf6;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        .bg-pattern {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background:
+                radial-gradient(ellipse at 20% 20%, rgba(30,56,96,0.2) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(30,56,96,0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(250,167,74,0.08) 0%, transparent 50%);
+            pointer-events: none; z-index: 0;
+        }
+        .app { position: relative; z-index: 1; display: flex; flex-direction: column; min-height: 100vh; transition: margin-right .3s cubic-bezier(.4,0,.2,1); }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--axos-navy) 0%, var(--axos-navy-dark) 50%, var(--axos-navy-light) 100%);
+            padding: 0 30px; height: 60px; display: flex; align-items: center; gap: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.08); position: sticky; top: 0; z-index: 100;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+        }
+        .header-logo { font-size: 11px; font-weight: 700; letter-spacing: 2px; color: var(--axos-orange); text-transform: uppercase; }
+        .header-title { font-size: 17px; font-weight: 800; color: #fff; flex: 1; }
+        .header-title span { color: var(--axos-orange); }
+        .header-badge {
+            padding: 5px 14px; border-radius: 20px; font-size: 11px; font-weight: 700;
+            background: rgba(250,167,74,0.15); color: var(--axos-orange); border: 1px solid rgba(250,167,74,0.3);
+        }
+        .header-time { font-size: 12px; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; }
+
+        /* Main content */
+        .content { flex: 1; padding: 28px 30px 60px; max-width: 1400px; width: 100%; margin: 0 auto; }
+
+        /* Auth Bar */
+        .auth-bar {
+            display: flex; gap: 12px; align-items: center; padding: 16px 20px;
+            background: linear-gradient(135deg, rgba(22,29,46,0.95), rgba(31,41,55,0.9));
+            border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; margin-bottom: 24px;
+            backdrop-filter: blur(12px); flex-wrap: wrap; animation: fadeSlideUp 0.4s ease-out both;
+        }
+        .auth-bar label { font-size: 12px; font-weight: 700; color: var(--text-secondary); white-space: nowrap; }
+        .auth-bar input {
+            flex: 1; min-width: 180px; padding: 10px 14px; border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.3);
+            color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 12px;
+            transition: border-color 0.2s;
+        }
+        .auth-bar input:focus { border-color: var(--axos-orange); outline: none; box-shadow: 0 0 0 3px rgba(250,167,74,0.15); }
+        .auth-bar select {
+            padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(0,0,0,0.3); color: var(--text-primary); font-size: 12px; cursor: pointer;
+        }
+        .auth-status { font-size: 11px; color: var(--text-muted); }
+        .auth-status.ok { color: var(--success); }
+        .auth-status.err { color: var(--error); }
+
+        .btn {
+            padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 600;
+            cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; border: none;
+        }
+        .btn-orange {
+            background: linear-gradient(135deg, var(--axos-orange), var(--axos-orange-dark));
+            color: var(--axos-navy-dark); font-weight: 700; letter-spacing: 0.3px;
+            box-shadow: 0 4px 14px rgba(250,167,74,0.25);
+        }
+        .btn-orange:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(250,167,74,0.35); }
+        .btn-secondary {
+            background: var(--bg-tertiary); color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        .btn-secondary:hover { background: var(--bg-secondary); border-color: var(--text-muted); }
+
+        /* Animations */
+        @keyframes fadeSlideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes spin { to { transform:rotate(360deg); } }
+        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+        .fetch-spinner { width:14px; height:14px; border:2px solid rgba(250,167,74,0.3); border-top-color:var(--axos-orange); border-radius:50%; animation:spin 0.6s linear infinite; display:inline-block; }
+
+        /* Metrics Grid */
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+        .metric-card {
+            position: relative; overflow: hidden; border-radius: 16px; padding: 22px 20px;
+            background: linear-gradient(135deg, rgba(22,29,46,0.95), rgba(31,41,55,0.9));
+            border: 1px solid rgba(255,255,255,0.06);
+            backdrop-filter: blur(12px);
+            animation: fadeSlideUp 0.5s ease-out both;
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+        .metric-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,0.3); }
+        .metric-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            border-radius: 16px 16px 0 0;
+        }
+        .metric-card.m-red::before { background: linear-gradient(90deg, #ef4444, #f87171); }
+        .metric-card.m-green::before { background: linear-gradient(90deg, #10b981, #34d399); }
+        .metric-card.m-orange::before { background: linear-gradient(90deg, #FAA74A, #fbbf24); }
+        .metric-card.m-blue::before { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+        .metric-card.m-purple::before { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+        .metric-card.m-cyan::before { background: linear-gradient(90deg, #06b6d4, #22d3ee); }
+        .metric-card:nth-child(1) { animation-delay: 0s; }
+        .metric-card:nth-child(2) { animation-delay: 0.08s; }
+        .metric-card:nth-child(3) { animation-delay: 0.16s; }
+        .metric-card:nth-child(4) { animation-delay: 0.24s; }
+        .metric-card:nth-child(5) { animation-delay: 0.32s; }
+        .metric-card:nth-child(6) { animation-delay: 0.40s; }
+        .metric-icon { font-size: 28px; margin-bottom: 8px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3)); }
+        .metric-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+        .metric-value {
+            font-size: 34px; font-weight: 800; margin: 4px 0 4px; line-height: 1.1;
+            background: linear-gradient(135deg, #fff, #c4c8d0);
+            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .metric-value.v-red { background: linear-gradient(135deg, #ef4444, #fca5a5); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .metric-value.v-green { background: linear-gradient(135deg, #10b981, #6ee7b7); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .metric-value.v-orange { background: linear-gradient(135deg, #FAA74A, #fde68a); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .metric-sub { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+        .metric-bar { height: 4px; border-radius: 4px; background: rgba(255,255,255,0.06); margin-top: 10px; overflow: hidden; }
+        .metric-bar-fill { height: 100%; border-radius: 4px; transition: width 1.2s cubic-bezier(0.4,0,0.2,1); }
+
+        /* Charts */
+        .charts-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 18px; margin-bottom: 24px; }
+        .chart-box {
+            background: linear-gradient(135deg, rgba(22,29,46,0.95), rgba(31,41,55,0.9));
+            border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 22px;
+            backdrop-filter: blur(12px); animation: fadeSlideUp 0.6s ease-out both;
+        }
+        .chart-box h3 { font-size: 13px; margin-bottom: 16px; font-weight: 700; color: var(--text-primary); letter-spacing: 0.3px; }
+        .chart-box canvas { max-height: 260px; }
+
+        /* Filters */
+        .filters-bar {
+            display: flex; gap: 10px; align-items: center; margin-bottom: 18px; flex-wrap: wrap;
+            padding: 14px 18px; background: linear-gradient(135deg, rgba(22,29,46,0.6), rgba(31,41,55,0.5));
+            border: 1px solid rgba(255,255,255,0.04); border-radius: 14px;
+        }
+        .filters-bar input, .filters-bar select {
+            padding: 9px 14px; border-radius: 8px; border: 1px solid var(--border-color);
+            background: var(--bg-tertiary); color: var(--text-primary); font-size: 13px;
+        }
+        .filters-bar input { flex: 1; min-width: 200px; }
+        .filters-bar input:focus, .filters-bar select:focus { outline: none; border-color: var(--axos-orange); }
+        .filters-bar select { cursor: pointer; }
+        .filter-count { font-size: 12px; color: var(--text-muted); margin-left: auto; }
+
+        /* Column Toggle */
+        .col-toggle-wrap { position: relative; display: inline-block; }
+        .col-toggle-btn {
+            padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border-color);
+            background: var(--bg-tertiary); color: var(--text-secondary); font-size: 12px;
+            cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;
+        }
+        .col-toggle-btn:hover { border-color: var(--axos-orange); color: var(--axos-orange); }
+        .col-toggle-dropdown {
+            display: none; position: absolute; top: 100%; right: 0; margin-top: 6px;
+            background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px;
+            padding: 8px 0; min-width: 220px; z-index: 50; box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+        }
+        .col-toggle-dropdown.show { display: block; }
+        .col-toggle-item {
+            display: flex; align-items: center; gap: 10px; padding: 8px 16px; cursor: pointer;
+            font-size: 12px; color: var(--text-secondary); transition: background 0.15s;
+        }
+        .col-toggle-item:hover { background: rgba(250,167,74,0.06); color: var(--text-primary); }
+        .col-toggle-item input[type="checkbox"] {
+            accent-color: var(--axos-orange); width: 14px; height: 14px; cursor: pointer;
+        }
+
+        /* Advanced Keyword Filter */
+        .keyword-filter-panel {
+            margin-bottom: 14px; padding: 16px 18px;
+            background: linear-gradient(135deg, rgba(22,29,46,0.6), rgba(31,41,55,0.5));
+            border: 1px solid rgba(255,255,255,0.04); border-radius: 14px;
+        }
+        .keyword-filter-header {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+        }
+        .keyword-filter-header h4 {
+            font-size: 12px; font-weight: 700; color: var(--text-secondary);
+            text-transform: uppercase; letter-spacing: 0.8px;
+        }
+        .keyword-filter-header .syntax-help {
+            font-size: 11px; color: var(--text-muted); margin-left: auto; cursor: help;
+            border-bottom: 1px dashed var(--text-muted);
+        }
+        .keyword-input-row {
+            display: flex; gap: 10px; align-items: center; margin-bottom: 12px;
+        }
+        .keyword-input-row input {
+            flex: 1; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border-color);
+            background: var(--bg-primary); color: var(--text-primary); font-size: 13px;
+            font-family: 'JetBrains Mono', monospace;
+            transition: border-color 0.2s;
+        }
+        .keyword-input-row input:focus { outline: none; border-color: var(--axos-orange); box-shadow: 0 0 0 3px rgba(250,167,74,0.1); }
+        .keyword-input-row input::placeholder { color: var(--text-muted); font-family: 'Plus Jakarta Sans', sans-serif; }
+        .keyword-apply-btn {
+            padding: 10px 20px; border-radius: 10px; border: none; cursor: pointer;
+            background: linear-gradient(135deg, var(--axos-orange), var(--axos-orange-dark));
+            color: var(--axos-navy-dark); font-weight: 700; font-size: 13px;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .keyword-apply-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(250,167,74,0.3); }
+        .keyword-clear-btn {
+            padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border-color);
+            background: var(--bg-tertiary); color: var(--text-secondary); font-size: 13px;
+            cursor: pointer; transition: border-color 0.2s;
+        }
+        .keyword-clear-btn:hover { border-color: var(--text-muted); color: var(--text-primary); }
+        .preset-chips {
+            display: flex; gap: 8px; flex-wrap: wrap;
+        }
+        .preset-chip {
+            padding: 5px 14px; border-radius: 20px; font-size: 11px; font-weight: 600;
+            cursor: pointer; transition: all 0.2s; border: 1px solid var(--border-color);
+            background: var(--bg-tertiary); color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .preset-chip:hover { border-color: var(--axos-orange); color: var(--axos-orange); background: rgba(250,167,74,0.08); }
+        .preset-chip.active {
+            border-color: var(--axos-orange); color: var(--axos-navy-dark);
+            background: linear-gradient(135deg, var(--axos-orange), var(--axos-orange-dark));
+            box-shadow: 0 2px 8px rgba(250,167,74,0.2);
+        }
+        .keyword-active-tag {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 4px 12px 4px 10px; border-radius: 8px; font-size: 12px;
+            background: rgba(250,167,74,0.12); color: var(--axos-orange); border: 1px solid rgba(250,167,74,0.25);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .keyword-active-tag .remove-tag {
+            cursor: pointer; font-size: 14px; line-height: 1; opacity: 0.6;
+            transition: opacity 0.15s;
+        }
+        .keyword-active-tag .remove-tag:hover { opacity: 1; }
+        .keyword-match { background: rgba(250,167,74,0.25); color: var(--axos-orange-light); padding: 0 2px; border-radius: 3px; }
+        .env-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+        .env-chip {
+            padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 700;
+            cursor: pointer; transition: all 0.2s; border: 1px solid var(--border-color);
+            background: var(--bg-tertiary); color: var(--text-secondary);
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .env-chip:hover { border-color: var(--info); color: var(--info); }
+        .env-chip.active { border-color: var(--info); color: #fff; background: var(--info); }
+
+        /* Table */
+        .table-wrap {
+            background: linear-gradient(135deg, rgba(22,29,46,0.95), rgba(31,41,55,0.9));
+            border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 4px;
+            overflow: hidden; animation: fadeSlideUp 0.7s ease-out both;
+        }
+        .table-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .table-header h3 { font-size: 14px; font-weight: 700; }
+        .table-scroll { overflow-x: auto; max-height: 600px; overflow-y: auto; }
+        .data-table { width: 100%; border-collapse: separate; border-spacing: 0 3px; min-width: 1100px; }
+        .data-table th {
+            padding: 10px 14px; text-align: left; font-size: 10px; text-transform: uppercase;
+            letter-spacing: 0.8px; color: var(--text-muted); font-weight: 700; background: transparent;
+            border: none; position: sticky; top: 0; background: var(--bg-card); z-index: 2;
+        }
+        .data-table th.sortable { cursor: pointer; user-select: none; }
+        .data-table th.sortable:hover { color: var(--axos-orange); }
+        .data-table td {
+            padding: 12px 14px; font-size: 13px; border: none;
+            background: rgba(22,29,46,0.6); vertical-align: top;
+        }
+        .data-table td:first-child { border-radius: 8px 0 0 8px; }
+        .data-table td:last-child { border-radius: 0 8px 8px 0; }
+        .data-table tr { transition: transform 0.2s ease; }
+        .data-table tbody tr:hover { transform: scale(1.003); }
+        .data-table tbody tr:hover td { background: rgba(250,167,74,0.06); }
+
+        .ticket-num {
+            font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--info);
+            text-decoration: none; font-size: 12px;
+        }
+        .ticket-num:hover { text-decoration: underline; color: #60a5fa; }
+
+        .state-badge {
+            padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;
+        }
+        .state-badge.closed { background: var(--success-bg); color: var(--success); }
+        .state-badge.open { background: var(--error-bg); color: var(--error); }
+        .state-badge.pending { background: var(--warning-bg); color: var(--warning); }
+        .state-badge.wip { background: var(--info-bg); color: var(--info); }
+
+        .desc-cell { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .desc-cell:hover { white-space: normal; word-break: break-word; }
+
+        .person-cell { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+        .person-avatar {
+            width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0;
+        }
+
+        .duration-cell { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+        .close-notes-cell { max-width: 200px; font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .close-notes-cell:hover { white-space: normal; word-break: break-word; }
+
+        /* Empty state */
+        .empty-state { text-align: center; padding: 80px 30px; color: var(--text-muted); }
+        .empty-icon { font-size: 64px; margin-bottom: 20px; }
+        .empty-state h3 { font-size: 20px; color: var(--text-secondary); margin-bottom: 8px; }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px);
+            display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: var(--bg-card); border-radius: 20px; border: 1px solid var(--border-color);
+            width: 100%; max-width: 700px; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column;
+        }
+        .modal-hdr { padding: 18px 24px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; }
+        .modal-hdr h2 { font-size: 16px; font-weight: 700; flex: 1; }
+        .modal-close {
+            width: 34px; height: 34px; border-radius: 8px; background: var(--bg-tertiary);
+            border: none; color: var(--text-secondary); cursor: pointer; font-size: 18px;
+            display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+        }
+        .modal-close:hover { background: var(--error-bg); color: var(--error); }
+        .modal-body { padding: 24px; overflow-y: auto; flex: 1; }
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .detail-item { }
+        .detail-item label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; display: block; margin-bottom: 4px; }
+        .detail-item .val { font-size: 14px; color: var(--text-primary); word-break: break-word; }
+        .detail-item.full { grid-column: 1 / -1; }
+        .detail-item .val.mono { font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+
+        /* Export */
+        .export-bar { display: flex; gap: 10px; margin-bottom: 24px; justify-content: flex-end; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-primary); }
+        ::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--border-color); }
+
+        /* Toast */
+        .toast {
+            position: fixed; bottom: 30px; right: 30px; background: var(--bg-card);
+            border: 1px solid var(--border-color); border-radius: 12px; padding: 14px 18px;
+            display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            transform: translateX(120%); transition: transform 0.3s; z-index: 1001;
+        }
+        .toast.show { transform: translateX(0); }
+        .toast.success { border-left: 4px solid var(--success); }
+        .toast.error { border-left: 4px solid var(--error); }
+
+        .ai-fab { position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;border:none;background:linear-gradient(135deg,var(--axos-orange),var(--axos-orange-dark));color:#fff;font-size:22px;cursor:pointer;z-index:400;box-shadow:0 4px 20px rgba(250,167,74,0.4);transition:all .2s;display:flex;align-items:center;justify-content:center; }
+        .ai-fab:hover { transform:scale(1.1);box-shadow:0 6px 30px rgba(250,167,74,0.5); }
+        body.ai-open .ai-fab { display:none; }
+        body.ai-open .app { margin-right:380px;transition:margin-right .3s cubic-bezier(.4,0,.2,1); }
+        .ai-drawer { position:fixed;right:0;top:0;bottom:0;width:380px;background:var(--bg-card);border-left:1px solid var(--border-color);z-index:500;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1); }
+        .ai-drawer.open { transform:translateX(0); }
+        .ai-drawer-hdr { padding:14px 16px;border-bottom:1px solid var(--border-color);display:flex;align-items:center;gap:8px; }
+        .ai-drawer-hdr h3 { font-size:14px;font-weight:700;color:var(--axos-orange);flex:1; }
+        .ai-drawer-btn { width:30px;height:30px;border-radius:8px;border:none;background:var(--bg-tertiary);font-size:14px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);cursor:pointer;transition:all .15s; }
+        .ai-drawer-btn:hover { background:var(--border-color);color:var(--text-primary); }
+        .ai-messages { flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px; }
+        .ai-msg { max-width:90%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.6;animation:msgSlide .25s ease; }
+        @keyframes msgSlide { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+        .ai-msg.user { background:linear-gradient(135deg,var(--axos-navy),var(--axos-navy-light));color:#fff;align-self:flex-end;border-bottom-right-radius:4px; }
+        .ai-msg.ai { background:var(--bg-tertiary);color:var(--text-primary);align-self:flex-start;border-bottom-left-radius:4px;white-space:pre-wrap; }
+        .ai-msg.system { background:var(--info-bg);color:var(--info);align-self:center;text-align:center;font-size:12px;font-style:italic;max-width:100%;border-radius:10px; }
+        .ai-input-row { padding:12px;border-top:1px solid var(--border-color);display:flex;gap:8px; }
+        .ai-input-row input { flex:1;padding:10px 14px;border:1.5px solid var(--border-color);border-radius:10px;font-size:13px;background:var(--bg-tertiary);color:var(--text-primary); }
+        .ai-input-row input:focus { outline:none;border-color:var(--axos-orange); }
+        .ai-send { width:38px;height:38px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--axos-orange),var(--axos-orange-dark));color:#fff;font-size:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s; }
+        .ai-send:hover { transform:scale(1.05); }
+
+        .drill-ticket { padding:10px 14px;border-radius:10px;background:var(--bg-tertiary);margin-bottom:8px;cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:12px; }
+        .drill-ticket:hover { background:var(--border-color); }
+        .drill-ticket .dt-num { color:var(--axos-orange);font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;min-width:110px; }
+        .drill-ticket .dt-desc { flex:1;font-size:13px;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+        .drill-ticket .dt-badge { font-size:10px; }
+
+        @media (max-width: 900px) {
+            .content { padding: 16px; }
+            .charts-row { grid-template-columns: 1fr; }
+            .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+            .detail-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="bg-pattern"></div>
+<div class="app">
+    <div class="header">
+        <div class="header-logo">AXOS</div>
+        <div style="width:1px;height:28px;background:rgba(255,255,255,0.12);"></div>
+        <div class="header-title"><span class="dash-title">All Service Tickets</span> Dashboard</div>
+        <div class="header-badge" id="ticketCount">0 Tickets</div>
+        <div class="header-time" id="headerTime"></div>
+    </div>
+
+    <div class="content">
+        <!-- Status Bar -->
+        <div class="auth-bar" id="authBar">
+            <input type="text" id="instanceUrl" value="bofi.service-now.com" style="display:none;">
+            <span class="auth-status" id="authStatus" style="flex:1;">
+                <span class="fetch-spinner"></span> Loading data from ServiceNow...
+            </span>
+            <button class="btn btn-orange" onclick="refreshData()" id="refreshBtn" style="display:none;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                Refresh
+            </button>
+            <button class="btn btn-secondary" onclick="exportCSV()" id="exportBtn" style="display:none;">Export CSV</button>
+            <label for="fileUpload" class="btn btn-secondary" style="cursor:pointer;margin:0;display:none;" id="uploadBtn">Upload File</label>
+            <input type="file" id="fileUpload" accept=".json,.csv,.xlsx,.xls" onchange="handleFileUpload(event)" style="display:none;">
+            <button class="btn btn-secondary" onclick="loadDemoData()" id="demoBtn" style="display:none;">Demo</button>
+        </div>
+
+        <!-- Metrics -->
+        <div class="metrics-grid" id="metricsGrid" style="display:none;">
+            <div class="metric-card m-blue" style="animation-delay:0s;">
+                <div class="metric-icon">📊</div>
+                <div class="metric-label">Total Tickets</div>
+                <div class="metric-value" id="mTotal">0</div>
+                <div class="metric-sub" id="mTotalSub">All environment downtime requests</div>
+            </div>
+            <div class="metric-card m-red" style="animation-delay:0.08s;">
+                <div class="metric-icon">🔴</div>
+                <div class="metric-label">Currently Open</div>
+                <div class="metric-value v-red" id="mOpen">0</div>
+                <div class="metric-sub" id="mOpenSub">Tickets still active</div>
+            </div>
+            <div class="metric-card m-green" style="animation-delay:0.16s;">
+                <div class="metric-icon">✅</div>
+                <div class="metric-label">Resolved</div>
+                <div class="metric-value v-green" id="mClosed">0</div>
+                <div class="metric-sub" id="mClosedSub">Tickets closed</div>
+            </div>
+            <div class="metric-card m-orange" style="animation-delay:0.24s;">
+                <div class="metric-icon">⏱️</div>
+                <div class="metric-label">Avg Resolution Time</div>
+                <div class="metric-value v-orange" id="mAvgTime">--</div>
+                <div class="metric-sub" id="mAvgTimeSub">Average time to close</div>
+            </div>
+            <div class="metric-card m-purple" style="animation-delay:0.32s;">
+                <div class="metric-icon">👤</div>
+                <div class="metric-label">Top Reporter</div>
+                <div class="metric-value" id="mTopReq" style="font-size:18px;">--</div>
+                <div class="metric-sub" id="mTopReqSub">Most tickets raised</div>
+            </div>
+            <div class="metric-card m-cyan" style="animation-delay:0.40s;">
+                <div class="metric-icon">🔥</div>
+                <div class="metric-label">Longest Open</div>
+                <div class="metric-value v-red" id="mRecent">0</div>
+                <div class="metric-sub" id="mRecentSub">Worst resolution time</div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-row" id="chartsRow" style="display:none;">
+            <div class="chart-box">
+                <h3>Tickets by State</h3>
+                <canvas id="stateChart"></canvas>
+            </div>
+            <div class="chart-box">
+                <h3>Tickets by Requester</h3>
+                <canvas id="requesterChart"></canvas>
+            </div>
+        </div>
+        <div class="charts-row" id="chartsRow2" style="display:none;">
+            <div class="chart-box">
+                <h3>Tickets Over Time (Monthly)</h3>
+                <canvas id="timelineChart"></canvas>
+            </div>
+            <div class="chart-box">
+                <h3>Resolution Time Distribution</h3>
+                <canvas id="resolutionChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Filters & Table -->
+        <div id="tableSection" style="display:none;">
+
+            <!-- Advanced Keyword Filter -->
+            <div class="keyword-filter-panel" id="keywordPanel">
+                <div class="keyword-filter-header">
+                    <h4>🔍 Keyword Filter</h4>
+                    <span class="syntax-help" title="Use AND / OR and parentheses for complex queries.&#10;Example: down AND (uat OR qa OR stg)&#10;All matching is case-insensitive.">Syntax: AND / OR / ( )</span>
+                </div>
+                <div class="keyword-input-row">
+                    <input type="text" id="keywordInput" placeholder='e.g. down AND (uat OR qa OR stg)' onkeydown="if(event.key==='Enter')applyKeywordFilter()">
+                    <button class="keyword-apply-btn" onclick="applyKeywordFilter()">Apply</button>
+                    <button class="keyword-clear-btn" onclick="clearKeywordFilter()">Clear</button>
+                </div>
+                <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;">
+                    <div style="flex:1;min-width:280px;">
+                        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:6px;">Quick Filters</div>
+                        <div class="preset-chips" id="presetChips">
+                            <span class="preset-chip" data-query="down AND (uat OR qa OR stg)">Down + Env</span>
+                            <span class="preset-chip" data-query="outage OR unavailable OR disruption">Outage / Disruption</span>
+                            <span class="preset-chip" data-query="down AND production">Prod Down</span>
+                            <span class="preset-chip" data-query="login OR authentication OR OTP">Login Issues</span>
+                            <span class="preset-chip" data-query="pipeline OR deployment OR release">CI/CD</span>
+                            <span class="preset-chip" data-query="timeout OR 503 OR 500 OR error">Errors</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:6px;">Environment</div>
+                        <div class="env-chips" id="envChips">
+                            <span class="env-chip" data-env="uat" onclick="toggleEnvChip(this)">UAT</span>
+                            <span class="env-chip" data-env="qa" onclick="toggleEnvChip(this)">QA</span>
+                            <span class="env-chip" data-env="stg" onclick="toggleEnvChip(this)">STG</span>
+                            <span class="env-chip" data-env="prod" onclick="toggleEnvChip(this)">PROD</span>
+                            <span class="env-chip" data-env="dev" onclick="toggleEnvChip(this)">DEV</span>
+                        </div>
+                    </div>
+                </div>
+                <div id="activeKeywordTag" style="margin-top:10px;display:none;"></div>
+            </div>
+
+            <div class="filters-bar">
+                <input type="text" id="searchInput" placeholder="Quick search: ticket #, requester, description..." oninput="applyFilters()">
+                <select id="stateFilter" onchange="applyFilters()">
+                    <option value="">All States</option>
+                </select>
+                <select id="yearFilter" onchange="applyFilters()">
+                    <option value="">All Years</option>
+                </select>
+                <span class="filter-count" id="filterCount"></span>
+            </div>
+
+            <div class="table-wrap">
+                <div class="table-header">
+                    <h3 id="tableTitle">Service Tickets</h3>
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <span style="font-size:12px;color:var(--text-muted);">Click any row for details</span>
+                        <div class="col-toggle-wrap">
+                            <button class="col-toggle-btn" onclick="toggleColumnDropdown(event)">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3c7 0 10 9 10 9s-3 9-10 9S2 12 2 12s3-9 10-9z"/><circle cx="12" cy="12" r="3"/></svg>
+                                Columns
+                            </button>
+                            <div class="col-toggle-dropdown" id="colDropdown"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-scroll">
+                    <table class="data-table" id="dataTable">
+                        <thead><tr id="tableHead"></tr></thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty / Loading state -->
+        <div class="empty-state" id="emptyState">
+            <div class="empty-icon"><span class="fetch-spinner" style="width:48px;height:48px;border-width:4px;"></span></div>
+            <h3 style="margin-top:20px;">Loading from ServiceNow...</h3>
+            <p style="color:var(--text-muted);max-width:400px;margin:8px auto;">Fetching environment downtime tickets. This takes a few seconds.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="detailModal" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+        <div class="modal-hdr">
+            <h2 id="modalTitle">Ticket Details</h2>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+    </div>
+</div>
+
+<!-- Drill-down Modal -->
+<div class="modal-overlay" id="drillModal" onclick="if(event.target===this)closeDrillModal()">
+    <div class="modal" style="max-width:700px;">
+        <div class="modal-hdr">
+            <h2 id="drillTitle">Drill Down</h2>
+            <button class="modal-close" onclick="closeDrillModal()">✕</button>
+        </div>
+        <div class="modal-body" id="drillBody" style="max-height:70vh;overflow-y:auto;"></div>
+    </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModal" onclick="if(event.target===this)closeSettingsModal()">
+    <div class="modal" style="max-width:420px;">
+        <div class="modal-hdr"><h2>AI Settings</h2><button class="modal-close" onclick="closeSettingsModal()">✕</button></div>
+        <div class="modal-body">
+            <div style="margin-bottom:14px;"><label style="display:block;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">AI Provider</label>
+                <select id="aiProvider" onchange="saveAISettings()" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-tertiary);color:var(--text-primary);font-size:13px;">
+                    <option value="openai">OpenAI</option><option value="azure">Azure OpenAI</option>
+                </select></div>
+            <div style="margin-bottom:14px;"><label style="display:block;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">API Key</label>
+                <input type="password" id="aiApiKey" placeholder="sk-..." onchange="saveAISettings()" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-tertiary);color:var(--text-primary);font-size:13px;"></div>
+            <div id="azureFields" style="display:none;">
+                <div style="margin-bottom:14px;"><label style="display:block;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Azure Endpoint</label>
+                    <input id="aiAzureEndpoint" placeholder="https://your-resource.openai.azure.com" onchange="saveAISettings()" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-tertiary);color:var(--text-primary);font-size:13px;"></div>
+                <div style="margin-bottom:14px;"><label style="display:block;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Deployment</label>
+                    <input id="aiAzureDeployment" placeholder="gpt-4o" onchange="saveAISettings()" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-tertiary);color:var(--text-primary);font-size:13px;"></div>
+            </div>
+            <div style="margin-bottom:14px;"><label style="display:block;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Model</label>
+                <select id="aiModel" onchange="saveAISettings()" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-tertiary);color:var(--text-primary);font-size:13px;">
+                    <option value="gpt-4o-mini">GPT-4o Mini (fast)</option><option value="gpt-4o">GPT-4o (best)</option><option value="gpt-4.1-mini">GPT-4.1 Mini</option><option value="gpt-4.1">GPT-4.1</option>
+                </select></div>
+            <p style="font-size:11px;color:var(--text-muted);font-style:italic;">Stored locally in your browser only.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Admin Gate -->
+<div class="modal-overlay" id="adminGateModal" onclick="if(event.target===this)document.getElementById('adminGateModal').classList.remove('show')">
+    <div class="modal" style="max-width:340px;">
+        <div class="modal-hdr"><h2>Admin Access</h2><button class="modal-close" onclick="document.getElementById('adminGateModal').classList.remove('show')">✕</button></div>
+        <div class="modal-body" style="text-align:center;">
+            <p style="color:var(--text-secondary);font-size:13px;margin-bottom:14px;">Enter admin password to access AI settings.</p>
+            <input type="password" id="adminPassInput" placeholder="Password" onkeydown="if(event.key==='Enter')verifyAdmin()" style="width:100%;padding:10px 14px;border:1.5px solid var(--border-color);border-radius:8px;font-size:14px;text-align:center;background:var(--bg-tertiary);color:var(--text-primary);">
+            <p id="adminError" style="display:none;color:var(--error);font-size:12px;font-weight:600;margin:8px 0 0;">Incorrect password.</p>
+            <div style="margin-top:14px;display:flex;gap:8px;justify-content:center;">
+                <button onclick="document.getElementById('adminGateModal').classList.remove('show')" style="padding:8px 18px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;">Cancel</button>
+                <button onclick="verifyAdmin()" style="padding:8px 18px;border-radius:8px;border:none;background:var(--axos-orange);color:#fff;cursor:pointer;font-weight:600;">Unlock</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AI Chat Drawer -->
+<button class="ai-fab" onclick="toggleAIChat()" title="AI Assistant">💬</button>
+<div class="ai-drawer" id="aiDrawer">
+    <div class="ai-drawer-hdr">
+        <h3>✨ AI Assistant</h3>
+        <button class="ai-drawer-btn" onclick="openAISettings()" title="Settings">⚙️</button>
+        <button class="ai-drawer-btn" onclick="clearAIChat()" title="Clear">🗑️</button>
+        <button class="ai-drawer-btn" onclick="toggleAIChat()" title="Close">✕</button>
+    </div>
+    <div class="ai-messages" id="aiMessages">
+        <div class="ai-msg system">Ask me about the ticket data. I can analyze trends, summarize findings, or help investigate incidents. Requires API key in Settings (⚙️).</div>
+    </div>
+    <div class="ai-input-row">
+        <input id="aiInput" placeholder="e.g. What are the most common downtime causes?" onkeydown="if(event.key==='Enter')sendAIChat()">
+        <button class="ai-send" onclick="sendAIChat()" id="aiSendBtn">➤</button>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"><span id="toastMsg"></span></div>
+
+<script>
+let allTickets = [];
+let filteredTickets = [];
+let sortCol = 'opened_at';
+let sortDir = -1;
+let charts = {};
+
+function updateClock() {
+    const now = new Date();
+    document.getElementById('headerTime').textContent = now.toLocaleString('en-US', {
+        weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+    });
+}
+updateClock();
+setInterval(updateClock, 30000);
+
+function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    t.className = 'toast ' + type + ' show';
+    document.getElementById('toastMsg').textContent = msg;
+    setTimeout(() => t.classList.remove('show'), 4000);
+}
+
+async function autoFetch() {
+    const statusEl = document.getElementById('authStatus');
+    const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    const proxyBase = isLocal ? '' : 'http://localhost:8080';
+    try {
+        const resp = await fetch(proxyBase + '/api/snow', { signal: AbortSignal.timeout(8000) });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        const records = data.result || [];
+
+        if (records.length === 0) {
+            showFallbackMode('No tickets returned from ServiceNow. The query may need adjusting.');
+            return;
+        }
+
+        loadRecords(records);
+        showToast(`Loaded ${allTickets.length} tickets automatically`);
+    } catch (err) {
+        const ghMsg = isLocal
+            ? 'Could not auto-load. Run "python3 run_dashboard.py" to start with live data.'
+            : 'To load live data, run <code style="color:var(--axos-orange);">python3 run_dashboard.py</code> on your machine first, then refresh.';
+        showFallbackMode(ghMsg);
+    }
+}
+
+function showFallbackMode(message) {
+    const statusEl = document.getElementById('authStatus');
+    statusEl.className = 'auth-status err';
+    statusEl.innerHTML = message;
+    document.getElementById('demoBtn').style.display = '';
+    document.getElementById('uploadBtn').style.display = '';
+
+    document.getElementById('emptyState').innerHTML = `
+        <div class="empty-icon">⚡</div>
+        <h3>Auto-load unavailable</h3>
+        <p style="max-width:520px;margin:12px auto;line-height:1.8;color:var(--text-secondary);">
+            To auto-load data, run this in your terminal:
+        </p>
+        <code style="display:block;max-width:460px;margin:12px auto;background:var(--bg-tertiary);padding:14px 18px;border-radius:10px;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--axos-orange);border:1px solid var(--border-color);text-align:center;">
+            cd ~/Projects/AxosAI/Reports && python3 run_dashboard.py
+        </code>
+        <p style="max-width:460px;margin:14px auto;font-size:13px;color:var(--text-muted);">
+            It fetches data from ServiceNow, opens this dashboard, and loads everything automatically.
+            <br><br>Or use <strong>Upload File</strong> / <strong>Demo</strong> above.
+        </p>
+    `;
+}
+
+async function refreshData() {
+    const statusEl = document.getElementById('authStatus');
+    const btn = document.getElementById('refreshBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="fetch-spinner"></span> Refreshing...';
+    statusEl.className = 'auth-status';
+    statusEl.textContent = 'Refreshing from ServiceNow...';
+
+    try {
+        const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+        const proxyBase = isLocal ? '' : 'http://localhost:8080';
+        const resp = await fetch(proxyBase + '/api/refresh');
+        const data = await resp.json();
+        loadRecords(data.result || []);
+        showToast('Data refreshed from ServiceNow');
+    } catch (err) {
+        statusEl.className = 'auth-status err';
+        statusEl.textContent = 'Refresh failed: ' + err.message;
+        showToast('Could not refresh data', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg> Refresh';
+    }
+}
+
+function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (ext === 'csv') parseAndLoadCSV(e.target.result);
+            else parseAndLoadJSON(e.target.result);
+        } catch (err) {
+            showToast('Could not parse file: ' + err.message, 'error');
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+}
+
+function parseAndLoadJSON(raw) {
+    const data = JSON.parse(raw.trim());
+    let records = data.result || data.records || (Array.isArray(data) ? data : [data]);
+    loadRecords(records);
+}
+
+function parseAndLoadCSV(raw) {
+    const lines = raw.trim().split('\n');
+    if (lines.length < 2) throw new Error('CSV file is empty');
+    const headers = parseCSVLine(lines[0]);
+    const records = [];
+    for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        const vals = parseCSVLine(lines[i]);
+        const obj = {};
+        headers.forEach((h, idx) => { obj[h.trim().toLowerCase().replace(/\s+/g, '_')] = (vals[idx] || '').trim(); });
+        records.push(obj);
+    }
+    loadRecords(records);
+}
+
+function parseCSVLine(line) {
+    const result = []; let current = ''; let inQ = false;
+    for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') { if (inQ && line[i+1] === '"') { current += '"'; i++; } else inQ = !inQ; }
+        else if (ch === ',' && !inQ) { result.push(current); current = ''; }
+        else current += ch;
+    }
+    result.push(current);
+    return result;
+}
+
+function loadRecords(records) {
+    allTickets = deduplicateTickets(records);
+    allTickets.sort((a, b) => {
+        const da = new Date(a.opened_at || a.sys_created_on || '2000-01-01');
+        const db = new Date(b.opened_at || b.sys_created_on || '2000-01-01');
+        return db - da;
+    });
+
+    const statusEl = document.getElementById('authStatus');
+    statusEl.className = 'auth-status ok';
+    statusEl.textContent = `${allTickets.length} tickets loaded`;
+    document.getElementById('exportBtn').style.display = '';
+    document.getElementById('refreshBtn').style.display = '';
+    document.getElementById('demoBtn').style.display = '';
+    renderDashboard();
+}
+
+window.addEventListener('DOMContentLoaded', () => autoFetch());
+
+function deduplicateTickets(tickets) {
+    const seen = new Set();
+    return tickets.filter(t => {
+        if (seen.has(t.number)) return false;
+        seen.add(t.number);
+        return true;
+    });
+}
+
+function renderDashboard() {
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('metricsGrid').style.display = '';
+    document.getElementById('chartsRow').style.display = '';
+    document.getElementById('chartsRow2').style.display = '';
+    document.getElementById('tableSection').style.display = '';
+
+    buildDynamicColumns(allTickets);
+    computeMetrics(allTickets);
+    buildFilters();
+    initPresetChips();
+    applyFilters();
+    renderCharts(filteredTickets);
+}
+
+const CORE_VISIBLE = new Set([
+    'number', 'short_description', 'state', 'stage', 'opened_by',
+    'opened_at', 'closed_at', 'duration', 'cat_item',
+    'requested_for', 'priority', 'approval'
+]);
+const SKIP_FIELDS = new Set([
+    'sys_id', 'sys_tags', '__status', 'sys_domain', 'sys_domain_path',
+    'sys_mod_count', 'sys_class_name', 'sys_created_by', 'sys_updated_by',
+    'correlation_id', 'correlation_display', 'flow_context',
+    'comments_and_work_notes', 'work_notes_list', 'group_list',
+    'additional_assignee_list', 'watch_list', 'user_input', 'skills',
+    'approval_history', 'approval_set', 'order_guide', 'order',
+    'u_legacy_data', 'u_legacy_id', 'u_legacy_sys_id',
+    'u_pbi_2', 'u_pbi_3', 'u_pbi_4', 'u_pbi_id',
+    'u_bu_role_software_package', 'u_business_unit_role',
+    'u_ia_abbreviation', 'u_ia_id', 'u_investment_advisor',
+    'u_custom_catalog_filed', 'u_view_candidate_details',
+    'u_emp_preferred_name', 'u_employee_name', 'u_employee_effective_date',
+    'u_effective_date', 'u_off_boarding_date', 'u_separation_date_and_time',
+    'u_start_date', 'u_start_date_for_employee', 'u_more',
+    'u_confidential', 'u_duplicate_task', 'u_request_type',
+    'recurring_frequency', 'recurring_price', 'price', 'quantity',
+    'backordered', 'billable', 'contract', 'service_offering',
+    'universal_request', 'route_reason', 'follow_up',
+    'task_effective_number', 'knowledge', 'configuration_item',
+    'sc_catalog', 'u_age', 'u_rpt_lead_time',
+]);
+const FRIENDLY_LABELS = {
+    number: 'Number', short_description: 'Description', state: 'State',
+    opened_by: 'Reported By', opened_at: 'Opened', closed_at: 'Closed',
+    duration: 'Duration', assigned_to: 'Assigned To', assignment_group: 'Team',
+    close_notes: 'Solution', cat_item: 'Request Type', opened_by: 'Reported By',
+    sys_created_on: 'Created', sys_updated_on: 'Updated', request_type: 'Request Type',
+    stage: 'Stage', approval: 'Approval', priority: 'Priority', active: 'Active',
+    due_date: 'Due Date', work_notes: 'Work Notes', comments: 'Comments',
+    upon_approval: 'Upon Approval', upon_reject: 'Upon Reject',
+    made_sla: 'Made SLA', u_environment: 'Environment',
+    impact: 'Impact', urgency: 'Urgency', contact_type: 'Contact Type',
+    escalation: 'Escalation', company: 'Company',
+    location: 'Location', category: 'Category', subcategory: 'Subcategory',
+    cmdb_ci: 'Configuration Item', business_service: 'Business Service',
+    sc_catalog: 'Catalog', request: 'Parent Request', requested_for: 'Requested For',
+    u_request_type: 'Request Type', u_close_code: 'Close Code',
+    u_reason_for_delay: 'Reason for Delay', u_jira_record_number: 'JIRA #',
+    u_rpt_lead_time: 'Lead Time', u_vendor: 'Vendor', u_age: 'Age',
+    configuration_item: 'Configuration Item', parent: 'Parent Task',
+    closed_by: 'Closed By', reassignment_count: 'Reassignments',
+    estimated_delivery: 'Est. Delivery', sla_due: 'SLA Due',
+    activity_due: 'Activity Due', business_duration: 'Business Duration',
+    calendar_duration: 'Calendar Duration', time_worked: 'Time Worked',
+    expected_start: 'Expected Start', work_start: 'Work Start',
+    work_end: 'Work End', upon_approval: 'Upon Approval',
+    upon_reject: 'Upon Reject', sys_created_on: 'Created',
+    sys_updated_on: 'Updated',
+};
+
+let TABLE_COLUMNS = [];
+
+let fieldPopulation = {};
+
+function buildDynamicColumns(tickets) {
+    const allKeys = new Set();
+    const populatedKeys = new Set();
+    fieldPopulation = {};
+    tickets.forEach(t => {
+        Object.entries(t).forEach(([k, v]) => {
+            allKeys.add(k);
+            if (!fieldPopulation[k]) fieldPopulation[k] = { total: 0, filled: 0 };
+            fieldPopulation[k].total++;
+            const val = getDisplayVal(v) || (v != null ? String(v) : '');
+            if (val && val.trim() && val !== 'UNKNOWN') {
+                populatedKeys.add(k);
+                fieldPopulation[k].filled++;
+            }
+        });
+    });
+
+    const ordered = [];
+    const coreOrder = [
+        'number', 'short_description', 'state', 'stage', 'opened_by',
+        'opened_at', 'closed_at', 'duration', 'cat_item', 'priority',
+        'requested_for', 'approval', 'assigned_to', 'assignment_group',
+        'active', 'closed_by', 'impact', 'urgency',
+        'close_notes', 'description', 'business_service', 'cmdb_ci',
+        'due_date', 'sla_due', 'made_sla', 'reassignment_count',
+        'u_close_code', 'u_jira_record_number', 'u_reason_for_delay',
+        'comments', 'work_notes', 'sys_created_on', 'sys_updated_on',
+    ];
+
+    const added = new Set();
+    coreOrder.forEach(key => {
+        if (key === 'duration' || (allKeys.has(key) && populatedKeys.has(key))) {
+            ordered.push(key);
+            added.add(key);
+        }
+    });
+    [...allKeys].sort().forEach(key => {
+        if (!added.has(key) && !SKIP_FIELDS.has(key) && populatedKeys.has(key)) {
+            ordered.push(key);
+            added.add(key);
+        }
+    });
+    if (!added.has('duration')) { ordered.splice(6, 0, 'duration'); added.add('duration'); }
+
+    TABLE_COLUMNS = ordered.map(key => ({
+        key,
+        label: FRIENDLY_LABELS[key] || key.replace(/[_\.]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+        sortable: true,
+        visible: CORE_VISIBLE.has(key),
+    }));
+}
+
+function getVisibleColumns() { return TABLE_COLUMNS.filter(c => c.visible); }
+
+function toggleColumnDropdown(event) {
+    event.stopPropagation();
+    const dd = document.getElementById('colDropdown');
+    const isOpen = dd.classList.contains('show');
+    dd.classList.toggle('show');
+    if (!isOpen) renderColumnDropdown();
+}
+
+function renderColumnDropdown() {
+    const dd = document.getElementById('colDropdown');
+    const q = dd.dataset.search || '';
+    const filtered = q
+        ? TABLE_COLUMNS.filter(c => c.label.toLowerCase().includes(q) || c.key.toLowerCase().includes(q))
+        : TABLE_COLUMNS;
+
+    dd.innerHTML = `
+        <div style="padding:8px 12px;border-bottom:1px solid var(--border-color);">
+            <input type="text" placeholder="Search columns..." value="${escapeHtml(q)}"
+                style="width:100%;padding:6px 10px;border-radius:6px;border:1px solid var(--border-color);
+                background:var(--bg-primary);color:var(--text-primary);font-size:12px;"
+                oninput="filterColumnDropdown(this.value)" onclick="event.stopPropagation()">
+        </div>
+        <div style="max-height:320px;overflow-y:auto;">
+        ${filtered.map(col => {
+            const idx = TABLE_COLUMNS.indexOf(col);
+            const pop = fieldPopulation[col.key];
+            const pct = col.key === 'duration' ? 100 : (pop ? Math.round((pop.filled / pop.total) * 100) : 0);
+            const pctColor = pct >= 80 ? 'var(--success)' : pct >= 30 ? 'var(--warning)' : 'var(--text-muted)';
+            const pctLabel = col.key === 'duration' ? '' : `<span style="font-size:10px;color:${pctColor};min-width:32px;text-align:right;">${pct}%</span>`;
+            return `<label class="col-toggle-item">
+                <input type="checkbox" ${col.visible ? 'checked' : ''} onchange="toggleColumn(${idx}, this.checked)">
+                <span style="flex:1;">${col.label}</span>
+                ${pctLabel}
+            </label>`;
+        }).join('')}
+        </div>
+        <div style="padding:6px 12px;border-top:1px solid var(--border-color);display:flex;gap:8px;">
+            <button onclick="setAllColumns(true);event.stopPropagation();" style="flex:1;padding:4px;border:none;border-radius:4px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;">Show All</button>
+            <button onclick="setAllColumns(false);event.stopPropagation();" style="flex:1;padding:4px;border:none;border-radius:4px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;">Hide All</button>
+            <button onclick="resetColumns();event.stopPropagation();" style="flex:1;padding:4px;border:none;border-radius:4px;background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:11px;">Reset</button>
+        </div>
+    `;
+}
+
+function filterColumnDropdown(q) {
+    const dd = document.getElementById('colDropdown');
+    dd.dataset.search = q.toLowerCase();
+    renderColumnDropdown();
+    const input = dd.querySelector('input[type="text"]');
+    if (input) { input.focus(); input.setSelectionRange(q.length, q.length); }
+}
+
+function setAllColumns(show) {
+    TABLE_COLUMNS.forEach(c => c.visible = show);
+    renderColumnDropdown();
+    renderTable();
+}
+
+function resetColumns() {
+    TABLE_COLUMNS.forEach(c => c.visible = CORE_VISIBLE.has(c.key));
+    renderColumnDropdown();
+    renderTable();
+}
+
+function toggleColumn(idx, checked) {
+    TABLE_COLUMNS[idx].visible = checked;
+    renderTable();
+}
+
+document.addEventListener('click', (e) => {
+    const dd = document.getElementById('colDropdown');
+    if (dd && !dd.contains(e.target) && !e.target.closest('.col-toggle-btn')) {
+        dd.classList.remove('show');
+        dd.dataset.search = '';
+    }
+});
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const dd = document.getElementById('colDropdown');
+        if (dd) { dd.classList.remove('show'); dd.dataset.search = ''; }
+    }
+});
+
+function computeMetrics(tickets) {
+    const total = tickets.length;
+    const open = tickets.filter(t => !isClosedState(t.state)).length;
+    const closed = tickets.filter(t => isClosedState(t.state)).length;
+
+    document.getElementById('mTotal').textContent = total;
+    document.getElementById('mOpen').textContent = open;
+    document.getElementById('mClosed').textContent = closed;
+
+    const isFiltered = tickets.length !== allTickets.length;
+    document.getElementById('mTotalSub').textContent = isFiltered
+        ? `Filtered from ${allTickets.length} total`
+        : 'All environment downtime requests';
+
+    const closedPct = total > 0 ? Math.round((closed / total) * 100) : 0;
+    document.getElementById('mClosedSub').textContent = `${closedPct}% resolution rate`;
+    document.getElementById('mOpenSub').textContent = open === 0 ? 'All resolved' : `${open} need attention`;
+
+    const durations = tickets
+        .filter(t => t.opened_at && t.closed_at && isClosedState(t.state))
+        .map(t => {
+            const o = new Date(t.opened_at);
+            const c = new Date(t.closed_at);
+            return (c - o) / (1000 * 60 * 60);
+        })
+        .filter(h => h >= 0 && h < 8760);
+
+    if (durations.length > 0) {
+        const avg = durations.reduce((a, b) => a + b, 0) / durations.length;
+        const max = Math.max(...durations);
+        if (avg < 24) {
+            document.getElementById('mAvgTime').textContent = `${avg.toFixed(1)}h`;
+        } else {
+            document.getElementById('mAvgTime').textContent = `${(avg / 24).toFixed(1)}d`;
+        }
+        const maxStr = max < 24 ? `${max.toFixed(1)}h` : `${(max / 24).toFixed(1)}d`;
+        document.getElementById('mAvgTimeSub').textContent = `Longest: ${maxStr} · ${durations.length} resolved`;
+    } else {
+        document.getElementById('mAvgTime').textContent = '--';
+        document.getElementById('mAvgTimeSub').textContent = 'No resolved tickets';
+    }
+
+    const reqCount = {};
+    tickets.forEach(t => {
+        const name = getDisplayVal(t.opened_by) || 'Unknown';
+        reqCount[name] = (reqCount[name] || 0) + 1;
+    });
+    const topReq = Object.entries(reqCount).sort((a, b) => b[1] - a[1])[0];
+    if (topReq) {
+        document.getElementById('mTopReq').textContent = topReq[0].split(' ')[0];
+        document.getElementById('mTopReqSub').textContent = `${topReq[1]} tickets raised`;
+    } else {
+        document.getElementById('mTopReq').textContent = '--';
+        document.getElementById('mTopReqSub').textContent = 'No data';
+    }
+
+    const openTickets = tickets.filter(t => !isClosedState(t.state) && t.opened_at);
+    if (openTickets.length > 0) {
+        const now = new Date();
+        const longestHours = Math.max(...openTickets.map(t => (now - new Date(t.opened_at)) / (1000 * 60 * 60)));
+        if (longestHours < 24) {
+            document.getElementById('mRecent').textContent = `${longestHours.toFixed(1)}h`;
+        } else {
+            document.getElementById('mRecent').textContent = `${(longestHours / 24).toFixed(1)}d`;
+        }
+        document.getElementById('mRecentSub').textContent = `${openTickets.length} still open`;
+    } else if (durations.length > 0) {
+        const maxD = Math.max(...durations);
+        document.getElementById('mRecent').textContent = maxD < 24 ? `${maxD.toFixed(1)}h` : `${(maxD / 24).toFixed(1)}d`;
+        document.getElementById('mRecentSub').textContent = 'Worst resolved time';
+    } else {
+        document.getElementById('mRecent').textContent = '--';
+        document.getElementById('mRecentSub').textContent = 'No data';
+    }
+
+    document.getElementById('ticketCount').textContent = isFiltered
+        ? `${total} / ${allTickets.length}`
+        : `${total} Tickets`;
+}
+
+function buildFilters() {
+    const states = [...new Set(allTickets.map(t => t.state || 'Unknown'))].sort();
+    const stateSelect = document.getElementById('stateFilter');
+    stateSelect.innerHTML = '<option value="">All States</option>';
+    states.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s; opt.textContent = s;
+        stateSelect.appendChild(opt);
+    });
+
+    const years = [...new Set(allTickets.map(t => {
+        const d = new Date(t.opened_at);
+        return isNaN(d) ? null : d.getFullYear();
+    }).filter(Boolean))].sort((a, b) => b - a);
+    const yearSelect = document.getElementById('yearFilter');
+    yearSelect.innerHTML = '<option value="">All Years</option>';
+    years.forEach(y => {
+        const opt = document.createElement('option');
+        opt.value = y; opt.textContent = y;
+        yearSelect.appendChild(opt);
+    });
+}
+
+let activeKeywordExpr = null;
+let activeEnvFilters = [];
+
+function parseKeywordExpr(input) {
+    const raw = input.trim();
+    if (!raw) return null;
+    const tokens = tokenize(raw);
+    let pos = 0;
+
+    function tokenize(str) {
+        const result = [];
+        let i = 0;
+        while (i < str.length) {
+            if (str[i] === ' ' || str[i] === '\t') { i++; continue; }
+            if (str[i] === '(') { result.push({ type: 'LPAREN' }); i++; continue; }
+            if (str[i] === ')') { result.push({ type: 'RPAREN' }); i++; continue; }
+            let word = '';
+            while (i < str.length && str[i] !== ' ' && str[i] !== '(' && str[i] !== ')') {
+                word += str[i]; i++;
+            }
+            const upper = word.toUpperCase();
+            if (upper === 'AND') result.push({ type: 'AND' });
+            else if (upper === 'OR') result.push({ type: 'OR' });
+            else result.push({ type: 'WORD', value: word.toLowerCase() });
+        }
+        return result;
+    }
+
+    function peek() { return tokens[pos] || null; }
+    function consume() { return tokens[pos++]; }
+
+    function parseOr() {
+        let left = parseAnd();
+        while (peek() && peek().type === 'OR') {
+            consume();
+            const right = parseAnd();
+            left = { op: 'OR', left, right };
+        }
+        return left;
+    }
+
+    function parseAnd() {
+        let left = parsePrimary();
+        while (peek() && peek().type === 'AND') {
+            consume();
+            const right = parsePrimary();
+            left = { op: 'AND', left, right };
+        }
+        while (peek() && peek().type === 'WORD') {
+            const right = parsePrimary();
+            left = { op: 'AND', left, right };
+        }
+        return left;
+    }
+
+    function parsePrimary() {
+        const tok = peek();
+        if (!tok) return { op: 'WORD', value: '' };
+        if (tok.type === 'LPAREN') {
+            consume();
+            const expr = parseOr();
+            if (peek() && peek().type === 'RPAREN') consume();
+            return expr;
+        }
+        if (tok.type === 'WORD') {
+            consume();
+            return { op: 'WORD', value: tok.value };
+        }
+        consume();
+        return parsePrimary();
+    }
+
+    return parseOr();
+}
+
+function evalKeywordExpr(expr, text) {
+    if (!expr) return true;
+    if (expr.op === 'WORD') return text.includes(expr.value);
+    if (expr.op === 'AND') return evalKeywordExpr(expr.left, text) && evalKeywordExpr(expr.right, text);
+    if (expr.op === 'OR') return evalKeywordExpr(expr.left, text) || evalKeywordExpr(expr.right, text);
+    return true;
+}
+
+function extractKeywords(expr) {
+    if (!expr) return [];
+    if (expr.op === 'WORD') return expr.value ? [expr.value] : [];
+    return [...extractKeywords(expr.left), ...extractKeywords(expr.right)];
+}
+
+function applyKeywordFilter() {
+    const input = document.getElementById('keywordInput').value.trim();
+    if (!input) { clearKeywordFilter(); return; }
+    activeKeywordExpr = parseKeywordExpr(input);
+
+    document.querySelectorAll('.preset-chip').forEach(c => {
+        c.classList.toggle('active', c.dataset.query.toLowerCase() === input.toLowerCase());
+    });
+
+    const tagEl = document.getElementById('activeKeywordTag');
+    tagEl.style.display = '';
+    tagEl.innerHTML = `<span class="keyword-active-tag">${escapeHtml(input)} <span class="remove-tag" onclick="clearKeywordFilter()">✕</span></span>`;
+
+    applyFilters();
+}
+
+function clearKeywordFilter() {
+    activeKeywordExpr = null;
+    document.getElementById('keywordInput').value = '';
+    document.getElementById('activeKeywordTag').style.display = 'none';
+    document.querySelectorAll('.preset-chip').forEach(c => c.classList.remove('active'));
+    applyFilters();
+}
+
+function toggleEnvChip(el) {
+    el.classList.toggle('active');
+    activeEnvFilters = [...document.querySelectorAll('.env-chip.active')].map(c => c.dataset.env);
+    applyFilters();
+}
+
+function escapeHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function highlightText(text, words) {
+    if (!words.length || !text) return escapeHtml(text);
+    const escaped = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const regex = new RegExp(`(${escaped.join('|')})`, 'gi');
+    return escapeHtml(text).replace(regex, '<span class="keyword-match">$1</span>');
+}
+
+function initPresetChips() {
+    document.querySelectorAll('.preset-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const q = chip.dataset.query;
+            document.getElementById('keywordInput').value = q;
+            applyKeywordFilter();
+        });
+    });
+}
+
+function getTicketText(t) {
+    return Object.values(t).map(v => {
+        if (!v) return '';
+        if (typeof v === 'object') return v.display_value || v.value || '';
+        return String(v);
+    }).join(' ').toLowerCase();
+}
+
+function applyFilters() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const stateF = document.getElementById('stateFilter').value;
+    const yearF = document.getElementById('yearFilter').value;
+
+    filteredTickets = allTickets.filter(t => {
+        if (stateF && t.state !== stateF) return false;
+        if (yearF && new Date(t.opened_at).getFullYear() !== parseInt(yearF)) return false;
+
+        const text = getTicketText(t);
+
+        if (activeKeywordExpr && !evalKeywordExpr(activeKeywordExpr, text)) return false;
+
+        if (activeEnvFilters.length > 0) {
+            const envText = (t.short_description || '').toLowerCase() + ' ' + (t.description || '').toLowerCase();
+            const envAliases = {
+                uat: ['uat'],
+                qa: ['qa'],
+                stg: ['stg', 'staging', 'stage'],
+                prod: ['prod', 'production'],
+                dev: ['dev']
+            };
+            const envMatch = activeEnvFilters.some(env =>
+                (envAliases[env] || [env]).some(alias => envText.includes(alias))
+            );
+            if (!envMatch) return false;
+        }
+
+        if (search) {
+            if (!text.includes(search)) return false;
+        }
+        return true;
+    });
+
+    sortTickets();
+    renderTable();
+    computeMetrics(filteredTickets);
+    renderCharts(filteredTickets);
+    updateDashboardTitle();
+    const countText = filteredTickets.length === allTickets.length
+        ? `${allTickets.length} tickets`
+        : `${filteredTickets.length} of ${allTickets.length}`;
+    document.getElementById('filterCount').textContent = countText;
+}
+
+function sortTable(col) {
+    if (sortCol === col) sortDir *= -1;
+    else { sortCol = col; sortDir = 1; }
+    sortTickets();
+    renderTable();
+}
+
+function sortTickets() {
+    filteredTickets.sort((a, b) => {
+        let va = getSortVal(a, sortCol);
+        let vb = getSortVal(b, sortCol);
+        if (va < vb) return -1 * sortDir;
+        if (va > vb) return 1 * sortDir;
+        return 0;
+    });
+}
+
+function getSortVal(ticket, col) {
+    if (col === 'duration') {
+        const h = (new Date(ticket.closed_at || new Date()) - new Date(ticket.opened_at || '2000-01-01')) / 3600000;
+        return isNaN(h) ? 0 : h;
+    }
+    const raw = ticket[col];
+    const val = getDisplayVal(raw) || (raw != null ? String(raw) : '');
+    const dateFields = ['opened_at','closed_at','sys_created_on','sys_updated_on','due_date','expected_start','work_start','work_end'];
+    if (dateFields.includes(col)) return new Date(val || '2000-01-01').getTime();
+    return val.toLowerCase();
+}
+
+function getDisplayVal(field) {
+    if (!field) return '';
+    if (typeof field === 'string') return field;
+    return field.display_value || field.value || '';
+}
+
+function isClosedState(state) {
+    const s = (state || '').toLowerCase();
+    return s.includes('closed') || s.includes('complete') || s.includes('resolved') || s.includes('cancelled');
+}
+
+function getStateBadgeClass(state) {
+    const s = (state || '').toLowerCase();
+    if (s.includes('closed') || s.includes('complete') || s.includes('resolved')) return 'closed';
+    if (s.includes('open') || s.includes('new')) return 'open';
+    if (s.includes('pending') || s.includes('waiting') || s.includes('approval')) return 'pending';
+    return 'wip';
+}
+
+function calcDuration(openedAt, closedAt) {
+    if (!openedAt) return '--';
+    const start = new Date(openedAt);
+    const end = closedAt ? new Date(closedAt) : new Date();
+    const hours = (end - start) / (1000 * 60 * 60);
+    if (hours < 0) return '--';
+    if (hours < 1) return `${Math.round(hours * 60)}m`;
+    if (hours < 24) return `${hours.toFixed(1)}h`;
+    if (hours < 720) return `${(hours / 24).toFixed(1)}d`;
+    return `${(hours / 720).toFixed(1)}mo`;
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return '--';
+    const d = new Date(dateStr);
+    if (isNaN(d)) return dateStr;
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function getAvatarColor(name) {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#ef4444', '#f59e0b', '#ec4899', '#06b6d4', '#6366f1'];
+    return colors[Math.abs(hash) % colors.length];
+}
+
+function getInitials(name) {
+    if (!name) return '?';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return name[0].toUpperCase();
+}
+
+function renderCellHtml(t, key, highlightWords, instance) {
+    const raw = t[key];
+    const val = getDisplayVal(raw) || (raw != null ? String(raw) : '');
+
+    if (key === 'number') {
+        return `<a class="ticket-num" href="https://${instance}/nav_to.do?uri=sc_req_item.do?sysparm_query=number=${val}" target="_blank" onclick="event.stopPropagation()">${val || '--'}</a>`;
+    }
+    if (key === 'short_description') {
+        const html = highlightWords.length > 0 ? highlightText(val || '--', highlightWords) : escapeHtml(val || '--');
+        return `<span class="desc-cell" style="display:block;" title="${(val || '').replace(/"/g, '&quot;')}">${html}</span>`;
+    }
+    if (key === 'state') {
+        return `<span class="state-badge ${getStateBadgeClass(val)}">${val || 'Unknown'}</span>`;
+    }
+    if (key === 'stage') {
+        return val ? `<span class="state-badge wip" style="font-size:9px;">${val}</span>` : '--';
+    }
+    if (key === 'cat_item') {
+        return val ? `<span style="color:var(--axos-orange);font-size:12px;">${escapeHtml(val)}</span>` : '--';
+    }
+    if (key === 'opened_by' || key === 'assigned_to' || key === 'requested_for') {
+        if (!val) return '--';
+        return `<div class="person-cell"><div class="person-avatar" style="background:${getAvatarColor(val)}">${getInitials(val)}</div><span>${val}</span></div>`;
+    }
+    if (key === 'opened_at' || key === 'closed_at' || key === 'due_date' || key === 'sys_created_on' || key === 'sys_updated_on' || key === 'expected_start' || key === 'work_start' || key === 'work_end') {
+        return `<span style="white-space:nowrap;">${formatDate(val)}</span>`;
+    }
+    if (key === 'duration') {
+        return `<span class="duration-cell">${calcDuration(t.opened_at, isClosedState(t.state) ? t.closed_at : null)}</span>`;
+    }
+    if (key === 'close_notes' || key === 'description' || key === 'comments' || key === 'work_notes') {
+        return `<span class="close-notes-cell" style="display:block;" title="${(val || '').replace(/"/g, '&quot;')}">${val || '--'}</span>`;
+    }
+    if (key === 'active') {
+        if (val === 'true' || val === true) return '<span style="color:var(--success);">Active</span>';
+        if (val === 'false' || val === false) return '<span style="color:var(--text-muted);">Inactive</span>';
+    }
+    if (key === 'priority') {
+        const p = (val || '').toLowerCase();
+        let color = 'var(--text-secondary)';
+        if (p.includes('critical') || p.includes('1')) color = 'var(--error)';
+        else if (p.includes('high') || p.includes('2')) color = 'var(--warning)';
+        return `<span style="color:${color};">${val || '--'}</span>`;
+    }
+    return val ? escapeHtml(val) : '--';
+}
+
+function renderTable() {
+    const cols = getVisibleColumns();
+    const thead = document.getElementById('tableHead');
+    thead.innerHTML = cols.map(c =>
+        c.sortable
+            ? `<th class="sortable" onclick="sortTable('${c.key}')">${c.label}</th>`
+            : `<th>${c.label}</th>`
+    ).join('');
+
+    const tbody = document.getElementById('tableBody');
+    if (filteredTickets.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${cols.length}" style="text-align:center;padding:40px;color:var(--text-muted);">No tickets match your filters</td></tr>`;
+        return;
+    }
+
+    const instance = document.getElementById('instanceUrl').value.trim();
+    const highlightWords = activeKeywordExpr ? extractKeywords(activeKeywordExpr) : [];
+
+    tbody.innerHTML = filteredTickets.map((t, i) => {
+        const tds = cols.map(c => `<td>${renderCellHtml(t, c.key, highlightWords, instance)}</td>`).join('');
+        return `<tr onclick="showDetail(${i})" style="cursor:pointer;">${tds}</tr>`;
+    }).join('');
+}
+
+function showDetail(idx) {
+    const t = filteredTickets[idx];
+    if (!t) return;
+
+    document.getElementById('modalTitle').textContent = `${t.number} — ${t.short_description || 'No description'}`;
+
+    const dur = calcDuration(t.opened_at, isClosedState(t.state) ? t.closed_at : null);
+    const isOpen = !isClosedState(t.state);
+    const instance = document.getElementById('instanceUrl').value.trim();
+
+    const topSection = [
+        { key: 'state', label: 'State' },
+        { key: 'stage', label: 'Stage' },
+        { key: 'priority', label: 'Priority' },
+        { key: '_duration', label: isOpen ? 'Duration (open)' : 'Duration' },
+    ];
+    const peopleSection = [
+        { key: 'opened_by', label: 'Reported By' },
+        { key: 'requested_for', label: 'Requested For' },
+        { key: 'assigned_to', label: 'Assigned To' },
+        { key: 'closed_by', label: 'Closed By' },
+        { key: 'assignment_group', label: 'Team' },
+    ];
+    const timeSection = [
+        { key: 'opened_at', label: 'Opened' },
+        { key: 'closed_at', label: 'Closed' },
+        { key: 'due_date', label: 'Due Date' },
+        { key: 'made_sla', label: 'Made SLA' },
+    ];
+    const contextSection = [
+        { key: 'cat_item', label: 'Request Type' },
+        { key: 'impact', label: 'Impact' },
+        { key: 'urgency', label: 'Urgency' },
+        { key: 'approval', label: 'Approval' },
+        { key: 'contact_type', label: 'Contact Type' },
+        { key: 'request', label: 'Parent Request' },
+        { key: 'u_jira_record_number', label: 'JIRA #' },
+        { key: 'u_close_code', label: 'Close Code' },
+        { key: 'reassignment_count', label: 'Reassignments' },
+    ];
+    const longSection = [
+        { key: 'description', label: 'Full Description' },
+        { key: 'close_notes', label: 'Solution / Close Notes' },
+        { key: 'work_notes', label: 'Work Notes' },
+        { key: 'comments', label: 'Comments' },
+        { key: 'u_reason_for_delay', label: 'Reason for Delay' },
+    ];
+
+    const knownKeys = new Set();
+    [topSection, peopleSection, timeSection, contextSection, longSection].forEach(s =>
+        s.forEach(f => knownKeys.add(f.key))
+    );
+    knownKeys.add('_duration'); knownKeys.add('number'); knownKeys.add('short_description');
+
+    function getVal(key) {
+        if (key === '_duration') return dur;
+        const raw = t[key];
+        return getDisplayVal(raw) || (raw != null ? String(raw) : '');
+    }
+
+    function renderField(key, label, val) {
+        if (!val || val === 'UNKNOWN') return '';
+        if (key === 'state') return `<span class="state-badge ${getStateBadgeClass(val)}">${escapeHtml(val)}</span>`;
+        if (key === 'stage') return `<span class="state-badge wip">${escapeHtml(val)}</span>`;
+        if (key === '_duration') return `<span class="val mono" style="color:${isOpen ? 'var(--error)' : 'var(--success)'};">${val}</span>`;
+        if (key === 'priority') {
+            const p = val.toLowerCase();
+            let c = 'var(--text-secondary)';
+            if (p.includes('critical') || p.includes('1')) c = 'var(--error)';
+            else if (p.includes('high') || p.includes('2')) c = 'var(--warning)';
+            return `<span style="color:${c};font-weight:600;">${escapeHtml(val)}</span>`;
+        }
+        return escapeHtml(val);
+    }
+
+    function renderGroup(title, fields) {
+        const items = fields.map(f => {
+            const val = getVal(f.key);
+            if (!val || val === 'UNKNOWN') return '';
+            return `<div class="detail-item"><label>${escapeHtml(f.label)}</label><div class="val">${renderField(f.key, f.label, val)}</div></div>`;
+        }).filter(Boolean);
+        if (!items.length) return '';
+        return `<div style="margin-bottom:18px;"><div style="font-size:11px;font-weight:700;color:var(--axos-orange);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border-color);">${title}</div><div class="detail-grid">${items.join('')}</div></div>`;
+    }
+
+    function renderLongGroup(fields) {
+        return fields.map(f => {
+            const val = getVal(f.key);
+            if (!val || val === 'UNKNOWN') return '';
+            return `<div style="margin-bottom:14px;"><label style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:4px;">${escapeHtml(f.label)}</label><div style="background:var(--bg-tertiary);padding:12px 14px;border-radius:8px;font-size:13px;line-height:1.7;word-break:break-word;white-space:pre-wrap;max-height:200px;overflow-y:auto;color:var(--text-secondary);">${escapeHtml(val)}</div></div>`;
+        }).filter(Boolean).join('');
+    }
+
+    let html = `<div style="margin-bottom:12px;"><a href="https://${instance}/nav_to.do?uri=sc_req_item.do?sysparm_query=number=${t.number}" target="_blank" style="color:var(--axos-orange);font-size:12px;text-decoration:none;">Open in ServiceNow &rarr;</a></div>`;
+    html += renderGroup('Status', topSection);
+    html += renderGroup('People', peopleSection);
+    html += renderGroup('Timeline', timeSection);
+    html += renderGroup('Details', contextSection);
+    html += renderLongGroup(longSection);
+
+    const extraKeys = Object.keys(t).filter(k =>
+        !knownKeys.has(k) && !SKIP_FIELDS.has(k)
+    );
+    const extraItems = extraKeys.map(k => {
+        const val = getVal(k);
+        if (!val || val === 'UNKNOWN' || val === 'false' || val === '$0.00' || val === '0') return '';
+        const label = FRIENDLY_LABELS[k] || k.replace(/[_\.]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        if (val.length > 100) return '';
+        return `<div class="detail-item"><label>${escapeHtml(label)}</label><div class="val" style="font-size:12px;color:var(--text-muted);">${escapeHtml(val)}</div></div>`;
+    }).filter(Boolean);
+
+    if (extraItems.length) {
+        html += `<details style="margin-top:12px;"><summary style="cursor:pointer;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;padding:6px 0;">Other Fields (${extraItems.length})</summary><div class="detail-grid" style="margin-top:8px;">${extraItems.join('')}</div></details>`;
+    }
+
+    document.getElementById('modalBody').innerHTML = html;
+    document.getElementById('detailModal').classList.add('show');
+}
+
+function closeModal() {
+    document.getElementById('detailModal').classList.remove('show');
+}
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        closeModal();
+        closeDrillModal();
+        closeSettingsModal();
+        document.getElementById('adminGateModal')?.classList.remove('show');
+    }
+});
+
+function renderCharts(tickets) {
+    Object.values(charts).forEach(c => c.destroy());
+    charts = {};
+
+    Chart.defaults.color = '#9ca3af';
+    Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+
+    renderStateChart(tickets);
+    renderRequesterChart(tickets);
+    renderTimelineChart(tickets);
+    renderResolutionChart(tickets);
+}
+
+function renderStateChart(tickets) {
+    const counts = {};
+    tickets.forEach(t => { const s = t.state || 'Unknown'; counts[s] = (counts[s] || 0) + 1; });
+
+    const labels = Object.keys(counts);
+    const data = Object.values(counts);
+    const bgColors = labels.map(l => {
+        const s = l.toLowerCase();
+        if (s.includes('closed') || s.includes('complete')) return '#10b981';
+        if (s.includes('open') || s.includes('new')) return '#ef4444';
+        if (s.includes('pending') || s.includes('wait')) return '#f59e0b';
+        return '#3b82f6';
+    });
+
+    charts.state = new Chart(document.getElementById('stateChart'), {
+        type: 'doughnut',
+        data: { labels, datasets: [{ data, backgroundColor: bgColors, borderWidth: 0, hoverOffset: 8 }] },
+        options: {
+            responsive: true, maintainAspectRatio: true,
+            plugins: {
+                legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true, pointStyleWidth: 10 } }
+            },
+            cutout: '60%',
+            onClick: (e, els) => {
+                if (!els.length) return;
+                const label = labels[els[0].index];
+                drillDown('State: ' + label, tickets.filter(t => (t.state || 'Unknown') === label));
+            }
+        }
+    });
+}
+
+function renderRequesterChart(tickets) {
+    const counts = {};
+    tickets.forEach(t => {
+        const name = getDisplayVal(t.opened_by) || 'Unknown';
+        counts[name] = (counts[name] || 0) + 1;
+    });
+
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+    const labels = sorted.map(s => {
+        const parts = s[0].split(' ');
+        return parts.length > 1 ? parts[0] + ' ' + parts[parts.length - 1][0] + '.' : s[0];
+    });
+    const data = sorted.map(s => s[1]);
+
+    const fullNames = sorted.map(s => s[0]);
+    charts.requester = new Chart(document.getElementById('requesterChart'), {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                data,
+                backgroundColor: 'rgba(250,167,74,0.7)',
+                borderColor: 'rgba(250,167,74,1)',
+                borderWidth: 1, borderRadius: 6, barPercentage: 0.7
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: true, indexAxis: 'y',
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { stepSize: 1 } },
+                y: { grid: { display: false } }
+            },
+            onClick: (e, els) => {
+                if (!els.length) return;
+                const name = fullNames[els[0].index];
+                drillDown('Reported by: ' + name, tickets.filter(t => (getDisplayVal(t.opened_by) || 'Unknown') === name));
+            }
+        }
+    });
+}
+
+function renderTimelineChart(tickets) {
+    const monthly = {};
+    tickets.forEach(t => {
+        const d = new Date(t.opened_at);
+        if (isNaN(d)) return;
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        monthly[key] = (monthly[key] || 0) + 1;
+    });
+
+    const sortedKeys = Object.keys(monthly).sort();
+    const labels = sortedKeys.map(k => {
+        const [y, m] = k.split('-');
+        return new Date(y, m - 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+    });
+    const data = sortedKeys.map(k => monthly[k]);
+
+    charts.timeline = new Chart(document.getElementById('timelineChart'), {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                data, fill: true,
+                backgroundColor: 'rgba(59,130,246,0.12)',
+                borderColor: '#3b82f6', borderWidth: 2,
+                pointBackgroundColor: '#3b82f6', pointRadius: 4, pointHoverRadius: 6,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { color: 'rgba(255,255,255,0.04)' } },
+                y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { stepSize: 1 }, beginAtZero: true }
+            },
+            onClick: (e, els) => {
+                if (!els.length) return;
+                const monthKey = sortedKeys[els[0].index];
+                const [y, m] = monthKey.split('-');
+                const monthName = new Date(y, m - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                const matches = tickets.filter(t => {
+                    const d = new Date(t.opened_at);
+                    return !isNaN(d) && `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` === monthKey;
+                });
+                drillDown(monthName, matches);
+            }
+        }
+    });
+}
+
+function renderResolutionChart(tickets) {
+    const buckets = { '<1h': 0, '1-4h': 0, '4-12h': 0, '12-24h': 0, '1-3d': 0, '3-7d': 0, '7d+': 0 };
+    tickets.filter(t => t.opened_at && t.closed_at && isClosedState(t.state)).forEach(t => {
+        const hours = (new Date(t.closed_at) - new Date(t.opened_at)) / (1000 * 60 * 60);
+        if (hours < 0) return;
+        if (hours < 1) buckets['<1h']++;
+        else if (hours < 4) buckets['1-4h']++;
+        else if (hours < 12) buckets['4-12h']++;
+        else if (hours < 24) buckets['12-24h']++;
+        else if (hours < 72) buckets['1-3d']++;
+        else if (hours < 168) buckets['3-7d']++;
+        else buckets['7d+']++;
+    });
+
+    const colors = ['#10b981', '#34d399', '#fbbf24', '#f59e0b', '#f97316', '#ef4444', '#dc2626'];
+
+    const bucketBounds = [[0,1],[1,4],[4,12],[12,24],[24,72],[72,168],[168,Infinity]];
+    charts.resolution = new Chart(document.getElementById('resolutionChart'), {
+        type: 'bar',
+        data: {
+            labels: Object.keys(buckets),
+            datasets: [{
+                data: Object.values(buckets),
+                backgroundColor: colors.map(c => c + 'cc'),
+                borderColor: colors,
+                borderWidth: 1, borderRadius: 6, barPercentage: 0.7
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { color: 'rgba(255,255,255,0.04)' } },
+                y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { stepSize: 1 }, beginAtZero: true }
+            },
+            onClick: (e, els) => {
+                if (!els.length) return;
+                const idx = els[0].index;
+                const [lo, hi] = bucketBounds[idx];
+                const label = Object.keys(buckets)[idx];
+                const matches = tickets.filter(t => {
+                    if (!t.opened_at || !t.closed_at || !isClosedState(t.state)) return false;
+                    const h = (new Date(t.closed_at) - new Date(t.opened_at)) / 3600000;
+                    return h >= lo && h < hi;
+                });
+                drillDown('Resolution: ' + label, matches);
+            }
+        }
+    });
+}
+
+function loadDemoData() {
+    const names = ['Rob Carie', 'Naga Harish Balabhadrapathruni', 'Manasa Jayaraman', 'Brandon Hines', 'Damon Brown', 'Diana Fernandez', 'Fausto de Jesus', 'Avinash Lakhiani', 'Archana Gorantla'];
+    const assignees = ['ITN Prod Support', 'SRE Team', 'Platform Engineering', 'DevOps Team'];
+    const descriptions = [
+        'UAT and QA environments are down', 'OLB UAT is down - 5/15', 'UDB Login UAT Down',
+        'QA Env is DOWN - Can\'t log in', 'OLB UAT OTP is down', 'UAT identity server is down',
+        'https://secure.uat.axos.com/login is down', 'Audit logging is completely down on production',
+        'Consumer UAT environment is not responding', 'Sitecore QA servers returning 503',
+        'Production payment gateway timeout', 'F5 load balancer not routing UAT traffic',
+        'AFS EquityBuild Portal UAT refresh needed', 'CA Adv Auth service disruption in QA',
+        'Identity X staging environment outage', 'Decisions platform UAT unavailable',
+        'Mobile banking API UAT gateway down', 'Digital account opening UAT errors',
+        'Wire transfer service intermittent failures', 'ACH processing delays in staging'
+    ];
+    const states = ['Closed Complete', 'Closed Complete', 'Closed Complete', 'Closed Complete', 'Closed Complete', 'Closed Complete', 'Open', 'Pending', 'Closed Complete', 'Closed Complete'];
+    const closeNotes = [
+        'Server restart resolved the issue', 'Certificate renewed and services restored',
+        'DNS configuration corrected', 'Load balancer rules updated', 'Memory leak identified and patched',
+        'Deployed hotfix to resolve timeout', 'Restarted application pool', 'Network route restored',
+        'Database connection pool increased', 'SSL certificate chain fixed'
+    ];
+
+    const demo = [];
+    for (let i = 0; i < 35; i++) {
+        const openDate = new Date(2024 + Math.floor(Math.random() * 2), Math.floor(Math.random() * 12), 1 + Math.floor(Math.random() * 28));
+        const state = states[i % states.length];
+        const isClosed = state.includes('Closed');
+        const hoursOpen = isClosed ? (0.5 + Math.random() * 120) : 0;
+        const closeDate = isClosed ? new Date(openDate.getTime() + hoursOpen * 3600000) : null;
+
+        demo.push({
+            number: `RITM0${200000 + i}`,
+            short_description: descriptions[i % descriptions.length],
+            state: state,
+            opened_by: names[i % names.length],
+            opened_at: openDate.toISOString().replace('T', ' ').slice(0, 19),
+            closed_at: closeDate ? closeDate.toISOString().replace('T', ' ').slice(0, 19) : '',
+            assigned_to: assignees[i % assignees.length],
+            assignment_group: assignees[i % assignees.length],
+            close_notes: isClosed ? closeNotes[i % closeNotes.length] : '',
+            approval: 'Approved',
+            cat_item: 'Site Reliability Request',
+            description: descriptions[i % descriptions.length] + '. This is impacting team productivity.',
+            priority: ['1 - Critical', '2 - High', '3 - Moderate'][i % 3],
+            active: isClosed ? 'false' : 'true'
+        });
+    }
+
+    allTickets = demo;
+    allTickets.sort((a, b) => new Date(b.opened_at) - new Date(a.opened_at));
+    document.getElementById('authStatus').className = 'auth-status ok';
+    document.getElementById('authStatus').textContent = `Loaded ${allTickets.length} demo tickets`;
+    document.getElementById('exportBtn').style.display = '';
+    renderDashboard();
+    showToast(`Loaded ${allTickets.length} demo tickets for preview`);
+}
+
+function exportCSV() {
+    if (filteredTickets.length === 0) return showToast('No tickets to export', 'error');
+
+    const cols = getVisibleColumns();
+    const headers = cols.map(c => c.label);
+    const rows = filteredTickets.map(t =>
+        cols.map(c => {
+            let val;
+            if (c.key === 'duration') val = calcDuration(t.opened_at, isClosedState(t.state) ? t.closed_at : null);
+            else val = getDisplayVal(t[c.key]) || (t[c.key] != null ? String(t[c.key]) : '');
+            return `"${(val || '').replace(/"/g, '""')}"`;
+        })
+    );
+
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `environment_downtime_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+    showToast(`Exported ${filteredTickets.length} tickets to CSV`);
+}
+
+// ─── DRILL-DOWN ───
+function drillDown(title, tickets) {
+    document.getElementById('drillTitle').textContent = title + ` (${tickets.length})`;
+    const instance = document.getElementById('instanceUrl').value.trim();
+    const body = document.getElementById('drillBody');
+    if (!tickets.length) {
+        body.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:40px;">No tickets in this segment.</p>';
+    } else {
+        body.innerHTML = tickets.map(t => {
+            const dur = calcDuration(t.opened_at, isClosedState(t.state) ? t.closed_at : null);
+            return `<div class="drill-ticket" onclick="closeDrillModal();showDetail(${filteredTickets.indexOf(t)})">
+                <span class="dt-num">${t.number}</span>
+                <span class="dt-desc" title="${escapeHtml(t.short_description || '')}">${escapeHtml(t.short_description || '--')}</span>
+                <span class="dt-badge state-badge ${getStateBadgeClass(t.state)}" style="font-size:9px;padding:2px 8px;">${t.state || '?'}</span>
+                <span style="font-size:11px;color:var(--text-muted);min-width:50px;text-align:right;">${dur}</span>
+            </div>`;
+        }).join('');
+    }
+    document.getElementById('drillModal').classList.add('show');
+}
+
+function closeDrillModal() { document.getElementById('drillModal').classList.remove('show'); }
+
+// ─── DYNAMIC TITLE ───
+function updateDashboardTitle() {
+    const titleEl = document.querySelector('.dash-title');
+    const tableEl = document.getElementById('tableTitle');
+    const parts = [];
+    if (activeEnvFilters.length) parts.push(activeEnvFilters.map(e => e.toUpperCase()).join(', '));
+    if (activeKeywordExpr) parts.push(document.getElementById('keywordInput').value.trim());
+    const stateF = document.getElementById('stateFilter')?.value;
+    if (stateF) parts.push(stateF);
+    const yearF = document.getElementById('yearFilter')?.value;
+    if (yearF) parts.push(yearF);
+
+    if (parts.length) {
+        const label = escapeHtml(parts.join(' + '));
+        if (titleEl) titleEl.innerHTML = `<span style="color:var(--text-muted);font-size:16px;">Tickets:</span> ${label}`;
+        if (tableEl) tableEl.textContent = `Filtered Tickets`;
+    } else {
+        if (titleEl) titleEl.textContent = 'All Service Tickets';
+        if (tableEl) tableEl.textContent = 'Service Tickets';
+    }
+}
+
+// ─── AI ASSISTANT ───
+let adminUnlocked = false;
+let aiChatHistory = [];
+
+function getAISettings() { return JSON.parse(localStorage.getItem('snow_ai_settings') || '{}'); }
+function saveAISettings() {
+    const s = {
+        provider: document.getElementById('aiProvider').value,
+        apiKey: document.getElementById('aiApiKey').value,
+        azureEndpoint: document.getElementById('aiAzureEndpoint')?.value || '',
+        azureDeployment: document.getElementById('aiAzureDeployment')?.value || '',
+        model: document.getElementById('aiModel').value,
+    };
+    localStorage.setItem('snow_ai_settings', JSON.stringify(s));
+    document.getElementById('azureFields').style.display = s.provider === 'azure' ? 'block' : 'none';
+}
+
+function loadAISettings() {
+    const s = getAISettings();
+    if (s.provider) document.getElementById('aiProvider').value = s.provider;
+    if (s.apiKey) document.getElementById('aiApiKey').value = s.apiKey;
+    if (s.azureEndpoint) document.getElementById('aiAzureEndpoint').value = s.azureEndpoint;
+    if (s.azureDeployment) document.getElementById('aiAzureDeployment').value = s.azureDeployment;
+    if (s.model) document.getElementById('aiModel').value = s.model;
+    document.getElementById('azureFields').style.display = (s.provider === 'azure') ? 'block' : 'none';
+}
+
+function openAISettings() {
+    if (adminUnlocked) {
+        loadAISettings();
+        document.getElementById('settingsModal').classList.add('show');
+        return;
+    }
+    document.getElementById('adminGateModal').classList.add('show');
+    setTimeout(() => { const inp = document.getElementById('adminPassInput'); if (inp) { inp.value = ''; inp.focus(); } }, 100);
+}
+
+function closeSettingsModal() { document.getElementById('settingsModal').classList.remove('show'); }
+
+function verifyAdmin() {
+    const inp = document.getElementById('adminPassInput');
+    if (inp.value === atob('SmNtdDExMDc=')) {
+        adminUnlocked = true;
+        document.getElementById('adminGateModal').classList.remove('show');
+        loadAISettings();
+        document.getElementById('settingsModal').classList.add('show');
+        showToast('Admin access granted');
+    } else {
+        document.getElementById('adminError').style.display = 'block';
+        inp.value = '';
+        inp.focus();
+    }
+}
+
+function toggleAIChat() {
+    const drawer = document.getElementById('aiDrawer');
+    drawer.classList.toggle('open');
+    document.body.classList.toggle('ai-open');
+    if (drawer.classList.contains('open')) document.getElementById('aiInput').focus();
+}
+
+function clearAIChat() {
+    aiChatHistory = [];
+    document.getElementById('aiMessages').innerHTML = '<div class="ai-msg system">Chat cleared. Ask me about the ticket data.</div>';
+}
+
+function addAIMsg(type, text) {
+    const c = document.getElementById('aiMessages');
+    const div = document.createElement('div');
+    div.className = 'ai-msg ' + type;
+    if (type === 'ai') div.innerHTML = text;
+    else div.textContent = text;
+    c.appendChild(div);
+    c.scrollTop = c.scrollHeight;
+    return div;
+}
+
+async function callAIApi(messages) {
+    const s = getAISettings();
+    let url, headers, body;
+    if (s.provider === 'azure') {
+        const ep = (s.azureEndpoint || '').replace(/\/+$/, '');
+        const dep = s.azureDeployment || 'gpt-4o';
+        url = `${ep}/openai/deployments/${dep}/chat/completions?api-version=2024-08-01-preview`;
+        headers = { 'Content-Type': 'application/json', 'api-key': s.apiKey };
+        body = { messages, temperature: 0.3 };
+    } else {
+        url = 'https://api.openai.com/v1/chat/completions';
+        headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${s.apiKey}` };
+        body = { model: s.model || 'gpt-4o-mini', messages, temperature: 0.3 };
+    }
+    const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+    if (!res.ok) { const et = await res.text(); throw new Error(`API ${res.status}: ${et.substring(0, 200)}`); }
+    return await res.json();
+}
+
+function executeAIAction(response) {
+    if (!response || !response.action) return;
+    const a = response.action;
+
+    if (a === 'filter') {
+        if (response.keyword != null) {
+            document.getElementById('keywordInput').value = response.keyword;
+            if (response.keyword) applyKeywordFilter();
+            else clearKeywordFilter();
+        }
+        if (response.state != null) {
+            document.getElementById('stateFilter').value = response.state;
+        }
+        if (response.year != null) {
+            document.getElementById('yearFilter').value = response.year;
+        }
+        if (response.envs != null) {
+            document.querySelectorAll('.env-chip').forEach(c => {
+                const env = c.dataset.env;
+                const shouldBeActive = response.envs.includes(env);
+                c.classList.toggle('active', shouldBeActive);
+            });
+            activeEnvFilters = response.envs;
+        }
+        applyFilters();
+    } else if (a === 'clear_filters') {
+        clearKeywordFilter();
+        document.getElementById('stateFilter').value = '';
+        document.getElementById('yearFilter').value = '';
+        document.querySelectorAll('.env-chip').forEach(c => c.classList.remove('active'));
+        activeEnvFilters = [];
+        applyFilters();
+    } else if (a === 'show_ticket') {
+        const idx = filteredTickets.findIndex(t => t.number === response.ticket);
+        if (idx >= 0) showDetail(idx);
+        else {
+            const allIdx = allTickets.findIndex(t => t.number === response.ticket);
+            if (allIdx >= 0) {
+                clearKeywordFilter();
+                document.getElementById('stateFilter').value = '';
+                document.getElementById('yearFilter').value = '';
+                activeEnvFilters = [];
+                applyFilters();
+                const newIdx = filteredTickets.findIndex(t => t.number === response.ticket);
+                if (newIdx >= 0) showDetail(newIdx);
+            }
+        }
+    } else if (a === 'search') {
+        document.getElementById('searchInput').value = response.query || '';
+        applyFilters();
+    }
+}
+
+async function sendAIChat() {
+    const input = document.getElementById('aiInput');
+    const msg = input.value.trim();
+    if (!msg) return;
+    const settings = getAISettings();
+    if (!settings.apiKey) { showToast('Set your API key in Settings (⚙️) first', 'error'); return; }
+
+    addAIMsg('user', msg);
+    input.value = '';
+    const sendBtn = document.getElementById('aiSendBtn');
+    sendBtn.disabled = true;
+    sendBtn.style.opacity = '0.5';
+    const loadingEl = addAIMsg('ai', '<span class="ai-loading"></span><span class="ai-loading"></span><span class="ai-loading"></span>');
+
+    try {
+        const ticketSummary = filteredTickets.slice(0, 50).map(t => ({
+            number: t.number,
+            desc: t.short_description,
+            state: t.state,
+            stage: t.stage,
+            opened: t.opened_at,
+            closed: t.closed_at,
+            reporter: getDisplayVal(t.opened_by),
+            assignee: getDisplayVal(t.assigned_to),
+            priority: t.priority,
+            type: getDisplayVal(t.cat_item),
+            solution: t.close_notes,
+        })).filter(t => t.number);
+
+        const allStates = [...new Set(allTickets.map(t => t.state).filter(Boolean))];
+        const allYears = [...new Set(allTickets.map(t => { const d = new Date(t.opened_at); return isNaN(d) ? null : String(d.getFullYear()); }).filter(Boolean))];
+
+        const stats = {
+            total: allTickets.length,
+            filtered: filteredTickets.length,
+            open: filteredTickets.filter(t => !isClosedState(t.state)).length,
+            closed: filteredTickets.filter(t => isClosedState(t.state)).length,
+        };
+
+        const systemPrompt = `You are an AI assistant for the Axos Bank ServiceNow Dashboard. You can ANALYZE ticket data AND CONTROL the dashboard by returning JSON actions.
+
+CURRENT STATE:
+- Total tickets: ${stats.total}, Showing: ${stats.filtered} (${stats.open} open, ${stats.closed} closed)
+- Active keyword filter: "${document.getElementById('keywordInput')?.value || ''}"
+- Active state filter: "${document.getElementById('stateFilter')?.value || 'all'}"
+- Active year filter: "${document.getElementById('yearFilter')?.value || 'all'}"
+- Active env filters: [${activeEnvFilters.join(', ')}]
+- Available states: [${allStates.join(', ')}]
+- Available years: [${allYears.join(', ')}]
+- Available envs: [uat, qa, stg, prod, dev]
+
+SAMPLE TICKETS (up to 50 of current view):
+${JSON.stringify(ticketSummary, null, 1)}
+
+ACTIONS - Return ONLY a JSON object for dashboard actions:
+1. Apply filters: {"action":"filter","keyword":"down AND uat","state":"","year":"","envs":["uat"],"message":"Filtered to UAT downtime tickets"}
+   - keyword: keyword expression (supports AND/OR/parentheses). Empty string to clear.
+   - state: exact state value or empty for all.
+   - year: exact year or empty for all.
+   - envs: array of env codes or empty array for all.
+   - Only include fields you want to change.
+2. Clear all filters: {"action":"clear_filters","message":"Cleared all filters"}
+3. Open a ticket: {"action":"show_ticket","ticket":"RITM0363068","message":"Opening ticket RITM0363068"}
+4. Quick search: {"action":"search","query":"some text","message":"Searching for..."}
+5. Just answer/analyze (no action): {"action":"message","message":"Your analysis here..."}
+
+RULES:
+- When user asks to filter/show/find tickets, USE ACTIONS to control the dashboard.
+- When user asks questions or analysis, respond with action:"message".
+- Be concise. Use bullet points for analysis. Reference ticket numbers.
+- For keyword filters use the boolean syntax: down AND (uat OR qa), outage OR disruption, etc.
+- ALWAYS include a "message" field explaining what you did.
+- Return ONLY valid JSON. No markdown, no code fences.`;
+
+        aiChatHistory.push({ role: 'user', content: msg });
+        const messages = [{ role: 'system', content: systemPrompt }, ...aiChatHistory.slice(-10)];
+        const data = await callAIApi(messages);
+        const content = data.choices[0].message.content;
+        aiChatHistory.push({ role: 'assistant', content: content });
+
+        let response;
+        try {
+            const jm = content.match(/```json?\s*([\s\S]*?)```/) || content.match(/(\{[\s\S]*\})/);
+            response = JSON.parse(jm ? jm[1] : content);
+        } catch {
+            response = { action: 'message', message: content };
+        }
+
+        if (response.action && response.action !== 'message') {
+            executeAIAction(response);
+            loadingEl.innerHTML = escapeHtml(response.message || 'Done!');
+            if (response.action === 'filter' || response.action === 'clear_filters' || response.action === 'search') {
+                loadingEl.innerHTML += `<br><span style="font-size:11px;color:var(--axos-orange);">✓ Dashboard updated · ${filteredTickets.length} tickets</span>`;
+            } else if (response.action === 'show_ticket') {
+                loadingEl.innerHTML += `<br><span style="font-size:11px;color:var(--axos-orange);">✓ Ticket opened</span>`;
+            }
+        } else {
+            loadingEl.innerHTML = escapeHtml(response.message || content);
+        }
+    } catch (err) {
+        loadingEl.innerHTML = '<span style="color:var(--error);">Error: ' + escapeHtml(err.message) + '</span>';
+    } finally {
+        sendBtn.disabled = false;
+        sendBtn.style.opacity = '1';
+    }
+}
+</script>
+</body>
+</html>
