@@ -784,58 +784,108 @@ function showToast(msg, type = 'success') {
     setTimeout(() => t.classList.remove('show'), 4000);
 }
 
-async function autoFetch() {
-    const statusEl = document.getElementById('authStatus');
+function getSnowDirectUrl() {
+    const instance = document.getElementById('instanceUrl').value.trim();
+    const query = encodeURIComponent(
+        'cat_item.name=Site Reliability Request' +
+        '^NQshort_descriptionLIKEdown' +
+        '^NQshort_descriptionLIKEoutage' +
+        '^NQshort_descriptionLIKEenvironment' +
+        '^NQshort_descriptionLIKEdisruption' +
+        '^NQshort_descriptionLIKEunavailable'
+    );
+    return `https://${instance}/sc_req_item.do?JSONv2&sysparm_query=${query}&displayvalue=true&sysparm_record_count=500`;
+}
+
+async function tryDirectSnowFetch() {
+    const url = getSnowDirectUrl();
+    const resp = await fetch(url, {
+        credentials: 'include',
+        signal: AbortSignal.timeout(12000)
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    return data.records || data.result || [];
+}
+
+async function tryProxyFetch() {
     const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     const proxyBase = isLocal ? '' : 'http://localhost:8080';
-    showF1Loader('Connecting to ServiceNow...');
-    try {
-        const resp = await fetch(proxyBase + '/api/snow', { signal: AbortSignal.timeout(8000) });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        document.getElementById('f1Subtitle').textContent = 'Loading ticket data...';
-        const data = await resp.json();
-        const records = data.result || [];
+    const resp = await fetch(proxyBase + '/api/snow', { signal: AbortSignal.timeout(8000) });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    return data.result || [];
+}
 
-        if (records.length === 0) {
-            hideF1Loader(false);
-            showFallbackMode('No tickets returned from ServiceNow. The query may need adjusting.');
+async function autoFetch() {
+    showF1Loader('Connecting to ServiceNow...');
+
+    // Strategy 1: Try local proxy first (fastest if running)
+    try {
+        document.getElementById('f1Subtitle').textContent = 'Checking local proxy...';
+        const records = await tryProxyFetch();
+        if (records.length > 0) {
+            hideF1Loader(true);
+            setTimeout(() => {
+                loadRecords(records);
+                showToast(`Loaded ${allTickets.length} tickets via local proxy`);
+            }, 1200);
             return;
         }
+    } catch (e) { /* proxy not running, continue */ }
 
-        hideF1Loader(true);
-        setTimeout(() => {
-            loadRecords(records);
-            showToast(`Loaded ${allTickets.length} tickets automatically`);
-        }, 1200);
+    // Strategy 2: Try direct ServiceNow fetch (uses browser's SSO session)
+    try {
+        document.getElementById('f1Subtitle').textContent = 'Fetching from ServiceNow (using your session)...';
+        const records = await tryDirectSnowFetch();
+        if (records.length > 0) {
+            hideF1Loader(true);
+            setTimeout(() => {
+                loadRecords(records);
+                showToast(`Loaded ${allTickets.length} tickets directly from ServiceNow`);
+            }, 1200);
+            return;
+        }
+        hideF1Loader(false);
+        showFallbackMode('No tickets returned from ServiceNow. The query may need adjusting.');
     } catch (err) {
         hideF1Loader(false);
-        const ghMsg = isLocal
-            ? 'Could not auto-load. Run "python3 run_dashboard.py" to start with live data.'
-            : 'To load live data, run <code style="color:var(--axos-orange);">python3 run_dashboard.py</code> on your machine first, then refresh.';
-        showFallbackMode(ghMsg);
+        showFallbackMode(null);
     }
 }
 
 function showFallbackMode(message) {
     const statusEl = document.getElementById('authStatus');
+    const instance = document.getElementById('instanceUrl').value.trim();
     statusEl.className = 'auth-status err';
-    statusEl.innerHTML = message;
+    statusEl.innerHTML = message || 'Session expired — open ServiceNow to refresh, then reload this page.';
     document.getElementById('demoBtn').style.display = '';
     document.getElementById('uploadBtn').style.display = '';
 
     document.getElementById('emptyState').innerHTML = `
-        <div class="empty-icon">⚡</div>
-        <h3>Auto-load unavailable</h3>
-        <p style="max-width:520px;margin:12px auto;line-height:1.8;color:var(--text-secondary);">
-            To auto-load data, run this in your terminal:
+        <div class="empty-icon" style="font-size:42px;">🔑</div>
+        <h3 style="margin-bottom:6px;">Open ServiceNow to refresh your session</h3>
+        <p style="max-width:480px;margin:8px auto 20px;line-height:1.7;color:var(--text-secondary);font-size:13px;">
+            Your browser session with ServiceNow may have expired.
+            Open ServiceNow so SSO logs you in, then come back and refresh.
         </p>
-        <code style="display:block;max-width:460px;margin:12px auto;background:var(--bg-tertiary);padding:14px 18px;border-radius:10px;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--axos-orange);border:1px solid var(--border-color);text-align:center;">
-            cd ~/Projects/AxosAI/Reports && python3 run_dashboard.py
-        </code>
-        <p style="max-width:460px;margin:14px auto;font-size:13px;color:var(--text-muted);">
-            It fetches data from ServiceNow, opens this dashboard, and loads everything automatically.
-            <br><br>Or use <strong>Upload File</strong> / <strong>Demo</strong> above.
-        </p>
+
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:24px;">
+            <a href="https://${instance}" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:10px 22px;background:var(--axos-orange);color:#fff;border-radius:10px;text-decoration:none;font-size:14px;font-weight:700;box-shadow:0 2px 8px rgba(250,167,74,.3);">
+                Open ServiceNow →
+            </a>
+            <button onclick="location.reload()" style="display:inline-flex;align-items:center;gap:8px;padding:10px 22px;background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border-color);border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;">
+                🔄 Refresh Dashboard
+            </button>
+        </div>
+
+        <div style="border-top:1px solid var(--border-color);padding-top:14px;max-width:480px;margin:0 auto;">
+            <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Or explore without live data:</p>
+            <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+                <button onclick="document.getElementById('uploadBtn').click()" style="padding:6px 14px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:8px;color:var(--text-secondary);cursor:pointer;font-size:12px;">📁 Upload JSON Export</button>
+                <button onclick="loadDemo()" style="padding:6px 14px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:8px;color:var(--text-secondary);cursor:pointer;font-size:12px;">🎮 Load Demo Data</button>
+            </div>
+        </div>
     `;
 }
 
@@ -845,26 +895,41 @@ async function refreshData() {
     btn.disabled = true;
     showF1Loader('Refreshing from ServiceNow...');
 
+    let records = null;
+
+    // Try proxy first
     try {
+        document.getElementById('f1Subtitle').textContent = 'Checking local proxy...';
         const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
         const proxyBase = isLocal ? '' : 'http://localhost:8080';
-        document.getElementById('f1Subtitle').textContent = 'Fetching fresh data...';
-        const resp = await fetch(proxyBase + '/api/refresh');
+        const resp = await fetch(proxyBase + '/api/refresh', { signal: AbortSignal.timeout(10000) });
         const data = await resp.json();
+        records = data.result || [];
+    } catch (e) { /* proxy not running */ }
+
+    // Fall back to direct fetch
+    if (!records || records.length === 0) {
+        try {
+            document.getElementById('f1Subtitle').textContent = 'Fetching from ServiceNow directly...';
+            records = await tryDirectSnowFetch();
+        } catch (e) { /* CORS or auth issue */ }
+    }
+
+    if (records && records.length > 0) {
         hideF1Loader(true);
         setTimeout(() => {
-            loadRecords(data.result || []);
+            loadRecords(records);
             showToast('Data refreshed from ServiceNow');
         }, 1200);
-    } catch (err) {
+    } else {
         hideF1Loader(false);
         statusEl.className = 'auth-status err';
-        statusEl.textContent = 'Refresh failed: ' + err.message;
+        statusEl.textContent = 'Refresh failed. Make sure you are signed into ServiceNow.';
         showToast('Could not refresh data', 'error');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg> Refresh';
     }
+
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg> Refresh';
 }
 
 function handleFileUpload(event) {
