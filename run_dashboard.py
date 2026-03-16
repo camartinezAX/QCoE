@@ -146,11 +146,18 @@ def _do_fetch_background(date_from=None, date_to=None):
     try:
         import browser_cookie3
     except ImportError:
+        pip_cmd = [sys.executable, "-m", "pip", "install",
+                   "browser_cookie3", "requests", "pycryptodome"]
+        subprocess.check_call(pip_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        import browser_cookie3
+
+    try:
+        from Crypto.Cipher import AES  # noqa: F401
+    except ImportError:
         subprocess.check_call(
-            ["pip3", "install", "browser_cookie3", "requests"],
+            [sys.executable, "-m", "pip", "install", "pycryptodome"],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
-        import browser_cookie3
 
     import requests as req
 
@@ -162,6 +169,7 @@ def _do_fetch_background(date_from=None, date_to=None):
 
     cj = None
     sn_cookies = []
+    browser_errors = []
     for browser_name, browser_fn in browsers:
         try:
             _update("fetching", f"Trying {browser_name} cookies...")
@@ -174,14 +182,34 @@ def _do_fetch_background(date_from=None, date_to=None):
                 print(f"{C_GREEN}✓ {len(found)} cookies{C_RESET}")
                 break
             else:
+                msg = f"{browser_name}: opened but no ServiceNow cookies found"
+                browser_errors.append(msg)
                 print(f"{C_DIM}no ServiceNow cookies{C_RESET}")
+        except PermissionError as e:
+            msg = f"{browser_name}: permission denied — try closing {browser_name} completely and retry"
+            browser_errors.append(msg)
+            print(f"{C_DIM}permission denied{C_RESET}")
         except Exception as e:
-            print(f"{C_DIM}skipped ({e}){C_RESET}")
+            err_str = str(e)
+            if "admin" in err_str.lower():
+                msg = f"{browser_name}: requires admin — try Edge or Firefox instead"
+            elif "Crypto" in err_str or "decrypt" in err_str.lower():
+                msg = f"{browser_name}: decryption failed — run: pip install pycryptodome"
+            else:
+                msg = f"{browser_name}: {err_str[:100]}"
+            browser_errors.append(msg)
+            print(f"{C_DIM}skipped ({err_str[:80]}){C_RESET}")
             continue
 
     if not cj or not sn_cookies:
-        _update("error", error="No ServiceNow cookies found in any browser. Open ServiceNow in Chrome, Edge, or Firefox first.")
-        print(f"  {C_RED}✗ {fetch_progress['error']}{C_RESET}")
+        details = "; ".join(browser_errors) if browser_errors else "unknown error"
+        hint = ("Open ServiceNow in Chrome/Edge/Firefox first, "
+                "then close the browser completely, then retry. "
+                "Details: " + details)
+        _update("error", error=hint)
+        print(f"  {C_RED}✗ No cookies found{C_RESET}")
+        for err in browser_errors:
+            print(f"  {C_RED}  • {err}{C_RESET}")
         return
 
     print(f"  {C_DIM}  Found {len(sn_cookies)} session cookies{C_RESET}")
