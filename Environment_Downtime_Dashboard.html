@@ -784,70 +784,29 @@ function showToast(msg, type = 'success') {
     setTimeout(() => t.classList.remove('show'), 4000);
 }
 
-function getSnowDirectUrl() {
-    const instance = document.getElementById('instanceUrl').value.trim();
-    const query = encodeURIComponent(
-        'cat_item.name=Site Reliability Request' +
-        '^NQshort_descriptionLIKEdown' +
-        '^NQshort_descriptionLIKEoutage' +
-        '^NQshort_descriptionLIKEenvironment' +
-        '^NQshort_descriptionLIKEdisruption' +
-        '^NQshort_descriptionLIKEunavailable'
-    );
-    return `https://${instance}/sc_req_item.do?JSONv2&sysparm_query=${query}&displayvalue=true&sysparm_record_count=500`;
-}
-
-async function tryDirectSnowFetch() {
-    const url = getSnowDirectUrl();
-    const resp = await fetch(url, {
-        credentials: 'include',
-        signal: AbortSignal.timeout(12000)
-    });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data = await resp.json();
-    return data.records || data.result || [];
-}
-
-async function tryProxyFetch() {
+async function autoFetch() {
+    const statusEl = document.getElementById('authStatus');
     const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     const proxyBase = isLocal ? '' : 'http://localhost:8080';
-    const resp = await fetch(proxyBase + '/api/snow', { signal: AbortSignal.timeout(8000) });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data = await resp.json();
-    return data.result || [];
-}
-
-async function autoFetch() {
     showF1Loader('Connecting to ServiceNow...');
-
-    // Strategy 1: Try local proxy first (fastest if running)
     try {
-        document.getElementById('f1Subtitle').textContent = 'Checking local proxy...';
-        const records = await tryProxyFetch();
-        if (records.length > 0) {
-            hideF1Loader(true);
-            setTimeout(() => {
-                loadRecords(records);
-                showToast(`Loaded ${allTickets.length} tickets via local proxy`);
-            }, 1200);
+        const resp = await fetch(proxyBase + '/api/snow', { signal: AbortSignal.timeout(8000) });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        document.getElementById('f1Subtitle').textContent = 'Loading ticket data...';
+        const data = await resp.json();
+        const records = data.result || [];
+
+        if (records.length === 0) {
+            hideF1Loader(false);
+            showFallbackMode('No tickets returned from ServiceNow. The query may need adjusting.');
             return;
         }
-    } catch (e) { /* proxy not running, continue */ }
 
-    // Strategy 2: Try direct ServiceNow fetch (uses browser's SSO session)
-    try {
-        document.getElementById('f1Subtitle').textContent = 'Fetching from ServiceNow (using your session)...';
-        const records = await tryDirectSnowFetch();
-        if (records.length > 0) {
-            hideF1Loader(true);
-            setTimeout(() => {
-                loadRecords(records);
-                showToast(`Loaded ${allTickets.length} tickets directly from ServiceNow`);
-            }, 1200);
-            return;
-        }
-        hideF1Loader(false);
-        showFallbackMode('No tickets returned from ServiceNow. The query may need adjusting.');
+        hideF1Loader(true);
+        setTimeout(() => {
+            loadRecords(records);
+            showToast(`Loaded ${allTickets.length} tickets automatically`);
+        }, 1200);
     } catch (err) {
         hideF1Loader(false);
         showFallbackMode(null);
@@ -895,41 +854,26 @@ async function refreshData() {
     btn.disabled = true;
     showF1Loader('Refreshing from ServiceNow...');
 
-    let records = null;
-
-    // Try proxy first
     try {
-        document.getElementById('f1Subtitle').textContent = 'Checking local proxy...';
         const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
         const proxyBase = isLocal ? '' : 'http://localhost:8080';
-        const resp = await fetch(proxyBase + '/api/refresh', { signal: AbortSignal.timeout(10000) });
+        document.getElementById('f1Subtitle').textContent = 'Fetching fresh data...';
+        const resp = await fetch(proxyBase + '/api/refresh');
         const data = await resp.json();
-        records = data.result || [];
-    } catch (e) { /* proxy not running */ }
-
-    // Fall back to direct fetch
-    if (!records || records.length === 0) {
-        try {
-            document.getElementById('f1Subtitle').textContent = 'Fetching from ServiceNow directly...';
-            records = await tryDirectSnowFetch();
-        } catch (e) { /* CORS or auth issue */ }
-    }
-
-    if (records && records.length > 0) {
         hideF1Loader(true);
         setTimeout(() => {
-            loadRecords(records);
+            loadRecords(data.result || []);
             showToast('Data refreshed from ServiceNow');
         }, 1200);
-    } else {
+    } catch (err) {
         hideF1Loader(false);
         statusEl.className = 'auth-status err';
-        statusEl.textContent = 'Refresh failed. Make sure you are signed into ServiceNow.';
+        statusEl.textContent = 'Refresh failed — make sure the dashboard helper is running.';
         showToast('Could not refresh data', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg> Refresh';
     }
-
-    btn.disabled = false;
-    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg> Refresh';
 }
 
 function handleFileUpload(event) {
