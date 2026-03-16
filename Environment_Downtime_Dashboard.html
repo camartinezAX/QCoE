@@ -2013,7 +2013,13 @@ function drillDown(title, tickets) {
     if (!tickets.length) {
         body.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:40px;">No tickets in this segment.</p>';
     } else {
-        body.innerHTML = tickets.map(t => {
+        const header = `<div class="drill-ticket" style="background:transparent;cursor:default;padding:6px 14px;margin-bottom:4px;border-bottom:1px solid var(--border-color);border-radius:0;">
+            <span class="dt-num" style="color:var(--text-muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;">Number</span>
+            <span class="dt-desc" style="color:var(--text-muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;">Description</span>
+            <span style="color:var(--text-muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;min-width:80px;text-align:center;">State</span>
+            <span style="color:var(--text-muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;min-width:50px;text-align:right;">Duration</span>
+        </div>`;
+        body.innerHTML = header + tickets.map(t => {
             const dur = calcDuration(t.opened_at, isClosedState(t.state) ? t.closed_at : null);
             return `<div class="drill-ticket" onclick="closeDrillModal();showDetail(${filteredTickets.indexOf(t)})">
                 <span class="dt-num">${t.number}</span>
