@@ -205,6 +205,61 @@
             accent-color: var(--axos-orange); width: 14px; height: 14px; cursor: pointer;
         }
 
+        /* Date Range Picker */
+        .date-range-bar {
+            display: flex; align-items: center; gap: 10px; padding: 12px 18px;
+            background: linear-gradient(135deg, rgba(22,29,46,0.6), rgba(31,41,55,0.5));
+            border: 1px solid rgba(255,255,255,0.04); border-radius: 14px;
+            margin-bottom: 14px; flex-wrap: wrap;
+        }
+        .date-range-bar label {
+            font-size: 12px; font-weight: 700; color: var(--text-secondary);
+            text-transform: uppercase; letter-spacing: 0.8px; white-space: nowrap;
+        }
+        .date-range-bar input[type="date"] {
+            padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border-color);
+            background: var(--bg-primary); color: var(--text-primary); font-size: 13px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            transition: border-color 0.2s; cursor: pointer;
+        }
+        .date-range-bar input[type="date"]:focus {
+            outline: none; border-color: var(--axos-orange);
+            box-shadow: 0 0 0 3px rgba(250,167,74,0.1);
+        }
+        .date-range-bar input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(0.7); cursor: pointer;
+        }
+        .date-preset-chips {
+            display: flex; gap: 6px; flex-wrap: wrap; margin-left: 6px;
+        }
+        .date-preset-chip {
+            padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border-color);
+            background: var(--bg-tertiary); color: var(--text-secondary);
+            font-size: 11px; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; white-space: nowrap;
+        }
+        .date-preset-chip:hover {
+            border-color: var(--axos-orange); color: var(--text-primary);
+            background: rgba(250,167,74,0.08);
+        }
+        .date-preset-chip.active {
+            background: linear-gradient(135deg, var(--axos-orange), var(--axos-orange-dark));
+            color: var(--axos-navy-dark); border-color: var(--axos-orange); font-weight: 700;
+        }
+        .date-range-fetch-btn {
+            padding: 8px 20px; border-radius: 10px; border: none; cursor: pointer;
+            background: linear-gradient(135deg, var(--axos-orange), var(--axos-orange-dark));
+            color: var(--axos-navy-dark); font-weight: 700; font-size: 13px;
+            transition: transform 0.15s, box-shadow 0.15s; white-space: nowrap;
+        }
+        .date-range-fetch-btn:hover {
+            transform: translateY(-1px); box-shadow: 0 4px 14px rgba(250,167,74,0.3);
+        }
+        .date-range-fetch-btn:disabled {
+            opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none;
+        }
+        .date-sep { color: var(--text-muted); font-size: 13px; font-weight: 500; }
+
         /* Advanced Keyword Filter */
         .keyword-filter-panel {
             margin-bottom: 14px; padding: 16px 18px;
@@ -403,7 +458,7 @@
         .f1-overlay.done .f1-check { opacity:1;transform:scale(1); }
         .f1-scene { position:relative;width:400px;height:60px;margin-bottom:16px; }
         .f1-bar-track { position:absolute;bottom:0;left:0;right:0;height:18px;background:rgba(255,255,255,.08);border-radius:9px;overflow:visible; }
-        .f1-bar-fill { height:100%;background:var(--axos-orange);border-radius:9px;width:0;animation:f1Fill 10s cubic-bezier(.3,.1,.3,1) forwards;position:relative;overflow:visible;transition:width .7s ease-out,background .3s ease; }
+        .f1-bar-fill { height:100%;background:var(--axos-orange);border-radius:9px;width:0;position:relative;overflow:visible;transition:width 1.5s cubic-bezier(.4,0,.2,1),background .3s ease; }
         .f1-car { position:absolute;right:-18px;top:-26px;font-size:32px;line-height:1;z-index:3;animation:f1Bounce .12s ease-in-out infinite;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4));transform:scaleX(-1); }
         .f1-smoke { position:absolute;right:12px;top:-18px;font-size:18px;line-height:1;opacity:0;z-index:2; }
         .f1-smoke.s1 { animation:f1Smoke .7s ease-out 0s infinite; }
@@ -415,7 +470,7 @@
         .f1-text::after { content:'FETCHING...';animation:f1Dots 1.5s steps(4) infinite; }
         .f1-check { position:absolute;top:50%;left:50%;transform:scale(0);margin:-30px 0 0 -30px;width:60px;height:60px;background:rgba(255,255,255,.1);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:30px;opacity:0;transition:all .4s cubic-bezier(.175,.885,.32,1.275); }
         .f1-subtitle { color:var(--text-muted);font-size:13px;margin-top:16px;letter-spacing:1px; }
-        @keyframes f1Fill { 0%{width:0} 100%{width:85%} }
+        @keyframes f1Fill { 0%{width:0} 100%{width:100%} }
         @keyframes f1Bounce { 0%,100%{transform:scaleX(-1) translateY(0)} 50%{transform:scaleX(-1) translateY(-2px)} }
         @keyframes f1Smoke { 0%{opacity:.7;transform:translateX(0) scale(.6)} 50%{opacity:.4;transform:translateX(-14px) scale(1)} 100%{opacity:0;transform:translateX(-28px) scale(1.3)} }
         @keyframes f1Road { 0%{transform:translateX(0)} 100%{transform:translateX(-24px)} }
@@ -473,16 +528,28 @@
         <div class="auth-bar" id="authBar">
             <input type="text" id="instanceUrl" value="bofi.service-now.com" style="display:none;">
             <span class="auth-status" id="authStatus" style="flex:1;">
-                <span class="fetch-spinner"></span> Loading data from ServiceNow...
+                Select a date range and click <b>Fetch Tickets</b> to load data.
             </span>
-            <button class="btn btn-orange" onclick="refreshData()" id="refreshBtn" style="display:none;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
-                Refresh
-            </button>
             <button class="btn btn-secondary" onclick="exportCSV()" id="exportBtn" style="display:none;">Export CSV</button>
             <label for="fileUpload" class="btn btn-secondary" style="cursor:pointer;margin:0;display:none;" id="uploadBtn">Upload File</label>
             <input type="file" id="fileUpload" accept=".json,.csv,.xlsx,.xls" onchange="handleFileUpload(event)" style="display:none;">
-            <button class="btn btn-secondary" onclick="loadDemoData()" id="demoBtn" style="display:none;">Demo</button>
+        </div>
+
+        <!-- Date Range Picker -->
+        <div class="date-range-bar" id="dateRangeBar">
+            <label>📅 Date Range</label>
+            <input type="date" id="dateFrom" title="From date">
+            <span class="date-sep">→</span>
+            <input type="date" id="dateTo" title="To date">
+            <button class="date-range-fetch-btn" id="dateFetchBtn" onclick="fetchWithDateRange()">Fetch Tickets</button>
+            <div class="date-preset-chips" id="datePresets">
+                <span class="date-preset-chip" data-preset="today" onclick="setDatePreset('today',this)">Today</span>
+                <span class="date-preset-chip active" data-preset="week" onclick="setDatePreset('week',this)">This Week</span>
+                <span class="date-preset-chip" data-preset="month" onclick="setDatePreset('month',this)">This Month</span>
+                <span class="date-preset-chip" data-preset="quarter" onclick="setDatePreset('quarter',this)">This Quarter</span>
+                <span class="date-preset-chip" data-preset="year" onclick="setDatePreset('year',this)">This Year</span>
+                <span class="date-preset-chip" data-preset="all" onclick="setDatePreset('all',this)">All Time</span>
+            </div>
         </div>
 
         <!-- Metrics -->
@@ -623,9 +690,9 @@
 
         <!-- Empty / Loading state -->
         <div class="empty-state" id="emptyState">
-            <div class="empty-icon"><span class="fetch-spinner" style="width:48px;height:48px;border-width:4px;"></span></div>
-            <h3 style="margin-top:20px;">Loading from ServiceNow...</h3>
-            <p style="color:var(--text-muted);max-width:400px;margin:8px auto;">Fetching environment downtime tickets. This takes a few seconds.</p>
+            <div class="empty-icon">📅</div>
+            <h3>Select a date range to get started</h3>
+            <p style="color:var(--text-muted);max-width:400px;margin:8px auto;">Choose a date range above and click <b>Fetch Tickets</b> to load data from ServiceNow.</p>
         </div>
     </div>
 </div>
@@ -750,28 +817,174 @@ function updateClock() {
 updateClock();
 setInterval(updateClock, 30000);
 
+function formatDateISO(d) {
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function setDatePreset(preset, chipEl) {
+    const now = new Date();
+    let from, to = formatDateISO(now);
+    switch(preset) {
+        case 'today':
+            from = formatDateISO(now);
+            break;
+        case 'week': {
+            const day = now.getDay();
+            const mon = new Date(now);
+            mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+            from = formatDateISO(mon);
+            break;
+        }
+        case 'month':
+            from = formatDateISO(new Date(now.getFullYear(), now.getMonth(), 1));
+            break;
+        case 'quarter': {
+            const qm = Math.floor(now.getMonth() / 3) * 3;
+            from = formatDateISO(new Date(now.getFullYear(), qm, 1));
+            break;
+        }
+        case 'year':
+            from = formatDateISO(new Date(now.getFullYear(), 0, 1));
+            break;
+        case 'all':
+            from = '2020-01-01';
+            break;
+    }
+    document.getElementById('dateFrom').value = from;
+    document.getElementById('dateTo').value = to;
+    document.querySelectorAll('.date-preset-chip').forEach(c => c.classList.remove('active'));
+    if (chipEl) chipEl.classList.add('active');
+}
+
+function getDateRange() {
+    return {
+        from: document.getElementById('dateFrom').value || null,
+        to: document.getElementById('dateTo').value || null,
+    };
+}
+
+function getProxyBase() {
+    const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    return isLocal ? '' : 'http://localhost:8080';
+}
+
+async function pollProgress(rangeLabel) {
+    const proxyBase = getProxyBase();
+    let prevPages = 0;
+    const maxPolls = 200;
+    for (let i = 0; i < maxPolls; i++) {
+        await new Promise(r => setTimeout(r, 1500));
+        try {
+            const resp = await fetch(proxyBase + '/api/progress', { signal: AbortSignal.timeout(5000) });
+            const prog = await resp.json();
+
+            if (prog.state === 'done') {
+                setF1Progress(95, `${prog.records_so_far} tickets loaded — rendering...`);
+                const records = prog.result || [];
+                hideF1Loader(true);
+                await new Promise(r => setTimeout(r, 1200));
+                return records;
+            }
+
+            if (prog.state === 'error') {
+                hideF1Loader(false);
+                throw new Error(prog.error || 'Fetch failed');
+            }
+
+            if (prog.state === 'fetching') {
+                const pages = prog.pages_done || 0;
+                const recs = prog.records_so_far || 0;
+                const pct = pages === 0 ? 10 : Math.min(10 + pages * 15, 90);
+                const msg = pages === 0
+                    ? (prog.message || 'Connecting...')
+                    : `Page ${pages} — ${recs} tickets fetched...`;
+                setF1Progress(pct, msg);
+                prevPages = pages;
+            }
+        } catch (e) {
+            if (e.name === 'AbortError' || e.name === 'TypeError') continue;
+            throw e;
+        }
+    }
+    throw new Error('Fetch timed out after 5 minutes. Try a smaller date range.');
+}
+
+async function startAndPoll(dateFrom, dateTo, rangeLabel) {
+    const proxyBase = getProxyBase();
+    let url = proxyBase + '/api/refresh';
+    if (dateFrom && dateTo) url += `?from=${encodeURIComponent(dateFrom)}&to=${encodeURIComponent(dateTo)}`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    await new Promise(r => setTimeout(r, 2000));
+    return await pollProgress(rangeLabel);
+}
+
+async function fetchWithDateRange() {
+    const { from, to } = getDateRange();
+    if (!from || !to) {
+        showToast('Please select both From and To dates', 'error');
+        return;
+    }
+    const btn = document.getElementById('dateFetchBtn');
+    btn.disabled = true;
+    btn.textContent = 'Fetching...';
+    const rangeLabel = from === to ? from : `${from} to ${to}`;
+    showF1Loader(`Fetching tickets (${rangeLabel})...`);
+
+    try {
+        const records = await startAndPoll(from, to, rangeLabel);
+        loadRecords(records);
+        showToast(`Loaded ${allTickets.length} tickets (${rangeLabel})`);
+    } catch (err) {
+        hideF1Loader(false);
+        showToast(err.message || 'Failed to fetch — check proxy is running', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Fetch Tickets';
+    }
+}
+
+setDatePreset('week', document.querySelector('.date-preset-chip[data-preset="week"]'));
+
+document.getElementById('dateFrom').addEventListener('input', () => {
+    document.querySelectorAll('.date-preset-chip').forEach(c => c.classList.remove('active'));
+});
+document.getElementById('dateTo').addEventListener('input', () => {
+    document.querySelectorAll('.date-preset-chip').forEach(c => c.classList.remove('active'));
+});
+
 function showF1Loader(subtitle) {
     const loader = document.getElementById('f1Loader');
     const fill = document.getElementById('f1BarFill');
     const sub = document.getElementById('f1Subtitle');
     loader.classList.remove('done');
-    fill.style.width = '';
-    fill.style.animation = 'none'; fill.offsetHeight; fill.style.animation = 'f1Fill 10s cubic-bezier(.3,.1,.3,1) forwards';
+    fill.style.transition = 'none';
+    fill.style.width = '0%';
+    fill.offsetHeight;
+    fill.style.transition = 'width 1.5s cubic-bezier(.4,0,.2,1),background .3s ease';
+    requestAnimationFrame(() => { fill.style.width = '8%'; });
     if (subtitle) sub.textContent = subtitle;
     loader.classList.add('active');
+}
+
+function setF1Progress(pct, message) {
+    const fill = document.getElementById('f1BarFill');
+    const sub = document.getElementById('f1Subtitle');
+    fill.style.width = Math.min(pct, 97) + '%';
+    if (message) sub.textContent = message;
 }
 
 function hideF1Loader(success) {
     const loader = document.getElementById('f1Loader');
     if (success) {
         const fill = document.getElementById('f1BarFill');
-        const cur = getComputedStyle(fill).width;
-        fill.style.animation = 'none';
-        fill.style.width = cur;
-        fill.offsetHeight;
+        fill.style.transition = 'width .5s ease-out';
         fill.style.width = '100%';
         loader.classList.add('done');
-        setTimeout(() => { loader.classList.remove('active', 'done'); }, 1600);
+        setTimeout(() => {
+            loader.classList.remove('active', 'done');
+            fill.style.transition = 'width 1.5s cubic-bezier(.4,0,.2,1),background .3s ease';
+        }, 1600);
     } else {
         loader.classList.remove('active', 'done');
     }
@@ -785,31 +998,27 @@ function showToast(msg, type = 'success') {
 }
 
 async function autoFetch() {
-    const statusEl = document.getElementById('authStatus');
-    const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-    const proxyBase = isLocal ? '' : 'http://localhost:8080';
-    showF1Loader('Connecting to ServiceNow...');
-    try {
-        const resp = await fetch(proxyBase + '/api/snow', { signal: AbortSignal.timeout(8000) });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        document.getElementById('f1Subtitle').textContent = 'Loading ticket data...';
-        const data = await resp.json();
-        const records = data.result || [];
+    const { from, to } = getDateRange();
+    const rangeLabel = from && to ? (from === to ? from : `${from} to ${to}`) : '';
+    showF1Loader(rangeLabel ? `Fetching tickets (${rangeLabel})...` : 'Connecting to ServiceNow...');
 
-        if (records.length === 0) {
+    try {
+        const records = await startAndPoll(from, to, rangeLabel);
+        if (!records || records.length === 0) {
             hideF1Loader(false);
-            showFallbackMode('No tickets returned from ServiceNow. The query may need adjusting.');
+            showFallbackMode('No tickets returned for this date range. Try expanding the range.');
             return;
         }
-
-        hideF1Loader(true);
-        setTimeout(() => {
-            loadRecords(records);
-            showToast(`Loaded ${allTickets.length} tickets automatically`);
-        }, 1200);
+        loadRecords(records);
+        showToast(`Loaded ${allTickets.length} tickets${rangeLabel ? ' (' + rangeLabel + ')' : ''}`);
     } catch (err) {
         hideF1Loader(false);
-        showFallbackMode(null);
+        const msg = err.message || '';
+        if (msg.includes('Session expired') || msg.includes('cookies')) {
+            showFallbackMode(msg);
+        } else {
+            showFallbackMode(null);
+        }
     }
 }
 
@@ -817,64 +1026,23 @@ function showFallbackMode(message) {
     const statusEl = document.getElementById('authStatus');
     const instance = document.getElementById('instanceUrl').value.trim();
     statusEl.className = 'auth-status err';
-    statusEl.innerHTML = message || 'Session expired — open ServiceNow to refresh, then reload this page.';
-    document.getElementById('demoBtn').style.display = '';
-    document.getElementById('uploadBtn').style.display = '';
+    statusEl.innerHTML = message || 'Session expired — open ServiceNow to refresh, then click Fetch Tickets.';
 
+    document.getElementById('emptyState').style.display = '';
     document.getElementById('emptyState').innerHTML = `
         <div class="empty-icon" style="font-size:42px;">🔑</div>
         <h3 style="margin-bottom:6px;">Open ServiceNow to refresh your session</h3>
         <p style="max-width:480px;margin:8px auto 20px;line-height:1.7;color:var(--text-secondary);font-size:13px;">
-            Your browser session with ServiceNow may have expired.
-            Open ServiceNow so SSO logs you in, then come back and refresh.
+            ${message || 'Your browser session with ServiceNow may have expired.'}<br>
+            Open ServiceNow so SSO logs you in, then come back and click <b>Fetch Tickets</b>.
         </p>
-
-        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:24px;">
-            <a href="https://${instance}" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:10px 22px;background:var(--axos-orange);color:#fff;border-radius:10px;text-decoration:none;font-size:14px;font-weight:700;box-shadow:0 2px 8px rgba(250,167,74,.3);">
-                Open ServiceNow →
-            </a>
-            <button onclick="location.reload()" style="display:inline-flex;align-items:center;gap:8px;padding:10px 22px;background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border-color);border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;">
-                🔄 Refresh Dashboard
-            </button>
-        </div>
-
-        <div style="border-top:1px solid var(--border-color);padding-top:14px;max-width:480px;margin:0 auto;">
-            <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Or explore without live data:</p>
-            <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-                <button onclick="document.getElementById('uploadBtn').click()" style="padding:6px 14px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:8px;color:var(--text-secondary);cursor:pointer;font-size:12px;">📁 Upload JSON Export</button>
-                <button onclick="loadDemo()" style="padding:6px 14px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:8px;color:var(--text-secondary);cursor:pointer;font-size:12px;">🎮 Load Demo Data</button>
-            </div>
-        </div>
+        <a href="https://${instance}" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:10px 22px;background:var(--axos-orange);color:#fff;border-radius:10px;text-decoration:none;font-size:14px;font-weight:700;box-shadow:0 2px 8px rgba(250,167,74,.3);">
+            Open ServiceNow →
+        </a>
     `;
 }
 
-async function refreshData() {
-    const statusEl = document.getElementById('authStatus');
-    const btn = document.getElementById('refreshBtn');
-    btn.disabled = true;
-    showF1Loader('Refreshing from ServiceNow...');
-
-    try {
-        const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-        const proxyBase = isLocal ? '' : 'http://localhost:8080';
-        document.getElementById('f1Subtitle').textContent = 'Fetching fresh data...';
-        const resp = await fetch(proxyBase + '/api/refresh');
-        const data = await resp.json();
-        hideF1Loader(true);
-        setTimeout(() => {
-            loadRecords(data.result || []);
-            showToast('Data refreshed from ServiceNow');
-        }, 1200);
-    } catch (err) {
-        hideF1Loader(false);
-        statusEl.className = 'auth-status err';
-        statusEl.textContent = 'Refresh failed — make sure the dashboard helper is running.';
-        showToast('Could not refresh data', 'error');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg> Refresh';
-    }
-}
+function refreshData() { fetchWithDateRange(); }
 
 function handleFileUpload(event) {
     const file = event.target.files[0];
@@ -938,12 +1106,12 @@ function loadRecords(records) {
     statusEl.className = 'auth-status ok';
     statusEl.textContent = `${allTickets.length} tickets loaded`;
     document.getElementById('exportBtn').style.display = '';
-    document.getElementById('refreshBtn').style.display = '';
-    document.getElementById('demoBtn').style.display = '';
     renderDashboard();
 }
 
-window.addEventListener('DOMContentLoaded', () => autoFetch());
+window.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('uploadBtn').style.display = '';
+});
 
 function deduplicateTickets(tickets) {
     const seen = new Set();
@@ -1726,7 +1894,7 @@ function showDetail(idx) {
     }).filter(Boolean);
 
     if (extraItems.length) {
-        html += `<details style="margin-top:12px;"><summary style="cursor:pointer;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;padding:6px 0;">Other Fields (${extraItems.length})</summary><div class="detail-grid" style="margin-top:8px;">${extraItems.join('')}</div></details>`;
+        html += `<details open style="margin-top:12px;"><summary style="cursor:pointer;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;padding:6px 0;">Other Fields (${extraItems.length})</summary><div class="detail-grid" style="margin-top:8px;">${extraItems.join('')}</div></details>`;
     }
 
     document.getElementById('modalBody').innerHTML = html;
@@ -2186,6 +2354,14 @@ function executeAIAction(response) {
             activeEnvFilters = response.envs;
         }
         applyFilters();
+    } else if (a === 'date_range') {
+        if (response.from) document.getElementById('dateFrom').value = response.from;
+        if (response.to) document.getElementById('dateTo').value = response.to;
+        if (response.preset) {
+            setDatePreset(response.preset, document.querySelector(`.date-preset-chip[data-preset="${response.preset}"]`));
+        }
+        document.querySelectorAll('.date-preset-chip').forEach(c => c.classList.remove('active'));
+        fetchWithDateRange();
     } else if (a === 'clear_filters') {
         clearKeywordFilter();
         document.getElementById('stateFilter').value = '';
@@ -2304,6 +2480,14 @@ BAD examples - NEVER do these:
 
 AVOID these words in keyword filters because they are too generic: "issue", "issues", "problem", "request", "server", "environment"
 PREFER these specific words: "down", "outage", "unavailable", "not responding", "disruption", "slow", "slowness", "timeout", "not loading", "not working", "not stable", "not able to login", "503", "500", "error", "failure"
+
+SEARCHING BY PERSON NAME:
+When the user asks to find tickets by a person (reporter, requester, assignee, opened by), use a PLAIN NAME as the keyword.
+The keyword filter searches ALL fields, so just use the person's name directly.
+- GOOD: keyword: "Juan Carlos Martinez Toledo"
+- GOOD: keyword: "Leela Kumar Kotti"
+- BAD: keyword: "reporter:Juan Carlos Martinez Toledo" (field prefixes don't work)
+- BAD: keyword: "reporter:\"Juan Carlos Martinez Toledo\"" (quotes/colons break the parser)
 
 RULES:
 - When user asks to filter/show/find tickets, USE ACTIONS.
