@@ -452,7 +452,6 @@
         .f1-overlay.active { opacity:1;pointer-events:auto; }
         .f1-overlay.done .f1-bar-fill { background:var(--success)!important; }
         .f1-overlay.done .f1-car { animation:f1Bounce .12s ease-in-out infinite; }
-        .os-win .f1-car { transform:scaleX(-1); }
         .f1-overlay.done .f1-smoke { animation:none!important;opacity:0!important; }
         .f1-overlay.done .f1-text::after { content:'LOADED!';color:#fff; }
         .f1-overlay.done .f1-text { animation:none; }
@@ -473,8 +472,9 @@
         .f1-subtitle { color:var(--text-muted);font-size:13px;margin-top:16px;letter-spacing:1px; }
         @keyframes f1Fill { 0%{width:0} 100%{width:100%} }
         @keyframes f1Bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-2px)} }
-        .os-win .f1-car { animation-name:f1BounceWin; }
         @keyframes f1BounceWin { 0%,100%{transform:scaleX(-1) translateY(0)} 50%{transform:scaleX(-1) translateY(-2px)} }
+        .os-win .f1-car,
+        .os-win .f1-overlay.done .f1-car { animation-name:f1BounceWin!important; }
         @keyframes f1Smoke { 0%{opacity:.7;transform:translateX(0) scale(.6)} 50%{opacity:.4;transform:translateX(-14px) scale(1)} 100%{opacity:0;transform:translateX(-28px) scale(1.3)} }
         @keyframes f1Road { 0%{transform:translateX(0)} 100%{transform:translateX(-24px)} }
         @keyframes f1Dots { 0%{content:'FETCHING'} 25%{content:'FETCHING.'} 50%{content:'FETCHING..'} 75%{content:'FETCHING...'} }
@@ -802,7 +802,7 @@
 <div class="toast" id="toast"><span id="toastMsg"></span></div>
 
 <script>
-if (navigator.platform.indexOf('Win') > -1) document.documentElement.classList.add('os-win');
+if (/Win/.test(navigator.platform) || /Windows/.test(navigator.userAgent)) document.documentElement.classList.add('os-win');
 let allTickets = [];
 let filteredTickets = [];
 let sortCol = 'opened_at';
@@ -1041,38 +1041,72 @@ function showFallbackMode(message) {
 
     if (isProxyError) {
         statusEl.innerHTML = 'Cannot connect to the dashboard helper. See setup instructions below.';
-        const isWin = navigator.platform.indexOf('Win') > -1;
+        const isWin = /Win/.test(navigator.platform) || /Windows/.test(navigator.userAgent);
+        const aiPrompt = `Download run_dashboard.py from this OneDrive link and save it to my Downloads folder: https://bofifederalbank-my.sharepoint.com/:u:/p/camartinez/IQDvABsB3nzLRpywgwlyBLoCARPE47LfUoHo_wSGL-uaRKc?e=fdfo7U
+
+Then set it up on my machine. Here is exactly what to do:
+
+1. Check if Python 3 is installed. Try: python --version, python3 --version, py --version. If none work, install Python:
+   - On Windows: try "winget install Python.Python.3.12". If winget is blocked by corporate policy, download the Python 3.12 embeddable ZIP from python.org, extract to a folder (e.g. ~/python312), download get-pip.py, and run it with that python.
+   - On macOS: try "brew install python3" or download from python.org.
+2. Install dependencies: pip install browser_cookie3 requests (use "python -m pip" or "py -m pip" if pip is not in PATH).
+3. Run: python run_dashboard.py --install (from the Downloads folder where run_dashboard.py was saved).
+   - The --install flag registers it as an auto-start service (Windows Startup script or macOS LaunchAgent).
+   - If there is a Unicode encoding error on Windows, set PYTHONUTF8=1 before running.
+4. Make sure ServiceNow (bofi.service-now.com) is open in Chrome or Edge so SSO cookies are available.
+5. Verify it works: open http://localhost:8080 in a browser.
+
+IMPORTANT: Do NOT ask me to do anything manually. You do everything. If something fails, fix it and retry. Do not stop until http://localhost:8080 responds successfully.`;
         document.getElementById('emptyState').innerHTML = `
             <div class="empty-icon" style="font-size:42px;">⚡</div>
             <h3 style="margin-bottom:6px;">One-time setup required</h3>
-            <p style="max-width:520px;margin:8px auto 20px;line-height:1.7;color:var(--text-secondary);font-size:13px;">
-                This dashboard needs a small helper script running on your machine to connect to ServiceNow.<br>
-                It reads your browser's SSO session — <b>no passwords needed</b>.
+            <p style="max-width:560px;margin:8px auto 16px;line-height:1.7;color:var(--text-secondary);font-size:13px;">
+                This dashboard needs a small helper script on your machine to connect to ServiceNow.<br>
+                It reads your browser's SSO session — <b>no passwords needed</b>. Two ways to set up:
             </p>
-            <div style="background:var(--bg-primary);border:1px solid var(--border-color);border-radius:12px;padding:18px 22px;max-width:560px;margin:0 auto 20px;text-align:left;">
-                <div style="font-size:11px;font-weight:700;color:var(--axos-orange);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">
-                    ${isWin ? '🪟 Windows' : '🍎 macOS'} — run these commands once:
+
+            <div style="display:flex;gap:16px;max-width:680px;margin:0 auto 20px;flex-wrap:wrap;justify-content:center;">
+                <!-- Option 1: AI does it -->
+                <div style="flex:1;min-width:280px;background:var(--bg-primary);border:1px solid var(--axos-orange);border-radius:12px;padding:18px 22px;text-align:left;">
+                    <div style="font-size:11px;font-weight:700;color:var(--axos-orange);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">
+                        Option 1 — Let AI do it (recommended)
+                    </div>
+                    <p style="font-size:12px;color:var(--text-secondary);line-height:1.6;margin-bottom:12px;">
+                        Paste this prompt into <b>Cursor AI</b>, <b>Copilot</b>, or any AI assistant with terminal access:
+                    </p>
+                    <div style="position:relative;background:rgba(0,0,0,.3);padding:12px 14px;border-radius:8px;max-height:120px;overflow-y:auto;">
+                        <button onclick="navigator.clipboard.writeText(document.getElementById('aiSetupPrompt').textContent);this.textContent='✓ Copied!';setTimeout(()=>this.textContent='📋 Copy prompt',2000);" style="position:sticky;top:0;float:right;padding:4px 10px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:6px;color:var(--text-muted);font-size:11px;cursor:pointer;z-index:1;">📋 Copy prompt</button>
+                        <code id="aiSetupPrompt" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);white-space:pre-wrap;line-height:1.5;">${aiPrompt}</code>
+                    </div>
                 </div>
-                <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-primary);line-height:2;background:rgba(0,0,0,.3);padding:14px 16px;border-radius:8px;position:relative;">
-                    <button onclick="navigator.clipboard.writeText(this.parentElement.querySelector('code').textContent);this.textContent='✓ Copied!';setTimeout(()=>this.textContent='📋 Copy',2000);" style="position:absolute;top:8px;right:8px;padding:4px 10px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:6px;color:var(--text-muted);font-size:11px;cursor:pointer;">📋 Copy</button>
-                    <code style="white-space:pre-wrap;">${isWin
-                        ? 'pip install browser_cookie3 requests\npython run_dashboard.py --install'
-                        : 'pip3 install browser_cookie3 requests\npython3 run_dashboard.py --install'
-                    }</code>
+
+                <!-- Option 2: Manual -->
+                <div style="flex:1;min-width:280px;background:var(--bg-primary);border:1px solid var(--border-color);border-radius:12px;padding:18px 22px;text-align:left;">
+                    <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">
+                        ${isWin ? '🪟 Windows' : '🍎 macOS'} — Option 2: Manual setup
+                    </div>
+                    <p style="font-size:12px;color:var(--text-secondary);line-height:1.6;margin-bottom:12px;">
+                        <a href="https://bofifederalbank-my.sharepoint.com/:u:/p/camartinez/IQDvABsB3nzLRpywgwlyBLoCARPE47LfUoHo_wSGL-uaRKc?e=fdfo7U" target="_blank" style="color:var(--axos-orange);text-decoration:underline;font-weight:600;">1. Download run_dashboard.py</a>, then run:
+                    </p>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-primary);line-height:2;background:rgba(0,0,0,.3);padding:14px 16px;border-radius:8px;position:relative;">
+                        <button onclick="navigator.clipboard.writeText(this.parentElement.querySelector('code').textContent);this.textContent='✓ Copied!';setTimeout(()=>this.textContent='📋 Copy',2000);" style="position:absolute;top:8px;right:8px;padding:4px 10px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:6px;color:var(--text-muted);font-size:11px;cursor:pointer;">📋 Copy</button>
+                        <code style="white-space:pre-wrap;">${isWin
+                            ? 'pip install browser_cookie3 requests\npython run_dashboard.py --install'
+                            : 'pip3 install browser_cookie3 requests\npython3 run_dashboard.py --install'
+                        }</code>
+                    </div>
+                    <p style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5;">
+                        Requires <a href="https://www.python.org/downloads/" target="_blank" style="color:var(--axos-orange);">Python 3</a>. The <code>--install</code> flag makes it auto-start on login.
+                    </p>
                 </div>
-                <p style="font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.6;">
-                    Run from the folder containing <b>run_dashboard.py</b>.<br>
-                    The <code>--install</code> flag makes it auto-start on login so you never have to run it again.
-                </p>
             </div>
-            <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-                <a href="https://${instance}" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:10px 22px;background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border-color);border-radius:10px;text-decoration:none;font-size:13px;font-weight:600;">
-                    Open ServiceNow first →
-                </a>
-                <button onclick="fetchWithDateRange()" style="display:inline-flex;align-items:center;gap:8px;padding:10px 22px;background:var(--axos-orange);color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:13px;font-weight:700;">
-                    🔄 Try Again
-                </button>
-            </div>
+
+            <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">
+                Make sure <a href="https://${instance}" target="_blank" style="color:var(--axos-orange);">ServiceNow</a> is open in your browser (Chrome or Edge) so SSO cookies are available.
+            </p>
+            <button onclick="fetchWithDateRange()" style="display:inline-flex;align-items:center;gap:8px;padding:10px 22px;background:var(--axos-orange);color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:13px;font-weight:700;">
+                🔄 Try Again
+            </button>
         `;
     } else {
         statusEl.innerHTML = message;
