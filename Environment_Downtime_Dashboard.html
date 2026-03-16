@@ -561,7 +561,7 @@
                         </div>
                         <div style="position:relative;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.1);padding:12px 14px;border-radius:8px;margin-left:32px;">
                             <button onclick="navigator.clipboard.writeText(this.nextElementSibling.textContent);this.textContent='✓ Copied!';setTimeout(()=>this.textContent='📋 Copy',2000);" style="position:absolute;top:8px;right:8px;padding:4px 12px;background:#FAA74A;border:none;border-radius:6px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;">📋 Copy</button>
-                            <code style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,.5);white-space:pre-wrap;line-height:1.5;">I have run_dashboard.py in this project folder. Set it up: first check if Python 3 already exists (python --version, python3 --version, py --version, or C:\Users\%USERNAME%\python312\python.exe) — do NOT reinstall if found. Then run: python -m pip install browser_cookie3 requests pycryptodome. Then run: python run_dashboard.py --install. Do NOT search for, create, or modify any HTML files. Do NOT ask me to do anything. Fix errors and retry until curl http://localhost:8080/api/progress returns JSON.</code>
+                            <code style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,.5);white-space:pre-wrap;line-height:1.5;">I have run_dashboard.py in this project folder. Set it up: first check if Python 3 already exists (python --version, python3 --version, py --version, or check C:\Users\%USERNAME%\python312\python.exe) — do NOT reinstall if found. On Windows set PYTHONUTF8=1 first. Then run: python -m pip install browser_cookie3 requests pycryptodome rookiepy. Then kill anything on port 8080. Then run: python run_dashboard.py --install. Do NOT search for, create, or modify any HTML files. Do NOT ask me to do anything. Fix errors and retry until curl http://localhost:8080/api/progress returns JSON.</code>
                         </div>
                         <div style="display:flex;gap:10px;align-items:flex-start;">
                             <span style="background:#FAA74A;color:#0a0e1a;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;">3</span>
@@ -1171,29 +1171,34 @@ STEP 1 — FIND PYTHON (do NOT reinstall if it already exists):
   macOS: brew install python3
 
 STEP 2 — INSTALL PACKAGES (always run this even if already installed):
-- Run: <python> -m pip install browser_cookie3 requests pycryptodome
+- On Windows, first run: set PYTHONUTF8=1 && set PYTHONIOENCODING=utf-8
+  (or in PowerShell: $env:PYTHONUTF8="1"; $env:PYTHONIOENCODING="utf-8")
+- Run: <python> -m pip install browser_cookie3 requests pycryptodome rookiepy
   (replace <python> with whichever python command worked in step 1)
-- pycryptodome is REQUIRED on Windows for Chrome cookie decryption.
-- If pip fails with encoding errors on Windows, set PYTHONUTF8=1 first.
+- pycryptodome AND rookiepy are REQUIRED on Windows for Chrome cookie decryption.
+- If rookiepy fails to install (needs Rust compiler), skip it — the others are enough.
 
 STEP 3 — KILL ANY EXISTING PROCESS ON PORT 8080:
-- Windows: for /f "tokens=5" %a in ('netstat -ano ^| findstr :8080 ^| findstr LISTENING') do taskkill /F /PID %a
+- Windows PowerShell: Get-NetTCPConnection -LocalPort 8080 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }
+- Windows CMD: for /f "tokens=5" %a in ('netstat -ano ^| findstr :8080 ^| findstr LISTENING') do taskkill /F /PID %a
 - macOS: lsof -ti:8080 | xargs kill -9
 
 STEP 4 — RUN THE DASHBOARD:
+- On Windows set env vars first: set PYTHONUTF8=1 (CMD) or $env:PYTHONUTF8="1" (PowerShell)
 - Run: <python> run_dashboard.py --install
 - This registers auto-start AND launches the proxy immediately.
 
 STEP 5 — VERIFY:
-- Run: curl http://localhost:8080/api/progress
+- Wait 3 seconds, then run: curl http://localhost:8080/api/progress
+  (PowerShell: Invoke-WebRequest http://localhost:8080/api/progress | Select-Object -ExpandProperty Content)
 - It should return JSON. If it does, you're done.
 
 CRITICAL RULES:
-- Do NOT search for, create, or modify any HTML files.
+- Do NOT search for, create, or modify any HTML files. The proxy auto-downloads the dashboard.
 - Do NOT try to open the HTML in a browser — just verify the API responds.
 - Do NOT reinstall Python if it already exists somewhere on the machine.
 - Do NOT ask the user to do anything. You do everything.
-- If something fails, fix it and retry. Do not stop until curl http://localhost:8080/api/progress returns JSON.`;
+- If something fails, fix it and retry. Do not stop until the API responds with JSON.`;
 }
 
 function showSetupPanel() {
@@ -1249,8 +1254,8 @@ function switchSetupTab(tab, btn) {
                 <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-primary);line-height:2.2;background:rgba(0,0,0,.3);padding:14px 16px;border-radius:8px;position:relative;">
                     <button onclick="navigator.clipboard.writeText(this.parentElement.querySelector('code').textContent);this.textContent='✓ Copied!';setTimeout(()=>this.textContent='📋 Copy',2000);" style="position:absolute;top:8px;right:8px;padding:4px 10px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:6px;color:var(--text-muted);font-size:11px;cursor:pointer;">📋 Copy</button>
                     <code style="white-space:pre-wrap;">${isWin
-                        ? 'pip install browser_cookie3 requests pycryptodome\npython run_dashboard.py --install'
-                        : 'pip3 install browser_cookie3 requests pycryptodome\npython3 run_dashboard.py --install'
+                        ? 'pip install browser_cookie3 requests pycryptodome rookiepy\nset PYTHONUTF8=1\npython run_dashboard.py --install'
+                        : 'pip3 install browser_cookie3 requests pycryptodome rookiepy\npython3 run_dashboard.py --install'
                     }</code>
                 </div>
             </div>

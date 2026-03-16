@@ -143,21 +143,33 @@ def _do_fetch_background(date_from=None, date_to=None):
 
     _update("fetching", "Reading browser cookies...")
 
+    _install_deps = [sys.executable, "-m", "pip", "install", "--quiet"]
+
     try:
         import browser_cookie3
     except ImportError:
-        pip_cmd = [sys.executable, "-m", "pip", "install",
-                   "browser_cookie3", "requests", "pycryptodome"]
-        subprocess.check_call(pip_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.check_call(_install_deps + ["browser_cookie3", "requests", "pycryptodome"],
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         import browser_cookie3
 
     try:
         from Crypto.Cipher import AES  # noqa: F401
     except ImportError:
-        subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", "pycryptodome"],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        )
+        subprocess.check_call(_install_deps + ["pycryptodome"],
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    rookiepy_available = False
+    try:
+        import rookiepy
+        rookiepy_available = True
+    except ImportError:
+        try:
+            subprocess.check_call(_install_deps + ["rookiepy"],
+                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            import rookiepy
+            rookiepy_available = True
+        except Exception:
+            pass
 
     import requests as req
 
@@ -192,6 +204,29 @@ def _do_fetch_background(date_from=None, date_to=None):
                         continue
         return None
 
+    def _try_rookiepy(domain):
+        """Try rookiepy as fallback — better Windows cookie support."""
+        if not rookiepy_available:
+            return None
+        for fn_name in ["chrome", "edge", "firefox", "chromium"]:
+            fn = getattr(rookiepy, fn_name, None)
+            if not fn:
+                continue
+            try:
+                cookies = fn([domain])
+                if cookies:
+                    jar = req.cookies.RequestsCookieJar()
+                    for c in cookies:
+                        jar.set(c.get("name", ""), c.get("value", ""),
+                                domain=c.get("domain", ""), path=c.get("path", "/"))
+                    sn = [cc for cc in jar if "service-now" in (cc.domain or "")]
+                    if sn:
+                        print(f"  {C_GREEN}  rookiepy/{fn_name} found {len(sn)} cookies{C_RESET}")
+                        return jar
+            except Exception:
+                continue
+        return None
+
     browsers = [
         ("Chrome", browser_cookie3.chrome),
         ("Edge", browser_cookie3.edge),
@@ -207,7 +242,7 @@ def _do_fetch_background(date_from=None, date_to=None):
             print(f"  {C_DIM}  Trying {browser_name}...{C_RESET}", end=" ")
             try:
                 jar = browser_fn(domain_name=".service-now.com")
-            except (PermissionError, Exception) as first_err:
+            except Exception as first_err:
                 tmp_path = _copy_cookie_db(browser_name)
                 if tmp_path:
                     print(f"{C_DIM}retrying with copy...{C_RESET}", end=" ")
@@ -221,30 +256,27 @@ def _do_fetch_background(date_from=None, date_to=None):
                 print(f"{C_GREEN}✓ {len(found)} cookies{C_RESET}")
                 break
             else:
-                msg = f"{browser_name}: opened but no ServiceNow cookies found"
+                msg = f"{browser_name}: no ServiceNow cookies"
                 browser_errors.append(msg)
                 print(f"{C_DIM}no ServiceNow cookies{C_RESET}")
-        except PermissionError as e:
-            msg = f"{browser_name}: cookie file locked — close {browser_name} fully (check Task Manager for background processes)"
-            browser_errors.append(msg)
-            print(f"{C_DIM}permission denied{C_RESET}")
         except Exception as e:
-            err_str = str(e)
-            if "admin" in err_str.lower():
-                msg = f"{browser_name}: requires admin — try Edge or Firefox instead"
-            elif "Crypto" in err_str or "decrypt" in err_str.lower():
-                msg = f"{browser_name}: decryption failed — run: pip install pycryptodome"
-            else:
-                msg = f"{browser_name}: {err_str[:100]}"
+            msg = f"{browser_name}: {str(e)[:120]}"
             browser_errors.append(msg)
-            print(f"{C_DIM}skipped ({err_str[:80]}){C_RESET}")
+            print(f"{C_DIM}failed ({str(e)[:80]}){C_RESET}")
             continue
 
+    if not sn_cookies and rookiepy_available:
+        print(f"  {C_CYAN}  Trying rookiepy fallback...{C_RESET}")
+        _update("fetching", "Trying rookiepy fallback...")
+        cj = _try_rookiepy(".service-now.com")
+        if cj:
+            sn_cookies = [c for c in cj if "service-now" in (c.domain or "")]
+
     if not cj or not sn_cookies:
-        details = "; ".join(browser_errors) if browser_errors else "unknown error"
-        hint = ("Cookie read failed. Try this: 1) Open ServiceNow in Chrome or Edge, "
-                "2) Close the browser COMPLETELY (check Task Manager — end all Chrome/Edge processes), "
-                "3) Click Fetch Tickets again. Details: " + details)
+        details = " | ".join(browser_errors) if browser_errors else "unknown error"
+        hint = (f"Cookie read failed on all browsers. "
+                f"Make sure you visited bofi.service-now.com in Chrome or Edge FIRST. "
+                f"Errors: {details}")
         _update("error", error=hint)
         print(f"  {C_RED}✗ No cookies found{C_RESET}")
         for err in browser_errors:
@@ -578,12 +610,19 @@ def install_autostart():
     elif os.name == "nt":
         bat_dir = Path(os.environ.get("APPDATA", "")) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup"
         bat_path = bat_dir / "snow_dashboard.bat"
-        bat_content = f'@echo off\nstart /B "" "{python_path}" "{script_path}" --daemon\n'
+        bat_content = (f'@echo off\n'
+                       f'set PYTHONUTF8=1\n'
+                       f'set PYTHONIOENCODING=utf-8\n'
+                       f'start /B "" "{python_path}" "{script_path}" --daemon\n')
         bat_path.write_text(bat_content)
+        env = os.environ.copy()
+        env["PYTHONUTF8"] = "1"
+        env["PYTHONIOENCODING"] = "utf-8"
         subprocess.Popen(
             [python_path, script_path, "--daemon"],
             creationflags=0x00000008,
-            close_fds=True
+            close_fds=True,
+            env=env,
         )
         print(f"\n  {C_GREEN}✓ Installed as startup service{C_RESET}")
         print(f"  {C_DIM}  The dashboard proxy will auto-start on login.{C_RESET}")
