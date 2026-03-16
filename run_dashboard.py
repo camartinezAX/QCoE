@@ -126,23 +126,31 @@ fetch_progress = {
 _fetch_lock = threading.Lock()
 
 
-def _try_cdp_cookies(domain_filter):
+_NO_WINDOW = 0x08000000
+
+
+def _try_cdp_cookies(domain_filter, force_refresh=False):
     """Windows-only: read cookies via Chrome DevTools Protocol.
 
     Chrome/Edge v130+ use App-Bound Encryption that blocks external cookie
     reads without admin.  CDP bypasses this because the *browser itself*
     decrypts cookies internally.
 
-    If Edge is not already running with a debug port we briefly restart it
-    with ``--remote-debugging-port``.  Edge restores all previous tabs so
-    user disruption is minimal.  Results are cached for 12 h.
+    Strategy:
+      1. Return cached cookies if still valid (skip if *force_refresh*).
+      2. Check if any browser is already running with a debug port (free).
+      3. If not, restart ONE browser with a debug port.
+         The browser restores all previous tabs (``--restore-last-session``).
+      4. Read cookies via CDP WebSocket and cache for 12 h.
+
+    Each browser gets its own port so they never collide.
     """
     if os.name != "nt":
         return None
 
     import requests as rq
 
-    if COOKIE_CACHE_FILE.exists():
+    if not force_refresh and COOKIE_CACHE_FILE.exists():
         try:
             data = json.loads(COOKIE_CACHE_FILE.read_text())
             cached_at = datetime.fromisoformat(data.get("cached_at", "2000-01-01"))
@@ -161,80 +169,51 @@ def _try_cdp_cookies(domain_filter):
         except Exception:
             pass
 
+    try:
+        import websocket  # noqa: F401
+    except ImportError:
+        try:
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "--quiet",
+                 "websocket-client"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                creationflags=_NO_WINDOW)
+        except Exception:
+            pass
+
     import time
 
-    CDP_PORT = 9223
     browsers = [
-        ("Edge", "msedge.exe",
+        ("Chrome", "chrome.exe", 9222,
+         [os.path.join(os.environ.get("ProgramFiles", ""),
+                       "Google", "Chrome", "Application", "chrome.exe"),
+          os.path.join(os.environ.get("ProgramFiles(x86)", ""),
+                       "Google", "Chrome", "Application", "chrome.exe"),
+          os.path.join(os.environ.get("LOCALAPPDATA", ""),
+                       "Google", "Chrome", "Application", "chrome.exe")]),
+        ("Edge", "msedge.exe", 9223,
          [os.path.join(os.environ.get("ProgramFiles(x86)", ""),
                        "Microsoft", "Edge", "Application", "msedge.exe"),
           os.path.join(os.environ.get("ProgramFiles", ""),
                        "Microsoft", "Edge", "Application", "msedge.exe")]),
-        ("Chrome", "chrome.exe",
-         [os.path.join(os.environ.get("ProgramFiles", ""),
-                       "Google", "Chrome", "Application", "chrome.exe"),
-          os.path.join(os.environ.get("ProgramFiles(x86)", ""),
-                       "Google", "Chrome", "Application", "chrome.exe")]),
     ]
 
-    for bname, proc_name, exe_candidates in browsers:
-        exe_path = next((p for p in exe_candidates if os.path.isfile(p)),
-                        None)
-        if not exe_path:
-            continue
-
-        cdp_ready = False
+    def _cdp_read_cookies(port, label):
+        """Connect to a CDP debug port and return ServiceNow cookies."""
         try:
-            rq.get(f"http://localhost:{CDP_PORT}/json/version", timeout=2)
-            cdp_ready = True
-            print(f"  {C_DIM}  {bname} CDP already available{C_RESET}")
-        except Exception:
-            pass
-
-        if not cdp_ready:
-            print(f"  {C_CYAN}  Briefly restarting {bname} with "
-                  f"debug port for cookie access...{C_RESET}")
-            subprocess.run(["taskkill", "/F", "/IM", proc_name],
-                           capture_output=True)
-            time.sleep(2)
-
-            subprocess.Popen(
-                [exe_path,
-                 f"--remote-debugging-port={CDP_PORT}",
-                 "--remote-allow-origins=*",
-                 "--restore-last-session"],
-                close_fds=True,
-                creationflags=0x00000008,
-            )
-
-            for _ in range(15):
-                time.sleep(1)
-                try:
-                    rq.get(f"http://localhost:{CDP_PORT}/json/version",
-                           timeout=2)
-                    cdp_ready = True
-                    break
-                except Exception:
-                    pass
-
-            if not cdp_ready:
-                print(f"  {C_DIM}  {bname} CDP did not start{C_RESET}")
-                continue
-
-        try:
-            ver = rq.get(f"http://localhost:{CDP_PORT}/json/version",
+            import websocket as ws_mod
+            ver = rq.get(f"http://localhost:{port}/json/version",
                          timeout=3).json()
             ws_url = ver.get("webSocketDebuggerUrl")
             if not ws_url:
-                pages = rq.get(f"http://localhost:{CDP_PORT}/json",
+                pages = rq.get(f"http://localhost:{port}/json",
                                timeout=3).json()
                 if pages:
                     ws_url = pages[0].get("webSocketDebuggerUrl")
             if not ws_url:
-                continue
+                return None
 
-            import websocket
-            ws = websocket.create_connection(ws_url, timeout=10)
+            ws = ws_mod.create_connection(ws_url, timeout=10)
             ws.send(json.dumps({"method": "Storage.getCookies", "id": 1}))
             resp = json.loads(ws.recv())
             ws.close()
@@ -242,37 +221,91 @@ def _try_cdp_cookies(domain_filter):
             all_cookies = resp.get("result", {}).get("cookies", [])
             sn = [c for c in all_cookies
                   if domain_filter in c.get("domain", "")]
-
-            if not sn:
-                print(f"  {C_DIM}  {bname}: no ServiceNow cookies "
-                      f"via CDP{C_RESET}")
-                continue
-
-            cookies_list = [dict(name=c["name"], value=c["value"],
-                                 domain=c["domain"],
-                                 path=c.get("path", "/"))
-                            for c in sn]
-
-            COOKIE_CACHE_FILE.write_text(json.dumps({
-                "cached_at": datetime.now().isoformat(),
-                "cookies": cookies_list,
-            }))
-
-            jar = rq.cookies.RequestsCookieJar()
-            for c in cookies_list:
-                jar.set(c["name"], c["value"],
-                        domain=c["domain"], path=c["path"])
-
-            print(f"  {C_GREEN}  {bname} CDP: {len(sn)} ServiceNow "
-                  f"cookies{C_RESET}")
-            return jar
-
+            if sn:
+                print(f"  {C_GREEN}  {label} CDP: {len(sn)} ServiceNow "
+                      f"cookies{C_RESET}")
+                return sn
+            print(f"  {C_DIM}  {label}: no ServiceNow cookies "
+                  f"via CDP{C_RESET}")
         except Exception as e:
-            print(f"  {C_DIM}  {bname} CDP error: "
+            print(f"  {C_DIM}  {label} CDP error: "
                   f"{str(e)[:100]}{C_RESET}")
+        return None
+
+    # Phase 1: check ports already active (no browser restart needed)
+    if not force_refresh:
+        for bname, _, port, _ in browsers:
+            try:
+                rq.get(f"http://localhost:{port}/json/version", timeout=2)
+                print(f"  {C_DIM}  {bname} CDP already available "
+                      f"on port {port}{C_RESET}")
+                sn = _cdp_read_cookies(port, bname)
+                if sn:
+                    return _cdp_jar(sn)
+            except Exception:
+                pass
+
+    # Phase 2: restart browsers one at a time until we get cookies
+    for bname, proc_name, port, exe_candidates in browsers:
+        exe_path = next((p for p in exe_candidates if os.path.isfile(p)),
+                        None)
+        if not exe_path:
             continue
 
+        print(f"  {C_CYAN}  Briefly restarting {bname} with debug port "
+              f"for cookie access...{C_RESET}")
+        subprocess.run(["taskkill", "/F", "/IM", proc_name],
+                       capture_output=True, creationflags=_NO_WINDOW)
+        time.sleep(3)
+
+        subprocess.Popen(
+            [exe_path,
+             f"--remote-debugging-port={port}",
+             "--remote-allow-origins=*",
+             "--restore-last-session",
+             "--no-first-run"],
+            creationflags=0x00000008,
+        )
+
+        cdp_ready = False
+        for _ in range(20):
+            time.sleep(1)
+            try:
+                rq.get(f"http://localhost:{port}/json/version", timeout=2)
+                cdp_ready = True
+                break
+            except Exception:
+                pass
+
+        if not cdp_ready:
+            print(f"  {C_DIM}  {bname} CDP did not start{C_RESET}")
+            continue
+
+        sn = _cdp_read_cookies(port, bname)
+        if sn:
+            return _cdp_jar(sn)
+
     return None
+
+
+def _cdp_jar(sn_cookies):
+    """Turn a list of CDP cookie dicts into a cached RequestsCookieJar."""
+    import requests as rq
+
+    cookies_list = [dict(name=c["name"], value=c["value"],
+                         domain=c["domain"], path=c.get("path", "/"))
+                    for c in sn_cookies]
+
+    COOKIE_CACHE_FILE.write_text(json.dumps({
+        "cached_at": datetime.now().isoformat(),
+        "cookies": cookies_list,
+    }))
+
+    jar = rq.cookies.RequestsCookieJar()
+    for c in cookies_list:
+        jar.set(c["name"], c["value"],
+                domain=c["domain"], path=c["path"])
+    return jar
 
 
 def _do_fetch_background(date_from=None, date_to=None):
@@ -286,6 +319,8 @@ def _do_fetch_background(date_from=None, date_to=None):
             fetch_progress["pages_done"] = pages
             fetch_progress["records_so_far"] = records
             fetch_progress["error"] = error
+
+    _do_fetch_background._retried_401 = False
 
     date_label = ""
     if date_from and date_to:
@@ -430,10 +465,9 @@ def _do_fetch_background(date_from=None, date_to=None):
             sn_cookies = [c for c in cj if "service-now" in (c.domain or "")]
 
     if not cj or not sn_cookies:
-        details = " | ".join(browser_errors) if browser_errors else "unknown error"
-        hint = (f"Cookie read failed on all browsers. "
-                f"Make sure you visited bofi.service-now.com in Chrome or Edge FIRST. "
-                f"Errors: {details}")
+        hint = ("No ServiceNow cookies found. "
+                "Please open bofi.service-now.com in Chrome or Edge, "
+                "log in, then click Refresh in the dashboard.")
         _update("error", error=hint)
         print(f"  {C_RED}✗ No cookies found{C_RESET}")
         for err in browser_errors:
@@ -502,7 +536,26 @@ def _do_fetch_background(date_from=None, date_to=None):
                         COOKIE_CACHE_FILE.unlink()
                     except OSError:
                         pass
-                _update("error", error="Session expired. Open ServiceNow in Chrome/Edge to refresh, then retry.")
+                if not getattr(_do_fetch_background, "_retried_401", False):
+                    _do_fetch_background._retried_401 = True
+                    print(f"  {C_CYAN}  Session expired — "
+                          f"refreshing cookies...{C_RESET}")
+                    _update("fetching",
+                            "Session expired, refreshing cookies...")
+                    fresh_jar = _try_cdp_cookies("service-now",
+                                                 force_refresh=True)
+                    if fresh_jar:
+                        fresh_sn = [c for c in fresh_jar
+                                    if "service-now" in (c.domain or "")]
+                        if fresh_sn:
+                            cj = fresh_jar
+                            sn_cookies = fresh_sn
+                            print(f"  {C_GREEN}  Got fresh cookies — "
+                                  f"retrying...{C_RESET}")
+                            continue
+                _update("error",
+                        error="Session expired. Open ServiceNow in "
+                              "Chrome/Edge to refresh, then retry.")
                 print(f"  {C_RED}✗ Session expired (HTTP 401){C_RESET}")
                 return
             if resp.status_code != 200:
