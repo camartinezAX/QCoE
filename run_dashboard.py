@@ -27,6 +27,8 @@ CACHE_MAX_AGE = timedelta(hours=2)
 SCRIPT_DIR = Path(__file__).parent
 DASHBOARD_HTML = "Environment_Downtime_Dashboard.html"
 DASHBOARD_URL = "https://camartinezax.github.io/QCoE/Environment_Downtime_Dashboard.html"
+COOKIE_CACHE_FILE = Path(__file__).parent / ".snow_cookie_jar.json"
+COOKIE_JAR_MAX_AGE = timedelta(hours=12)
 
 SNOW_TABLES = {
     "sc_req_item": {
@@ -122,6 +124,155 @@ fetch_progress = {
     "error": None,
 }
 _fetch_lock = threading.Lock()
+
+
+def _try_cdp_cookies(domain_filter):
+    """Windows-only: read cookies via Chrome DevTools Protocol.
+
+    Chrome/Edge v130+ use App-Bound Encryption that blocks external cookie
+    reads without admin.  CDP bypasses this because the *browser itself*
+    decrypts cookies internally.
+
+    If Edge is not already running with a debug port we briefly restart it
+    with ``--remote-debugging-port``.  Edge restores all previous tabs so
+    user disruption is minimal.  Results are cached for 12 h.
+    """
+    if os.name != "nt":
+        return None
+
+    import requests as rq
+
+    if COOKIE_CACHE_FILE.exists():
+        try:
+            data = json.loads(COOKIE_CACHE_FILE.read_text())
+            cached_at = datetime.fromisoformat(data.get("cached_at", "2000-01-01"))
+            if datetime.now() - cached_at < COOKIE_JAR_MAX_AGE:
+                cookies = data.get("cookies", [])
+                if cookies:
+                    jar = rq.cookies.RequestsCookieJar()
+                    for c in cookies:
+                        jar.set(c["name"], c["value"],
+                                domain=c["domain"], path=c["path"])
+                    sn = [cc for cc in jar if "service-now" in (cc.domain or "")]
+                    if sn:
+                        print(f"  {C_GREEN}  Using cached cookies "
+                              f"({len(sn)} ServiceNow cookies){C_RESET}")
+                        return jar
+        except Exception:
+            pass
+
+    import time
+
+    CDP_PORT = 9223
+    browsers = [
+        ("Edge", "msedge.exe",
+         [os.path.join(os.environ.get("ProgramFiles(x86)", ""),
+                       "Microsoft", "Edge", "Application", "msedge.exe"),
+          os.path.join(os.environ.get("ProgramFiles", ""),
+                       "Microsoft", "Edge", "Application", "msedge.exe")]),
+        ("Chrome", "chrome.exe",
+         [os.path.join(os.environ.get("ProgramFiles", ""),
+                       "Google", "Chrome", "Application", "chrome.exe"),
+          os.path.join(os.environ.get("ProgramFiles(x86)", ""),
+                       "Google", "Chrome", "Application", "chrome.exe")]),
+    ]
+
+    for bname, proc_name, exe_candidates in browsers:
+        exe_path = next((p for p in exe_candidates if os.path.isfile(p)),
+                        None)
+        if not exe_path:
+            continue
+
+        cdp_ready = False
+        try:
+            rq.get(f"http://localhost:{CDP_PORT}/json/version", timeout=2)
+            cdp_ready = True
+            print(f"  {C_DIM}  {bname} CDP already available{C_RESET}")
+        except Exception:
+            pass
+
+        if not cdp_ready:
+            print(f"  {C_CYAN}  Briefly restarting {bname} with "
+                  f"debug port for cookie access...{C_RESET}")
+            subprocess.run(["taskkill", "/F", "/IM", proc_name],
+                           capture_output=True)
+            time.sleep(2)
+
+            subprocess.Popen(
+                [exe_path,
+                 f"--remote-debugging-port={CDP_PORT}",
+                 "--remote-allow-origins=*",
+                 "--restore-last-session"],
+                close_fds=True,
+                creationflags=0x00000008,
+            )
+
+            for _ in range(15):
+                time.sleep(1)
+                try:
+                    rq.get(f"http://localhost:{CDP_PORT}/json/version",
+                           timeout=2)
+                    cdp_ready = True
+                    break
+                except Exception:
+                    pass
+
+            if not cdp_ready:
+                print(f"  {C_DIM}  {bname} CDP did not start{C_RESET}")
+                continue
+
+        try:
+            ver = rq.get(f"http://localhost:{CDP_PORT}/json/version",
+                         timeout=3).json()
+            ws_url = ver.get("webSocketDebuggerUrl")
+            if not ws_url:
+                pages = rq.get(f"http://localhost:{CDP_PORT}/json",
+                               timeout=3).json()
+                if pages:
+                    ws_url = pages[0].get("webSocketDebuggerUrl")
+            if not ws_url:
+                continue
+
+            import websocket
+            ws = websocket.create_connection(ws_url, timeout=10)
+            ws.send(json.dumps({"method": "Storage.getCookies", "id": 1}))
+            resp = json.loads(ws.recv())
+            ws.close()
+
+            all_cookies = resp.get("result", {}).get("cookies", [])
+            sn = [c for c in all_cookies
+                  if domain_filter in c.get("domain", "")]
+
+            if not sn:
+                print(f"  {C_DIM}  {bname}: no ServiceNow cookies "
+                      f"via CDP{C_RESET}")
+                continue
+
+            cookies_list = [dict(name=c["name"], value=c["value"],
+                                 domain=c["domain"],
+                                 path=c.get("path", "/"))
+                            for c in sn]
+
+            COOKIE_CACHE_FILE.write_text(json.dumps({
+                "cached_at": datetime.now().isoformat(),
+                "cookies": cookies_list,
+            }))
+
+            jar = rq.cookies.RequestsCookieJar()
+            for c in cookies_list:
+                jar.set(c["name"], c["value"],
+                        domain=c["domain"], path=c["path"])
+
+            print(f"  {C_GREEN}  {bname} CDP: {len(sn)} ServiceNow "
+                  f"cookies{C_RESET}")
+            return jar
+
+        except Exception as e:
+            print(f"  {C_DIM}  {bname} CDP error: "
+                  f"{str(e)[:100]}{C_RESET}")
+            continue
+
+    return None
 
 
 def _do_fetch_background(date_from=None, date_to=None):
@@ -272,6 +423,12 @@ def _do_fetch_background(date_from=None, date_to=None):
         if cj:
             sn_cookies = [c for c in cj if "service-now" in (c.domain or "")]
 
+    if not sn_cookies and os.name == "nt":
+        _update("fetching", "Reading cookies via browser DevTools...")
+        cj = _try_cdp_cookies("service-now")
+        if cj:
+            sn_cookies = [c for c in cj if "service-now" in (c.domain or "")]
+
     if not cj or not sn_cookies:
         details = " | ".join(browser_errors) if browser_errors else "unknown error"
         hint = (f"Cookie read failed on all browsers. "
@@ -304,6 +461,8 @@ def _do_fetch_background(date_from=None, date_to=None):
         _update("fetching", f"Querying {table_name}...", pages=page_num, records=len(all_records))
 
         first_row = 0
+        stale_streak = 0
+        prev_unique = len(all_records)
         while True:
             page_num += 1
             params = {
@@ -313,18 +472,37 @@ def _do_fetch_background(date_from=None, date_to=None):
                 "sysparm_record_count": str(PAGE_SIZE),
                 "sysparm_first_row": str(first_row),
             }
-            try:
-                resp = req.get(table_url, params=params, cookies=cj,
-                               headers=headers, timeout=60)
-            except req.exceptions.ConnectionError:
-                _update("error", error="Cannot reach ServiceNow. Check your network.")
-                return
-            except req.exceptions.Timeout:
-                _update("error", error="Request timed out. ServiceNow may be slow.")
+            resp = None
+            for attempt in range(3):
+                try:
+                    resp = req.get(table_url, params=params, cookies=cj,
+                                   headers=headers, timeout=60)
+                    break
+                except (req.exceptions.ConnectionError,
+                        req.exceptions.ChunkedEncodingError) as e:
+                    if attempt < 2:
+                        import time as _t
+                        _t.sleep(2 ** attempt)
+                        continue
+                    _update("error",
+                            error="Cannot reach ServiceNow. Check your network.")
+                    return
+                except req.exceptions.Timeout:
+                    if attempt < 2:
+                        continue
+                    _update("error",
+                            error="Request timed out. ServiceNow may be slow.")
+                    return
+            if resp is None:
                 return
 
             if resp.status_code == 401:
-                _update("error", error="Session expired. Open ServiceNow in Chrome to refresh.")
+                if COOKIE_CACHE_FILE.exists():
+                    try:
+                        COOKIE_CACHE_FILE.unlink()
+                    except OSError:
+                        pass
+                _update("error", error="Session expired. Open ServiceNow in Chrome/Edge to refresh, then retry.")
                 print(f"  {C_RED}✗ Session expired (HTTP 401){C_RESET}")
                 return
             if resp.status_code != 200:
@@ -352,6 +530,22 @@ def _do_fetch_background(date_from=None, date_to=None):
             if len(page) < PAGE_SIZE:
                 break
             first_row += PAGE_SIZE
+
+            cur_unique = len(all_records)
+            if cur_unique == prev_unique:
+                stale_streak += 1
+            else:
+                stale_streak = 0
+                prev_unique = cur_unique
+
+            if stale_streak >= 5:
+                print(f"  {C_DIM}  No new records after {stale_streak} pages "
+                      f"for {table_name}, moving on{C_RESET}")
+                break
+
+            if page_num >= 200:
+                print(f"  {C_DIM}  Hit page limit for {table_name}{C_RESET}")
+                break
 
     DashboardHandler.cached_data = all_records
     save_cache(all_records)
