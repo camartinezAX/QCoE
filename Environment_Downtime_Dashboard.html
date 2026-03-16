@@ -524,6 +524,64 @@
     </style>
 </head>
 <body>
+<script>
+(function(){
+    const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    if (isLocal) return;
+    document.addEventListener('DOMContentLoaded', function(){
+        const overlay = document.createElement('div');
+        overlay.id = 'ghLanding';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:linear-gradient(135deg,#0a0e1a 0%,#131a2e 100%);display:flex;align-items:center;justify-content:center;flex-direction:column;font-family:"Plus Jakarta Sans",sans-serif;';
+        const isWin = /Win/.test(navigator.platform) || /Windows/.test(navigator.userAgent);
+        overlay.innerHTML = `
+            <div style="text-align:center;max-width:560px;padding:32px;">
+                <div style="font-size:11px;font-weight:700;letter-spacing:2px;color:#FAA74A;margin-bottom:16px;">AXOS</div>
+                <h1 style="font-size:28px;font-weight:800;color:#fff;margin:0 0 8px;">Environment Downtime Dashboard</h1>
+                <p style="color:rgba(255,255,255,.55);font-size:14px;line-height:1.7;margin-bottom:28px;">
+                    This dashboard runs through a local helper for secure ServiceNow access.<br>
+                    Open it from your local proxy:
+                </p>
+                <a href="http://localhost:8080" style="display:inline-flex;align-items:center;gap:10px;padding:14px 32px;background:linear-gradient(135deg,#FAA74A,#e8923a);color:#fff;text-decoration:none;border-radius:12px;font-size:16px;font-weight:700;box-shadow:0 4px 20px rgba(250,167,74,.35);transition:transform .15s;" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">
+                    🚀 Open Dashboard (localhost:8080)
+                </a>
+                <div style="margin-top:36px;padding:20px 24px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;text-align:left;">
+                    <div style="font-size:11px;font-weight:700;color:#FAA74A;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">First time? Quick setup</div>
+                    <div style="display:flex;flex-direction:column;gap:10px;">
+                        <div style="display:flex;gap:10px;align-items:flex-start;">
+                            <span style="background:#FAA74A;color:#0a0e1a;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;">1</span>
+                            <p style="color:rgba(255,255,255,.65);font-size:13px;margin:0;line-height:1.5;">
+                                <a href="https://bofifederalbank-my.sharepoint.com/:u:/p/camartinez/IQDvABsB3nzLRpywgwlyBLoCARPE47LfUoHo_wSGL-uaRKc?e=tKs4HE" target="_blank" style="color:#FAA74A;font-weight:700;text-decoration:underline;">Download run_dashboard.py</a> and save it in your Cursor project folder.
+                            </p>
+                        </div>
+                        <div style="display:flex;gap:10px;align-items:flex-start;">
+                            <span style="background:#FAA74A;color:#0a0e1a;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;">2</span>
+                            <p style="color:rgba(255,255,255,.65);font-size:13px;margin:0;line-height:1.5;">
+                                Open <b style="color:#fff;">Cursor AI</b> and paste this prompt:
+                            </p>
+                        </div>
+                        <div style="position:relative;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.1);padding:12px 14px;border-radius:8px;margin-left:32px;">
+                            <button onclick="navigator.clipboard.writeText(this.nextElementSibling.textContent);this.textContent='✓ Copied!';setTimeout(()=>this.textContent='📋 Copy',2000);" style="position:absolute;top:8px;right:8px;padding:4px 12px;background:#FAA74A;border:none;border-radius:6px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;">📋 Copy</button>
+                            <code style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,.5);white-space:pre-wrap;line-height:1.5;">I have a file called run_dashboard.py in this project folder. Set it up: install Python 3 if needed, run "pip install browser_cookie3 requests", then "python run_dashboard.py --install". If a command fails, fix it and retry. Do NOT ask me to do anything — you do it all. Do not stop until http://localhost:8080 responds.</code>
+                        </div>
+                        <div style="display:flex;gap:10px;align-items:flex-start;">
+                            <span style="background:#FAA74A;color:#0a0e1a;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;">3</span>
+                            <p style="color:rgba(255,255,255,.65);font-size:13px;margin:0;line-height:1.5;">
+                                Open <a href="https://bofi.service-now.com" target="_blank" style="color:#FAA74A;">ServiceNow</a> in Chrome/Edge, then click the button above.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <p style="color:rgba(255,255,255,.3);font-size:11px;margin-top:20px;">
+                    The helper reads your browser's SSO session — no passwords needed. It auto-starts on login after setup.
+                </p>
+            </div>
+        `;
+        document.body.prepend(overlay);
+        document.querySelector('.app').style.display = 'none';
+        document.querySelector('.ai-fab').style.display = 'none';
+    });
+})();
+</script>
 <div class="bg-pattern"></div>
 <div class="app">
     <div class="header">
@@ -899,10 +957,6 @@ function getProxyBase() {
     return isLocal ? '' : 'http://localhost:8080';
 }
 
-function proxyFetch(url, opts = {}) {
-    if (getProxyBase()) opts.targetAddressSpace = 'local';
-    return fetch(url, opts);
-}
 
 async function pollProgress(rangeLabel) {
     const proxyBase = getProxyBase();
@@ -911,7 +965,7 @@ async function pollProgress(rangeLabel) {
     for (let i = 0; i < maxPolls; i++) {
         await new Promise(r => setTimeout(r, 1500));
         try {
-            const resp = await proxyFetch(proxyBase + '/api/progress', { signal: AbortSignal.timeout(5000) });
+            const resp = await fetch(proxyBase + '/api/progress', { signal: AbortSignal.timeout(5000) });
             const prog = await resp.json();
 
             if (prog.state === 'done') {
@@ -949,7 +1003,7 @@ async function startAndPoll(dateFrom, dateTo, rangeLabel) {
     const proxyBase = getProxyBase();
     let url = proxyBase + '/api/refresh';
     if (dateFrom && dateTo) url += `?from=${encodeURIComponent(dateFrom)}&to=${encodeURIComponent(dateTo)}`;
-    const resp = await proxyFetch(url, { signal: AbortSignal.timeout(10000) });
+    const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     await new Promise(r => setTimeout(r, 2000));
     return await pollProgress(rangeLabel);
@@ -1122,9 +1176,9 @@ function getAISetupPrompt() {
    - The --install flag registers it as an auto-start service (Windows Startup script or macOS LaunchAgent).
    - If there is a Unicode encoding error on Windows, set PYTHONUTF8=1 before running.
 4. Make sure ServiceNow (bofi.service-now.com) is open in Chrome or Edge so SSO cookies are available.
-5. Verify it works: open http://localhost:8080 in a browser.
+5. Verify it works: open http://localhost:8080 in a browser. It should show the dashboard (the proxy auto-downloads the HTML from GitHub Pages).
 
-IMPORTANT: Do NOT ask me to do anything manually. You do everything. If something fails, fix it and retry. Do not stop until http://localhost:8080 responds successfully.`;
+IMPORTANT: Do NOT ask me to do anything manually. Do NOT look for or create any HTML files — the proxy downloads the dashboard automatically. You do everything. If something fails, fix it and retry. Do not stop until http://localhost:8080 responds successfully.`;
 }
 
 function showSetupPanel() {
