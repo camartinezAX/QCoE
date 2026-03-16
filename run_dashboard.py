@@ -161,6 +161,37 @@ def _do_fetch_background(date_from=None, date_to=None):
 
     import requests as req
 
+    def _copy_cookie_db(browser_name):
+        """Copy locked cookie DB to temp so we can read while browser is open."""
+        import shutil, tempfile
+        if os.name != "nt":
+            return None
+        local = os.environ.get("LOCALAPPDATA", "")
+        if not local:
+            return None
+        paths = {
+            "Chrome": os.path.join(local, "Google", "Chrome", "User Data"),
+            "Edge": os.path.join(local, "Microsoft", "Edge", "User Data"),
+        }
+        ud = paths.get(browser_name)
+        if not ud or not os.path.isdir(ud):
+            return None
+        for profile in ["Default", "Profile 1", "Profile 2", "Profile 3"]:
+            for sub in ["Network", ""]:
+                cookie_file = os.path.join(ud, profile, sub, "Cookies") if sub else os.path.join(ud, profile, "Cookies")
+                if os.path.isfile(cookie_file):
+                    try:
+                        tmp = os.path.join(tempfile.gettempdir(), f"snow_{browser_name.lower()}_cookies")
+                        shutil.copy2(cookie_file, tmp)
+                        for wal_ext in ["-wal", "-shm"]:
+                            src = cookie_file + wal_ext
+                            if os.path.isfile(src):
+                                shutil.copy2(src, tmp + wal_ext)
+                        return tmp
+                    except Exception:
+                        continue
+        return None
+
     browsers = [
         ("Chrome", browser_cookie3.chrome),
         ("Edge", browser_cookie3.edge),
@@ -174,7 +205,15 @@ def _do_fetch_background(date_from=None, date_to=None):
         try:
             _update("fetching", f"Trying {browser_name} cookies...")
             print(f"  {C_DIM}  Trying {browser_name}...{C_RESET}", end=" ")
-            jar = browser_fn(domain_name=".service-now.com")
+            try:
+                jar = browser_fn(domain_name=".service-now.com")
+            except (PermissionError, Exception) as first_err:
+                tmp_path = _copy_cookie_db(browser_name)
+                if tmp_path:
+                    print(f"{C_DIM}retrying with copy...{C_RESET}", end=" ")
+                    jar = browser_fn(cookie_file=tmp_path, domain_name=".service-now.com")
+                else:
+                    raise first_err
             found = [c for c in jar if "service-now" in c.domain]
             if found:
                 cj = jar
@@ -186,7 +225,7 @@ def _do_fetch_background(date_from=None, date_to=None):
                 browser_errors.append(msg)
                 print(f"{C_DIM}no ServiceNow cookies{C_RESET}")
         except PermissionError as e:
-            msg = f"{browser_name}: permission denied — try closing {browser_name} completely and retry"
+            msg = f"{browser_name}: cookie file locked — close {browser_name} fully (check Task Manager for background processes)"
             browser_errors.append(msg)
             print(f"{C_DIM}permission denied{C_RESET}")
         except Exception as e:
@@ -203,9 +242,9 @@ def _do_fetch_background(date_from=None, date_to=None):
 
     if not cj or not sn_cookies:
         details = "; ".join(browser_errors) if browser_errors else "unknown error"
-        hint = ("Open ServiceNow in Chrome/Edge/Firefox first, "
-                "then close the browser completely, then retry. "
-                "Details: " + details)
+        hint = ("Cookie read failed. Try this: 1) Open ServiceNow in Chrome or Edge, "
+                "2) Close the browser COMPLETELY (check Task Manager — end all Chrome/Edge processes), "
+                "3) Click Fetch Tickets again. Details: " + details)
         _update("error", error=hint)
         print(f"  {C_RED}✗ No cookies found{C_RESET}")
         for err in browser_errors:

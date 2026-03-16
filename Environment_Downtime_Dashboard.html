@@ -459,7 +459,7 @@
         .f1-scene { position:relative;width:400px;height:60px;margin-bottom:16px; }
         .f1-bar-track { position:absolute;bottom:0;left:0;right:0;height:18px;background:rgba(255,255,255,.08);border-radius:9px;overflow:visible; }
         .f1-bar-fill { height:100%;background:var(--axos-orange);border-radius:9px;width:0;position:relative;overflow:visible;transition:width 1.5s cubic-bezier(.4,0,.2,1),background .3s ease; }
-        .f1-car { position:absolute;right:-18px;top:-26px;font-size:32px;line-height:1;z-index:3;animation:f1Bounce .12s ease-in-out infinite;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4)); }
+        .f1-car { position:absolute;right:-18px;top:-26px;font-size:32px;line-height:1;z-index:3;animation:f1Bounce .12s ease-in-out infinite;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4));transform:scaleX(-1); }
         .f1-smoke { position:absolute;right:12px;top:-18px;font-size:18px;line-height:1;opacity:0;z-index:2; }
         .f1-smoke.s1 { animation:f1Smoke .7s ease-out 0s infinite; }
         .f1-smoke.s2 { animation:f1Smoke .7s ease-out .25s infinite;font-size:14px;right:16px;top:-12px; }
@@ -471,7 +471,7 @@
         .f1-check { position:absolute;top:50%;left:50%;transform:scale(0);margin:-30px 0 0 -30px;width:60px;height:60px;background:rgba(255,255,255,.1);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:30px;opacity:0;transition:all .4s cubic-bezier(.175,.885,.32,1.275); }
         .f1-subtitle { color:var(--text-muted);font-size:13px;margin-top:16px;letter-spacing:1px; }
         @keyframes f1Fill { 0%{width:0} 100%{width:100%} }
-        @keyframes f1Bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-2px)} }
+        @keyframes f1Bounce { 0%,100%{transform:scaleX(-1) translateY(0)} 50%{transform:scaleX(-1) translateY(-2px)} }
         @keyframes f1Smoke { 0%{opacity:.7;transform:translateX(0) scale(.6)} 50%{opacity:.4;transform:translateX(-14px) scale(1)} 100%{opacity:0;transform:translateX(-28px) scale(1.3)} }
         @keyframes f1Road { 0%{transform:translateX(0)} 100%{transform:translateX(-24px)} }
         @keyframes f1Dots { 0%{content:'FETCHING'} 25%{content:'FETCHING.'} 50%{content:'FETCHING..'} 75%{content:'FETCHING...'} }
@@ -884,12 +884,6 @@
 <div class="toast" id="toast"><span id="toastMsg"></span></div>
 
 <script>
-if (/Win/.test(navigator.platform) || /Windows/.test(navigator.userAgent)) {
-    document.documentElement.classList.add('os-win');
-    const ws = document.createElement('style');
-    ws.textContent = '@keyframes f1Bounce{0%,100%{transform:scaleX(-1) translateY(0)}50%{transform:scaleX(-1) translateY(-2px)}}';
-    document.head.appendChild(ws);
-}
 let allTickets = [];
 let filteredTickets = [];
 let sortCol = 'opened_at';
