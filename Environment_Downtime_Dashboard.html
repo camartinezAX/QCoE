@@ -1112,15 +1112,13 @@ function refreshData() { fetchWithDateRange(); }
 const ONEDRIVE_LINK = 'https://bofifederalbank-my.sharepoint.com/:u:/p/camartinez/IQDvABsB3nzLRpywgwlyBLoCARPE47LfUoHo_wSGL-uaRKc?e=tKs4HE';
 
 function getAISetupPrompt() {
-    return `Download run_dashboard.py from this OneDrive link and save it to my Downloads folder: ${ONEDRIVE_LINK}
-
-Then set it up on my machine. Here is exactly what to do:
+    return `I have a file called run_dashboard.py in this project folder. Set it up on my machine. Here is exactly what to do:
 
 1. Check if Python 3 is installed. Try: python --version, python3 --version, py --version. If none work, install Python:
    - On Windows: try "winget install Python.Python.3.12". If winget is blocked by corporate policy, download the Python 3.12 embeddable ZIP from python.org, extract to a folder (e.g. ~/python312), download get-pip.py, and run it with that python.
    - On macOS: try "brew install python3" or download from python.org.
 2. Install dependencies: pip install browser_cookie3 requests (use "python -m pip" or "py -m pip" if pip is not in PATH).
-3. Run: python run_dashboard.py --install (from the Downloads folder where run_dashboard.py was saved).
+3. Run: python run_dashboard.py --install (from this project folder).
    - The --install flag registers it as an auto-start service (Windows Startup script or macOS LaunchAgent).
    - If there is a Unicode encoding error on Windows, set PYTHONUTF8=1 before running.
 4. Make sure ServiceNow (bofi.service-now.com) is open in Chrome or Edge so SSO cookies are available.
@@ -1147,18 +1145,26 @@ function switchSetupTab(tab, btn) {
 
     if (tab === 'ai') {
         container.innerHTML = `
-            <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;margin-bottom:14px;">
-                Copy the prompt below and paste it into <b>Cursor AI</b>, <b>GitHub Copilot</b>, or any AI assistant with terminal access.
-                It will download, install, and configure everything automatically.
-            </p>
-            <div style="position:relative;background:rgba(0,0,0,.3);border:1px solid var(--border-color);padding:16px;border-radius:10px;max-height:220px;overflow-y:auto;">
-                <button onclick="navigator.clipboard.writeText(document.getElementById('setupPromptText').textContent);this.textContent='✓ Copied!';setTimeout(()=>this.textContent='📋 Copy prompt',2000);" style="position:sticky;top:0;float:right;padding:6px 14px;background:var(--axos-orange);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;z-index:1;box-shadow:0 2px 8px rgba(250,167,74,.3);">📋 Copy prompt</button>
-                <code id="setupPromptText" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);white-space:pre-wrap;line-height:1.6;">${prompt}</code>
-            </div>
-            <div style="margin-top:16px;padding:12px 16px;background:rgba(250,167,74,.08);border:1px solid rgba(250,167,74,.2);border-radius:10px;">
-                <p style="font-size:12px;color:var(--text-secondary);line-height:1.6;margin:0;">
-                    <b style="color:var(--axos-orange);">To update:</b> Just paste the same prompt again — the AI will download the latest version and reinstall it.
-                </p>
+            <div style="display:flex;flex-direction:column;gap:16px;">
+                <div style="padding:14px 18px;background:var(--bg-primary);border:1px solid var(--axos-orange);border-radius:10px;">
+                    <div style="font-size:12px;font-weight:700;color:var(--axos-orange);margin-bottom:8px;">Step 1 — Download the helper script</div>
+                    <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin:0;">
+                        <a href="${ONEDRIVE_LINK}" target="_blank" style="color:var(--axos-orange);text-decoration:underline;font-weight:700;font-size:14px;">📥 Download run_dashboard.py</a><br>
+                        <span style="font-size:12px;color:var(--text-muted);">Save it into the root folder of your Cursor project (where your project files are).</span>
+                    </p>
+                </div>
+                <div style="padding:14px 18px;background:var(--bg-primary);border:1px solid var(--border-color);border-radius:10px;">
+                    <div style="font-size:12px;font-weight:700;color:var(--axos-orange);margin-bottom:8px;">Step 2 — Copy & paste this prompt into Cursor AI chat</div>
+                    <div style="position:relative;background:rgba(0,0,0,.3);border:1px solid var(--border-color);padding:16px;border-radius:8px;max-height:180px;overflow-y:auto;">
+                        <button onclick="navigator.clipboard.writeText(document.getElementById('setupPromptText').textContent);this.textContent='✓ Copied!';setTimeout(()=>this.textContent='📋 Copy prompt',2000);" style="position:sticky;top:0;float:right;padding:6px 14px;background:var(--axos-orange);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;z-index:1;box-shadow:0 2px 8px rgba(250,167,74,.3);">📋 Copy prompt</button>
+                        <code id="setupPromptText" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);white-space:pre-wrap;line-height:1.6;">${prompt}</code>
+                    </div>
+                </div>
+                <div style="padding:10px 16px;background:rgba(250,167,74,.08);border:1px solid rgba(250,167,74,.15);border-radius:8px;">
+                    <p style="font-size:12px;color:var(--text-secondary);line-height:1.5;margin:0;">
+                        <b style="color:var(--axos-orange);">To update:</b> Re-download the file from the link above, replace it in your project folder, and paste the prompt again.
+                    </p>
+                </div>
             </div>`;
     } else if (tab === 'manual') {
         container.innerHTML = `
