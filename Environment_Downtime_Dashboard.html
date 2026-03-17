@@ -515,6 +515,86 @@
         .drill-ticket .dt-desc { flex:1;font-size:13px;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
         .drill-ticket .dt-badge { font-size:10px; }
 
+        /* Dashboards view */
+        .nav-tabs { display:flex;gap:8px;align-items:center;margin-left:10px; }
+        .nav-tab {
+            padding:6px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.14);
+            background:rgba(0,0,0,.18);color:var(--text-secondary);font-size:12px;font-weight:700;
+            cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:8px;
+        }
+        .nav-tab:hover { border-color:rgba(250,167,74,.55); color:var(--axos-orange); transform:translateY(-1px); }
+        .nav-tab.active { background:rgba(250,167,74,.14); border-color:rgba(250,167,74,.55); color:#fff; }
+        .dashboards-grid { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:16px; margin-top:16px; }
+        @media (max-width: 1100px) { .dashboards-grid { grid-template-columns:repeat(2, minmax(0,1fr)); } }
+        @media (max-width: 700px) { .dashboards-grid { grid-template-columns:1fr; } }
+        .dash-filter-chips { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+        .dash-filter-chip {
+            padding:6px 10px;border-radius:999px;
+            border:1px solid rgba(255,255,255,.12);
+            background:rgba(0,0,0,.18);
+            color:rgba(255,255,255,.70);
+            font-size:11px;font-weight:800;letter-spacing:.4px;
+            cursor:pointer;transition:all .15s;
+        }
+        .dash-filter-chip:hover { border-color:rgba(250,167,74,.45); color:#fff; transform:translateY(-1px); }
+        .dash-filter-chip.active { background:rgba(250,167,74,.14); border-color:rgba(250,167,74,.55); color:#fff; }
+        .dash-filter-chip.clear { background:rgba(255,255,255,.06); }
+        .dash-card {
+            position:relative; overflow:hidden; border-radius:16px;
+            background:linear-gradient(135deg, rgba(30,56,96,.28), rgba(17,24,39,.55));
+            border:1px solid rgba(255,255,255,.10);
+            box-shadow: 0 12px 30px rgba(0,0,0,.30);
+            padding:16px 16px 14px 52px;
+            min-height:156px;
+        }
+        .dash-card:before {
+            content:''; position:absolute; inset:-2px;
+            background: radial-gradient(600px 120px at 20% 0%, rgba(250,167,74,.22), transparent 60%),
+                        radial-gradient(420px 160px at 90% 110%, rgba(59,130,246,.18), transparent 55%);
+            pointer-events:none;
+        }
+        .dash-card .dash-hdr { position:relative; display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+        .dash-card .dash-name { font-size:15px; font-weight:800; letter-spacing:.2px; color:#fff; line-height:1.2; }
+        .dash-card .dash-meta { position:relative; margin-top:10px; color:rgba(255,255,255,.55); font-size:12px; line-height:1.45; }
+        .dash-badges { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; position:relative; }
+        .dash-badge {
+            font-size:10px; font-weight:800; letter-spacing:.7px; text-transform:uppercase;
+            padding:4px 8px; border-radius:999px;
+            border:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.18); color:rgba(255,255,255,.72);
+        }
+        .dash-edit {
+            position:absolute; top:12px; left:12px; z-index:5;
+            width:28px; height:28px; border-radius:10px;
+            border:1px solid rgba(255,255,255,.14); background:rgba(0,0,0,.28);
+            color:rgba(255,255,255,.75); cursor:pointer; display:flex; align-items:center; justify-content:center;
+            transition:all .15s;
+        }
+        .dash-edit:hover { border-color:rgba(250,167,74,.55); color:#fff; transform:translateY(-1px); }
+        .dash-view-overlay {
+            position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+            opacity:0; transition:opacity .18s;
+            background:rgba(10,14,26,.25);
+            backdrop-filter: blur(0px);
+        }
+        .dash-card:hover .dash-view-overlay { opacity:1; backdrop-filter: blur(6px); }
+        .dash-view-btn {
+            display:flex; align-items:center; gap:10px;
+            padding:12px 18px; border-radius:999px;
+            background:linear-gradient(135deg, rgba(250,167,74,1), rgba(232,146,58,1));
+            color:#fff; font-weight:900; letter-spacing:.2px; cursor:pointer; user-select:none;
+            box-shadow: 0 10px 24px rgba(250,167,74,.28);
+            transform: translateY(6px);
+            transition: transform .18s;
+            border:none;
+        }
+        .dash-card:hover .dash-view-btn { transform: translateY(0px); }
+        .dash-eye {
+            width:30px; height:30px; border-radius:999px;
+            background:rgba(0,0,0,.22);
+            display:flex; align-items:center; justify-content:center;
+            font-size:16px;
+        }
+
         @media (max-width: 900px) {
             .content { padding: 16px; }
             .charts-row { grid-template-columns: 1fr; }
@@ -539,16 +619,20 @@
                 <h1 style="font-size:28px;font-weight:800;color:#fff;margin:0 0 8px;">Environment Downtime Dashboard</h1>
                 <p style="color:rgba(255,255,255,.55);font-size:14px;line-height:1.7;margin-bottom:28px;">
                     This dashboard runs through a local helper for secure ServiceNow access.<br>
-                    Open it from your local proxy:
+                    Use the steps below, then open it from your local proxy:
                 </p>
-                <a href="http://localhost:8080" style="display:inline-flex;align-items:center;gap:10px;padding:14px 32px;background:linear-gradient(135deg,#FAA74A,#e8923a);color:#fff;text-decoration:none;border-radius:12px;font-size:16px;font-weight:700;box-shadow:0 4px 20px rgba(250,167,74,.35);transition:transform .15s;" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">
-                    🚀 Open Dashboard (localhost:8080)
-                </a>
                 <div style="margin-top:36px;padding:20px 24px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;text-align:left;">
                     <details style="cursor:pointer;margin-bottom:16px;">
                         <summary style="font-size:11px;font-weight:700;color:#FAA74A;text-transform:uppercase;letter-spacing:1px;user-select:none;">Already set up? Reconnect</summary>
                         <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px;">
+                            <div style="display:flex;gap:10px;align-items:flex-start;">
+                                <span style="background:#FAA74A;color:#0a0e1a;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;">1</span>
+                                <p style="color:rgba(255,255,255,.65);font-size:13px;margin:0;line-height:1.5;">
+                                    Open <a href="https://bofi.service-now.com" target="_blank" style="color:#FAA74A;font-weight:700;">ServiceNow</a> in Chrome or Edge (SSO auto-logs you in)
+                                </p>
+                            </div>
                             <p style="color:rgba(255,255,255,.65);font-size:13px;margin:0;line-height:1.5;">
+                                <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#FAA74A;color:#0a0e1a;font-size:12px;font-weight:800;margin-right:10px;vertical-align:middle;">2</span>
                                 If the helper is already installed, just restart it. Paste this in Cursor AI:
                             </p>
                             <div style="position:relative;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.1);padding:12px 14px;border-radius:8px;">
@@ -556,7 +640,8 @@
                                 <code style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,.5);white-space:pre-wrap;line-height:1.5;">I have run_dashboard.py already set up. Just restart it: find Python (python --version, python3 --version, py --version, or C:\Users\%USERNAME%\python312\python.exe). Kill anything on port 8080. Then run: python run_dashboard.py --install. Do NOT do anything else. Do not stop until curl http://localhost:8080/api/progress returns JSON. Then tell me when done.</code>
                             </div>
                             <p style="color:rgba(255,255,255,.55);font-size:12px;margin:0;line-height:1.5;">
-                                Then come back and click <b>🚀 Open Dashboard (localhost:8080)</b> above.
+                                <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#FAA74A;color:#0a0e1a;font-size:12px;font-weight:800;margin-right:10px;vertical-align:middle;">3</span>
+                                Then click <b>🚀 Open Dashboard (localhost:8080)</b> at the end of this page.
                             </p>
                         </div>
                     </details>
@@ -572,21 +657,26 @@
                             <div style="display:flex;gap:10px;align-items:flex-start;">
                                 <span style="background:#FAA74A;color:#0a0e1a;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;">2</span>
                                 <p style="color:rgba(255,255,255,.65);font-size:13px;margin:0;line-height:1.5;">
-                                    <a href="https://camartinezax.github.io/QCoE/run_dashboard.py" target="_blank" download style="color:#FAA74A;font-weight:700;text-decoration:underline;">Download run_dashboard.py</a> and save it in your Cursor project folder
-                                </p>
-                            </div>
-                            <div style="display:flex;gap:10px;align-items:flex-start;">
-                                <span style="background:#FAA74A;color:#0a0e1a;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;">3</span>
-                                <p style="color:rgba(255,255,255,.65);font-size:13px;margin:0;line-height:1.5;">
                                     Paste this in Cursor AI:
                                 </p>
                             </div>
                             <div style="position:relative;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.1);padding:12px 14px;border-radius:8px;margin-left:32px;">
                                 <button onclick="navigator.clipboard.writeText(this.nextElementSibling.textContent);this.textContent='✓ Copied!';setTimeout(()=>this.textContent='📋 Copy',2000);" style="position:absolute;top:8px;right:8px;padding:4px 12px;background:#FAA74A;border:none;border-radius:6px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;">📋 Copy</button>
-                                <code style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,.5);white-space:pre-wrap;line-height:1.5;">I have run_dashboard.py in this project folder. Set it up: first check if Python 3 already exists (python --version, python3 --version, py --version, or check C:\Users\%USERNAME%\python312\python.exe) — do NOT reinstall if found. On Windows set PYTHONUTF8=1 first. Then run: python -m pip install browser_cookie3 requests pycryptodome rookiepy. Then kill anything on port 8080. Then run: python run_dashboard.py --install. Do NOT search for, create, or modify any HTML files. Do NOT ask me to do anything. Fix errors and retry until curl http://localhost:8080/api/progress returns JSON.</code>
+                                <code style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,.5);white-space:pre-wrap;line-height:1.5;">I have run_dashboard.py in this project folder (if it’s missing, download it from https://camartinezax.github.io/QCoE/run_dashboard.py into this folder). Set it up: first check if Python 3 already exists (python --version, python3 --version, py --version, or check C:\Users\%USERNAME%\python312\python.exe) — do NOT reinstall if found. On Windows set PYTHONUTF8=1 first. Then run: python -m pip install browser_cookie3 requests pycryptodome rookiepy. Then kill anything on port 8080. Then run: python run_dashboard.py --install. Do NOT search for, create, or modify any HTML files. Do NOT ask me to do anything. Fix errors and retry until curl http://localhost:8080/api/progress returns JSON.</code>
+                            </div>
+                            <div style="display:flex;gap:10px;align-items:flex-start;">
+                                <span style="background:#FAA74A;color:#0a0e1a;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;">3</span>
+                                <p style="color:rgba(255,255,255,.65);font-size:13px;margin:0;line-height:1.5;">
+                                    If you prefer manual download: <a href="https://camartinezax.github.io/QCoE/run_dashboard.py" target="_blank" download style="color:#FAA74A;font-weight:700;text-decoration:underline;">Download run_dashboard.py</a> and save it in your Cursor project folder
+                                </p>
                             </div>
                         </div>
                     </details>
+                </div>
+                <div style="margin-top:22px;display:flex;justify-content:center;">
+                    <a href="http://localhost:8080" style="display:inline-flex;align-items:center;gap:10px;padding:14px 32px;background:linear-gradient(135deg,#FAA74A,#e8923a);color:#fff;text-decoration:none;border-radius:12px;font-size:16px;font-weight:700;box-shadow:0 4px 20px rgba(250,167,74,.35);transition:transform .15s;" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">
+                        🚀 Open Dashboard (localhost:8080)
+                    </a>
                 </div>
                 <p style="color:rgba(255,255,255,.3);font-size:11px;margin-top:20px;">
                     The helper reads your browser's SSO session — no passwords needed. It auto-starts on login after setup.
@@ -605,12 +695,16 @@
         <div class="header-logo">AXOS</div>
         <div style="width:1px;height:28px;background:rgba(255,255,255,0.12);"></div>
         <div class="header-title"><span class="dash-title">All Service Tickets</span> Dashboard</div>
+        <div class="nav-tabs">
+            <button class="nav-tab active" id="tabTickets" onclick="showTicketsView()">📋 Tickets</button>
+            <button class="nav-tab" id="tabDashboards" onclick="showDashboardsView()">🗂️ Dashboards</button>
+        </div>
         <div class="header-badge" id="ticketCount">0 Tickets</div>
         <button onclick="showSetupPanel()" title="Setup / Install / Update helper" style="background:none;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:5px 12px;color:var(--text-secondary);font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .2s;" onmouseover="this.style.borderColor='var(--axos-orange)';this.style.color='var(--axos-orange)'" onmouseout="this.style.borderColor='rgba(255,255,255,.15)';this.style.color='var(--text-secondary)'">🔧 Setup</button>
         <div class="header-time" id="headerTime"></div>
     </div>
 
-    <div class="content">
+    <div class="content" id="ticketsView">
         <!-- Status Bar -->
         <div class="auth-bar" id="authBar">
             <input type="text" id="instanceUrl" value="bofi.service-now.com" style="display:none;">
@@ -627,6 +721,7 @@
             <span class="date-sep">→</span>
             <input type="date" id="dateTo" title="To date">
             <button class="date-range-fetch-btn" id="dateFetchBtn" onclick="fetchWithDateRange()">Fetch Tickets</button>
+            <button class="btn btn-secondary" id="saveDashboardBtn" onclick="openCreateDashboardFromCurrent()" title="Admin only" style="margin-left:8px;display:none;">Save Dashboard</button>
             <label style="display:flex;align-items:center;gap:6px;margin-left:12px;font-size:13px;color:var(--text-secondary);cursor:pointer;">
                 <input type="checkbox" id="excludeWeekendsChk" checked onchange="applyFilters()"> Exclude weekends
             </label>
@@ -819,6 +914,30 @@
             <p style="color:var(--text-muted);max-width:400px;margin:8px auto;">Choose a date range above and click <b>Fetch Tickets</b> to load data from ServiceNow.</p>
         </div>
     </div>
+
+    <div class="content" id="dashboardsView" style="display:none;">
+        <div class="auth-bar" style="margin-bottom:10px;">
+            <span class="auth-status ok" style="flex:1;">
+                <b>Dashboards</b> are saved fetch presets. Badges show which <b>server-side fetch filters</b> are set.
+            </span>
+            <input id="dashboardsSearch" type="text" placeholder="Search dashboards..." oninput="setDashboardsSearch(this.value)" style="width:240px;max-width:40vw;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.22);color:var(--text-primary);font-size:12px;">
+            <div class="dash-filter-chips" title="Filter by which fetch filters are set">
+                <button class="dash-filter-chip" onclick="toggleDashboardsFilter('rt', this)">Request Type</button>
+                <button class="dash-filter-chip" onclick="toggleDashboardsFilter('sd', this)">Short Desc</button>
+                <button class="dash-filter-chip" onclick="toggleDashboardsFilter('rb', this)">Reported By</button>
+                <button class="dash-filter-chip" onclick="toggleDashboardsFilter('rf', this)">Requested For</button>
+                <button class="dash-filter-chip" onclick="toggleDashboardsFilter('st', this)">State</button>
+                <button class="dash-filter-chip clear" onclick="clearDashboardsFilters()">Clear</button>
+            </div>
+            <button class="btn btn-secondary" onclick="openCreateDashboardFromCurrent()" title="Admin only">➕ Save current as dashboard</button>
+        </div>
+        <div id="dashboardsEmpty" class="empty-state" style="display:none;">
+            <div class="empty-icon">🗂️</div>
+            <h3>No dashboards yet</h3>
+            <p style="color:var(--text-muted);max-width:520px;margin:8px auto;">Use <b>➕ Save current as dashboard</b> (admin-only) to create reusable presets.</p>
+        </div>
+        <div class="dashboards-grid" id="dashboardsGrid"></div>
+    </div>
 </div>
 
 <!-- Detail Modal -->
@@ -840,6 +959,58 @@
             <button class="modal-close" onclick="closeDrillModal()">✕</button>
         </div>
         <div class="modal-body" id="drillBody" style="max-height:70vh;overflow-y:auto;"></div>
+    </div>
+</div>
+
+<!-- Dashboard Editor Modal (admin only) -->
+<div class="modal-overlay" id="dashEditModal" onclick="if(event.target===this)closeDashEditor()">
+    <div class="modal" style="max-width:760px;">
+        <div class="modal-hdr">
+            <h2 id="dashEditTitle">Create Dashboard</h2>
+            <button class="modal-close" onclick="closeDashEditor()">✕</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="dashId">
+            <div class="detail-grid" style="grid-template-columns:repeat(2,1fr);">
+                <div class="detail-item">
+                    <label>Name</label>
+                    <div class="val"><input id="dashName" type="text" placeholder="e.g. SRR · Env Issue" style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border-color);background:var(--bg-tertiary);color:var(--text-primary);"></div>
+                </div>
+                <div class="detail-item">
+                    <label>Date Range</label>
+                    <div class="val" style="display:flex;gap:8px;align-items:center;">
+                        <input id="dashFrom" type="date" style="flex:1;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border-color);background:var(--bg-tertiary);color:var(--text-primary);">
+                        <span style="color:var(--text-muted);">→</span>
+                        <input id="dashTo" type="date" style="flex:1;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border-color);background:var(--bg-tertiary);color:var(--text-primary);">
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <label>Short Description contains</label>
+                    <div class="val"><input id="dashFfSd" type="text" placeholder="e.g. Env Issue" style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border-color);background:var(--bg-tertiary);color:var(--text-primary);"></div>
+                </div>
+                <div class="detail-item">
+                    <label>Request Type contains</label>
+                    <div class="val"><input id="dashFfRt" type="text" placeholder="e.g. Site Reliability Request" style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border-color);background:var(--bg-tertiary);color:var(--text-primary);"></div>
+                </div>
+                <div class="detail-item">
+                    <label>Reported By contains</label>
+                    <div class="val"><input id="dashFfRb" type="text" placeholder="name contains..." style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border-color);background:var(--bg-tertiary);color:var(--text-primary);"></div>
+                </div>
+                <div class="detail-item">
+                    <label>Requested For contains</label>
+                    <div class="val"><input id="dashFfRf" type="text" placeholder="name contains..." style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border-color);background:var(--bg-tertiary);color:var(--text-primary);"></div>
+                </div>
+                <div class="detail-item">
+                    <label>State contains</label>
+                    <div class="val"><input id="dashFfSt" type="text" placeholder="e.g. Closed, Work in Progress" style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border-color);background:var(--bg-tertiary);color:var(--text-primary);"></div>
+                </div>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+                <button class="btn btn-secondary" id="dashDeleteBtn" onclick="deleteDashboardFromModal()" style="display:none;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#ffb4b4;">Delete</button>
+                <button class="btn btn-secondary" onclick="closeDashEditor()">Cancel</button>
+                <button class="btn" onclick="saveDashboardFromModal()">Save</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -874,7 +1045,7 @@
     <div class="modal" style="max-width:340px;">
         <div class="modal-hdr"><h2>Admin Access</h2><button class="modal-close" onclick="document.getElementById('adminGateModal').classList.remove('show')">✕</button></div>
         <div class="modal-body" style="text-align:center;">
-            <p style="color:var(--text-secondary);font-size:13px;margin-bottom:14px;">Enter admin password to access AI settings.</p>
+            <p style="color:var(--text-secondary);font-size:13px;margin-bottom:14px;">Enter admin password to unlock admin actions.</p>
             <input type="password" id="adminPassInput" placeholder="Password" onkeydown="if(event.key==='Enter')verifyAdmin()" style="width:100%;padding:10px 14px;border:1.5px solid var(--border-color);border-radius:8px;font-size:14px;text-align:center;background:var(--bg-tertiary);color:var(--text-primary);">
             <p id="adminError" style="display:none;color:var(--error);font-size:12px;font-weight:600;margin:8px 0 0;">Incorrect password.</p>
             <div style="margin-top:14px;display:flex;gap:8px;justify-content:center;">
@@ -945,6 +1116,8 @@ let filteredTickets = [];
 let sortCol = 'opened_at';
 let sortDir = -1;
 let charts = {};
+let isFetchingNow = false;
+let lastFetchSuccessful = false;
 
 function updateClock() {
     const now = new Date();
@@ -960,39 +1133,97 @@ function formatDateISO(d) {
     return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 
+function ptTodayISO() {
+    // en-CA yields YYYY-MM-DD consistently
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Los_Angeles',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).format(new Date());
+}
+
+function isoToUTCDate(iso) {
+    const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return null;
+    return new Date(Date.UTC(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10)));
+}
+
+function utcDateToISO(d) {
+    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())).toISOString().slice(0, 10);
+}
+
+function addDaysISO(iso, deltaDays) {
+    const d = isoToUTCDate(iso);
+    if (!d) return iso;
+    d.setUTCDate(d.getUTCDate() + deltaDays);
+    return utcDateToISO(d);
+}
+
+function lastDayOfMonthUTC(year, month1to12) {
+    // month1to12: 1..12
+    return new Date(Date.UTC(year, month1to12, 0)).getUTCDate();
+}
+
+function getPTWeekdayIndex0Sun() {
+    const wd = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', weekday: 'short' }).format(new Date());
+    const map = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+    return map[wd] ?? new Date().getDay();
+}
+
 function setDatePreset(preset, chipEl) {
-    const now = new Date();
-    let from, to = formatDateISO(now);
-    switch(preset) {
+    const today = ptTodayISO();
+    const td = isoToUTCDate(today);
+    const y = td ? td.getUTCFullYear() : new Date().getFullYear();
+    const m1 = td ? (td.getUTCMonth() + 1) : (new Date().getMonth() + 1);
+    let from = today;
+    let to = today;
+    switch (preset) {
         case 'today':
-            from = formatDateISO(now);
+            from = today;
+            to = today;
             break;
         case 'week': {
-            const day = now.getDay();
-            const mon = new Date(now);
-            mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
-            from = formatDateISO(mon);
+            const day = getPTWeekdayIndex0Sun();
+            const daysSinceMon = (day === 0) ? 6 : (day - 1);
+            from = addDaysISO(today, -daysSinceMon);
+            to = addDaysISO(from, 6);
             break;
         }
-        case 'month':
-            from = formatDateISO(new Date(now.getFullYear(), now.getMonth(), 1));
+        case 'month': {
+            from = `${y}-${String(m1).padStart(2, '0')}-01`;
+            const last = lastDayOfMonthUTC(y, m1);
+            to = `${y}-${String(m1).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
             break;
+        }
         case 'quarter': {
-            const qm = Math.floor(now.getMonth() / 3) * 3;
-            from = formatDateISO(new Date(now.getFullYear(), qm, 1));
+            const qStartM = Math.floor((m1 - 1) / 3) * 3 + 1;
+            const qEndM = qStartM + 2;
+            from = `${y}-${String(qStartM).padStart(2, '0')}-01`;
+            const last = lastDayOfMonthUTC(y, qEndM);
+            to = `${y}-${String(qEndM).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
             break;
         }
         case 'year':
-            from = formatDateISO(new Date(now.getFullYear(), 0, 1));
+            from = `${y}-01-01`;
+            to = `${y}-12-31`;
             break;
         case 'all':
             from = '2020-01-01';
+            to = today;
             break;
     }
     document.getElementById('dateFrom').value = from;
     document.getElementById('dateTo').value = to;
     document.querySelectorAll('.date-preset-chip').forEach(c => c.classList.remove('active'));
     if (chipEl) chipEl.classList.add('active');
+}
+
+function updateSaveDashboardVisibility() {
+    const btn = document.getElementById('saveDashboardBtn');
+    if (!btn) return;
+    const canSave = lastFetchSuccessful && Array.isArray(allTickets) && allTickets.length > 0;
+    btn.style.display = canSave ? '' : 'none';
 }
 
 function getDateRange() {
@@ -1084,6 +1315,283 @@ function clearFetchFilters() {
     showToast('Fetch filters cleared');
 }
 
+// ─── DASHBOARDS (saved fetch presets) ───
+const DASHBOARDS_KEY = 'snow_saved_dashboards_v1';
+let dashboards = [];
+let dashboardsSearchTerm = '';
+let dashboardsFilter = { sd:false, rb:false, rf:false, rt:false, st:false };
+
+function loadDashboards() {
+    try { dashboards = JSON.parse(localStorage.getItem(DASHBOARDS_KEY) || '[]'); }
+    catch { dashboards = []; }
+    if (!Array.isArray(dashboards)) dashboards = [];
+}
+
+function saveDashboards() {
+    localStorage.setItem(DASHBOARDS_KEY, JSON.stringify(dashboards));
+}
+
+function setDashboardsSearch(v) {
+    dashboardsSearchTerm = (v || '').trim().toLowerCase();
+    renderDashboards();
+}
+
+function toggleDashboardsFilter(key, el) {
+    if (!dashboardsFilter || typeof dashboardsFilter !== 'object') dashboardsFilter = { sd:false, rb:false, rf:false, rt:false, st:false };
+    if (!(key in dashboardsFilter)) return;
+    dashboardsFilter[key] = !dashboardsFilter[key];
+    if (el) el.classList.toggle('active', dashboardsFilter[key]);
+    renderDashboards();
+}
+
+function clearDashboardsFilters() {
+    dashboardsFilter = { sd:false, rb:false, rf:false, rt:false, st:false };
+    document.querySelectorAll('#dashboardsView .dash-filter-chip').forEach(b => {
+        if (b.classList.contains('clear')) return;
+        b.classList.remove('active');
+    });
+    renderDashboards();
+}
+
+function showTicketsView() {
+    document.getElementById('ticketsView').style.display = '';
+    document.getElementById('dashboardsView').style.display = 'none';
+    document.getElementById('tabTickets').classList.add('active');
+    document.getElementById('tabDashboards').classList.remove('active');
+}
+
+function showDashboardsView() {
+    loadDashboards();
+    renderDashboards();
+    document.getElementById('ticketsView').style.display = 'none';
+    document.getElementById('dashboardsView').style.display = '';
+    document.getElementById('tabTickets').classList.remove('active');
+    document.getElementById('tabDashboards').classList.add('active');
+    const s = document.getElementById('dashboardsSearch');
+    if (s) s.value = dashboardsSearchTerm || '';
+    // sync chip UI
+    document.querySelectorAll('#dashboardsView .dash-filter-chip').forEach(b => {
+        const t = (b.textContent || '').trim().toLowerCase();
+        if (b.classList.contains('clear')) return;
+        const key =
+            t.includes('request type') ? 'rt' :
+            t.includes('short') ? 'sd' :
+            t.includes('reported') ? 'rb' :
+            t.includes('requested for') ? 'rf' :
+            t.includes('state') ? 'st' : null;
+        if (key) b.classList.toggle('active', !!dashboardsFilter[key]);
+    });
+}
+
+function summarizeFetchFilters(ff) {
+    const parts = [];
+    if (ff?.sd) parts.push(`Short Desc: ${ff.sd}`);
+    if (ff?.rt) parts.push(`Request Type: ${ff.rt}`);
+    if (ff?.rb) parts.push(`Reported By: ${ff.rb}`);
+    if (ff?.rf) parts.push(`Requested For: ${ff.rf}`);
+    if (ff?.st) parts.push(`State: ${ff.st}`);
+    return parts.join(' · ');
+}
+
+function renderDashboards() {
+    const grid = document.getElementById('dashboardsGrid');
+    const empty = document.getElementById('dashboardsEmpty');
+    const items = (dashboards || []).filter(d => {
+        if (dashboardsFilter?.rt && !d.fetchFilters?.rt) return false;
+        if (dashboardsFilter?.sd && !d.fetchFilters?.sd) return false;
+        if (dashboardsFilter?.rb && !d.fetchFilters?.rb) return false;
+        if (dashboardsFilter?.rf && !d.fetchFilters?.rf) return false;
+        if (dashboardsFilter?.st && !d.fetchFilters?.st) return false;
+        if (!dashboardsSearchTerm) return true;
+        const ffSummary = summarizeFetchFilters(d.fetchFilters || {});
+        const hay = `${d.name || ''} ${d.from || ''} ${d.to || ''} ${ffSummary}`.toLowerCase();
+        return hay.includes(dashboardsSearchTerm);
+    });
+    if (!items.length) {
+        grid.innerHTML = '';
+        empty.style.display = '';
+        const title = empty.querySelector('h3');
+        const desc = empty.querySelector('p');
+        if (dashboardsSearchTerm || Object.values(dashboardsFilter || {}).some(Boolean)) {
+            if (title) title.textContent = 'No dashboards match your search';
+            if (desc) desc.textContent = 'Try clearing filters or changing your search.';
+        } else {
+            if (title) title.textContent = 'No dashboards yet';
+            if (desc) desc.innerHTML = 'Use <b>➕ Save current as dashboard</b> (admin-only) to create reusable presets.';
+        }
+        return;
+    }
+    empty.style.display = 'none';
+    grid.innerHTML = items.map(d => {
+        const ffSummary = summarizeFetchFilters(d.fetchFilters);
+        const badges = [];
+        if (d.fetchFilters?.rt) badges.push(`<span class="dash-badge" title="Fetch filter: Request Type contains">Request Type</span>`);
+        if (d.fetchFilters?.sd) badges.push(`<span class="dash-badge" title="Fetch filter: Short Description contains">Short Desc</span>`);
+        if (d.fetchFilters?.rb) badges.push(`<span class="dash-badge" title="Fetch filter: Reported By contains">Reported By</span>`);
+        if (d.fetchFilters?.rf) badges.push(`<span class="dash-badge" title="Fetch filter: Requested For contains">Requested For</span>`);
+        if (d.fetchFilters?.st) badges.push(`<span class="dash-badge" title="Fetch filter: State contains">State</span>`);
+        return `
+        <div class="dash-card" onclick="viewDashboard('${d.id}')">
+            <button class="dash-edit" title="Edit (admin)" onclick="event.stopPropagation();editDashboard('${d.id}')">✎</button>
+            <div class="dash-hdr">
+                <div>
+                    <div class="dash-name">${escapeHtml(d.name || 'Untitled')}</div>
+                    <div class="dash-meta">${escapeHtml(d.from)} → ${escapeHtml(d.to)}<br>${escapeHtml(ffSummary || 'No fetch filters')}</div>
+                </div>
+            </div>
+            <div class="dash-badges">${badges.join('')}</div>
+            <div class="dash-view-overlay">
+                <button class="dash-view-btn" type="button" onclick="event.stopPropagation();viewDashboard('${d.id}')">
+                    <span class="dash-eye">↗</span>
+                    View
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function _normText(s) { return (s || '').trim().toLowerCase(); }
+
+function dashboardSignature(d) {
+    return JSON.stringify({
+        from: _normText(d?.from),
+        to: _normText(d?.to),
+        ff: {
+            sd: _normText(d?.fetchFilters?.sd),
+            rb: _normText(d?.fetchFilters?.rb),
+            rf: _normText(d?.fetchFilters?.rf),
+            rt: _normText(d?.fetchFilters?.rt),
+            st: _normText(d?.fetchFilters?.st),
+        }
+    });
+}
+
+function getCurrentFetchConfig() {
+    const { from, to } = getDateRange();
+    return {
+        from,
+        to,
+        fetchFilters: {
+            sd: (document.getElementById('ffShortDesc')?.value || '').trim(),
+            rb: (document.getElementById('ffReportedBy')?.value || '').trim(),
+            rf: (document.getElementById('ffRequestedFor')?.value || '').trim(),
+            rt: (document.getElementById('ffRequestType')?.value || '').trim(),
+            st: (document.getElementById('ffState')?.value || '').trim(),
+        }
+    };
+}
+
+function applyFetchConfig(cfg) {
+    if (cfg.from) document.getElementById('dateFrom').value = cfg.from;
+    if (cfg.to) document.getElementById('dateTo').value = cfg.to;
+    document.querySelectorAll('.date-preset-chip').forEach(c => c.classList.remove('active'));
+    document.getElementById('ffShortDesc').value = cfg.fetchFilters?.sd || '';
+    document.getElementById('ffReportedBy').value = cfg.fetchFilters?.rb || '';
+    document.getElementById('ffRequestedFor').value = cfg.fetchFilters?.rf || '';
+    document.getElementById('ffRequestType').value = cfg.fetchFilters?.rt || '';
+    document.getElementById('ffState').value = cfg.fetchFilters?.st || '';
+}
+
+function viewDashboard(id) {
+    const d = dashboards.find(x => x.id === id);
+    if (!d) return;
+    showTicketsView();
+    applyFetchConfig(d);
+    fetchWithDateRange();
+}
+
+function ensureAdminThen(fn) {
+    if (adminUnlocked) return fn();
+    document.getElementById('adminGateModal').classList.add('show');
+    const handler = () => {
+        if (adminUnlocked) {
+            document.removeEventListener('adminUnlocked', handler);
+            fn();
+        }
+    };
+    document.addEventListener('adminUnlocked', handler);
+}
+
+function openCreateDashboardFromCurrent() {
+    ensureAdminThen(() => openDashboardEditor({ mode: 'create' }));
+}
+
+function editDashboard(id) {
+    const d = dashboards.find(x => x.id === id);
+    if (!d) return;
+    ensureAdminThen(() => openDashboardEditor({ mode: 'edit', dashboard: d }));
+}
+
+function openDashboardEditor({ mode, dashboard }) {
+    const cfg = getCurrentFetchConfig();
+    const d = dashboard || {
+        id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+        name: '',
+        from: cfg.from || formatDateISO(new Date()),
+        to: cfg.to || formatDateISO(new Date()),
+        fetchFilters: cfg.fetchFilters,
+    };
+    document.getElementById('dashEditTitle').textContent = mode === 'edit' ? 'Edit Dashboard' : 'Create Dashboard';
+    document.getElementById('dashId').value = d.id;
+    document.getElementById('dashName').value = d.name || '';
+    document.getElementById('dashFrom').value = d.from || '';
+    document.getElementById('dashTo').value = d.to || '';
+    document.getElementById('dashFfSd').value = d.fetchFilters?.sd || '';
+    document.getElementById('dashFfRb').value = d.fetchFilters?.rb || '';
+    document.getElementById('dashFfRf').value = d.fetchFilters?.rf || '';
+    document.getElementById('dashFfRt').value = d.fetchFilters?.rt || '';
+    document.getElementById('dashFfSt').value = d.fetchFilters?.st || '';
+    document.getElementById('dashDeleteBtn').style.display = mode === 'edit' ? '' : 'none';
+    document.getElementById('dashEditModal').classList.add('show');
+}
+
+function closeDashEditor() { document.getElementById('dashEditModal').classList.remove('show'); }
+
+function saveDashboardFromModal() {
+    loadDashboards();
+    const id = document.getElementById('dashId').value;
+    const name = document.getElementById('dashName').value.trim() || 'Untitled';
+    const from = document.getElementById('dashFrom').value;
+    const to = document.getElementById('dashTo').value;
+    const d = {
+        id,
+        name,
+        from,
+        to,
+        fetchFilters: {
+            sd: document.getElementById('dashFfSd').value.trim(),
+            rb: document.getElementById('dashFfRb').value.trim(),
+            rf: document.getElementById('dashFfRf').value.trim(),
+            rt: document.getElementById('dashFfRt').value.trim(),
+            st: document.getElementById('dashFfSt').value.trim(),
+        },
+        updatedAt: new Date().toISOString(),
+    };
+    const sig = dashboardSignature(d);
+    const dupes = dashboards.filter(x => x.id !== id && dashboardSignature(x) === sig);
+    if (dupes.length) {
+        const names = dupes.map(x => x.name || 'Untitled').slice(0, 3).join(', ');
+        showToast(`Duplicate dashboard already exists: ${names}`, 'error');
+        return;
+    }
+    const idx = dashboards.findIndex(x => x.id === id);
+    if (idx >= 0) dashboards[idx] = { ...dashboards[idx], ...d };
+    else dashboards.unshift({ ...d, createdAt: d.updatedAt });
+    saveDashboards();
+    closeDashEditor();
+    renderDashboards();
+    showToast('Dashboard saved');
+}
+
+function deleteDashboardFromModal() {
+    const id = document.getElementById('dashId').value;
+    dashboards = dashboards.filter(x => x.id !== id);
+    saveDashboards();
+    closeDashEditor();
+    renderDashboards();
+    showToast('Dashboard deleted');
+}
+
 async function fetchWithDateRange() {
     const { from, to } = getDateRange();
     if (!from || !to) {
@@ -1093,6 +1601,7 @@ async function fetchWithDateRange() {
     const btn = document.getElementById('dateFetchBtn');
     btn.disabled = true;
     btn.textContent = 'Fetching...';
+    isFetchingNow = true;
     const rangeLabel = from === to ? from : `${from} to ${to}`;
     showF1Loader(`Fetching tickets (${rangeLabel})...`);
 
@@ -1111,6 +1620,7 @@ async function fetchWithDateRange() {
             showFallbackMode(msg || null);
         }
     } finally {
+        isFetchingNow = false;
         btn.disabled = false;
         btn.textContent = 'Fetch Tickets';
     }
@@ -1175,6 +1685,7 @@ async function autoFetch() {
     showF1Loader(rangeLabel ? `Fetching tickets (${rangeLabel})...` : 'Connecting to ServiceNow...');
 
     try {
+        isFetchingNow = true;
         const records = await startAndPoll(from, to, rangeLabel);
         if (!records || records.length === 0) {
             hideF1Loader(false);
@@ -1191,6 +1702,8 @@ async function autoFetch() {
         } else {
             showFallbackMode(null);
         }
+    } finally {
+        isFetchingNow = false;
     }
 }
 
@@ -1201,6 +1714,7 @@ function showFallbackMode(message) {
     statusEl.className = 'auth-status err';
 
     document.getElementById('emptyState').style.display = '';
+    updateSaveDashboardVisibility();
 
     if (isProxyError) {
         statusEl.innerHTML = 'Cannot connect to the dashboard helper. See setup instructions below.';
@@ -1389,10 +1903,13 @@ function loadRecords(records) {
         return db - da;
     });
 
+    if (isFetchingNow) lastFetchSuccessful = true;
+
     const statusEl = document.getElementById('authStatus');
     statusEl.className = 'auth-status ok';
     statusEl.textContent = `${allTickets.length} tickets loaded`;
     document.getElementById('exportBtn').style.display = '';
+    updateSaveDashboardVisibility();
     renderDashboard();
 }
 
@@ -2711,6 +3228,7 @@ function openAISettings() {
         document.getElementById('settingsModal').classList.add('show');
         return;
     }
+    window.__pendingAdminAction = 'aiSettings';
     document.getElementById('adminGateModal').classList.add('show');
     setTimeout(() => { const inp = document.getElementById('adminPassInput'); if (inp) { inp.value = ''; inp.focus(); } }, 100);
 }
@@ -2722,8 +3240,14 @@ function verifyAdmin() {
     if (inp.value === atob('SmNtdDExMDc=')) {
         adminUnlocked = true;
         document.getElementById('adminGateModal').classList.remove('show');
-        loadAISettings();
-        document.getElementById('settingsModal').classList.add('show');
+        document.dispatchEvent(new Event('adminUnlocked'));
+        if (window.__pendingAdminAction === 'aiSettings') {
+            window.__pendingAdminAction = null;
+            loadAISettings();
+            document.getElementById('settingsModal').classList.add('show');
+        } else {
+            window.__pendingAdminAction = null;
+        }
         showToast('Admin access granted');
     } else {
         document.getElementById('adminError').style.display = 'block';
