@@ -2123,12 +2123,25 @@ function getInitials(name) {
     return name[0].toUpperCase();
 }
 
+function getServiceNowRecordUrl(ticket, instance) {
+    const table = (ticket && ticket._source_table === 'incident') ? 'incident' : 'sc_req_item';
+    const sysId = (ticket && (ticket.sys_id || ticket.sysId || ticket.sysID)) ? String(ticket.sys_id || ticket.sysId || ticket.sysID) : '';
+    if (sysId) {
+        const uri = `${table}.do?sys_id=${encodeURIComponent(sysId)}`;
+        return `https://${instance}/nav_to.do?uri=${encodeURIComponent(uri)}`;
+    }
+    const num = ticket && ticket.number ? String(ticket.number) : '';
+    const uri = `${table}.do?sysparm_query=number=${encodeURIComponent(num)}`;
+    return `https://${instance}/nav_to.do?uri=${encodeURIComponent(uri)}`;
+}
+
 function renderCellHtml(t, key, highlightWords, instance) {
     const raw = t[key];
     const val = getDisplayVal(raw) || (raw != null ? String(raw) : '');
 
     if (key === 'number') {
-        return `<a class="ticket-num" href="https://${instance}/nav_to.do?uri=sc_req_item.do?sysparm_query=number=${val}" target="_blank" onclick="event.stopPropagation()">${val || '--'}</a>`;
+        const href = getServiceNowRecordUrl(t, instance);
+        return `<a class="ticket-num" href="${href}" target="_blank" onclick="event.stopPropagation()">${val || '--'}</a>`;
     }
     if (key === 'short_description') {
         const html = highlightWords.length > 0 ? highlightText(val || '--', highlightWords) : escapeHtml(val || '--');
@@ -2305,7 +2318,8 @@ function showDetail(idx) {
         }).filter(Boolean).join('');
     }
 
-    let html = `<div style="margin-bottom:12px;"><a href="https://${instance}/nav_to.do?uri=sc_req_item.do?sysparm_query=number=${t.number}" target="_blank" style="color:var(--axos-orange);font-size:12px;text-decoration:none;">Open in ServiceNow &rarr;</a></div>`;
+    const snHref = getServiceNowRecordUrl(t, instance);
+    let html = `<div style="margin-bottom:12px;"><a href="${snHref}" target="_blank" style="color:var(--axos-orange);font-size:12px;text-decoration:none;">Open in ServiceNow &rarr;</a></div>`;
     html += renderGroup('Status', topSection);
     html += renderGroup('People', peopleSection);
     html += renderGroup('Timeline', timeSection);
