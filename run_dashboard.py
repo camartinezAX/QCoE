@@ -33,25 +33,11 @@ COOKIE_JAR_MAX_AGE = timedelta(hours=12)
 SNOW_TABLES = {
     "sc_req_item": {
         "url": f"https://{INSTANCE}/sc_req_item.do",
-        "segments": [
-            "cat_item.name=Site Reliability Request",
-            "short_descriptionLIKEdown",
-            "short_descriptionLIKEoutage",
-            "short_descriptionLIKEenvironment",
-            "short_descriptionLIKEdisruption",
-            "short_descriptionLIKEunavailable",
-        ],
+        "segments": [""],
     },
     "incident": {
         "url": f"https://{INSTANCE}/incident.do",
-        "segments": [
-            "short_descriptionLIKEdown",
-            "short_descriptionLIKEoutage",
-            "short_descriptionLIKEenvironment",
-            "short_descriptionLIKEdisruption",
-            "short_descriptionLIKEunavailable",
-            "short_descriptionLIKEissue",
-        ],
+        "segments": [""],
     },
 }
 PAGE_SIZE = 500
@@ -490,7 +476,11 @@ def _do_fetch_background(date_from=None, date_to=None):
 
     for table_name, table_cfg in SNOW_TABLES.items():
         table_url = table_cfg["url"]
-        query = "^NQ".join(seg + date_clause for seg in table_cfg["segments"])
+        segs = [s for s in table_cfg["segments"] if s]
+        if segs:
+            query = "^NQ".join(seg + date_clause for seg in segs)
+        else:
+            query = date_clause.lstrip("^") if date_clause else ""
         print(f"  {C_CYAN}  Querying {table_name}...{C_RESET}")
         _update("fetching", f"Querying {table_name}...", pages=page_num, records=len(all_records))
 
