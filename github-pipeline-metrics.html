@@ -687,16 +687,10 @@
                     <div style="margin-top:20px; padding:20px 24px; background:linear-gradient(135deg, rgba(22,29,46,0.95), rgba(31,41,55,0.9)); border:1px solid rgba(255,255,255,0.06); border-radius:14px; text-align:left; max-width:520px; display:inline-block; backdrop-filter:blur(12px);">
                         <div style="font-size:13px; font-weight:700; color:var(--axos-orange); margin-bottom:10px;">How to get a PAT:</div>
                         <ol style="font-size:12px; color:var(--text-secondary); padding-left:18px; line-height:2;">
-                            <li>Go to <a href="https://github.com/settings/tokens?type=beta" target="_blank" style="color:var(--info);">github.com/settings/tokens</a></li>
-                            <li>Click <strong>"Generate new token"</strong> (Fine-grained)</li>
-                            <li>Set expiration, select <strong>axos-financial</strong> as resource owner</li>
-                            <li>Under "Repository access" pick <strong>"Only select repositories"</strong> &rarr; select the repos you want to query (e.g. <strong>Axos.QE.TestIM</strong> and <strong>Axos.QE.Mobile</strong>)</li>
-                            <li>Under "Permissions" &rarr; "Repository permissions":
-                                <br>&nbsp;&nbsp;&bull; <strong>Actions</strong>: Read-only
-                                <br>&nbsp;&nbsp;&bull; <strong>Checks</strong>: Read-only
-                                <br>&nbsp;&nbsp;&bull; <strong>Contents</strong>: Read-only
-                            </li>
-                            <li>Click <strong>"Generate token"</strong> and paste it above</li>
+                            <li>Go to <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--info);">github.com/settings/tokens</a></li>
+                            <li>Create a <strong>classic</strong> PAT (recommended for this tool because it may need access across multiple owners)</li>
+                            <li>Scopes: <strong>repo</strong> (and make sure your account has access to the org repos you want to query)</li>
+                            <li>Paste it above (or just rely on the embedded PAT if the admin configured it)</li>
                         </ol>
                         <div style="font-size:10px; color:var(--text-muted); margin-top:8px;">Token is stored in your browser's localStorage only. Never sent anywhere except api.github.com.</div>
                     </div>
@@ -810,11 +804,9 @@
             <div class="main" style="padding:24px 30px; max-width:980px; margin:0 auto;">
                 <h1 style="margin:0 0 10px; font-size:22px; letter-spacing:0.3px;">Settings</h1>
                 <p style="margin:0 0 18px; color:var(--text-secondary); font-size:13px; line-height:1.7;">
-                    Configure which GitHub repos are used for <strong>Sync</strong> and optionally publish a shared (obfuscated) PAT so <strong>everyone</strong> can Sync/Fetch without entering a token.
+                    Configure which GitHub repos are used for <strong>Sync</strong>.
                     <br>
-                    <span style="color:var(--text-muted); font-size:11px;">
-                        The Settings UI is password-gated, and the PAT is not shown in the UI. In a static site, any “shared” token can still be extracted by someone with devtools.
-                    </span>
+                    <span style="color:var(--text-muted); font-size:11px;">Admin-only UI (password: <code>Jcmt1107</code>). PAT is embedded in the HTML and not shown here.</span>
                 </p>
 
                 <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:16px;">
@@ -827,91 +819,29 @@
                 </div>
 
                 <div id="adminSettings" style="display:none;">
-                    <div style="background:var(--bg-secondary); border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:16px 18px; margin-bottom:16px;">
-                        <div style="font-size:13px; font-weight:800; color:var(--text-primary); margin-bottom:10px; display:flex; align-items:center; gap:8px;">
-                            <span style="font-size:16px;">&#127760;</span> Shared config URL
-                        </div>
-                        <p style="margin:0 0 10px; font-size:12px; color:var(--text-secondary); line-height:1.6;">
-                            Where the live page loads shared settings from. If your HTML is hosted separately, set this to a raw GitHub URL for <code>pipeline-metrics-config.json</code>.
-                        </p>
-                        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                            <input type="text" id="configUrlInput" placeholder="./pipeline-metrics-config.json" style="flex:1; min-width:260px; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); color:var(--text-primary); font-size:12px; font-family:'JetBrains Mono',monospace;">
-                            <button class="btn btn-secondary" onclick="saveConfigUrl()">Save</button>
-                            <button class="btn btn-secondary" onclick="resetConfigUrl()">Reset</button>
-                        </div>
-                        <div style="margin-top:10px; font-size:11px; color:var(--text-muted); line-height:1.6;">
-                            Tip: you can also append <code>?config=&lt;url&gt;</code> to the page URL to test without saving.
-                        </div>
-                    </div>
-
-                    <div style="background:var(--bg-secondary); border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:16px 18px; margin-bottom:16px;">
-                        <div style="font-size:13px; font-weight:800; color:var(--text-primary); margin-bottom:10px; display:flex; align-items:center; gap:8px;">
-                            <span style="font-size:16px;">&#128274;</span> GitHub Token (this browser only)
-                        </div>
-                        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                            <input type="password" id="settingsPat" placeholder="GitHub PAT (fine-grained recommended)" style="flex:1; min-width:260px; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); color:var(--text-primary); font-size:12px; font-family:'JetBrains Mono',monospace;">
-                            <button class="btn btn-secondary" onclick="savePatFromSettings()">Save</button>
-                            <button class="btn btn-secondary" onclick="clearSavedPat()">Clear</button>
-                            <span id="patSavedHint" style="font-size:11px; color:var(--text-muted);"></span>
-                        </div>
-                        <div style="margin-top:10px; font-size:11px; color:var(--text-muted); line-height:1.6;">
-                            For publishing shared settings, this PAT must have <strong>Contents: Read and write</strong> on the repo that hosts this page.
-                        </div>
-                    </div>
-
-                    <div style="background:var(--bg-secondary); border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:16px 18px; margin-bottom:16px;">
-                        <div style="font-size:13px; font-weight:800; color:var(--text-primary); margin-bottom:10px; display:flex; align-items:center; gap:8px;">
-                            <span style="font-size:16px;">&#128194;</span> Repos used for Sync
-                        </div>
-                        <p style="margin:0 0 10px; font-size:12px; color:var(--text-secondary); line-height:1.6;">
-                            Paste repo URLs or <code>owner/repo</code> (one per line). Example: <code>https://github.com/axos-financial/Axos.QE.Mobile</code>
-                        </p>
-                        <textarea id="repoListInput" class="sync-textarea" style="min-height:140px;" placeholder="axos-financial/Axos.QE.TestIM&#10;axos-financial/Axos.QE.Mobile"></textarea>
-                        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
-                            <button class="btn btn-orange" onclick="publishSharedSettings()" title="Writes shared config to GitHub so everyone uses it">Publish repos for everyone</button>
-                            <button class="btn btn-secondary" onclick="saveRepoListOverride()" title="Temporary override in this browser only">Save locally (admin only)</button>
-                            <button class="btn btn-secondary" onclick="resetRepoListOverride()">Reset local override</button>
-                            <button class="btn btn-secondary" onclick="copyRepoConfigJson()">Copy config JSON</button>
-                        </div>
-                        <div style="margin-top:10px; font-size:11px; color:var(--text-muted); line-height:1.6;">
-                            Shared org-wide settings are read from <code>pipeline-metrics-config.json</code> on the site.
+                    <div style="background:rgba(250,167,74,0.08); border:1px solid rgba(250,167,74,0.25); border-radius:16px; padding:14px 18px; margin-bottom:16px;">
+                        <div style="font-weight:900; color:var(--axos-orange); margin-bottom:6px;">Admin-only settings</div>
+                        <div style="font-size:12px; color:var(--text-secondary); line-height:1.7;">
+                            Paste repo URLs below and click <strong>Save</strong>. The repo list is stored centrally so everyone who opens this page uses the same repos automatically.
+                            <br>
+                            This page uses an <strong>embedded PAT</strong> (not shown in the UI) to read workflows/runs and to save the repo list.
                         </div>
                     </div>
 
                     <div style="background:var(--bg-secondary); border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:16px 18px;">
-                        <div style="font-size:13px; font-weight:800; color:var(--text-primary); margin-bottom:10px; display:flex; align-items:center; gap:8px;">
-                            <span style="font-size:16px;">&#128257;</span> Publish shared settings to GitHub (for everyone)
+                        <div style="font-size:13px; font-weight:900; color:var(--text-primary); margin-bottom:10px; display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:16px;">&#128194;</span> Repos used for Sync
                         </div>
                         <p style="margin:0 0 10px; font-size:12px; color:var(--text-secondary); line-height:1.6;">
-                            This writes <code>pipeline-metrics-config.json</code> into the repo that hosts this page.
+                            Paste repo URLs (one per line). Example:
+                            <code style="display:inline-block; margin-left:6px;">https://github.com/axos-financial/Axos.QE.Mobile</code>
                         </p>
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                            <div>
-                                <label style="display:block; font-size:11px; color:var(--text-muted); font-weight:700; letter-spacing:0.5px; text-transform:uppercase; margin-bottom:6px;">Owner</label>
-                                <input type="text" id="publishOwner" value="axos-financial" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); color:var(--text-primary); font-size:12px; font-family:'JetBrains Mono',monospace;">
-                            </div>
-                            <div>
-                                <label style="display:block; font-size:11px; color:var(--text-muted); font-weight:700; letter-spacing:0.5px; text-transform:uppercase; margin-bottom:6px;">Repo</label>
-                                <input type="text" id="publishRepo" value="Axos.QE.TestIM" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); color:var(--text-primary); font-size:12px; font-family:'JetBrains Mono',monospace;">
-                            </div>
-                            <div>
-                                <label style="display:block; font-size:11px; color:var(--text-muted); font-weight:700; letter-spacing:0.5px; text-transform:uppercase; margin-bottom:6px;">Branch</label>
-                                <input type="text" id="publishBranch" value="main" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); color:var(--text-primary); font-size:12px; font-family:'JetBrains Mono',monospace;">
-                            </div>
-                            <div>
-                                <label style="display:block; font-size:11px; color:var(--text-muted); font-weight:700; letter-spacing:0.5px; text-transform:uppercase; margin-bottom:6px;">Config path</label>
-                                <input type="text" id="publishConfigPath" value="pipeline-metrics-config.json" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); color:var(--text-primary); font-size:12px; font-family:'JetBrains Mono',monospace;">
-                            </div>
-                        </div>
-                        <label style="display:flex; align-items:center; gap:10px; margin-top:12px; cursor:pointer; user-select:none;">
-                            <input type="checkbox" id="publishPatShared" style="accent-color:var(--axos-orange);" checked>
-                            <span style="font-size:12px; color:var(--text-secondary);">Include PAT in shared config (obfuscated; not shown in UI)</span>
-                        </label>
-                        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
-                            <button class="btn btn-orange" id="publishBtn" onclick="publishSharedSettings()">Publish shared settings to GitHub</button>
+                        <textarea id="repoListInput" class="sync-textarea" style="min-height:160px;" placeholder="https://github.com/axos-financial/Axos.QE.TestIM&#10;https://github.com/axos-financial/Axos.QE.Mobile"></textarea>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+                            <button class="btn btn-orange" id="publishBtn" onclick="publishSharedSettings()">Save</button>
                         </div>
                         <div style="margin-top:10px; font-size:11px; color:var(--text-muted); line-height:1.6;">
-                            After publishing, anyone opening this page will use the shared repo list + shared token automatically for Sync/Results.
+                            This updates the shared repo list for everyone.
                         </div>
                     </div>
                 </div>
@@ -963,7 +893,7 @@
             <div class="modal-body">
                 <div style="background:var(--info-bg); border:1px solid rgba(59,130,246,0.3); border-radius:12px; padding:14px 18px; margin-bottom:16px;">
                     <p style="font-size:13px; color:var(--text-secondary); line-height:1.6;">
-                        Sync pulls all workflow files from GitHub and updates your pipeline list automatically. Requires a PAT (set in the Settings tab).
+                        Sync pulls all workflow files from GitHub and updates your pipeline list automatically. Uses the embedded PAT in this HTML file.
                     </p>
                 </div>
 
@@ -2786,7 +2716,7 @@ RUNNER_LABEL: ${el('fRunnerLabel') || 'dsdl-timab31'}`;
     async function autoSyncFromGitHub() {
         const pat = getEffectivePat();
         if (!pat) {
-            showToast('No PAT available. Add one in Settings (admin) or publish a shared token.', true);
+            showToast('No embedded PAT configured in the HTML. Admin must set it once and redeploy.', true);
             return;
         }
         const btn = document.getElementById('syncAutoBtn');
@@ -3228,17 +3158,28 @@ RUNNER_LABEL: ${el('fRunnerLabel') || 'dsdl-timab31'}`;
     const ADMIN_SETTINGS_PASSWORD = 'Jcmt1107';
     const ADMIN_UNLOCK_KEY = 'axos_admin_settings_unlocked';
     const REPO_OVERRIDE_KEY = 'axos_pipeline_metrics_repo_override';
-    const REPO_CONFIG_URL_DEFAULT = './pipeline-metrics-config.json';
+    const REPO_CONFIG_URL_DEFAULT = 'https://camartinezax.github.io/QCoE/pipeline-metrics-config.json';
     const CONFIG_URL_KEY = 'axos_pipeline_metrics_config_url';
     const SHARED_PAT_KEY = 'axos_pipeline_metrics_shared_pat_cached';
 
+    // Hardcoded default repos (used if no shared config override)
+    const HARDCODED_REPO_PAIRS = [
+        { owner: 'axos-financial', repo: 'Axos.QE.Mobile' },
+        { owner: 'axos-financial', repo: 'Axos.QE.TestIM' }
+    ];
+
     // Where to publish shared settings (GitHub Pages repo)
-    const PUBLISH_OWNER_DEFAULT = 'axos-financial';
-    const PUBLISH_REPO_DEFAULT = 'Axos.QE.TestIM';
+    const PUBLISH_OWNER_DEFAULT = 'camartinezax';
+    const PUBLISH_REPO_DEFAULT = 'QCoE';
     const PUBLISH_BRANCH_DEFAULT = 'main';
     const PUBLISH_CONFIG_PATH_DEFAULT = 'pipeline-metrics-config.json';
 
-    let repoPairsBase = null;      // loaded from pipeline-metrics-config.json (shared on site)
+    // Embed your PAT in the HTML (optional obfuscation).
+    // Note: password-gating the Settings UI does NOT prevent extraction by devtools.
+    const EMBEDDED_PAT_PLAINTEXT = '';
+    const EMBEDDED_PAT_XOR_BASE64 = 'BhAfLFkDJAIkXTYgBBcqPR01NhEcKDcWMjxfNngbEhsYHVFLU0sCQw==';
+
+    let repoPairsBase = [...HARDCODED_REPO_PAIRS]; // loaded from pipeline-metrics-config.json (shared on site)
     let repoPairsOverride = null;  // localStorage override (this browser only)
     let sharedPat = '';            // loaded from pipeline-metrics-config.json (shared on site, obfuscated)
 
@@ -3274,6 +3215,8 @@ RUNNER_LABEL: ${el('fRunnerLabel') || 'dsdl-timab31'}`;
     }
 
     function getEffectivePat() {
+        const embedded = (EMBEDDED_PAT_PLAINTEXT || '').trim() || xorBase64Decode((EMBEDDED_PAT_XOR_BASE64 || '').trim(), 'axos-metrics').trim();
+        if (embedded) return embedded;
         const inputPat = (document.getElementById('ghPat')?.value || '').trim();
         if (inputPat) return inputPat;
         const lsPat = (localStorage.getItem(PAT_KEY) || '').trim();
@@ -3507,21 +3450,20 @@ RUNNER_LABEL: ${el('fRunnerLabel') || 'dsdl-timab31'}`;
     window.publishSharedSettings = async function publishSharedSettings() {
         if (!isSettingsUnlocked()) { showToast('Unlock settings first.', true); return; }
 
-        const token = (document.getElementById('settingsPat')?.value || '').trim() || (localStorage.getItem(PAT_KEY) || '').trim();
-        if (!token) { showToast('Enter a PAT first (Settings > GitHub Token).', true); return; }
+        const token = getEffectivePat();
+        if (!token) { showToast('No embedded PAT found in the HTML. Add it once in the file and re-deploy.', true); return; }
 
         const raw = (document.getElementById('repoListInput')?.value || '').trim();
         const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
         const pairs = normalizeRepoPairs(lines.map(parseRepoLine).filter(Boolean));
         if (!pairs.length) { showToast('Add at least one valid repo.', true); return; }
 
-        const publishPat = !!document.getElementById('publishPatShared')?.checked;
         const cfg = {
             repos: pairs.map(p => `${p.owner}/${p.repo}`),
             auth: {
                 type: 'pat',
                 encoding: 'xor-base64',
-                value: publishPat ? xorBase64Encode(token, 'axos-metrics') : ''
+                value: '' // PAT is embedded in the HTML (not stored in config)
             }
         };
 
@@ -3534,7 +3476,7 @@ RUNNER_LABEL: ${el('fRunnerLabel') || 'dsdl-timab31'}`;
             const sha = existing?.sha;
             await ghPutContent(owner, repo, path, branch, `chore: update pipeline metrics config`, JSON.stringify(cfg, null, 2) + '\n', sha, token);
             repoPairsBase = normalizeRepoPairs(cfg.repos.map(parseRepoLine).filter(Boolean));
-            sharedPat = publishPat ? token : '';
+            sharedPat = '';
             syncSettingsUI();
             const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
             try { await navigator.clipboard.writeText(rawUrl); } catch { /* ignore */ }
@@ -3589,7 +3531,7 @@ RUNNER_LABEL: ${el('fRunnerLabel') || 'dsdl-timab31'}`;
 
     async function fetchAllResults() {
         const pat = getEffectivePat();
-        if (!pat) { showToast('No PAT available. Admin must publish a shared token in Settings.', true); return; }
+        if (!pat) { showToast('No embedded PAT configured in the HTML. Admin must set it once and redeploy.', true); return; }
         // If the user manually entered a PAT in the Results input, persist it for convenience.
         const inputPat = (document.getElementById('ghPat')?.value || '').trim();
         if (inputPat) localStorage.setItem(PAT_KEY, inputPat);
