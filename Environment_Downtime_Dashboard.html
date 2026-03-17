@@ -772,6 +772,31 @@
                         <thead><tr id="tableHead"></tr></thead>
                         <tbody id="tableBody"></tbody>
                     </table>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding:12px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;">
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <button onclick="goToFirstPage()" style="padding:6px 12px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:6px;color:var(--text-secondary);cursor:pointer;font-size:12px;font-weight:600;" title="First page">⏮</button>
+                            <button onclick="goToPreviousPage()" style="padding:6px 12px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:6px;color:var(--text-secondary);cursor:pointer;font-size:12px;font-weight:600;" title="Previous page">◀</button>
+                            <div style="display:flex;gap:4px;align-items:center;">
+                                <span style="color:var(--text-secondary);font-size:12px;">Page</span>
+                                <input type="number" id="pageInput" min="1" value="1" onchange="goToPage(parseInt(this.value))" style="width:50px;padding:4px 8px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);font-size:11px;text-align:center;">
+                                <span id="pageCount" style="color:var(--text-secondary);font-size:12px;">of 1</span>
+                            </div>
+                            <button onclick="goToNextPage()" style="padding:6px 12px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:6px;color:var(--text-secondary);cursor:pointer;font-size:12px;font-weight:600;" title="Next page">▶</button>
+                            <button onclick="goToLastPage()" style="padding:6px 12px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:6px;color:var(--text-secondary);cursor:pointer;font-size:12px;font-weight:600;" title="Last page">⏭</button>
+                        </div>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <label style="color:var(--text-secondary);font-size:12px;display:flex;gap:4px;align-items:center;">
+                                Rows per page:
+                                <select id="rowsPerPageSelect" onchange="setRowsPerPage(parseInt(this.value))" style="padding:4px 8px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);font-size:11px;">
+                                    <option value="50">50</option>
+                                    <option value="100" selected>100</option>
+                                    <option value="250">250</option>
+                                    <option value="500">500</option>
+                                </select>
+                            </label>
+                            <span id="rowInfo" style="color:var(--text-muted);font-size:11px;">Showing 0 of 0</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1335,6 +1360,51 @@ function loadRecords(records) {
     renderDashboard();
 }
 
+// ─── PAGINATION ───
+let currentPage = 1;
+let rowsPerPage = 100;
+
+function setRowsPerPage(rows) {
+    rowsPerPage = rows;
+    currentPage = 1;
+    renderTable();
+}
+
+function goToFirstPage() {
+    currentPage = 1;
+    renderTable();
+}
+
+function goToPreviousPage() {
+    if (currentPage > 1) {
+        currentPage--;
+        renderTable();
+    }
+}
+
+function goToNextPage() {
+    const maxPage = Math.ceil(filteredTickets.length / rowsPerPage);
+    if (currentPage < maxPage) {
+        currentPage++;
+        renderTable();
+    }
+}
+
+function goToLastPage() {
+    currentPage = Math.ceil(filteredTickets.length / rowsPerPage);
+    renderTable();
+}
+
+function goToPage(page) {
+    const maxPage = Math.ceil(filteredTickets.length / rowsPerPage);
+    if (page >= 1 && page <= maxPage) {
+        currentPage = page;
+        renderTable();
+    } else {
+        document.getElementById('pageInput').value = currentPage;
+    }
+}
+
 
 function deduplicateTickets(tickets) {
     const seen = new Set();
@@ -1865,6 +1935,7 @@ function applyFilters() {
         return true;
     });
 
+    currentPage = 1;
     sortTickets();
     renderTable();
     computeMetrics(filteredTickets);
@@ -1879,6 +1950,7 @@ function applyFilters() {
 function sortTable(col) {
     if (sortCol === col) sortDir *= -1;
     else { sortCol = col; sortDir = 1; }
+    currentPage = 1;
     sortTickets();
     renderTable();
 }
@@ -2026,16 +2098,33 @@ function renderTable() {
     const tbody = document.getElementById('tableBody');
     if (filteredTickets.length === 0) {
         tbody.innerHTML = `<tr><td colspan="${cols.length}" style="text-align:center;padding:40px;color:var(--text-muted);">No tickets match your filters</td></tr>`;
+        document.getElementById('pageInput').value = 1;
+        document.getElementById('pageCount').textContent = 'of 1';
+        document.getElementById('rowInfo').textContent = 'Showing 0 of 0';
         return;
     }
+
+    const totalPages = Math.ceil(filteredTickets.length / rowsPerPage);
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+
+    const startIdx = (currentPage - 1) * rowsPerPage;
+    const endIdx = startIdx + rowsPerPage;
+    const pageTickets = filteredTickets.slice(startIdx, endIdx);
 
     const instance = document.getElementById('instanceUrl').value.trim();
     const highlightWords = activeKeywordExpr ? extractKeywords(activeKeywordExpr) : [];
 
-    tbody.innerHTML = filteredTickets.map((t, i) => {
+    tbody.innerHTML = pageTickets.map((t, i) => {
+        const actualIdx = startIdx + i;
         const tds = cols.map(c => `<td>${renderCellHtml(t, c.key, highlightWords, instance)}</td>`).join('');
-        return `<tr onclick="showDetail(${i})" style="cursor:pointer;">${tds}</tr>`;
+        return `<tr onclick="showDetail(${actualIdx})" style="cursor:pointer;">${tds}</tr>`;
     }).join('');
+
+    document.getElementById('pageInput').value = currentPage;
+    document.getElementById('pageCount').textContent = `of ${totalPages}`;
+    const showing = `Showing ${startIdx + 1} to ${Math.min(endIdx, filteredTickets.length)} of ${filteredTickets.length}`;
+    document.getElementById('rowInfo').textContent = showing;
 }
 
 function showDetail(idx) {
