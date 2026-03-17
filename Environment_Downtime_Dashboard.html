@@ -768,35 +768,12 @@
                     </div>
                 </div>
                 <div class="table-scroll">
+                    <div id="paginationTop" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:12px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;"></div>
                     <table class="data-table" id="dataTable">
                         <thead><tr id="tableHead"></tr></thead>
                         <tbody id="tableBody"></tbody>
                     </table>
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding:12px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;">
-                        <div style="display:flex;gap:8px;align-items:center;">
-                            <button onclick="goToFirstPage()" style="padding:6px 12px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:6px;color:var(--text-secondary);cursor:pointer;font-size:12px;font-weight:600;" title="First page">⏮</button>
-                            <button onclick="goToPreviousPage()" style="padding:6px 12px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:6px;color:var(--text-secondary);cursor:pointer;font-size:12px;font-weight:600;" title="Previous page">◀</button>
-                            <div style="display:flex;gap:4px;align-items:center;">
-                                <span style="color:var(--text-secondary);font-size:12px;">Page</span>
-                                <input type="number" id="pageInput" min="1" value="1" onchange="goToPage(parseInt(this.value))" style="width:50px;padding:4px 8px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);font-size:11px;text-align:center;">
-                                <span id="pageCount" style="color:var(--text-secondary);font-size:12px;">of 1</span>
-                            </div>
-                            <button onclick="goToNextPage()" style="padding:6px 12px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:6px;color:var(--text-secondary);cursor:pointer;font-size:12px;font-weight:600;" title="Next page">▶</button>
-                            <button onclick="goToLastPage()" style="padding:6px 12px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:6px;color:var(--text-secondary);cursor:pointer;font-size:12px;font-weight:600;" title="Last page">⏭</button>
-                        </div>
-                        <div style="display:flex;gap:8px;align-items:center;">
-                            <label style="color:var(--text-secondary);font-size:12px;display:flex;gap:4px;align-items:center;">
-                                Rows per page:
-                                <select id="rowsPerPageSelect" onchange="setRowsPerPage(parseInt(this.value))" style="padding:4px 8px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);font-size:11px;">
-                                    <option value="50">50</option>
-                                    <option value="100" selected>100</option>
-                                    <option value="250">250</option>
-                                    <option value="500">500</option>
-                                </select>
-                            </label>
-                            <span id="rowInfo" style="color:var(--text-muted);font-size:11px;">Showing 0 of 0</span>
-                        </div>
-                    </div>
+                    <div id="paginationBottom" style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding:12px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;"></div>
                 </div>
             </div>
         </div>
@@ -1363,6 +1340,39 @@ function loadRecords(records) {
 // ─── PAGINATION ───
 let currentPage = 1;
 let rowsPerPage = 100;
+
+function getPaginationHTML() {
+    const totalPages = Math.ceil(filteredTickets.length / rowsPerPage) || 1;
+    const startIdx = (currentPage - 1) * rowsPerPage;
+    const endIdx = Math.min(startIdx + rowsPerPage, filteredTickets.length);
+    const showing = filteredTickets.length === 0 ? 'Showing 0 of 0' : `Showing ${startIdx + 1} to ${endIdx} of ${filteredTickets.length}`;
+    
+    return `
+        <div style="display:flex;gap:8px;align-items:center;">
+            <button onclick="goToFirstPage()" style="padding:6px 12px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:6px;color:var(--text-secondary);cursor:pointer;font-size:12px;font-weight:600;" title="First page">⏮</button>
+            <button onclick="goToPreviousPage()" style="padding:6px 12px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:6px;color:var(--text-secondary);cursor:pointer;font-size:12px;font-weight:600;" title="Previous page">◀</button>
+            <div style="display:flex;gap:4px;align-items:center;">
+                <span style="color:var(--text-secondary);font-size:12px;">Page</span>
+                <input type="number" id="pageInput" min="1" value="${currentPage}" onchange="goToPage(parseInt(this.value))" style="width:50px;padding:4px 8px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);font-size:11px;text-align:center;">
+                <span style="color:var(--text-secondary);font-size:12px;">of ${totalPages}</span>
+            </div>
+            <button onclick="goToNextPage()" style="padding:6px 12px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:6px;color:var(--text-secondary);cursor:pointer;font-size:12px;font-weight:600;" title="Next page">▶</button>
+            <button onclick="goToLastPage()" style="padding:6px 12px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:6px;color:var(--text-secondary);cursor:pointer;font-size:12px;font-weight:600;" title="Last page">⏭</button>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+            <label style="color:var(--text-secondary);font-size:12px;display:flex;gap:4px;align-items:center;">
+                Rows per page:
+                <select id="rowsPerPageSelect" onchange="setRowsPerPage(parseInt(this.value))" style="padding:4px 8px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);font-size:11px;">
+                    <option value="50" ${rowsPerPage === 50 ? 'selected' : ''}>50</option>
+                    <option value="100" ${rowsPerPage === 100 ? 'selected' : ''}>100</option>
+                    <option value="250" ${rowsPerPage === 250 ? 'selected' : ''}>250</option>
+                    <option value="500" ${rowsPerPage === 500 ? 'selected' : ''}>500</option>
+                </select>
+            </label>
+            <span style="color:var(--text-muted);font-size:11px;">${showing}</span>
+        </div>
+    `;
+}
 
 function setRowsPerPage(rows) {
     rowsPerPage = rows;
@@ -2096,11 +2106,12 @@ function renderTable() {
     ).join('');
 
     const tbody = document.getElementById('tableBody');
+    const paginationHTML = getPaginationHTML();
+    document.getElementById('paginationTop').innerHTML = paginationHTML;
+    document.getElementById('paginationBottom').innerHTML = paginationHTML;
+
     if (filteredTickets.length === 0) {
         tbody.innerHTML = `<tr><td colspan="${cols.length}" style="text-align:center;padding:40px;color:var(--text-muted);">No tickets match your filters</td></tr>`;
-        document.getElementById('pageInput').value = 1;
-        document.getElementById('pageCount').textContent = 'of 1';
-        document.getElementById('rowInfo').textContent = 'Showing 0 of 0';
         return;
     }
 
@@ -2120,11 +2131,6 @@ function renderTable() {
         const tds = cols.map(c => `<td>${renderCellHtml(t, c.key, highlightWords, instance)}</td>`).join('');
         return `<tr onclick="showDetail(${actualIdx})" style="cursor:pointer;">${tds}</tr>`;
     }).join('');
-
-    document.getElementById('pageInput').value = currentPage;
-    document.getElementById('pageCount').textContent = `of ${totalPages}`;
-    const showing = `Showing ${startIdx + 1} to ${Math.min(endIdx, filteredTickets.length)} of ${filteredTickets.length}`;
-    document.getElementById('rowInfo').textContent = showing;
 }
 
 function showDetail(idx) {
