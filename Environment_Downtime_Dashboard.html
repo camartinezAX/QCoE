@@ -2044,7 +2044,8 @@ function showDetail(idx) {
 
     document.getElementById('modalTitle').textContent = `${t.number} — ${t.short_description || 'No description'}`;
 
-    const dur = calcDuration(t.opened_at, isClosedState(t.state) ? t.closed_at : null);
+    const excludeWeekends = document.getElementById('excludeWeekendsChk')?.checked || false;
+    const dur = calcDuration(t.opened_at, isClosedState(t.state) ? t.closed_at : null, excludeWeekends);
     const isOpen = !isClosedState(t.state);
     const instance = document.getElementById('instanceUrl').value.trim();
 
@@ -2453,7 +2454,8 @@ function drillDown(title, tickets) {
             <span style="color:var(--text-muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;min-width:50px;text-align:right;">Duration</span>
         </div>`;
         body.innerHTML = header + tickets.map(t => {
-            const dur = calcDuration(t.opened_at, isClosedState(t.state) ? t.closed_at : null);
+            const excludeWeekends = document.getElementById('excludeWeekendsChk')?.checked || false;
+            const dur = calcDuration(t.opened_at, isClosedState(t.state) ? t.closed_at : null, excludeWeekends);
             return `<div class="drill-ticket" onclick="closeDrillModal();showDetail(${filteredTickets.indexOf(t)})">
                 <span class="dt-num">${t.number}</span>
                 <span class="dt-desc" title="${escapeHtml(t.short_description || '')}">${escapeHtml(t.short_description || '--')}</span>
