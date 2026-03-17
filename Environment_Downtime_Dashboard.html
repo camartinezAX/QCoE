@@ -630,6 +630,7 @@
             <label style="display:flex;align-items:center;gap:6px;margin-left:12px;font-size:13px;color:var(--text-secondary);cursor:pointer;">
                 <input type="checkbox" id="excludeWeekendsChk" checked onchange="applyFilters()"> Exclude weekends
             </label>
+            <span style="margin-left:auto;color:var(--text-muted);font-size:11px;letter-spacing:.2px;">Times shown in Pacific Time (PT)</span>
             <div class="date-preset-chips" id="datePresets">
                 <span class="date-preset-chip" data-preset="today" onclick="setDatePreset('today',this)">Today</span>
                 <span class="date-preset-chip active" data-preset="week" onclick="setDatePreset('week',this)">This Week</span>
@@ -637,6 +638,39 @@
                 <span class="date-preset-chip" data-preset="quarter" onclick="setDatePreset('quarter',this)">This Quarter</span>
                 <span class="date-preset-chip" data-preset="year" onclick="setDatePreset('year',this)">This Year</span>
                 <span class="date-preset-chip" data-preset="all" onclick="setDatePreset('all',this)">All Time</span>
+            </div>
+        </div>
+
+        <!-- Fetch Filters (server-side) -->
+        <div class="auth-bar" id="fetchFilterBar" style="margin-top:10px;gap:10px;flex-wrap:wrap;align-items:flex-start;">
+            <div style="display:flex;flex-direction:column;gap:6px;min-width:180px;flex:1;">
+                <div style="font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.9px;">Fetch Filters (server-side)</div>
+                <div style="font-size:12px;color:var(--text-secondary);line-height:1.3;">
+                    These limit what we <b>retrieve</b> from ServiceNow. (The filters below the charts limit what we <b>view</b> after retrieval.)
+                </div>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;justify-content:flex-end;flex:2;min-width:420px;">
+                <div style="display:flex;flex-direction:column;gap:4px;">
+                    <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;">Short Description</label>
+                    <input id="ffShortDesc" type="text" placeholder="contains..." style="width:200px;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:var(--text-primary);font-size:12px;">
+                </div>
+                <div style="display:flex;flex-direction:column;gap:4px;">
+                    <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;">Reported By</label>
+                    <input id="ffReportedBy" type="text" placeholder="name contains..." style="width:180px;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:var(--text-primary);font-size:12px;">
+                </div>
+                <div style="display:flex;flex-direction:column;gap:4px;">
+                    <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;">Requested For</label>
+                    <input id="ffRequestedFor" type="text" placeholder="name contains..." style="width:180px;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:var(--text-primary);font-size:12px;">
+                </div>
+                <div style="display:flex;flex-direction:column;gap:4px;">
+                    <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;">Request Type</label>
+                    <input id="ffRequestType" type="text" placeholder="contains..." style="width:180px;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:var(--text-primary);font-size:12px;">
+                </div>
+                <div style="display:flex;flex-direction:column;gap:4px;">
+                    <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;">State</label>
+                    <input id="ffState" type="text" placeholder="e.g. Closed, Work in Progress" style="width:170px;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:var(--text-primary);font-size:12px;">
+                </div>
+                <button class="btn btn-secondary" onclick="clearFetchFilters()" style="height:36px;">Clear fetch filters</button>
             </div>
         </div>
 
@@ -1018,11 +1052,36 @@ async function pollProgress(rangeLabel) {
 async function startAndPoll(dateFrom, dateTo, rangeLabel) {
     const proxyBase = getProxyBase();
     let url = proxyBase + '/api/refresh';
-    if (dateFrom && dateTo) url += `?from=${encodeURIComponent(dateFrom)}&to=${encodeURIComponent(dateTo)}`;
+    const qp = new URLSearchParams();
+    if (dateFrom && dateTo) {
+        qp.set('from', dateFrom);
+        qp.set('to', dateTo);
+    }
+    // Fetch filters (server-side)
+    const sd = document.getElementById('ffShortDesc')?.value?.trim() || '';
+    const rb = document.getElementById('ffReportedBy')?.value?.trim() || '';
+    const rf = document.getElementById('ffRequestedFor')?.value?.trim() || '';
+    const rt = document.getElementById('ffRequestType')?.value?.trim() || '';
+    const st = document.getElementById('ffState')?.value?.trim() || '';
+    if (sd) qp.set('sd', sd);
+    if (rb) qp.set('rb', rb);
+    if (rf) qp.set('rf', rf);
+    if (rt) qp.set('rt', rt);
+    if (st) qp.set('st', st);
+    const qs = qp.toString();
+    if (qs) url += `?${qs}`;
     const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     await new Promise(r => setTimeout(r, 2000));
     return await pollProgress(rangeLabel);
+}
+
+function clearFetchFilters() {
+    ['ffShortDesc','ffReportedBy','ffRequestedFor','ffRequestType','ffState'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    showToast('Fetch filters cleared');
 }
 
 async function fetchWithDateRange() {
@@ -1468,7 +1527,7 @@ const SKIP_FIELDS = new Set([
     'sc_catalog', 'u_age', 'u_rpt_lead_time',
 ]);
 const FRIENDLY_LABELS = {
-    number: 'Number', short_description: 'Description', state: 'State',
+    number: 'Number', short_description: 'Short Description', state: 'State',
     opened_by: 'Reported By', opened_at: 'Opened', closed_at: 'Closed',
     duration: 'Duration', assigned_to: 'Assigned To', assignment_group: 'Team',
     close_notes: 'Solution', cat_item: 'Request Type', opened_by: 'Reported By',
@@ -2029,9 +2088,25 @@ function calcDuration(openedAt, closedAt, excludeWeekends = true) {
 
 function formatDate(dateStr) {
     if (!dateStr) return '--';
-    const d = new Date(dateStr);
-    if (isNaN(d)) return dateStr;
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const s = String(dateStr);
+    // Prefer ServiceNow's display strings (already in the instance/user TZ).
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) {
+        const y = m[1], mm = parseInt(m[2], 10), dd = parseInt(m[3], 10);
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        return `${months[Math.max(0, mm - 1)]} ${dd}, ${y}`;
+    }
+    const d = new Date(s);
+    if (isNaN(d)) return s;
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Los_Angeles' });
+}
+
+function formatDateTimePT(dateStr) {
+    if (!dateStr) return '--';
+    const s = String(dateStr);
+    const m = s.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})/);
+    if (m) return `${m[1]} ${m[2]} PT`;
+    return `${s} PT`;
 }
 
 function getAvatarColor(name) {
@@ -2196,6 +2271,9 @@ function showDetail(idx) {
 
     function renderField(key, label, val) {
         if (!val || val === 'UNKNOWN') return '';
+        if (key === 'opened_at' || key === 'closed_at' || key === 'due_date' || key === 'sys_created_on' || key === 'sys_updated_on' || key === 'expected_start' || key === 'work_start' || key === 'work_end') {
+            return `<span class="mono" style="color:var(--text-secondary);">${escapeHtml(formatDateTimePT(val))}</span>`;
+        }
         if (key === 'state') return `<span class="state-badge ${getStateBadgeClass(val)}">${escapeHtml(val)}</span>`;
         if (key === 'stage') return `<span class="state-badge wip">${escapeHtml(val)}</span>`;
         if (key === '_duration') return `<span class="val mono" style="color:${isOpen ? 'var(--error)' : 'var(--success)'};">${val}</span>`;

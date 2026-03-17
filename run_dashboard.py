@@ -33,10 +33,12 @@ COOKIE_JAR_MAX_AGE = timedelta(hours=12)
 SNOW_TABLES = {
     "sc_req_item": {
         "url": f"https://{INSTANCE}/sc_req_item.do",
+        "date_field": "opened_at",
         "segments": [""],
     },
     "incident": {
         "url": f"https://{INSTANCE}/incident.do",
+        "date_field": "opened_at",
         "segments": [""],
     },
 }
@@ -294,7 +296,7 @@ def _cdp_jar(sn_cookies):
     return jar
 
 
-def _do_fetch_background(date_from=None, date_to=None):
+def _do_fetch_background(date_from=None, date_to=None, fetch_filters=None):
     """Background worker: fetches pages and updates fetch_progress."""
     global fetch_progress
 
@@ -308,10 +310,18 @@ def _do_fetch_background(date_from=None, date_to=None):
 
     _do_fetch_background._retried_401 = False
 
+    fetch_filters = fetch_filters or {}
     date_label = ""
     if date_from and date_to:
         date_label = f" ({date_from} to {date_to})"
-    print(f"  {C_CYAN}⟳ Fetching data from ServiceNow{date_label}...{C_RESET}")
+    ff_parts = []
+    if fetch_filters.get("sd"): ff_parts.append(f"short_description~{fetch_filters['sd']}")
+    if fetch_filters.get("rb"): ff_parts.append(f"reported_by~{fetch_filters['rb']}")
+    if fetch_filters.get("rf"): ff_parts.append(f"requested_for~{fetch_filters['rf']}")
+    if fetch_filters.get("rt"): ff_parts.append(f"request_type~{fetch_filters['rt']}")
+    if fetch_filters.get("st"): ff_parts.append(f"state~{fetch_filters['st']}")
+    ff_label = (" | " + ", ".join(ff_parts)) if ff_parts else ""
+    print(f"  {C_CYAN}⟳ Fetching data from ServiceNow{date_label}{ff_label}...{C_RESET}")
 
     _update("fetching", "Reading browser cookies...")
 
@@ -464,11 +474,57 @@ def _do_fetch_background(date_from=None, date_to=None):
 
     headers = {"Accept": "application/json", "X-Requested-With": "XMLHttpRequest"}
 
-    date_clause = ""
-    if date_from:
-        date_clause += f"^sys_created_on>={date_from}T00:00:00"
-    if date_to:
-        date_clause += f"^sys_created_on<={date_to}T23:59:59"
+    def _date_clause_for(field_name: str) -> str:
+        clause = ""
+        if date_from:
+            # Use ServiceNow's dateGenerate to avoid UTC/local day-boundary bleed
+            # (e.g., 2026-01-01 00:00 UTC showing as Dec 31 in Pacific time).
+            clause += f"^{field_name}>=javascript:gs.dateGenerate('{date_from}','00:00:00')"
+        if date_to:
+            next_day = (datetime.strptime(date_to, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
+            clause += f"^{field_name}<javascript:gs.dateGenerate('{next_day}','00:00:00')"
+        return clause
+
+    def _normalize_query(q: str) -> str:
+        return (q or "").lstrip("^")
+
+    def _clean_user_text(s: str) -> str:
+        # Prevent encoded-query delimiter injection.
+        return (s or "").replace("^", " ").replace("\n", " ").replace("\r", " ").strip()
+
+    def _build_fetch_filter_clause(table_name: str) -> str:
+        sd = _clean_user_text(fetch_filters.get("sd", ""))
+        rb = _clean_user_text(fetch_filters.get("rb", ""))
+        rf = _clean_user_text(fetch_filters.get("rf", ""))
+        rt = _clean_user_text(fetch_filters.get("rt", ""))
+        st = _clean_user_text(fetch_filters.get("st", ""))
+
+        clause = ""
+
+        if sd:
+            clause += f"^short_descriptionLIKE{sd}"
+
+        # People fields differ by table
+        if rb:
+            # "Reported By" maps best to opened_by display name for both tables
+            clause += f"^opened_by.nameLIKE{rb}"
+        if rf:
+            if table_name == "incident":
+                clause += f"^caller_id.nameLIKE{rf}"
+            else:
+                clause += f"^requested_for.nameLIKE{rf}"
+
+        if rt:
+            if table_name == "incident":
+                clause += f"^categoryLIKE{rt}"
+            else:
+                clause += f"^cat_item.nameLIKE{rt}"
+
+        if st:
+            # Choice fields are instance-specific; LIKE works best with labels.
+            clause += f"^stateLIKE{st}"
+
+        return clause
 
     all_records = []
     page_num = 0
@@ -476,32 +532,62 @@ def _do_fetch_background(date_from=None, date_to=None):
 
     for table_name, table_cfg in SNOW_TABLES.items():
         table_url = table_cfg["url"]
+        date_field = table_cfg.get("date_field") or "opened_at"
+        date_clause = _date_clause_for(date_field)
+        fetch_clause = _build_fetch_filter_clause(table_name)
+
+        # Filters-only query (no ORDERBY) so we can duplicate it in ^NQ segments safely.
         segs = [s for s in table_cfg["segments"] if s]
         if segs:
-            query = "^NQ".join(seg + date_clause for seg in segs)
+            filters_only = "^NQ".join(_normalize_query(seg + date_clause + fetch_clause) for seg in segs)
         else:
-            query = date_clause.lstrip("^") if date_clause else ""
+            filters_only = _normalize_query(date_clause + fetch_clause)
+
+        # Always enforce deterministic ordering so cursor pagination is stable.
+        order_by = f"^ORDERBYDESC{date_field}^ORDERBYDESCsys_id"
+
+        def _build_page_query(last_opened=None, last_sys_id=None):
+            base = filters_only
+            if last_opened and last_sys_id:
+                # Fetch "older" than the last row, with a tie-breaker on sys_id.
+                # Segment A: opened_at < last_opened
+                if base:
+                    seg_a = _normalize_query(f"{base}^{date_field}<{last_opened}")
+                    seg_b = _normalize_query(f"{base}^{date_field}={last_opened}^sys_id<{last_sys_id}")
+                else:
+                    seg_a = _normalize_query(f"{date_field}<{last_opened}")
+                    seg_b = _normalize_query(f"{date_field}={last_opened}^sys_id<{last_sys_id}")
+                # Segment B: opened_at == last_opened AND sys_id < last_sys_id
+                return f"{seg_a}^NQ{seg_b}{order_by}"
+            return f"{_normalize_query(base)}{order_by}" if base else _normalize_query(order_by)
+
+        page_query = _build_page_query()
+
         print(f"  {C_CYAN}  Querying {table_name}...{C_RESET}")
-        print(f"  {C_DIM}  Query: {query}{C_RESET}")
+        print(f"  {C_DIM}  Query: {page_query}{C_RESET}")
         _update("fetching", f"Querying {table_name}...", pages=page_num, records=len(all_records))
 
-        first_row = 0
         stale_streak = 0
         prev_unique = len(all_records)
+        last_cursor = None
         while True:
             page_num += 1
+            _update("fetching",
+                    f"{table_name} — requesting page {page_num}...",
+                    pages=page_num,
+                    records=len(all_records))
             params = {
                 "JSONv2": "",
-                "sysparm_query": query,
+                "sysparm_query": page_query,
                 "displayvalue": "true",
                 "sysparm_record_count": str(PAGE_SIZE),
-                "sysparm_first_row": str(first_row),
             }
             resp = None
             for attempt in range(3):
                 try:
+                    # Larger JSONv2 pages can be slow; keep a bit of buffer.
                     resp = req.get(table_url, params=params, cookies=cj,
-                                   headers=headers, timeout=60)
+                                   headers=headers, timeout=90)
                     break
                 except (req.exceptions.ConnectionError,
                         req.exceptions.ChunkedEncodingError) as e:
@@ -559,13 +645,15 @@ def _do_fetch_background(date_from=None, date_to=None):
                 _update("error", error="ServiceNow returned non-JSON response")
                 return
 
-            page = data.get("records", data.get("result", []))
+            page = data.get("records", data.get("result", [])) or []
             for rec in page:
-                rid = rec.get("sys_id") or rec.get("number", "")
-                if rid not in seen_ids:
-                    seen_ids.add(rid)
-                    rec["_source_table"] = table_name
-                    all_records.append(rec)
+                sys_id = rec.get("sys_id") or ""
+                rid = f"{table_name}:{sys_id}" if sys_id else f"{table_name}:{rec.get('number','')}"
+                if not rid or rid in seen_ids:
+                    continue
+                seen_ids.add(rid)
+                rec["_source_table"] = table_name
+                all_records.append(rec)
 
             print(f"  {C_DIM}  {table_name} page {page_num}: {len(page)} records (total unique: {len(all_records)}){C_RESET}")
             _update("fetching", f"{table_name} — {len(all_records)} records so far...",
@@ -573,22 +661,34 @@ def _do_fetch_background(date_from=None, date_to=None):
 
             if len(page) < PAGE_SIZE:
                 break
-            first_row += PAGE_SIZE
+
+            tail = page[-1] if page else None
+            tail_opened = (tail.get(date_field) if tail else None) or ""
+            tail_sys_id = (tail.get("sys_id") if tail else None) or ""
+            if not tail_opened or not tail_sys_id:
+                # Can't advance cursor safely.
+                break
+
+            new_cursor = (tail_opened, tail_sys_id)
+            page_query = _build_page_query(tail_opened, tail_sys_id)
 
             cur_unique = len(all_records)
-            if cur_unique == prev_unique:
+            cursor_same = (last_cursor == new_cursor)
+            unique_same = (cur_unique == prev_unique)
+            if cursor_same or unique_same:
                 stale_streak += 1
             else:
                 stale_streak = 0
-                prev_unique = cur_unique
+            last_cursor = new_cursor
+            prev_unique = cur_unique
 
-            if stale_streak >= 10:
+            if stale_streak >= 5:
                 print(f"  {C_DIM}  No new records after {stale_streak} pages "
                       f"for {table_name}, moving on{C_RESET}")
                 break
 
-            if page_num >= 500:
-                print(f"  {C_DIM}  Hit page limit ({page_num} pages) for {table_name}{C_RESET}")
+            if page_num >= 200:
+                print(f"  {C_DIM}  Hit page limit for {table_name}{C_RESET}")
                 break
 
     DashboardHandler.cached_data = all_records
@@ -597,7 +697,7 @@ def _do_fetch_background(date_from=None, date_to=None):
     print(f"  {C_GREEN}✓ Fetched {len(all_records)} tickets from ServiceNow{C_RESET}")
 
 
-def start_fetch(date_from=None, date_to=None):
+def start_fetch(date_from=None, date_to=None, fetch_filters=None):
     """Kick off a background fetch. Returns immediately."""
     with _fetch_lock:
         if fetch_progress["state"] == "fetching":
@@ -607,7 +707,7 @@ def start_fetch(date_from=None, date_to=None):
     fetch_progress["records_so_far"] = 0
     fetch_progress["error"] = None
     fetch_progress["message"] = "Starting..."
-    t = threading.Thread(target=_do_fetch_background, args=(date_from, date_to), daemon=True)
+    t = threading.Thread(target=_do_fetch_background, args=(date_from, date_to, fetch_filters), daemon=True)
     t.start()
     return True
 
@@ -639,7 +739,15 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
     def _parse_date_params(self):
         parsed = urlparse(self.path)
         qs = parse_qs(parsed.query)
-        return qs.get("from", [None])[0], qs.get("to", [None])[0]
+        return {
+            "from": qs.get("from", [None])[0],
+            "to": qs.get("to", [None])[0],
+            "sd": qs.get("sd", [""])[0] or "",
+            "rb": qs.get("rb", [""])[0] or "",
+            "rf": qs.get("rf", [""])[0] or "",
+            "rt": qs.get("rt", [""])[0] or "",
+            "st": qs.get("st", [""])[0] or "",
+        }
 
     def do_GET(self):
         parsed = urlparse(self.path)
@@ -663,8 +771,8 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.send_json({"result": self.cached_data or []})
             return
         if parsed.path == "/api/refresh":
-            date_from, date_to = self._parse_date_params()
-            started = start_fetch(date_from, date_to)
+            params = self._parse_date_params()
+            started = start_fetch(params["from"], params["to"], params)
             self.send_json({"status": "started" if started else "already_running"})
             return
         if parsed.path == "/api/progress":
