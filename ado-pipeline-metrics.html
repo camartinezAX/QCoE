@@ -1,0 +1,2025 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ADO Pipeline Metrics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --accent:#F59E0B;--accent-hot:#FB923C;--accent-dim:rgba(245,158,11,.1);--accent-border:rgba(245,158,11,.2);--accent-glow:rgba(245,158,11,.08);
+  --bg:#050a12;--bg-elevated:#0a1322;--bg-card:rgba(12,22,40,.65);--bg-card-solid:#0c1628;--bg-input:rgba(6,12,24,.8);--bg-hover:rgba(245,158,11,.03);
+  --text:#e8edf5;--text-dim:#7b8faa;--text-muted:#3d5068;
+  --green:#10B981;--red:#EF4444;--blue:#3B82F6;--purple:#8B5CF6;--yellow:#F59E0B;--cyan:#06B6D4;
+  --green-bg:rgba(16,185,129,.1);--red-bg:rgba(239,68,68,.1);--blue-bg:rgba(59,130,246,.1);
+  --border:rgba(255,255,255,.05);--border-hover:rgba(255,255,255,.1);
+  --heading:'Outfit',system-ui,sans-serif;--font:'DM Sans',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+  --radius:14px;--radius-sm:8px;--radius-xs:6px;
+  --ease:cubic-bezier(.4,0,.2,1);--spring:cubic-bezier(.34,1.56,.64,1);
+  --shadow-sm:0 2px 8px rgba(0,0,0,.25);--shadow-md:0 8px 32px rgba(0,0,0,.4);--shadow-lg:0 16px 64px rgba(0,0,0,.5);
+  --shadow-glow:0 0 40px var(--accent-glow);
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh;overflow-x:hidden}
+::selection{background:rgba(245,158,11,.25);color:#fff}
+
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.14)}
+
+/* Background effects */
+.bg-effects{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.orb{position:absolute;border-radius:50%;filter:blur(100px);opacity:.12}
+.orb-1{width:600px;height:600px;background:radial-gradient(circle,#F59E0B,transparent 70%);top:-200px;right:-100px;animation:orbFloat1 25s ease-in-out infinite}
+.orb-2{width:500px;height:500px;background:radial-gradient(circle,#8B5CF6,transparent 70%);bottom:-150px;left:-100px;animation:orbFloat2 30s ease-in-out infinite}
+.orb-3{width:400px;height:400px;background:radial-gradient(circle,#06B6D4,transparent 70%);top:50%;left:40%;animation:orbFloat3 20s ease-in-out infinite}
+@keyframes orbFloat1{0%,100%{transform:translate(0,0)}50%{transform:translate(-60px,40px)}}
+@keyframes orbFloat2{0%,100%{transform:translate(0,0)}50%{transform:translate(50px,-30px)}}
+@keyframes orbFloat3{0%,100%{transform:translate(0,0)}33%{transform:translate(-40px,-30px)}66%{transform:translate(30px,20px)}}
+
+.grain{position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.025;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+.mesh-line{position:fixed;pointer-events:none;z-index:0;opacity:.03}
+.mesh-line-h{width:100%;height:1px;background:linear-gradient(90deg,transparent,rgba(245,158,11,.3),transparent)}
+.mesh-line-v{height:100%;width:1px;background:linear-gradient(180deg,transparent,rgba(139,92,246,.3),transparent)}
+
+/* Layout */
+.app-shell{position:relative;z-index:2;min-height:100vh;display:flex;flex-direction:column}
+
+/* Top Nav */
+.top-nav{position:sticky;top:0;z-index:50;padding:.6rem 1.5rem;display:flex;align-items:center;justify-content:space-between;
+  background:rgba(5,10,18,.75);backdrop-filter:blur(20px) saturate(1.5);border-bottom:1px solid var(--border)}
+.nav-brand{display:flex;align-items:center;gap:.6rem}
+.nav-logo{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent-hot));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.85rem;color:#000;font-family:var(--heading)}
+.nav-title{font-family:var(--heading);font-weight:700;font-size:1rem;letter-spacing:-.3px}
+.nav-title span{background:linear-gradient(135deg,var(--accent),var(--accent-hot));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.nav-tabs{display:flex;gap:2px;background:rgba(255,255,255,.03);border-radius:10px;padding:3px}
+.nav-tab{padding:.4rem .9rem;border-radius:8px;font-size:.72rem;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--text-dim);transition:all .25s var(--ease);font-family:var(--font);position:relative;white-space:nowrap}
+.nav-tab:hover:not(.active){color:var(--text);background:rgba(255,255,255,.04)}
+.nav-tab.active{background:linear-gradient(135deg,var(--accent),var(--accent-hot));color:#000;box-shadow:0 2px 12px rgba(245,158,11,.25)}
+.nav-tab .badge-count{position:absolute;top:-2px;right:-2px;width:16px;height:16px;border-radius:50%;background:var(--accent);color:#000;font-size:.55rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+
+/* Main content */
+.main{flex:1;max-width:1200px;width:100%;margin:0 auto;padding:1.5rem 1.5rem 4rem}
+
+/* Views */
+.view{display:none;animation:viewIn .4s var(--ease) both}
+.view.active{display:block}
+@keyframes viewIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+/* Section headers */
+.sh{margin-bottom:1.5rem}
+.sh-overline{font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:2px;color:var(--accent);margin-bottom:.35rem;display:flex;align-items:center;gap:.4rem}
+.sh-overline::before{content:'';width:20px;height:1.5px;background:var(--accent);border-radius:1px}
+.sh-title{font-family:var(--heading);font-size:1.8rem;font-weight:700;letter-spacing:-.5px;line-height:1.2;margin-bottom:.3rem}
+.sh-desc{color:var(--text-dim);font-size:.85rem;max-width:500px}
+
+/* Glass card */
+.glass{background:var(--bg-card);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:var(--radius);transition:all .3s var(--ease)}
+.glass:hover{border-color:var(--border-hover);box-shadow:var(--shadow-glow)}
+.glass-solid{background:var(--bg-card-solid);border:1px solid var(--border);border-radius:var(--radius)}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:.4rem;padding:.55rem 1.1rem;border-radius:var(--radius-sm);font-family:var(--font);font-size:.78rem;font-weight:600;cursor:pointer;border:none;transition:all .2s var(--ease);white-space:nowrap;position:relative;overflow:hidden}
+.btn::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.1),transparent);opacity:0;transition:opacity .2s}
+.btn:hover::after{opacity:1}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-hot));color:#000;box-shadow:0 2px 12px rgba(245,158,11,.2)}
+.btn-primary:hover{box-shadow:0 4px 20px rgba(245,158,11,.35);transform:translateY(-1px)}
+.btn-secondary{background:rgba(255,255,255,.05);color:var(--text);border:1px solid var(--border)}
+.btn-secondary:hover{background:rgba(255,255,255,.08);border-color:var(--border-hover)}
+.btn-ghost{background:transparent;color:var(--text-dim);padding:.4rem .6rem}
+.btn-ghost:hover{color:var(--text);background:rgba(255,255,255,.04)}
+.btn-danger{background:var(--red-bg);color:var(--red);border:1px solid rgba(239,68,68,.15)}
+.btn-danger:hover{background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.3)}
+.btn-success{background:var(--green-bg);color:var(--green);border:1px solid rgba(16,185,129,.15)}
+.btn-icon{width:34px;height:34px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:.9rem}
+.btn-lg{padding:.7rem 1.4rem;font-size:.85rem;border-radius:10px}
+
+/* Form inputs */
+.field{margin-bottom:1rem}
+.field-label{display:block;font-size:.68rem;font-weight:600;color:var(--text-dim);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.8px}
+.field-input,.field-select{width:100%;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:var(--font);font-size:.82rem;padding:.6rem .8rem;outline:none;transition:all .25s var(--ease)}
+.field-input:focus,.field-select:focus{border-color:var(--accent-border);box-shadow:0 0 0 3px var(--accent-dim)}
+.field-input::placeholder{color:var(--text-muted)}
+.field-hint{font-size:.65rem;color:var(--text-muted);margin-top:.3rem;font-family:var(--mono)}
+textarea.field-input{resize:vertical;min-height:100px;font-family:var(--mono);font-size:.72rem;line-height:1.6}
+
+/* Toolbar */
+.toolbar{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem}
+.toolbar-spacer{flex:1}
+
+/* Pipeline config cards */
+.pipeline-configs{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem;margin:1rem 0}
+.config-card{padding:1rem 1.15rem;position:relative;overflow:hidden;transition:border-color .25s,box-shadow .25s}
+.config-card.selected{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 0 16px rgba(245,158,11,.08)}
+.config-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent-hot));opacity:.7}
+.config-card .config-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:.75rem}
+.config-card .config-name{font-family:var(--heading);font-weight:700;font-size:.95rem;display:flex;align-items:center;gap:.45rem}
+.config-card .config-name .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 6px rgba(16,185,129,.5);flex-shrink:0}
+.config-check{appearance:none;-webkit-appearance:none;width:18px;height:18px;border:2px solid var(--border);border-radius:5px;background:transparent;cursor:pointer;transition:all .2s;flex-shrink:0;position:relative}
+.config-check:checked{background:var(--accent);border-color:var(--accent)}
+.config-check:checked::after{content:'\2713';position:absolute;top:-1px;left:2px;font-size:12px;color:var(--bg);font-weight:700}
+.config-check:hover{border-color:var(--accent)}
+.select-bar{display:flex;align-items:center;gap:.75rem;margin-bottom:.15rem;font-size:.75rem}
+.select-bar .sel-count{color:var(--text-dim);font-family:var(--mono);font-size:.7rem}
+.select-bar button{background:transparent;border:none;color:var(--accent);cursor:pointer;font-size:.72rem;font-weight:600;padding:0;text-decoration:underline;text-underline-offset:2px;transition:color .2s}
+.select-bar button:hover{color:var(--accent-hot)}
+.config-card .config-remove{background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:.85rem;padding:.15rem .3rem;border-radius:4px;transition:all .2s;line-height:1}
+.config-card .config-remove:hover{color:var(--red);background:var(--red-bg)}
+.config-card .config-detail{display:flex;align-items:center;gap:.4rem;font-size:.72rem;color:var(--text-dim);margin:.25rem 0;line-height:1.4}
+.config-card .config-detail .label{color:var(--text-muted);min-width:55px;font-size:.62rem;text-transform:uppercase;letter-spacing:.5px}
+.config-card .config-detail .val{color:var(--text-dim);font-family:var(--mono);font-size:.68rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.config-card .config-meta{display:flex;gap:.6rem;margin-top:.65rem;padding-top:.6rem;border-top:1px solid var(--border)}
+.config-card .config-tag{font-size:.6rem;padding:.2rem .5rem;border-radius:4px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.tag-builds{background:var(--blue-bg);color:var(--blue)}
+.tag-filter{background:rgba(139,92,246,.1);color:var(--purple)}
+
+/* Empty state */
+.empty-state{text-align:center;padding:3rem 2rem;border:2px dashed var(--border);border-radius:var(--radius);margin:1rem 0}
+.empty-state .empty-icon{font-size:2.5rem;margin-bottom:.75rem;opacity:.5}
+.empty-state .empty-title{font-family:var(--heading);font-weight:700;font-size:1.1rem;margin-bottom:.3rem}
+.empty-state .empty-desc{color:var(--text-dim);font-size:.82rem;max-width:400px;margin:0 auto .75rem}
+
+/* Slide panel */
+.panel-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);z-index:100;opacity:0;pointer-events:none;transition:opacity .3s var(--ease)}
+.panel-overlay.open{opacity:1;pointer-events:all}
+.slide-panel{position:fixed;top:0;right:0;bottom:0;width:460px;max-width:90vw;background:var(--bg-elevated);border-left:1px solid var(--border);z-index:101;transform:translateX(100%);transition:transform .35s var(--ease);display:flex;flex-direction:column;box-shadow:-8px 0 40px rgba(0,0,0,.4)}
+.slide-panel.open{transform:translateX(0)}
+.panel-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.panel-header h3{font-family:var(--heading);font-weight:700;font-size:1.1rem}
+.panel-body{flex:1;overflow-y:auto;padding:1.5rem}
+.panel-footer{padding:1rem 1.5rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:.5rem;flex-shrink:0}
+
+/* Script box */
+.script-container{background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin:1rem 0}
+.script-header{display:flex;align-items:center;justify-content:space-between;padding:.6rem 1rem;background:rgba(255,255,255,.02);border-bottom:1px solid var(--border)}
+.script-header .lang{font-family:var(--mono);font-size:.62rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px}
+.script-body{padding:1rem;max-height:250px;overflow-y:auto}
+.script-body pre{font-family:var(--mono);font-size:.66rem;color:var(--blue);line-height:1.7;white-space:pre-wrap;word-break:break-all}
+
+/* File drop */
+.drop-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:2rem;text-align:center;cursor:pointer;transition:all .25s var(--ease);background:var(--bg-input)}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent-border);background:rgba(245,158,11,.03)}
+.drop-zone.loaded{border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.03)}
+.drop-zone .dz-icon{font-size:2rem;margin-bottom:.5rem;opacity:.6}
+.drop-zone .dz-text{font-size:.85rem;font-weight:600;color:var(--text)}
+.drop-zone .dz-sub{font-size:.72rem;color:var(--text-muted);margin-top:.3rem}
+
+/* Metrics grid */
+.metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.75rem;margin:1rem 0}
+.metric{padding:.85rem;text-align:center;position:relative;overflow:hidden}
+.metric::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.metric.m-accent::before{background:linear-gradient(90deg,var(--accent),var(--accent-hot))}
+.metric.m-green::before{background:var(--green)}
+.metric.m-red::before{background:var(--red)}
+.metric.m-blue::before{background:var(--blue)}
+.metric.m-purple::before{background:var(--purple)}
+.metric.m-cyan::before{background:var(--cyan)}
+.metric .m-value{font-family:var(--heading);font-size:1.7rem;font-weight:800;margin:.1rem 0}
+.metric .m-label{font-size:.6rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;font-weight:600}
+.metric .m-sub{font-size:.65rem;color:var(--text-muted);margin-top:.15rem}
+.m-accent .m-value{color:var(--accent)}
+.m-green .m-value{color:var(--green)}
+.m-red .m-value{color:var(--red)}
+.m-blue .m-value{color:var(--blue)}
+.m-purple .m-value{color:var(--purple)}
+.m-cyan .m-value{color:var(--cyan)}
+
+/* Dashboard controls */
+.controls-bar{display:flex;gap:.75rem;align-items:end;flex-wrap:wrap;padding:1rem;margin:1rem 0}
+.controls-bar .field{margin:0}
+.controls-bar .field-input,.controls-bar .field-select{height:38px}
+.exec-row{display:flex;gap:.5rem;align-items:center}
+.exec-row .field-input{min-width:120px;max-width:160px}
+.exec-row .btn{height:36px}
+.controls-hints{width:100%;margin-top:-.35rem;margin-bottom:.75rem;display:flex;flex-direction:column;gap:.4rem;padding:0 1rem}
+.controls-hints .field-hint{margin-top:0}
+.exec-actions{margin-top:.4rem;display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+.exec-actions .btn{padding:.42rem .75rem;font-size:.72rem;border-radius:10px}
+
+/* Feature groups */
+.feature-group{margin:.75rem 0;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.feature-hdr{display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem;background:var(--bg-card);cursor:pointer;transition:all .2s var(--ease);user-select:none;gap:.5rem}
+.feature-hdr:hover{background:rgba(245,158,11,.03)}
+.feature-hdr .fh-left{display:flex;align-items:center;gap:.6rem;flex:1;min-width:0}
+.feature-hdr .fh-check{width:18px;height:18px;border-radius:5px;border:2px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0;font-size:.65rem;color:transparent}
+.feature-hdr .fh-check.checked{background:var(--accent);border-color:var(--accent);color:#000}
+.feature-hdr .fh-num{font-family:var(--mono);font-size:.65rem;color:var(--accent);background:var(--accent-dim);padding:.15rem .45rem;border-radius:4px;font-weight:600;flex-shrink:0}
+.feature-hdr .fh-name{font-size:.85rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.feature-hdr .fh-stats{display:flex;gap:.6rem;font-size:.68rem;color:var(--text-dim);flex-shrink:0}
+.feature-hdr .fh-chevron{color:var(--text-muted);transition:transform .2s var(--ease);font-size:.65rem;flex-shrink:0}
+.feature-hdr .fh-chevron.open{transform:rotate(180deg)}
+.feature-body{display:none;background:rgba(0,0,0,.1)}
+.feature-body.open{display:block}
+
+/* Pipeline sections inside features */
+.pipe-section{padding:.75rem;border-bottom:1px solid rgba(255,255,255,.04)}
+.pipe-section:last-child{border-bottom:none}
+.pipe-label{font-size:.72rem;font-weight:600;color:var(--text-dim);padding:.2rem 0 .4rem;display:flex;align-items:center;gap:.5rem}
+.pipe-label .pipe-type{font-size:.55rem;padding:.15rem .4rem;border-radius:3px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.type-sanity{background:rgba(16,185,129,.1);color:var(--green)}
+.type-regression{background:rgba(59,130,246,.1);color:var(--blue)}
+
+/* Exec table */
+.exec-tbl{width:100%;border-collapse:collapse;font-size:.72rem}
+.exec-tbl th{text-align:left;padding:.4rem .5rem;font-size:.58rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);border-bottom:1px solid var(--border);white-space:nowrap}
+.exec-tbl td{padding:.4rem .5rem;border-bottom:1px solid rgba(255,255,255,.02)}
+.exec-tbl tr:hover td{background:var(--bg-hover)}
+a.build-link{color:var(--blue);text-decoration:none;font-family:var(--mono);font-size:.66rem;transition:color .15s}
+a.build-link:hover{color:var(--accent)}
+
+/* Badges */
+.badge{display:inline-block;padding:.12rem .4rem;border-radius:4px;font-size:.58rem;font-weight:600}
+.badge-pass{background:var(--green-bg);color:var(--green)}
+.badge-fail{background:var(--red-bg);color:var(--red)}
+.badge-partial{background:rgba(245,158,11,.1);color:var(--yellow)}
+.badge-other{background:var(--blue-bg);color:var(--blue)}
+
+/* Test bars */
+.test-bar{display:flex;height:5px;border-radius:3px;overflow:hidden;min-width:50px;background:rgba(255,255,255,.05)}
+.test-bar .t-pass{background:var(--green)}.test-bar .t-fail{background:var(--red)}.test-bar .t-other{background:var(--yellow)}
+.test-info{display:flex;align-items:center;gap:.4rem}
+.test-nums{font-family:var(--mono);font-size:.62rem;color:var(--text-dim);white-space:nowrap}
+
+/* Test detail */
+.td-toggle{cursor:pointer;user-select:none}
+.td-toggle:hover .test-nums{color:var(--accent)}
+.td-row td{padding:0!important;border:none!important}
+.td-panel{background:rgba(0,0,0,.2);border-radius:8px;margin:.2rem .5rem .4rem;padding:.5rem .65rem;display:none}
+.td-panel.open{display:block}
+.test-list{list-style:none;padding:0;margin:0}
+.test-list li{display:flex;align-items:center;gap:.5rem;padding:.22rem 0;font-size:.68rem;border-bottom:1px solid rgba(255,255,255,.02)}
+.test-list li:last-child{border-bottom:none}
+.test-list .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.test-list .dot-p{background:var(--green)}.test-list .dot-f{background:var(--red)}.test-list .dot-o{background:var(--yellow)}
+.test-list .t-name{flex:1;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.test-list .t-dur{font-family:var(--mono);font-size:.58rem;color:var(--text-muted);flex-shrink:0}
+
+/* Email section */
+.email-config{display:grid;grid-template-columns:280px 1fr;gap:1.5rem;margin:1rem 0}
+.email-options{display:flex;flex-direction:column;gap:.5rem}
+.email-opt{display:flex;align-items:center;gap:.5rem;padding:.45rem .65rem;border-radius:var(--radius-sm);cursor:pointer;transition:background .2s;font-size:.78rem}
+.email-opt:hover{background:rgba(255,255,255,.03)}
+.email-opt input[type=checkbox]{accent-color:var(--accent);width:15px;height:15px;cursor:pointer}
+.email-opt .opt-label{flex:1;font-weight:500}
+.email-preview{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:#fff;min-height:400px}
+.email-preview iframe{width:100%;height:600px;border:none}
+
+/* Responsive */
+@media(max-width:800px){
+  .nav-tabs{overflow-x:auto;max-width:50vw;-webkit-overflow-scrolling:touch}
+  .pipeline-configs{grid-template-columns:1fr}
+  .email-config{grid-template-columns:1fr}
+  .metrics-grid{grid-template-columns:repeat(2,1fr)}
+  .controls-bar{flex-direction:column;align-items:stretch}
+  .sh-title{font-size:1.3rem}
+  .main{padding:1rem}
+  .slide-panel{width:100vw;max-width:100vw}
+}
+
+/* Info / Error boxes */
+.info-box{padding:.7rem 1rem;border-radius:var(--radius-sm);font-size:.78rem;line-height:1.5;display:flex;align-items:flex-start;gap:.5rem;margin:.75rem 0}
+.info-box.info{background:var(--blue-bg);border:1px solid rgba(59,130,246,.15);color:var(--blue)}
+.info-box.error{background:var(--red-bg);border:1px solid rgba(239,68,68,.15);color:var(--red)}
+.info-box.success{background:var(--green-bg);border:1px solid rgba(16,185,129,.15);color:var(--green)}
+
+/* Toast */
+.toast{position:fixed;bottom:2rem;right:2rem;padding:.65rem 1.1rem;border-radius:10px;font-size:.78rem;font-weight:500;background:var(--bg-elevated);border:1px solid var(--accent-border);color:var(--accent);opacity:0;transform:translateY(10px);transition:all .3s var(--ease);z-index:200;pointer-events:none;box-shadow:var(--shadow-md)}
+.toast.show{opacity:1;transform:none}
+
+/* Stagger animation helper */
+.stagger>*{animation:fadeUp .4s var(--ease) both}
+.stagger>*:nth-child(1){animation-delay:.03s}.stagger>*:nth-child(2){animation-delay:.06s}
+.stagger>*:nth-child(3){animation-delay:.09s}.stagger>*:nth-child(4){animation-delay:.12s}
+.stagger>*:nth-child(5){animation-delay:.15s}.stagger>*:nth-child(6){animation-delay:.18s}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+.hidden{display:none!important}
+.no-data{text-align:center;padding:2rem;color:var(--text-muted);font-size:.82rem}
+kbd{background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px;font-size:.7rem;font-family:var(--mono)}
+
+/* Steps instruction */
+.steps{display:flex;flex-direction:column;gap:.65rem;margin:1rem 0}
+.step{display:flex;gap:.65rem;align-items:flex-start;font-size:.82rem;color:var(--text-dim);line-height:1.5}
+.step-num{width:22px;height:22px;border-radius:6px;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:700;flex-shrink:0;font-family:var(--mono)}
+.step a{color:var(--blue);text-decoration:none}
+.step a:hover{text-decoration:underline}
+
+/* Select all / deselect */
+.select-actions{display:flex;gap:.5rem;margin:.75rem 0}
+
+/* Advanced toggle */
+.adv-toggle{display:flex;align-items:center;gap:.4rem;padding:.45rem 0;cursor:pointer;font-size:.75rem;font-weight:600;color:var(--text-dim);transition:color .2s;user-select:none;border:none;background:none;font-family:var(--font)}
+.adv-toggle:hover{color:var(--text)}
+.adv-toggle .adv-chevron{font-size:.55rem;transition:transform .2s var(--ease)}
+.adv-toggle .adv-chevron.open{transform:rotate(180deg)}
+.adv-section{display:none;padding:.5rem 0 0;animation:fadeUp .3s var(--ease) both}
+.adv-section.open{display:block}
+
+/* Info tooltip */
+.info-trigger{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,.06);color:var(--text-muted);font-size:.58rem;font-weight:700;cursor:help;border:1px solid var(--border);transition:all .2s;margin-left:.35rem;flex-shrink:0;position:relative;font-family:var(--font);font-style:normal;line-height:1}
+.info-trigger:hover{background:var(--accent-dim);color:var(--accent);border-color:var(--accent-border)}
+.info-tip{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);width:260px;padding:.65rem .8rem;background:var(--bg-elevated);border:1px solid var(--border-hover);border-radius:var(--radius-sm);font-size:.7rem;font-weight:400;color:var(--text-dim);line-height:1.5;box-shadow:var(--shadow-md);opacity:0;pointer-events:none;transition:opacity .15s;z-index:10;text-transform:none;letter-spacing:0}
+.info-tip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--border-hover)}
+.info-trigger:hover .info-tip{opacity:1;pointer-events:auto}
+.info-tip code{font-family:var(--mono);font-size:.62rem;background:rgba(255,255,255,.06);padding:.1rem .3rem;border-radius:3px;color:var(--blue)}
+.info-tip strong{color:var(--text);font-weight:600}
+
+/* Chip input */
+.chip-box{background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.4rem;min-height:52px;transition:all .25s var(--ease);cursor:text;display:flex;flex-direction:column;gap:.3rem}
+.chip-box:focus-within{border-color:var(--accent-border);box-shadow:0 0 0 3px var(--accent-dim)}
+.chip-list{display:flex;flex-wrap:wrap;gap:.3rem}
+.chip{display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .3rem .2rem .5rem;border-radius:5px;font-family:var(--mono);font-size:.62rem;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.15);color:var(--blue);max-width:100%;animation:chipIn .2s var(--spring) both}
+.chip .chip-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip .chip-x{background:none;border:none;color:inherit;cursor:pointer;font-size:.75rem;padding:0 .15rem;border-radius:3px;opacity:.6;transition:opacity .15s;line-height:1;flex-shrink:0}
+.chip .chip-x:hover{opacity:1;background:rgba(239,68,68,.2);color:var(--red)}
+@keyframes chipIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+.chip-input{background:transparent;border:none;outline:none;color:var(--text);font-family:var(--font);font-size:.75rem;padding:.2rem .4rem;min-width:120px;flex:1}
+.chip-input::placeholder{color:var(--text-muted)}
+.chip-count{font-size:.62rem;color:var(--text-muted);margin-top:.25rem;font-family:var(--mono);display:flex;align-items:center;gap:.35rem}
+.chip-count .cc-num{color:var(--accent);font-weight:600}
+
+/* Step nav indicator */
+.nav-tab .step-dot{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;font-size:.55rem;font-weight:700;margin-right:.3rem;background:rgba(255,255,255,.1);color:var(--text-muted);flex-shrink:0}
+.nav-tab.active .step-dot{background:rgba(0,0,0,.2);color:rgba(0,0,0,.7)}
+.nav-tab.done .step-dot{background:var(--green);color:#fff}
+
+/* Next step CTA */
+.next-step{display:flex;align-items:center;justify-content:space-between;margin-top:1.5rem;padding:1rem 1.25rem;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg-card)}
+.next-step .ns-text{font-size:.82rem;color:var(--text-dim)}
+.next-step .ns-text strong{color:var(--text)}
+
+/* Divider */
+.panel-divider{height:1px;background:var(--border);margin:1rem 0}
+</style>
+</head>
+<body>
+<div class="bg-effects">
+  <div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div>
+</div>
+<div class="grain"></div>
+
+<div class="app-shell">
+
+<!-- Top Nav -->
+<nav class="top-nav">
+  <div class="nav-brand">
+    <div class="nav-logo">P</div>
+    <div class="nav-title">ADO <span>Pipeline Metrics</span></div>
+  </div>
+  <div class="nav-tabs" id="navTabs">
+    <button class="nav-tab active" data-view="pipelines" onclick="switchView('pipelines')"><span class="step-dot">1</span>Pipelines<span class="badge-count hidden" id="pipelineCount">0</span></button>
+    <button class="nav-tab" data-view="fetch" onclick="switchView('fetch')"><span class="step-dot">2</span>Fetch Data</button>
+    <button class="nav-tab" data-view="results" onclick="switchView('results')"><span class="step-dot">3</span>Results</button>
+    <button class="nav-tab" data-view="email" onclick="switchView('email')"><span class="step-dot">4</span>Email Report</button>
+  </div>
+</nav>
+
+<main class="main">
+
+<!-- VIEW: Pipeline Manager -->
+<div class="view active" id="view-pipelines">
+  <div class="sh">
+    <div class="sh-overline">Configuration</div>
+    <div class="sh-title">Pipeline Manager</div>
+    <div class="sh-desc">Add your Azure DevOps pipeline configurations. Export them to save, import to restore.</div>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn btn-primary" onclick="openAddPanel()">+ Add Pipeline</button>
+    <div class="toolbar-spacer"></div>
+    <button class="btn btn-secondary" onclick="importConfigs()">Import</button>
+    <button class="btn btn-secondary" onclick="exportConfigs()">Export</button>
+  </div>
+
+  <div id="selectBar" class="select-bar hidden">
+    <button onclick="toggleAllConfigs(true)">Select All</button>
+    <button onclick="toggleAllConfigs(false)">Deselect All</button>
+    <span class="sel-count" id="selCount"></span>
+  </div>
+  <div id="configCards" class="pipeline-configs stagger"></div>
+  <div id="emptyState" class="empty-state">
+    <div class="empty-icon">&#9881;</div>
+    <div class="empty-title">No pipelines configured</div>
+    <div class="empty-desc">Add pipeline configurations to get started. Each config defines which Azure DevOps pipelines to fetch.</div>
+    <button class="btn btn-primary" onclick="openAddPanel()">+ Add Your First Pipeline</button>
+  </div>
+  <div id="pipelinesNext" class="next-step hidden">
+    <div class="ns-text"><strong>Pipelines configured.</strong> Next, generate a script to fetch the data.</div>
+    <button class="btn btn-primary" onclick="switchView('fetch')">Next: Fetch Data &rarr;</button>
+  </div>
+</div>
+
+<!-- VIEW: Fetch Data -->
+<div class="view" id="view-fetch">
+  <div class="sh">
+    <div class="sh-overline">Data Collection</div>
+    <div class="sh-title">Fetch Pipeline Data</div>
+    <div class="sh-desc">Generate a console script, run it in Azure DevOps, then paste or load the results.</div>
+  </div>
+
+  <div id="noConfigsWarning" class="info-box error hidden">
+    No pipeline configurations found. <a href="#" onclick="switchView('pipelines');return false" style="color:inherit;text-decoration:underline">Add pipelines first</a>.
+  </div>
+
+  <div id="fetchContent">
+    <div class="sh-overline" style="margin-top:1rem">Step 1 &mdash; Run the Script</div>
+    <div class="controls-bar glass-solid" style="margin-top:.9rem">
+      <div class="field" style="min-width:320px;flex:1">
+        <div class="field-label">Runs to fetch (per pipeline)</div>
+        <div class="exec-row">
+          <input class="field-input" id="fetchExec" type="number" min="1" step="1" placeholder="All" oninput="handleFetchExecInput()">
+          <button class="btn btn-ghost" style="padding:.45rem .7rem" onclick="setFetchAll()">All</button>
+        </div>
+        <div class="field-hint">This updates the generated ADO console script (and can override lower values in your selected pipeline configs).</div>
+      </div>
+    </div>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div>Open <a href="https://bofaz.visualstudio.com" target="_blank">Azure DevOps</a> in your browser (make sure you're logged in).</div></div>
+      <div class="step"><div class="step-num">2</div><div>Press <kbd>F12</kbd> to open DevTools, then go to the <strong style="color:var(--text)">Console</strong> tab.</div></div>
+      <div class="step"><div class="step-num">3</div><div>Copy the script below and paste it into the console. Press <strong style="color:var(--text)">Enter</strong>.</div></div>
+    </div>
+
+    <div class="script-container">
+      <div class="script-header">
+        <span class="lang">JavaScript</span>
+        <button class="btn btn-ghost" onclick="copyScript()" style="font-size:.7rem">Copy Script</button>
+      </div>
+      <div class="script-body"><pre id="consoleScript"></pre></div>
+    </div>
+
+    <div class="sh-overline" style="margin-top:1.5rem">Step 2 &mdash; Load Results</div>
+    <p style="font-size:.82rem;color:var(--text-dim);margin:.5rem 0">After the script finishes, a JSON file will be downloaded. Load it below or paste the clipboard data.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:.75rem">
+      <div>
+        <div class="field-label">Paste from clipboard</div>
+        <textarea class="field-input" id="dataInput" placeholder="Ctrl+V / Cmd+V here..." style="min-height:130px"></textarea>
+      </div>
+      <div>
+        <div class="field-label">Or load a file</div>
+        <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="event.preventDefault();this.classList.remove('drag-over');handleFileDrop(event)" style="height:130px;display:flex;flex-direction:column;align-items:center;justify-content:center">
+          <input type="file" id="fileInput" accept=".json" style="display:none" onchange="handleFileSelect(this)">
+          <div class="dz-icon">&#128194;</div>
+          <div class="dz-text">Click or drag & drop</div>
+          <div class="dz-sub" id="fileStatus">Accepts .json files</div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:.75rem;margin-top:.75rem">
+      <button class="btn btn-primary btn-lg" onclick="loadData()">Load Data & View Results &rarr;</button>
+    </div>
+    <div id="loadError" class="info-box error hidden"></div>
+  </div>
+</div>
+
+<!-- Next step after results loads is handled by auto-switch to results -->
+
+<!-- VIEW: Results -->
+<div class="view" id="view-results">
+  <div class="sh">
+    <div class="sh-overline">Dashboard</div>
+    <div class="sh-title">Pipeline Results</div>
+    <div class="sh-desc">Select features to include in your email report using the checkboxes.</div>
+  </div>
+
+  <div id="noResults" class="empty-state">
+    <div class="empty-icon">&#128202;</div>
+    <div class="empty-title">No data loaded</div>
+    <div class="empty-desc">Go to "Fetch Data" to load your pipeline results first.</div>
+    <button class="btn btn-primary" onclick="switchView('fetch')">Go to Fetch Data</button>
+  </div>
+
+  <div id="resultsContent" class="hidden">
+    <div id="summaryMetrics" class="metrics-grid stagger"></div>
+
+    <div class="controls-bar glass-solid">
+      <div class="field">
+        <div class="field-label">Category</div>
+        <select class="field-select" id="filterPlatform" onchange="renderDashboard()">
+          <option value="all">All Categories</option>
+        </select>
+      </div>
+      <div class="field">
+        <div class="field-label">Type</div>
+        <select class="field-select" id="filterType" onchange="renderDashboard()">
+          <option value="all">All Types</option>
+        </select>
+      </div>
+      <div class="field">
+        <div class="field-label">Executions</div>
+        <div class="exec-row">
+          <input class="field-input" id="filterExec" type="number" min="1" step="1" value="10" placeholder="All" oninput="handleExecInput()">
+          <button class="btn btn-ghost" style="padding:.45rem .7rem" onclick="setExecutionsAll()">All</button>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label">Result</div>
+        <select class="field-select" id="filterResult" onchange="renderDashboard()">
+          <option value="all">All Results</option><option value="succeeded">Passed Only</option><option value="failed">Failed Only</option>
+        </select>
+      </div>
+    </div>
+    <div class="controls-hints">
+      <div class="field-hint" id="execHint"></div>
+      <div class="exec-actions" id="execActions"></div>
+    </div>
+
+    <div class="select-actions">
+      <button class="btn btn-ghost" onclick="toggleAllFeatures(true)">Select All</button>
+      <button class="btn btn-ghost" onclick="toggleAllFeatures(false)">Deselect All</button>
+      <div class="toolbar-spacer"></div>
+      <button class="btn btn-primary" onclick="switchView('email')">Generate Email Report &rarr;</button>
+    </div>
+
+    <div id="platformSections"></div>
+  </div>
+</div>
+
+<!-- VIEW: Email Report -->
+<div class="view" id="view-email">
+  <div class="sh">
+    <div class="sh-overline">Report</div>
+    <div class="sh-title">Email Report Generator</div>
+    <div class="sh-desc">Choose what to include, then copy the Outlook-ready HTML.</div>
+  </div>
+
+  <div id="noEmailData" class="empty-state">
+    <div class="empty-icon">&#9993;</div>
+    <div class="empty-title">Load results first</div>
+    <div class="empty-desc">Go to "Results" to load data and select which pipelines to include.</div>
+    <button class="btn btn-primary" onclick="switchView('results')">Go to Results</button>
+  </div>
+
+  <div id="emailContent" class="hidden">
+    <div class="email-config">
+      <div>
+        <div class="field-label" style="margin-bottom:.6rem">Include in Email</div>
+        <div class="email-options" id="emailOptions">
+          <label class="email-opt"><input type="checkbox" checked data-opt="summary"><span class="opt-label">Summary Metrics</span></label>
+          <label class="email-opt"><input type="checkbox" checked data-opt="platformBreakdown"><span class="opt-label">Category Breakdown</span></label>
+          <label class="email-opt"><input type="checkbox" checked data-opt="pipelineTable"><span class="opt-label">Pipeline Results Table</span></label>
+          <label class="email-opt"><input type="checkbox" checked data-opt="testResults"><span class="opt-label">Test Pass/Fail Details</span></label>
+          <label class="email-opt"><input type="checkbox" checked data-opt="buildLinks"><span class="opt-label">Build Links</span></label>
+          <label class="email-opt"><input type="checkbox" data-opt="failedOnly"><span class="opt-label">Show Failed Only</span></label>
+        </div>
+        <div style="margin-top:1rem;display:flex;flex-direction:column;gap:.5rem">
+          <div class="field">
+            <div class="field-label">Report Title</div>
+            <input class="field-input" id="emailTitle" value="Pipeline Execution Report" placeholder="Report title...">
+          </div>
+          <div class="field">
+            <div class="field-label">Subtitle / Date Range</div>
+            <input class="field-input" id="emailSubtitle" placeholder="e.g. Sprint 42 - Mar 2026">
+          </div>
+        </div>
+        <div style="margin-top:1rem;display:flex;flex-direction:column;gap:.5rem">
+          <button class="btn btn-primary btn-lg" onclick="generateEmail()" style="width:100%;justify-content:center">Generate Email HTML</button>
+          <button class="btn btn-secondary" id="btnCopyEmail" onclick="copyEmailHtml()" style="width:100%;justify-content:center" disabled>Copy HTML to Clipboard</button>
+        </div>
+      </div>
+      <div>
+        <div class="field-label" style="margin-bottom:.6rem">Preview</div>
+        <div class="email-preview"><iframe id="emailPreviewFrame" srcdoc="<body style='font-family:Arial;color:#999;display:flex;align-items:center;justify-content:center;min-height:380px;margin:0'><p>Click 'Generate Email HTML' to see preview</p></body>"></iframe></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<!-- Slide Panel for adding pipeline config -->
+<div class="panel-overlay" id="panelOverlay" onclick="closePanel()"></div>
+<div class="slide-panel" id="addPanel">
+  <div class="panel-header">
+    <h3 id="panelTitle">Add Pipelines</h3>
+    <button class="btn btn-ghost btn-icon" onclick="closePanel()">&times;</button>
+  </div>
+  <div class="panel-body">
+    <div class="field">
+      <div class="field-label">Configuration Name</div>
+      <input class="field-input" id="cfgName" placeholder="e.g. Mobile Sanity & Regression">
+    </div>
+
+    <div class="field">
+      <div class="field-label">Pipeline URLs
+        <span class="info-trigger">i<span class="info-tip"><strong>Paste pipeline URLs</strong> from Azure DevOps. You can paste one at a time or paste multiple at once (they'll be split automatically).<br><br>Example:<br><code>https://bofaz.visualstudio.com/.../_build?definitionId=123</code></span></span>
+      </div>
+      <div class="chip-box" id="chipBox" onclick="document.getElementById('chipInput').focus()">
+        <div class="chip-list" id="chipList"></div>
+        <input class="chip-input" id="chipInput" placeholder="Paste a pipeline URL..." onpaste="handleChipPaste(event)" onkeydown="handleChipKeydown(event)">
+      </div>
+      <div class="chip-count" id="chipCount">
+        <span class="cc-num">0</span> pipeline(s) added
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">Last N Executions
+        <span class="info-trigger">i<span class="info-tip">How many recent build executions to fetch <strong>per pipeline</strong>. For example, "3" fetches the last 3 runs for each pipeline.<br><br>Use <strong>0</strong> to fetch <strong>ALL</strong> available runs (can be slow).</span></span>
+      </div>
+      <input class="field-input" id="cfgBuilds" type="number" min="0" max="200" value="3">
+    </div>
+
+    <div class="panel-divider"></div>
+
+    <button class="adv-toggle" onclick="toggleAdvanced()">
+      <span class="adv-chevron" id="advChevron">&#9660;</span>
+      Advanced Settings
+    </button>
+    <div class="adv-section" id="advSection">
+      <p style="font-size:.72rem;color:var(--text-muted);margin-bottom:.75rem;line-height:1.5">Use these if you want to auto-discover pipelines by folder path instead of adding URLs individually. Leave empty to use URLs only.</p>
+      <div class="field">
+        <div class="field-label">Organization URL
+          <span class="info-trigger">i<span class="info-tip">The root URL of your Azure DevOps organization.<br><br>Example: <code>https://bofaz.visualstudio.com</code><br><br>This is auto-filled from your pipeline URLs, but you can override it here.</span></span>
+        </div>
+        <input class="field-input" id="cfgOrg" placeholder="https://bofaz.visualstudio.com" value="https://bofaz.visualstudio.com" oninput="this._userEdited=true">
+      </div>
+      <div class="field">
+        <div class="field-label">Project Name
+          <span class="info-trigger">i<span class="info-tip">The Azure DevOps project name.<br><br>Example: <code>Automation Architecture</code><br><br>This is auto-filled from your pipeline URLs.</span></span>
+        </div>
+        <input class="field-input" id="cfgProject" placeholder="Automation Architecture" value="Automation Architecture" oninput="this._userEdited=true">
+      </div>
+      <div class="field">
+        <div class="field-label">Path Filter (Regex)
+          <span class="info-trigger">i<span class="info-tip"><strong>A regular expression</strong> to match pipeline folder paths in Azure DevOps.<br><br>Example: <code>\\01 Mobile\\(Android|iOS)\\0[1-9]</code><br><br>This matches any pipeline inside folders like:<br>&#8226; <code>\01 Mobile\Android\01 Login</code><br>&#8226; <code>\01 Mobile\iOS\03 Transfers</code><br><br>Leave empty if using URLs.</span></span>
+        </div>
+        <input class="field-input" id="cfgPath" placeholder="e.g. \\01 Mobile\\(Android|iOS)\\0[1-9]">
+      </div>
+      <div class="field">
+        <div class="field-label">Name Filter (Regex)
+          <span class="info-trigger">i<span class="info-tip"><strong>Optional regex</strong> to further filter by pipeline name or path.<br><br>Example: <code>sanity|regression</code><br><br>This only keeps pipelines whose name or path contains "sanity" or "regression". Use <code>|</code> to match multiple terms.<br><br>Leave empty to include all matches.</span></span>
+        </div>
+        <input class="field-input" id="cfgNameFilter" placeholder="e.g. sanity|regression">
+      </div>
+    </div>
+  </div>
+  <div class="panel-footer">
+    <button class="btn btn-secondary" onclick="closePanel()">Cancel</button>
+    <button class="btn btn-primary" id="panelSaveBtn" onclick="saveConfig()">Add Pipelines</button>
+  </div>
+</div>
+
+<!-- Hidden file input for import -->
+<input type="file" id="importFileInput" accept=".json" style="display:none" onchange="handleImportFile(this)">
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── State ───
+let configs = [];
+let editingConfigId = null;
+let pipelines = [];
+let buildsByDef = {};
+let testsByBuild = {};
+let selectedFeatures = new Set();
+let generatedEmailHtml = '';
+let loadedFileContent = null;
+let chipUrls = [];
+let selectedConfigIds = new Set();
+
+const LS_KEY = 'pipeline-hub-configs';
+const EXEC_PREF_KEY = 'ado-pipeline-metrics-executions'; // number string or "all"
+
+// ─── Init ───
+(function init() {
+  const saved = localStorage.getItem(LS_KEY);
+  if (saved) {
+    try { configs = JSON.parse(saved); } catch(e) { configs = []; }
+  }
+  configs.forEach(c => selectedConfigIds.add(c.id));
+  renderConfigs();
+  updateScript();
+
+  // Apply saved executions preference (Results filter) if present.
+  const execEl = document.getElementById('filterExec');
+  const pref = getPreferredExecutions();
+  if (execEl && pref === 'all') execEl.value = '';
+  else if (execEl && pref) execEl.value = String(pref);
+})();
+
+function getPreferredExecutions() {
+  const raw = (localStorage.getItem(EXEC_PREF_KEY) || '').trim();
+  if (!raw) return null;
+  if (raw === 'all') return 'all';
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function setPreferredExecutions(n) {
+  if (n === 'all') localStorage.setItem(EXEC_PREF_KEY, 'all');
+  else if (Number.isFinite(n) && n > 0) localStorage.setItem(EXEC_PREF_KEY, String(n));
+  else localStorage.removeItem(EXEC_PREF_KEY);
+}
+
+function applyPreferredExecToInputs() {
+  const pref = getPreferredExecutions();
+  const asText = pref === 'all' || pref == null ? '' : String(pref);
+  const resEl = document.getElementById('filterExec');
+  if (resEl) resEl.value = asText;
+  const fetchEl = document.getElementById('fetchExec');
+  if (fetchEl) fetchEl.value = asText;
+}
+
+// ─── View Switching ───
+function switchView(view) {
+  document.querySelectorAll('.view').forEach(v => { v.classList.remove('active'); v.style.display = 'none'; });
+  const el = document.getElementById('view-' + view);
+  if (el) { el.style.display = 'block'; requestAnimationFrame(() => el.classList.add('active')); }
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
+
+  updateStepStates();
+
+  if (view === 'fetch') {
+    const hasSelected = selectedConfigIds.size > 0;
+    document.getElementById('noConfigsWarning').classList.toggle('hidden', hasSelected);
+    document.getElementById('fetchContent').classList.toggle('hidden', !hasSelected);
+    if (hasSelected) updateScript();
+    applyPreferredExecToInputs();
+  }
+  if (view === 'results') {
+    const hasData = pipelines.length > 0;
+    document.getElementById('noResults').classList.toggle('hidden', hasData);
+    document.getElementById('resultsContent').classList.toggle('hidden', !hasData);
+    applyPreferredExecToInputs();
+  }
+  if (view === 'email') {
+    const hasData = pipelines.length > 0;
+    document.getElementById('noEmailData').classList.toggle('hidden', hasData);
+    document.getElementById('emailContent').classList.toggle('hidden', !hasData);
+  }
+}
+
+function updateStepStates() {
+  const tabs = document.querySelectorAll('.nav-tab');
+  const steps = { pipelines: selectedConfigIds.size > 0, fetch: pipelines.length > 0, results: pipelines.length > 0, email: !!generatedEmailHtml };
+  tabs.forEach(t => {
+    const v = t.dataset.view;
+    t.classList.toggle('done', !!steps[v] && !t.classList.contains('active'));
+  });
+}
+
+// ─── Pipeline Config CRUD ───
+function generateId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+function saveConfigs() {
+  localStorage.setItem(LS_KEY, JSON.stringify(configs));
+  updatePipelineCount();
+}
+
+function updatePipelineCount() {
+  const badge = document.getElementById('pipelineCount');
+  if (configs.length > 0) {
+    badge.textContent = configs.length;
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+}
+
+function renderConfigs() {
+  const container = document.getElementById('configCards');
+  const empty = document.getElementById('emptyState');
+  const nextBtn = document.getElementById('pipelinesNext');
+  const selectBar = document.getElementById('selectBar');
+  if (!configs.length) {
+    container.innerHTML = '';
+    empty.classList.remove('hidden');
+    nextBtn?.classList.add('hidden');
+    selectBar?.classList.add('hidden');
+    selectedConfigIds.clear();
+    updatePipelineCount();
+    return;
+  }
+  const knownIds = new Set(configs.map(c => c.id));
+  [...selectedConfigIds].forEach(id => { if (!knownIds.has(id)) selectedConfigIds.delete(id); });
+
+  empty.classList.add('hidden');
+  selectBar?.classList.remove('hidden');
+  container.innerHTML = configs.map(c => {
+    const hasUrls = c.definitionIds && c.definitionIds.length > 0;
+    const hasFilters = c.pathFilter || c.nameFilter;
+    const urlCount = hasUrls ? c.definitionIds.length : 0;
+    const modeLabel = hasUrls ? `${urlCount} pipeline${urlCount !== 1 ? 's' : ''} (by URL)` : 'Filter mode';
+    const checked = selectedConfigIds.has(c.id);
+    return `
+    <div class="config-card glass ${checked ? 'selected' : ''}" data-config-id="${c.id}">
+      <div class="config-header">
+        <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;flex:1;min-width:0">
+          <input type="checkbox" class="config-check" ${checked ? 'checked' : ''} onchange="toggleConfigSelection('${c.id}', this.checked)">
+          <div class="config-name"><span class="dot"></span>${esc(c.name)}</div>
+        </label>
+        <div style="display:flex;gap:.25rem;flex-shrink:0">
+          <button class="config-remove" onclick="editConfig('${c.id}')" title="Edit">&#9998;</button>
+          <button class="config-remove" onclick="removeConfig('${c.id}')" title="Remove">&times;</button>
+        </div>
+      </div>
+      <div class="config-detail"><span class="label">Mode</span><span class="val">${modeLabel}</span></div>
+      <div class="config-detail"><span class="label">Org</span><span class="val">${esc(c.orgUrl)}</span></div>
+      <div class="config-detail"><span class="label">Project</span><span class="val">${esc(c.project)}</span></div>
+      ${hasFilters ? `<div class="config-detail"><span class="label">Path</span><span class="val">${esc(c.pathFilter || '-')}</span></div>` : ''}
+      ${c.nameFilter ? `<div class="config-detail"><span class="label">Name</span><span class="val">${esc(c.nameFilter)}</span></div>` : ''}
+      <div class="config-meta">
+        <span class="config-tag tag-builds">${(parseInt(c.buildsPerPipeline,10)===0) ? 'ALL executions' : `Last ${c.buildsPerPipeline} executions`}</span>
+        ${hasUrls ? `<span class="config-tag tag-filter">${urlCount} URL${urlCount !== 1 ? 's' : ''}</span>` : ''}
+        ${c.nameFilter ? `<span class="config-tag tag-filter">${esc(c.nameFilter)}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+  updateSelectionCount();
+  updatePipelineCount();
+}
+
+function toggleConfigSelection(id, checked) {
+  if (checked) selectedConfigIds.add(id);
+  else selectedConfigIds.delete(id);
+  const card = document.querySelector(`.config-card[data-config-id="${id}"]`);
+  if (card) card.classList.toggle('selected', checked);
+  updateSelectionCount();
+  updateScript();
+}
+
+function toggleAllConfigs(selectAll) {
+  if (selectAll) configs.forEach(c => selectedConfigIds.add(c.id));
+  else selectedConfigIds.clear();
+  renderConfigs();
+  updateScript();
+}
+
+function updateSelectionCount() {
+  const total = configs.length;
+  const sel = selectedConfigIds.size;
+  const el = document.getElementById('selCount');
+  const nextBtn = document.getElementById('pipelinesNext');
+  if (el) el.textContent = `${sel} of ${total} selected`;
+  if (nextBtn) {
+    if (sel === 0) { nextBtn.classList.add('hidden'); }
+    else {
+      nextBtn.classList.remove('hidden');
+      const txt = nextBtn.querySelector('.ns-text');
+      if (txt) txt.innerHTML = `<strong>${sel} pipeline${sel !== 1 ? 's' : ''} selected.</strong> Next, generate a script to fetch the data.`;
+    }
+  }
+}
+
+function parseSingleUrl(text) {
+  try {
+    const url = new URL(text.trim());
+    const params = new URLSearchParams(url.search);
+    const defId = params.get('definitionId');
+    if (defId) {
+      const pathParts = url.pathname.split('/').filter(Boolean);
+      return { orgUrl: url.origin, project: decodeURIComponent(pathParts[0] || ''), definitionId: parseInt(defId), raw: text.trim() };
+    }
+  } catch (e) {}
+  const match = text.match(/definitionId[=:]?\s*(\d+)/i);
+  if (match) return { orgUrl: '', project: '', definitionId: parseInt(match[1]), raw: text.trim() };
+  return null;
+}
+
+function extractUrlsFromText(text) {
+  return text.split(/[\n\r,\s]+/).map(s => s.trim()).filter(s => s.includes('definitionId') || s.includes('_build'));
+}
+
+function handleChipPaste(e) {
+  e.preventDefault();
+  const text = (e.clipboardData || window.clipboardData).getData('text');
+  const candidates = extractUrlsFromText(text);
+  let added = 0;
+  for (const c of candidates) {
+    const parsed = parseSingleUrl(c);
+    if (parsed && !chipUrls.find(u => u.definitionId === parsed.definitionId)) {
+      chipUrls.push(parsed);
+      added++;
+    }
+  }
+  if (added === 0 && text.trim()) {
+    const parsed = parseSingleUrl(text.trim());
+    if (parsed && !chipUrls.find(u => u.definitionId === parsed.definitionId)) {
+      chipUrls.push(parsed);
+      added++;
+    }
+  }
+  if (added > 0) {
+    renderChips();
+    autoFillFromChips();
+  } else {
+    showToast('No valid pipeline URLs found in pasted text');
+  }
+  document.getElementById('chipInput').value = '';
+}
+
+function handleChipKeydown(e) {
+  const input = e.target;
+  if (e.key === 'Enter' && input.value.trim()) {
+    e.preventDefault();
+    const parsed = parseSingleUrl(input.value.trim());
+    if (parsed && !chipUrls.find(u => u.definitionId === parsed.definitionId)) {
+      chipUrls.push(parsed);
+      renderChips();
+      autoFillFromChips();
+    } else if (!parsed) {
+      showToast('Could not find a definitionId in that URL');
+    }
+    input.value = '';
+  }
+  if (e.key === 'Backspace' && !input.value && chipUrls.length > 0) {
+    chipUrls.pop();
+    renderChips();
+  }
+}
+
+function removeChip(idx) {
+  chipUrls.splice(idx, 1);
+  renderChips();
+}
+
+function renderChips() {
+  const list = document.getElementById('chipList');
+  list.innerHTML = chipUrls.map((u, i) => {
+    const label = u.project ? `${u.project} #${u.definitionId}` : `Pipeline #${u.definitionId}`;
+    return `<span class="chip"><span class="chip-text" title="${esc(u.raw)}">${esc(label)}</span><button class="chip-x" onclick="removeChip(${i})">&times;</button></span>`;
+  }).join('');
+  document.getElementById('chipCount').innerHTML = `<span class="cc-num">${chipUrls.length}</span> pipeline(s) added`;
+}
+
+function autoFillFromChips() {
+  if (chipUrls.length > 0) {
+    const first = chipUrls.find(u => u.orgUrl && u.project);
+    if (first) {
+      const orgField = document.getElementById('cfgOrg');
+      const projField = document.getElementById('cfgProject');
+      if (!orgField._userEdited) orgField.value = first.orgUrl;
+      if (!projField._userEdited) projField.value = first.project;
+    }
+  }
+}
+
+function toggleAdvanced() {
+  const section = document.getElementById('advSection');
+  const chevron = document.getElementById('advChevron');
+  section.classList.toggle('open');
+  chevron.classList.toggle('open');
+}
+
+function openAddPanel() {
+  editingConfigId = null;
+  document.getElementById('panelTitle').textContent = 'Add Pipelines';
+  document.getElementById('panelSaveBtn').textContent = 'Add Pipelines';
+  document.getElementById('cfgName').value = '';
+  chipUrls = [];
+  renderChips();
+  document.getElementById('chipInput').value = '';
+  document.getElementById('cfgOrg').value = 'https://bofaz.visualstudio.com';
+  document.getElementById('cfgOrg')._userEdited = false;
+  document.getElementById('cfgProject').value = 'Automation Architecture';
+  document.getElementById('cfgProject')._userEdited = false;
+  document.getElementById('cfgPath').value = '';
+  document.getElementById('cfgNameFilter').value = '';
+  document.getElementById('cfgBuilds').value = '3';
+  document.getElementById('advSection').classList.remove('open');
+  document.getElementById('advChevron').classList.remove('open');
+  document.getElementById('panelOverlay').classList.add('open');
+  document.getElementById('addPanel').classList.add('open');
+  setTimeout(() => document.getElementById('cfgName').focus(), 350);
+}
+
+function editConfig(id) {
+  const c = configs.find(x => x.id === id);
+  if (!c) return;
+  editingConfigId = id;
+  document.getElementById('panelTitle').textContent = 'Edit Configuration';
+  document.getElementById('panelSaveBtn').textContent = 'Save Changes';
+  document.getElementById('cfgName').value = c.name;
+  document.getElementById('cfgBuilds').value = c.buildsPerPipeline;
+  document.getElementById('cfgOrg').value = c.orgUrl;
+  document.getElementById('cfgOrg')._userEdited = true;
+  document.getElementById('cfgProject').value = c.project;
+  document.getElementById('cfgProject')._userEdited = true;
+  document.getElementById('cfgPath').value = c.pathFilter || '';
+  document.getElementById('cfgNameFilter').value = c.nameFilter || '';
+
+  chipUrls = [];
+  if (c.pipelineUrls && c.pipelineUrls.length > 0) {
+    c.pipelineUrls.forEach(u => { const p = parseSingleUrl(u); if (p) chipUrls.push(p); });
+  } else if (c.definitionIds && c.definitionIds.length > 0) {
+    const projEnc = encodeURIComponent(c.project);
+    c.definitionIds.forEach(did => {
+      chipUrls.push({ orgUrl: c.orgUrl, project: c.project, definitionId: did, raw: `${c.orgUrl}/${projEnc}/_build?definitionId=${did}` });
+    });
+  }
+  renderChips();
+  document.getElementById('chipInput').value = '';
+
+  if (c.pathFilter || c.nameFilter) {
+    document.getElementById('advSection').classList.add('open');
+    document.getElementById('advChevron').classList.add('open');
+  } else {
+    document.getElementById('advSection').classList.remove('open');
+    document.getElementById('advChevron').classList.remove('open');
+  }
+
+  document.getElementById('panelOverlay').classList.add('open');
+  document.getElementById('addPanel').classList.add('open');
+}
+
+function closePanel() {
+  document.getElementById('panelOverlay').classList.remove('open');
+  document.getElementById('addPanel').classList.remove('open');
+  editingConfigId = null;
+}
+
+function saveConfig() {
+  const name = document.getElementById('cfgName').value.trim();
+  const orgUrl = document.getElementById('cfgOrg').value.trim().replace(/\/+$/, '');
+  const project = document.getElementById('cfgProject').value.trim();
+  const pathFilter = document.getElementById('cfgPath').value.trim();
+  const nameFilter = document.getElementById('cfgNameFilter').value.trim();
+  const buildsRaw = (document.getElementById('cfgBuilds').value || '').trim();
+  const buildsNum = parseInt(buildsRaw, 10);
+  let buildsPerPipeline = 3;
+  if (Number.isFinite(buildsNum) && buildsNum >= 0) {
+    buildsPerPipeline = buildsNum === 0 ? 0 : Math.min(200, buildsNum);
+  }
+
+  if (!name) { showToast('Please enter a configuration name'); return; }
+
+  const definitionIds = chipUrls.map(u => u.definitionId);
+  const pipelineUrls = chipUrls.map(u => u.raw);
+
+  const effectiveOrg = (chipUrls.length > 0 && chipUrls[0].orgUrl) ? chipUrls[0].orgUrl : orgUrl;
+  const effectiveProject = (chipUrls.length > 0 && chipUrls[0].project) ? chipUrls[0].project : project;
+
+  if (!effectiveOrg || !effectiveProject) { showToast('Could not determine organization or project. Add URLs or fill in Advanced Settings.'); return; }
+  if (definitionIds.length === 0 && !pathFilter) { showToast('Add at least one pipeline URL or set a Path Filter in Advanced Settings'); return; }
+
+  const config = {
+    id: editingConfigId || generateId(),
+    name, orgUrl: effectiveOrg, project: effectiveProject,
+    pipelineUrls, definitionIds, pathFilter, nameFilter, buildsPerPipeline
+  };
+
+  if (editingConfigId) {
+    const idx = configs.findIndex(x => x.id === editingConfigId);
+    if (idx > -1) configs[idx] = config;
+  } else {
+    configs.push(config);
+    selectedConfigIds.add(config.id);
+  }
+
+  saveConfigs();
+  renderConfigs();
+  closePanel();
+  showToast(editingConfigId ? 'Configuration updated' : `Added ${definitionIds.length || 'filter-based'} pipeline(s)`);
+}
+
+function removeConfig(id) {
+  if (!confirm('Remove this pipeline configuration?')) return;
+  configs = configs.filter(c => c.id !== id);
+  saveConfigs();
+  renderConfigs();
+  showToast('Pipeline removed');
+}
+
+function exportConfigs() {
+  if (!configs.length) { showToast('No configurations to export'); return; }
+  const data = JSON.stringify({ version: 1, configs }, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const ts = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+  a.href = url; a.download = `pipeline-configs_${ts}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  showToast('Configurations exported');
+}
+
+function importConfigs() {
+  document.getElementById('importFileInput').click();
+}
+
+function handleImportFile(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.configs && Array.isArray(data.configs)) {
+        const count = data.configs.length;
+        data.configs.forEach(c => {
+          const isDuplicate = configs.find(x => x.name === c.name && x.orgUrl === c.orgUrl && x.project === c.project);
+          if (!isDuplicate) {
+            const newConfig = { ...c, id: c.id || generateId(), definitionIds: c.definitionIds || [], pipelineUrls: c.pipelineUrls || [] };
+            configs.push(newConfig);
+            selectedConfigIds.add(newConfig.id);
+          }
+        });
+        saveConfigs();
+        renderConfigs();
+        showToast(`Imported ${count} configuration(s)`);
+      } else {
+        showToast('Invalid config file format');
+      }
+    } catch (err) {
+      showToast('Failed to parse import file');
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ─── Script Generation ───
+function generateScript() {
+  const active = configs.filter(c => selectedConfigIds.has(c.id));
+  if (!active.length) return '// No pipeline configurations selected. Go to the Pipelines tab and select at least one.';
+
+  const pref = getPreferredExecutions();
+  const prefExec = pref === 'all' ? 0 : (pref || 0);
+  const wantAll = pref === 'all';
+  const configsJson = JSON.stringify(active.map(c => ({
+    orgUrl: c.orgUrl,
+    project: c.project,
+    definitionIds: c.definitionIds || [],
+    pathFilter: c.pathFilter || '',
+    nameFilter: c.nameFilter || '',
+    buildsPerPipeline: wantAll ? 0 : ((parseInt(c.buildsPerPipeline, 10) === 0) ? 0 : Math.max(parseInt(c.buildsPerPipeline, 10) || 3, prefExec))
+  })));
+
+  return `(async()=>{
+  const CONFIGS=${configsJson};
+  const L=m=>console.log('%c[ADO Pipeline Metrics] '+m,'color:#F59E0B;font-weight:bold');
+  const allDefs=[],allBuilds=[],tMap={};
+  for(let ci=0;ci<CONFIGS.length;ci++){
+    const C=CONFIGS[ci];
+    const API=C.orgUrl+'/'+encodeURIComponent(C.project)+'/_apis';
+    L('Config '+(ci+1)+'/'+CONFIGS.length+': '+C.project);
+    let matched=[];
+    if(C.definitionIds&&C.definitionIds.length>0){
+      L('  Fetching '+C.definitionIds.length+' specific pipeline(s) by ID...');
+      for(const did of C.definitionIds){
+        try{
+          const r=await fetch(API+'/build/definitions/'+did+'?api-version=7.0');
+          if(r.ok){const d=await r.json();matched.push(d);}
+          else{L('  Warning: Could not fetch definition '+did);}
+        }catch(e){L('  Error fetching definition '+did);}
+      }
+      L('  Fetched '+matched.length+' pipeline definition(s)');
+    }
+    if(C.pathFilter){
+      L('  Also searching by path filter: '+C.pathFilter);
+      const dR=await fetch(API+'/build/definitions?$top=2000&api-version=7.0');
+      if(!dR.ok||dR.headers.get('content-type')?.indexOf('json')===-1){L('ERROR: Auth failed for '+C.orgUrl+'. Refresh page & retry.');continue;}
+      const defs=(await dR.json()).value||[];
+      const pathRx=new RegExp(C.pathFilter,'i');
+      const nameRx=C.nameFilter?new RegExp(C.nameFilter,'i'):null;
+      const filtered=defs.filter(d=>{
+        const p=(d.path||'');
+        if(!pathRx.test(p))return false;
+        if(nameRx&&!nameRx.test(p)&&!nameRx.test(d.name))return false;
+        return true;
+      });
+      L('  Found '+filtered.length+' by filter');
+      const existingIds=new Set(matched.map(d=>d.id));
+      filtered.forEach(d=>{if(!existingIds.has(d.id))matched.push(d);});
+    }
+    L('  Total: '+matched.length+' unique pipelines');
+    allDefs.push(...matched);
+    if(!matched.length)continue;
+    const ids=matched.map(d=>d.id);
+    const perPRaw=parseInt(C.buildsPerPipeline,10);
+    const perP=Number.isFinite(perPRaw)?perPRaw:(parseInt(C.buildsPerPipeline,10)||3);
+    const wantAll=(perP===0);
+    const mapLimit=async(items,limit,worker)=>{
+      const out=new Array(items.length);let idx=0;
+      const runners=Array.from({length:Math.min(limit,items.length)},async()=>{
+        while(true){
+          const cur=idx++;
+          if(cur>=items.length)break;
+          out[cur]=await worker(items[cur],cur);
+        }
+      });
+      await Promise.all(runners);
+      return out;
+    };
+    const fetchBuildsForDefinition=async(defId,limit)=>{
+      const out=[];
+      let token='';
+      let guard=0;
+      while(true){
+        guard++;
+        if(guard>5000)break; // safety guard
+        const top=limit===0?200:Math.min(200,Math.max(1,limit-out.length));
+        let url=API+'/build/builds?definitions='+defId+'&$top='+top+'&queryOrder=finishTimeDescending&api-version=7.0';
+        if(token) url+='&continuationToken='+encodeURIComponent(token);
+        const r=await fetch(url);
+        if(!r.ok)break;
+        const d=await r.json();
+        const vals=(d.value||[]);
+        if(vals.length) out.push(...vals);
+        token=r.headers.get('x-ms-continuationtoken')||'';
+        if(limit!==0 && out.length>=limit) break;
+        if(!token || vals.length===0) break;
+      }
+      return limit===0?out:out.slice(0,limit);
+    };
+    L('  Fetching '+(wantAll?'ALL':('last '+perP))+' executions per pipeline...');
+    const buildArrays=await mapLimit(ids,6,async(defId)=>{
+      try{return await fetchBuildsForDefinition(defId,wantAll?0:Math.max(1,perP));}catch(e){return [];}
+    });
+    let builds=[];
+    for(const arr of buildArrays){if(arr&&arr.length)builds=builds.concat(arr);}
+    L('  Got '+builds.length+' builds. Fetching test runs...');
+    allBuilds.push(...builds);
+    const runIds=[];let done=0;
+    for(let i=0;i<builds.length;i+=10){
+      const sl=builds.slice(i,i+10);
+      await Promise.all(sl.map(async b=>{
+        try{
+          const r=await fetch(API+'/test/runs?buildUri=vstfs:///Build/Build/'+b.id+'&api-version=7.0');
+          const d=await r.json();
+          if(d.value&&d.value.length>0){
+            let tot=0,pass=0,fail=0;
+            d.value.forEach(tr=>{tot+=tr.totalTests||0;pass+=tr.passedTests||0;fail+=(tr.totalTests||0)-(tr.passedTests||0)-(tr.notApplicableTests||0)-(tr.incompleteTests||0);runIds.push({runId:tr.id,buildId:b.id,api:API});});
+            tMap[b.id]={total:tot,passed:pass,failed:Math.max(0,fail),tests:[]};
+          }
+        }catch(e){}
+        done++;
+      }));
+    }
+    L('  Fetching test details for '+runIds.length+' runs...');
+    for(let i=0;i<runIds.length;i+=10){
+      const sl=runIds.slice(i,i+10);
+      await Promise.all(sl.map(async({runId,buildId,api})=>{
+        try{
+          const r=await fetch(api+'/test/runs/'+runId+'/results?api-version=7.0');
+          const d=await r.json();
+          if(d.value&&tMap[buildId]){
+            d.value.forEach(tc=>{
+              tMap[buildId].tests.push({name:tc.testCaseTitle||tc.automatedTestName||'Unnamed',outcome:tc.outcome||'Unknown',duration:tc.durationInMs||0});
+            });
+          }
+        }catch(e){}
+      }));
+    }
+  }
+  L('All done! '+allDefs.length+' pipelines, '+allBuilds.length+' builds.');
+  const out=JSON.stringify({definitions:allDefs,builds:allBuilds,testResults:tMap});
+  const ts=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+  const bl=new Blob([out],{type:'application/json'});
+  const u=URL.createObjectURL(bl);
+  const a=document.createElement('a');a.href=u;a.download='pipeline-data_'+ts+'.json';
+  document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(u);
+  try{await navigator.clipboard.writeText(out);}catch(e){}
+  L('File downloaded & copied to clipboard!');
+})();`;
+}
+
+function updateScript() {
+  const el = document.getElementById('consoleScript');
+  if (el) el.textContent = generateScript();
+}
+
+function copyScript() {
+  navigator.clipboard.writeText(generateScript());
+  showToast('Script copied to clipboard');
+}
+
+// ─── File Handling ───
+function handleFileSelect(input) {
+  if (input.files?.[0]) readFile(input.files[0]);
+}
+function handleFileDrop(e) {
+  const file = e.dataTransfer?.files?.[0];
+  if (file) readFile(file);
+}
+function readFile(file) {
+  if (!file.name.endsWith('.json')) { showToast('Please select a .json file'); return; }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    loadedFileContent = e.target.result;
+    const zone = document.getElementById('dropZone');
+    zone.classList.add('loaded');
+    const size = (file.size / 1024).toFixed(0);
+    document.getElementById('fileStatus').textContent = `${file.name} (${size} KB) - ready`;
+    document.getElementById('fileStatus').style.color = 'var(--green)';
+  };
+  reader.readAsText(file);
+}
+
+// ─── Data Loading ───
+function loadData() {
+  const raw = document.getElementById('dataInput').value.trim() || loadedFileContent;
+  const errEl = document.getElementById('loadError');
+  errEl.classList.add('hidden');
+  if (!raw) { errEl.textContent = 'No data provided.'; errEl.classList.remove('hidden'); return; }
+
+  let data;
+  try { data = JSON.parse(raw); } catch (e) {
+    errEl.textContent = 'Invalid JSON: ' + e.message; errEl.classList.remove('hidden'); return;
+  }
+
+  if (!data.definitions || !data.builds) {
+    errEl.textContent = 'Expected format: {definitions:[...], builds:[...], testResults:{...}}';
+    errEl.classList.remove('hidden'); return;
+  }
+
+  pipelines = data.definitions.map(parsePipeline).filter(Boolean);
+  testsByBuild = data.testResults || {};
+
+  buildsByDef = {};
+  data.builds.forEach(b => {
+    const defId = b.definition?.id;
+    if (!defId) return;
+    if (!buildsByDef[defId]) buildsByDef[defId] = [];
+    const orgUrl = configs[0]?.orgUrl || 'https://bofaz.visualstudio.com';
+    const projEnc = encodeURIComponent(configs[0]?.project || 'Automation Architecture');
+    const webUrl = b._links?.web?.href || `${orgUrl}/${projEnc}/_build/results?buildId=${b.id}&view=results`;
+    buildsByDef[defId].push({
+      id: b.id, number: b.buildNumber,
+      result: b.result || b.status || 'unknown',
+      startTime: b.startTime, finishTime: b.finishTime,
+      duration: parseDuration(b.startTime, b.finishTime),
+      requestedBy: b.requestedFor?.displayName || b.requestedBy?.displayName || 'Scheduled',
+      reason: b.reason, url: webUrl,
+      testUrl: `${orgUrl}/${projEnc}/_build/results?buildId=${b.id}&view=ms.vss-test-web.build-test-results-tab`
+    });
+  });
+  Object.values(buildsByDef).forEach(arr => arr.sort((a, b) => new Date(b.startTime) - new Date(a.startTime)));
+
+  selectedFeatures = new Set();
+  switchView('results');
+  renderDashboard();
+  showToast(`Loaded ${pipelines.length} pipelines, ${data.builds.length} builds`);
+}
+
+function detectCategory(path, name) {
+  const s = (path + ' ' + name).toLowerCase();
+  const rules = [
+    [/\bandroid\b/, 'Android'], [/\bios\b/, 'iOS'],
+    [/\bmobile\b/, 'Mobile'], [/\bweb\b|\bportal\b|\bui\b|\bfrontend\b/, 'Web'],
+    [/\bapi\b|\bservice\b|\bbackend\b|\brest\b/, 'API'],
+    [/\bperformance\b|\bperf\b|\bload\b|\bstress\b/, 'Performance'],
+    [/\be2e\b|\bend.to.end\b/, 'E2E'], [/\bintegration\b/, 'Integration'],
+    [/\bdesktop\b/, 'Desktop'],
+  ];
+  for (const [rx, label] of rules) { if (rx.test(s)) return label; }
+  return 'General';
+}
+
+function parsePipeline(def) {
+  const path = def.path || '';
+  const name = def.name || '';
+  const combined = path + ' ' + name;
+  const platform = detectCategory(path, name);
+
+  const featureMatch = path.match(/\\(\d{2})\s+(.+?)(?:\\|$)/);
+  const featureNum = featureMatch ? featureMatch[1] : '00';
+  const featureName = featureMatch ? featureMatch[2].trim() : (path.split('\\').filter(Boolean).pop() || name);
+
+  let type = 'Other';
+  if (/sanity/i.test(combined)) type = 'Sanity';
+  else if (/regression/i.test(combined)) type = 'Regression';
+  else if (/smoke/i.test(combined)) type = 'Smoke';
+  else if (/functional/i.test(combined)) type = 'Functional';
+
+  return { id: def.id, name, platform, featureNum, featureName, type, path };
+}
+
+function parseDuration(s, f) { return s && f ? (new Date(f) - new Date(s)) / 60000 : null; }
+function fmtDuration(m) { if (m == null) return '-'; if (m < 1) return '<1m'; const h = Math.floor(m / 60); const mi = Math.round(m % 60); return h > 0 ? `${h}h ${mi}m` : `${mi}m`; }
+function fmtDate(iso) { if (!iso) return '-'; return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+
+function getFilters() {
+  const execRaw = (document.getElementById('filterExec')?.value || '').trim();
+  const execNum = parseInt(execRaw, 10);
+  const executions = Number.isFinite(execNum) && execNum > 0 ? execNum : 0;
+  return {
+    platform: document.getElementById('filterPlatform').value,
+    type: document.getElementById('filterType').value,
+    executions,
+    result: document.getElementById('filterResult').value
+  };
+}
+
+function setExecutionsAll() {
+  const el = document.getElementById('filterExec');
+  if (el) el.value = '';
+  setPreferredExecutions('all');
+  applyPreferredExecToInputs();
+  renderDashboard();
+  updateScript();
+}
+
+function handleExecInput() {
+  const raw = (document.getElementById('filterExec')?.value || '').trim();
+  const n = parseInt(raw, 10);
+  setPreferredExecutions(raw ? (Number.isFinite(n) && n > 0 ? n : null) : 'all');
+  applyPreferredExecToInputs();
+  renderDashboard();
+  updateScript();
+}
+
+function setFetchAll() {
+  setPreferredExecutions('all');
+  applyPreferredExecToInputs();
+  updateScript();
+  showToast('Script set to fetch ALL runs per pipeline (can be slow).');
+}
+
+function handleFetchExecInput() {
+  const raw = (document.getElementById('fetchExec')?.value || '').trim();
+  const n = parseInt(raw, 10);
+  setPreferredExecutions(raw ? (Number.isFinite(n) && n > 0 ? n : null) : 'all');
+  applyPreferredExecToInputs();
+  updateScript();
+}
+
+function syncFetchCountToExecutions() {
+  const f = getFilters();
+  const wantAll = f.executions === 0;
+  const n = f.executions;
+
+  let updated = 0;
+  configs.forEach(c => {
+    if (!selectedConfigIds.has(c.id)) return;
+    const curRaw = parseInt(c.buildsPerPipeline, 10);
+    const cur = Number.isFinite(curRaw) ? curRaw : 3;
+    if (wantAll) {
+      if (cur !== 0) { c.buildsPerPipeline = 0; updated++; }
+      return;
+    }
+    if (cur === 0) return; // already fetching all history
+    if (cur < n) { c.buildsPerPipeline = n; updated++; }
+  });
+  if (!updated) { showToast(wantAll ? 'Selected configs already fetch ALL runs per pipeline' : `Selected configs already fetch at least ${n} runs per pipeline`); return; }
+
+  saveConfigs();
+  renderConfigs();
+  updateScript();
+  switchView('fetch');
+  showToast(wantAll ? 'Updated selected configs to fetch ALL runs per pipeline (this can be slow). Re-run the script in ADO, then load the new JSON.' : `Updated selected configs to fetch ${n} runs per pipeline. Re-run the script in ADO, then load the new JSON.`);
+}
+
+// ─── Dashboard Rendering ───
+function renderDashboard() {
+  const f = getFilters();
+  let filtered = pipelines.filter(p => {
+    if (f.platform !== 'all' && p.platform !== f.platform) return false;
+    if (f.type !== 'all' && p.type !== f.type) return false;
+    return true;
+  });
+
+  const maxFetched = filtered.reduce((m, p) => Math.max(m, (buildsByDef[p.id] || []).length), 0);
+  const hintEl = document.getElementById('execHint');
+  const actEl = document.getElementById('execActions');
+  if (hintEl) {
+    if (!pipelines.length) hintEl.textContent = '';
+    else if (!maxFetched) hintEl.textContent = 'No build executions loaded.';
+    else if (f.executions > 0 && f.executions > maxFetched) hintEl.textContent = `Requested last ${f.executions}, but only ${maxFetched} fetched per pipeline. Increase "Last N Executions" in Pipelines and re-fetch.`;
+    else if (f.executions > 0) hintEl.textContent = `Showing last ${Math.min(f.executions, maxFetched)} of up to ${maxFetched} fetched per pipeline.`;
+    else hintEl.textContent = `Showing all fetched (up to ${maxFetched} per pipeline).`;
+  }
+  if (actEl) {
+    if (pipelines.length && maxFetched && selectedConfigIds.size > 0 && ((f.executions > 0 && f.executions > maxFetched) || f.executions === 0)) {
+      const label = f.executions === 0 ? 'Fetch ALL history (slow) &amp; go to Fetch Data' : `Update fetch to ${f.executions} &amp; go to Fetch Data`;
+      actEl.innerHTML = `<button class="btn btn-secondary" onclick="syncFetchCountToExecutions()">${label}</button>`;
+    } else {
+      actEl.innerHTML = '';
+    }
+  }
+
+  let totalRuns=0, totalPassed=0, totalFailed=0, totalDuration=0, durCount=0;
+  let totalTests=0, totalTestsPassed=0, totalTestsFailed=0;
+  const people = {};
+
+  filtered.forEach(p => {
+    let builds = buildsByDef[p.id] || [];
+    if (f.result !== 'all') builds = builds.filter(b => b.result === f.result);
+    if (f.executions > 0) builds = builds.slice(0, f.executions);
+    builds.forEach(b => {
+      totalRuns++;
+      if (b.result === 'succeeded') totalPassed++;
+      if (b.result === 'failed' || b.result === 'partiallySucceeded') totalFailed++;
+      if (b.duration && b.duration > 0) { totalDuration += b.duration; durCount++; }
+      if (b.requestedBy) people[b.requestedBy] = (people[b.requestedBy] || 0) + 1;
+      const t = testsByBuild[b.id];
+      if (t) { totalTests += t.total; totalTestsPassed += t.passed; totalTestsFailed += t.failed; }
+    });
+  });
+
+  const avgDur = durCount ? totalDuration / durCount : 0;
+  const passRate = totalRuns ? ((totalPassed / totalRuns) * 100).toFixed(0) : 0;
+  const testPassRate = totalTests ? ((totalTestsPassed / totalTests) * 100).toFixed(0) : 0;
+
+  const allPlatforms = [...new Set(pipelines.map(p => p.platform))].sort();
+  const platSelect = document.getElementById('filterPlatform');
+  const currentPlat = platSelect.value;
+  platSelect.innerHTML = '<option value="all">All Categories</option>' + allPlatforms.map(p => `<option value="${esc(p)}"${p === currentPlat ? ' selected' : ''}>${esc(p)}</option>`).join('');
+
+  const allTypes = [...new Set(pipelines.map(p => p.type))].sort();
+  const typeSelect = document.getElementById('filterType');
+  const currentType = typeSelect.value;
+  typeSelect.innerHTML = '<option value="all">All Types</option>' + allTypes.map(t => `<option value="${esc(t)}"${t === currentType ? ' selected' : ''}>${esc(t)}</option>`).join('');
+
+  const platCounts = {};
+  filtered.forEach(p => { platCounts[p.platform] = (platCounts[p.platform] || 0) + 1; });
+  const platSummary = Object.entries(platCounts).map(([k,v]) => `${v} ${k}`).join(' / ');
+
+  document.getElementById('summaryMetrics').innerHTML = `
+    <div class="metric glass m-accent"><div class="m-label">Pipelines</div><div class="m-value">${filtered.length}</div>
+      <div class="m-sub">${platSummary || 'none'}</div></div>
+    <div class="metric glass m-blue"><div class="m-label">Total Runs</div><div class="m-value">${totalRuns}</div>
+      <div class="m-sub">${Object.keys(people).length} contributors</div></div>
+    <div class="metric glass m-green"><div class="m-label">Build Pass Rate</div><div class="m-value">${passRate}%</div>
+      <div class="m-sub">${totalPassed} passed / ${totalFailed} failed</div></div>
+    <div class="metric glass m-purple"><div class="m-label">Avg Duration</div><div class="m-value">${fmtDuration(avgDur)}</div>
+      <div class="m-sub">${durCount} builds measured</div></div>
+    <div class="metric glass m-cyan"><div class="m-label">Test Pass Rate</div><div class="m-value">${totalTests ? testPassRate+'%' : 'N/A'}</div>
+      <div class="m-sub">${totalTests ? totalTestsPassed+'/'+totalTests : 'No test data'}</div></div>
+    <div class="metric glass m-red"><div class="m-label">Test Failures</div><div class="m-value">${totalTestsFailed || '-'}</div>
+      <div class="m-sub">${totalTests ? ((totalTestsFailed/totalTests)*100).toFixed(1)+'% failure rate' : ''}</div></div>
+  `;
+
+  const grouped = {};
+  filtered.forEach(p => {
+    const key = `${p.platform}|||${p.featureNum}|||${p.featureName}`;
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(p);
+  });
+
+  const sortedKeys = Object.keys(grouped).sort();
+  let html = '';
+  const platforms = f.platform !== 'all' ? [f.platform] : [...new Set(filtered.map(p => p.platform))].sort();
+
+  platforms.forEach(plat => {
+    const platKeys = sortedKeys.filter(k => k.startsWith(plat + '|||'));
+    if (!platKeys.length) return;
+    const iconMap = {Android:'&#x1f4f1;',iOS:'&#x1f34e;',Mobile:'&#x1f4f1;',Web:'&#x1f310;',API:'&#x1f517;',Performance:'&#x26a1;',E2E:'&#x1f504;',Integration:'&#x1f50c;',Desktop:'&#x1f5a5;'};
+    const icon = iconMap[plat] || '&#x1f4cb;';
+    html += `<div style="margin-top:1.25rem"><div class="sh-overline">${icon} ${plat}</div>`;
+
+    platKeys.forEach(key => {
+      const [, featureNum, featureName] = key.split('|||');
+      const group = grouped[key];
+      const gid = key.replace(/[^a-zA-Z0-9]/g, '_');
+      const featureKey = `${plat}_${featureNum}_${featureName}`;
+      const isChecked = selectedFeatures.has(featureKey);
+
+      let gRuns=0, gPassed=0, gFailed=0;
+      group.forEach(p => {
+        let blds = buildsByDef[p.id] || [];
+        if (f.result !== 'all') blds = blds.filter(b => b.result === f.result);
+        if (f.executions > 0) blds = blds.slice(0, f.executions);
+        blds.forEach(b => {
+          gRuns++;
+          if (b.result === 'succeeded') gPassed++;
+          if (b.result === 'failed' || b.result === 'partiallySucceeded') gFailed++;
+        });
+      });
+
+      html += `<div class="feature-group">
+        <div class="feature-hdr" onclick="toggleFeature('${gid}')">
+          <div class="fh-left">
+            <div class="fh-check ${isChecked ? 'checked' : ''}" onclick="event.stopPropagation();toggleFeatureCheck('${featureKey}','${gid}')" id="chk_${gid}">&#10003;</div>
+            <span class="fh-num">${featureNum}</span>
+            <span class="fh-name">${featureName}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:.8rem">
+            <div class="fh-stats">
+              <span>${gRuns} runs</span>
+              <span style="color:var(--green)">${gPassed} pass</span>
+              ${gFailed ? `<span style="color:var(--red)">${gFailed} fail</span>` : ''}
+            </div>
+            <span class="fh-chevron" id="chev_${gid}">&#9660;</span>
+          </div>
+        </div>
+        <div class="feature-body" id="body_${gid}">`;
+
+      ['Sanity','Regression','Other'].forEach(type => {
+        const typePipelines = group.filter(p => p.type === type);
+        if (!typePipelines.length) return;
+        typePipelines.forEach(p => {
+          let blds = buildsByDef[p.id] || [];
+          if (f.result !== 'all') blds = blds.filter(b => b.result === f.result);
+          if (f.executions > 0) blds = blds.slice(0, f.executions);
+          const tc = type === 'Sanity' ? 'type-sanity' : type === 'Regression' ? 'type-regression' : '';
+          html += `<div class="pipe-section">
+            <div class="pipe-label"><span class="pipe-type ${tc}">${type}</span><span style="color:var(--text)">${esc(p.name)}</span></div>`;
+          if (!blds.length) {
+            html += `<div class="no-data">No executions found</div>`;
+          } else {
+            html += `<table class="exec-tbl"><thead><tr><th>Date</th><th>Build</th><th>Triggered By</th><th>Duration</th><th>Result</th><th>Tests</th></tr></thead><tbody>`;
+            blds.forEach(b => {
+              const bc = b.result === 'succeeded' ? 'badge-pass' : b.result === 'failed' ? 'badge-fail' : b.result === 'partiallySucceeded' ? 'badge-partial' : 'badge-other';
+              const t = testsByBuild[b.id];
+              const hasTests = t && t.total > 0;
+              const hasDetails = t && t.tests && t.tests.length > 0;
+              const trid = 'td_' + b.id;
+              let testCell = '<span style="color:var(--text-muted);font-size:.6rem">-</span>';
+              if (hasTests) {
+                const pP = (t.passed / t.total * 100).toFixed(0);
+                const fP = (t.failed / t.total * 100).toFixed(0);
+                const oP = Math.max(0, 100 - parseFloat(pP) - parseFloat(fP));
+                const cl = hasDetails ? `class="td-toggle" onclick="toggleTestDetail('${trid}')"` : '';
+                testCell = `<div ${cl}><div class="test-info"><div class="test-bar"><div class="t-pass" style="width:${pP}%"></div><div class="t-fail" style="width:${fP}%"></div><div class="t-other" style="width:${oP}%"></div></div><span class="test-nums">${t.passed}/${t.total}${hasDetails?' &#9662;':''}</span></div></div>`;
+              }
+              html += `<tr><td>${fmtDate(b.startTime)}</td><td><a class="build-link" href="${b.url}" target="_blank">${b.number||b.id}</a></td><td>${esc(b.requestedBy)}</td><td>${fmtDuration(b.duration)}</td><td><span class="badge ${bc}">${b.result}</span></td><td>${testCell}</td></tr>`;
+              if (hasDetails) {
+                const sorted = [...t.tests].sort((a,b) => {
+                  const ao = a.outcome==='Failed'?0:a.outcome==='Passed'?2:1;
+                  const bo = b.outcome==='Failed'?0:b.outcome==='Passed'?2:1;
+                  return ao-bo;
+                });
+                html += `<tr class="td-row"><td colspan="6"><div class="td-panel" id="${trid}"><div style="display:flex;justify-content:space-between;margin-bottom:.3rem"><span style="font-size:.6rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px">Test Cases (${t.tests.length})</span><a href="${b.testUrl}" target="_blank" style="font-size:.58rem;color:var(--blue);text-decoration:none">View in Azure DevOps &rarr;</a></div><ul class="test-list">${sorted.map(tc => {
+                  const dc = tc.outcome==='Passed'?'dot-p':tc.outcome==='Failed'?'dot-f':'dot-o';
+                  const dur = tc.duration > 0 ? (tc.duration/1000).toFixed(1)+'s' : '';
+                  return `<li><span class="dot ${dc}"></span><span class="t-name" title="${esc(tc.name)}">${esc(tc.name)}</span><span class="t-dur">${dur}</span></li>`;
+                }).join('')}</ul></div></td></tr>`;
+              }
+            });
+            html += `</tbody></table>`;
+          }
+          html += `</div>`;
+        });
+      });
+      html += `</div></div>`;
+    });
+    html += `</div>`;
+  });
+
+  document.getElementById('platformSections').innerHTML = html || '<div class="no-data">No pipelines match the current filters</div>';
+}
+
+function toggleFeature(id) {
+  document.getElementById('body_' + id)?.classList.toggle('open');
+  document.getElementById('chev_' + id)?.classList.toggle('open');
+}
+
+function toggleFeatureCheck(featureKey, gid) {
+  const el = document.getElementById('chk_' + gid);
+  if (selectedFeatures.has(featureKey)) {
+    selectedFeatures.delete(featureKey);
+    el?.classList.remove('checked');
+  } else {
+    selectedFeatures.add(featureKey);
+    el?.classList.add('checked');
+  }
+}
+
+function toggleAllFeatures(select) {
+  document.querySelectorAll('.fh-check').forEach(el => {
+    const gid = el.id.replace('chk_', '');
+    el.classList.toggle('checked', select);
+  });
+  if (select) {
+    const f = getFilters();
+    pipelines.filter(p => {
+      if (f.platform !== 'all' && p.platform !== f.platform) return false;
+      if (f.type !== 'all' && p.type !== f.type) return false;
+      return true;
+    }).forEach(p => {
+      selectedFeatures.add(`${p.platform}_${p.featureNum}_${p.featureName}`);
+    });
+  } else {
+    selectedFeatures.clear();
+  }
+}
+
+function toggleTestDetail(id) {
+  document.getElementById(id)?.classList.toggle('open');
+}
+
+// ─── Email Generation ───
+function getEmailOptions() {
+  const opts = {};
+  document.querySelectorAll('#emailOptions input[type=checkbox]').forEach(cb => {
+    opts[cb.dataset.opt] = cb.checked;
+  });
+  return opts;
+}
+
+function generateEmail() {
+  const opts = getEmailOptions();
+  const title = document.getElementById('emailTitle').value || 'Pipeline Execution Report';
+  const subtitle = document.getElementById('emailSubtitle').value || new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const f = getFilters();
+
+  let filtered = pipelines.filter(p => {
+    if (f.platform !== 'all' && p.platform !== f.platform) return false;
+    if (f.type !== 'all' && p.type !== f.type) return false;
+    if (selectedFeatures.size > 0) {
+      const fk = `${p.platform}_${p.featureNum}_${p.featureName}`;
+      if (!selectedFeatures.has(fk)) return false;
+    }
+    return true;
+  });
+
+  let totalRuns=0, totalPassed=0, totalFailed=0, totalDuration=0, durCount=0;
+  let totalTests=0, totalTestsPassed=0, totalTestsFailed=0;
+  const platStats = {};
+  const pipelineRows = [];
+
+  filtered.forEach(p => {
+    let builds = buildsByDef[p.id] || [];
+    if (f.result !== 'all') builds = builds.filter(b => b.result === f.result);
+    if (f.executions > 0) builds = builds.slice(0, f.executions);
+    if (opts.failedOnly) builds = builds.filter(b => b.result !== 'succeeded');
+    let pPass=0, pFail=0, pTests=0, pTestsPass=0;
+    if (!platStats[p.platform]) platStats[p.platform] = { runs: 0, pass: 0 };
+    builds.forEach(b => {
+      totalRuns++;
+      platStats[p.platform].runs++;
+      if (b.result === 'succeeded') { totalPassed++; pPass++; platStats[p.platform].pass++; }
+      if (b.result === 'failed' || b.result === 'partiallySucceeded') { totalFailed++; pFail++; }
+      if (b.duration > 0) { totalDuration += b.duration; durCount++; }
+      const t = testsByBuild[b.id];
+      if (t) { totalTests += t.total; totalTestsPassed += t.passed; totalTestsFailed += t.failed; pTests += t.total; pTestsPass += t.passed; }
+    });
+    if (builds.length > 0) {
+      pipelineRows.push({ name: p.name, platform: p.platform, type: p.type, feature: p.featureName, featureNum: p.featureNum, runs: builds.length, passed: pPass, failed: pFail, tests: pTests, testsPassed: pTestsPass, builds });
+    }
+  });
+
+  const passRate = totalRuns ? Math.round((totalPassed / totalRuns) * 100) : 0;
+  const testPassRate = totalTests ? Math.round((totalTestsPassed / totalTests) * 100) : 0;
+  const avgDur = durCount ? totalDuration / durCount : 0;
+
+  const accentColor = '#F59E0B';
+  const greenColor = '#10B981';
+  const redColor = '#EF4444';
+  const blueColor = '#3B82F6';
+  const headerBg = '#0F172A';
+  const cardBg = '#F8FAFC';
+  const borderColor = '#E2E8F0';
+  const textDark = '#1E293B';
+  const textMid = '#64748B';
+
+  let emailBody = '';
+
+  // Header
+  emailBody += `
+<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:${headerBg};">
+  <tr><td style="padding:28px 32px;">
+    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+      <tr>
+        <td style="font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:bold;color:#FFFFFF;line-height:1.3;">${esc(title)}</td>
+        <td align="right" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#94A3B8;text-transform:uppercase;letter-spacing:1px;">${esc(subtitle)}</td>
+      </tr>
+    </table>
+    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:4px;">
+      <tr><td style="height:3px;background-color:${accentColor};border-radius:2px;font-size:0;line-height:0;">&nbsp;</td></tr>
+    </table>
+  </td></tr>
+</table>`;
+
+  // Summary Metrics
+  if (opts.summary) {
+    const metrics = [
+      { label: 'Total Runs', value: totalRuns, color: blueColor },
+      { label: 'Pass Rate', value: passRate + '%', color: passRate >= 80 ? greenColor : passRate >= 50 ? accentColor : redColor },
+      { label: 'Avg Duration', value: fmtDuration(avgDur), color: '#8B5CF6' },
+      { label: 'Test Pass Rate', value: totalTests ? testPassRate + '%' : 'N/A', color: testPassRate >= 80 ? greenColor : testPassRate >= 50 ? accentColor : redColor },
+    ];
+    emailBody += `
+<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFFFFF;">
+  <tr><td style="padding:24px 32px 8px;">
+    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+      <tr><td style="font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:bold;color:${accentColor};text-transform:uppercase;letter-spacing:2px;padding-bottom:12px;">Summary</td></tr>
+    </table>
+    <table cellpadding="0" cellspacing="8" border="0" width="100%">
+      <tr>${metrics.map(m => `
+        <td width="25%" style="background-color:${cardBg};border:1px solid ${borderColor};border-top:3px solid ${m.color};padding:16px 12px;text-align:center;border-radius:0;">
+          <div style="font-family:Arial,Helvetica,sans-serif;font-size:28px;font-weight:bold;color:${m.color};line-height:1.2;">${m.value}</div>
+          <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;color:${textMid};text-transform:uppercase;letter-spacing:1px;margin-top:4px;">${m.label}</div>
+        </td>`).join('')}
+      </tr>
+    </table>
+    <table cellpadding="0" cellspacing="8" border="0" width="100%" style="margin-top:0;">
+      <tr>
+        <td width="50%" style="background-color:${cardBg};border:1px solid ${borderColor};padding:12px 16px;">
+          <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+              <td style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:${textMid};">Passed</td>
+              <td align="right" style="font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;color:${greenColor};">${totalPassed}</td>
+            </tr>
+          </table>
+        </td>
+        <td width="50%" style="background-color:${cardBg};border:1px solid ${borderColor};padding:12px 16px;">
+          <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+              <td style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:${textMid};">Failed</td>
+              <td align="right" style="font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;color:${redColor};">${totalFailed}</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+</table>`;
+  }
+
+  // Category Breakdown (dynamic)
+  if (opts.platformBreakdown && Object.keys(platStats).length > 0) {
+    const platEntries = Object.entries(platStats).sort((a,b) => b[1].runs - a[1].runs);
+    const eiMap = {Android:'&#x1f4f1;',iOS:'&#x1f34e;',Mobile:'&#x1f4f1;',Web:'&#x1f310;',API:'&#x1f517;',Performance:'&#x26a1;',E2E:'&#x1f504;',Integration:'&#x1f50c;',Desktop:'&#x1f5a5;'};
+    const colWidth = Math.floor(100 / Math.min(platEntries.length, 3));
+    let platCells = '';
+    platEntries.forEach(([plat, st]) => {
+      const rate = st.runs ? Math.round((st.pass / st.runs) * 100) : 0;
+      const ei = eiMap[plat] || '&#x1f4cb;';
+      platCells += `
+        <td width="${colWidth}%" style="background-color:${cardBg};border:1px solid ${borderColor};padding:16px;vertical-align:top;">
+          <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr><td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:${textDark};">${ei} ${esc(plat)}</td></tr>
+            <tr><td style="padding-top:8px;">
+              <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${textMid};">Runs: <strong style="color:${textDark}">${st.runs}</strong></td>
+                  <td align="right" style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${textMid};">Pass Rate: <strong style="color:${rate>=80?greenColor:redColor}">${rate}%</strong></td>
+                </tr>
+              </table>
+            </td></tr>
+            <tr><td style="padding-top:8px;">
+              <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#E2E8F0;">
+                <tr>
+                  <td width="${rate}%" style="height:8px;background-color:${rate>=80?greenColor:rate>=50?accentColor:redColor};font-size:0;line-height:0;">&nbsp;</td>
+                  <td style="font-size:0;line-height:0;">&nbsp;</td>
+                </tr>
+              </table>
+            </td></tr>
+          </table>
+        </td>`;
+    });
+
+    emailBody += `
+<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFFFFF;">
+  <tr><td style="padding:20px 32px 8px;">
+    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+      <tr><td style="font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:bold;color:${accentColor};text-transform:uppercase;letter-spacing:2px;padding-bottom:12px;">Category Breakdown</td></tr>
+    </table>
+    <table cellpadding="0" cellspacing="8" border="0" width="100%">
+      <tr>${platCells}</tr>
+    </table>
+  </td></tr>
+</table>`;
+  }
+
+  // Pipeline Results Table
+  if (opts.pipelineTable && pipelineRows.length) {
+    let rows = '';
+    pipelineRows.forEach((r, i) => {
+      const rowBg = i % 2 === 0 ? '#FFFFFF' : '#F8FAFC';
+      const pRate = r.runs ? Math.round((r.passed / r.runs) * 100) : 0;
+      const statusColor = pRate === 100 ? greenColor : pRate >= 50 ? accentColor : redColor;
+      const statusLabel = pRate === 100 ? 'PASS' : pRate > 0 ? 'PARTIAL' : 'FAIL';
+      const statusBg = pRate === 100 ? '#ECFDF5' : pRate >= 50 ? '#FFFBEB' : '#FEF2F2';
+      const eiMap2 = {Android:'&#x1f4f1;',iOS:'&#x1f34e;',Mobile:'&#x1f4f1;',Web:'&#x1f310;',API:'&#x1f517;',Performance:'&#x26a1;',E2E:'&#x1f504;',Integration:'&#x1f50c;',Desktop:'&#x1f5a5;'};
+      const platformIcon = eiMap2[r.platform] || '&#x1f4cb;';
+      const buildLink = opts.buildLinks && r.builds[0] ? `<a href="${r.builds[0].url}" style="color:${blueColor};font-size:10px;text-decoration:none;">View</a>` : '';
+
+      let testCell = '-';
+      if (opts.testResults && r.tests > 0) {
+        const tRate = Math.round((r.testsPassed / r.tests) * 100);
+        testCell = `<span style="color:${tRate>=80?greenColor:redColor};font-weight:bold;">${tRate}%</span> <span style="color:${textMid};font-size:10px;">(${r.testsPassed}/${r.tests})</span>`;
+      }
+
+      rows += `
+      <tr style="background-color:${rowBg};">
+        <td style="padding:10px 12px;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:${textDark};border-bottom:1px solid ${borderColor};white-space:nowrap;">${platformIcon} ${esc(r.featureNum)} ${esc(r.feature)}</td>
+        <td style="padding:10px 8px;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${textMid};border-bottom:1px solid ${borderColor};text-align:center;">${r.type}</td>
+        <td style="padding:10px 8px;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:${textDark};border-bottom:1px solid ${borderColor};text-align:center;font-weight:bold;">${r.runs}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid ${borderColor};text-align:center;">
+          <span style="display:inline-block;padding:2px 8px;background-color:${statusBg};color:${statusColor};font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:bold;letter-spacing:0.5px;">${statusLabel} (${pRate}%)</span>
+        </td>
+        <td style="padding:10px 8px;font-family:Arial,Helvetica,sans-serif;font-size:12px;border-bottom:1px solid ${borderColor};text-align:center;">${testCell}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid ${borderColor};text-align:center;">${buildLink}</td>
+      </tr>`;
+    });
+
+    emailBody += `
+<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFFFFF;">
+  <tr><td style="padding:20px 32px;">
+    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+      <tr><td style="font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:bold;color:${accentColor};text-transform:uppercase;letter-spacing:2px;padding-bottom:12px;">Pipeline Results</td></tr>
+    </table>
+    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid ${borderColor};border-collapse:collapse;">
+      <tr style="background-color:${headerBg};">
+        <th style="padding:10px 12px;font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:bold;color:#94A3B8;text-transform:uppercase;letter-spacing:1px;text-align:left;border-bottom:2px solid ${accentColor};">Feature</th>
+        <th style="padding:10px 8px;font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:bold;color:#94A3B8;text-transform:uppercase;letter-spacing:1px;text-align:center;border-bottom:2px solid ${accentColor};">Type</th>
+        <th style="padding:10px 8px;font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:bold;color:#94A3B8;text-transform:uppercase;letter-spacing:1px;text-align:center;border-bottom:2px solid ${accentColor};">Runs</th>
+        <th style="padding:10px 8px;font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:bold;color:#94A3B8;text-transform:uppercase;letter-spacing:1px;text-align:center;border-bottom:2px solid ${accentColor};">Status</th>
+        <th style="padding:10px 8px;font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:bold;color:#94A3B8;text-transform:uppercase;letter-spacing:1px;text-align:center;border-bottom:2px solid ${accentColor};">Tests</th>
+        <th style="padding:10px 8px;font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:bold;color:#94A3B8;text-transform:uppercase;letter-spacing:1px;text-align:center;border-bottom:2px solid ${accentColor};">Link</th>
+      </tr>
+      ${rows}
+    </table>
+  </td></tr>
+</table>`;
+  }
+
+  // Test Results Details
+  if (opts.testResults && totalTests > 0) {
+    emailBody += `
+<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFFFFF;">
+  <tr><td style="padding:20px 32px 8px;">
+    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+      <tr><td style="font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:bold;color:${accentColor};text-transform:uppercase;letter-spacing:2px;padding-bottom:12px;">Test Execution Summary</td></tr>
+    </table>
+    <table cellpadding="0" cellspacing="8" border="0" width="100%">
+      <tr>
+        <td width="33%" style="background-color:#ECFDF5;border:1px solid #A7F3D0;padding:14px;text-align:center;">
+          <div style="font-family:Arial,Helvetica,sans-serif;font-size:24px;font-weight:bold;color:${greenColor};">${totalTestsPassed}</div>
+          <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;color:${textMid};text-transform:uppercase;letter-spacing:1px;margin-top:2px;">Passed</div>
+        </td>
+        <td width="33%" style="background-color:#FEF2F2;border:1px solid #FECACA;padding:14px;text-align:center;">
+          <div style="font-family:Arial,Helvetica,sans-serif;font-size:24px;font-weight:bold;color:${redColor};">${totalTestsFailed}</div>
+          <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;color:${textMid};text-transform:uppercase;letter-spacing:1px;margin-top:2px;">Failed</div>
+        </td>
+        <td width="33%" style="background-color:${cardBg};border:1px solid ${borderColor};padding:14px;text-align:center;">
+          <div style="font-family:Arial,Helvetica,sans-serif;font-size:24px;font-weight:bold;color:${textDark};">${totalTests}</div>
+          <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;color:${textMid};text-transform:uppercase;letter-spacing:1px;margin-top:2px;">Total</div>
+        </td>
+      </tr>
+    </table>
+    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:8px;">
+      <tr><td style="padding:4px 0;">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#E2E8F0;">
+          <tr>
+            <td width="${testPassRate}%" style="height:12px;background-color:${greenColor};font-size:0;line-height:0;">&nbsp;</td>
+            <td width="${100-testPassRate}%" style="height:12px;background-color:${totalTestsFailed > 0 ? redColor : '#E2E8F0'};font-size:0;line-height:0;">&nbsp;</td>
+          </tr>
+        </table>
+      </td></tr>
+      <tr><td style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${textMid};padding-top:4px;text-align:center;">
+        Test Pass Rate: <strong style="color:${testPassRate>=80?greenColor:redColor}">${testPassRate}%</strong>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>`;
+  }
+
+  // Footer
+  emailBody += `
+<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:${headerBg};">
+  <tr><td style="padding:16px 32px;">
+    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+      <tr>
+        <td style="font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#64748B;">Generated by ADO Pipeline Metrics</td>
+        <td align="right" style="font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#64748B;">${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</td>
+      </tr>
+    </table>
+  </td></tr>
+</table>`;
+
+  // Wrap in full email HTML
+  generatedEmailHtml = `<!DOCTYPE html>
+<html xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns:m="http://schemas.microsoft.com/office/2004/12/omml" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!--[if gte mso 9]><xml><o:OfficeDocumentSettings><o:AllowPNG/><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
+<style>
+  body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+  table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+  body { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+</style>
+</head>
+<body style="margin:0;padding:0;background-color:#E2E8F0;font-family:Arial,Helvetica,sans-serif;">
+<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#E2E8F0;">
+  <tr><td align="center" style="padding:24px 16px;">
+    <!--[if mso]><table cellpadding="0" cellspacing="0" border="0" width="640"><tr><td><![endif]-->
+    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:640px;background-color:#FFFFFF;border:1px solid #CBD5E1;">
+      ${emailBody}
+    </table>
+    <!--[if mso]></td></tr></table><![endif]-->
+  </td></tr>
+</table>
+</body>
+</html>`;
+
+  document.getElementById('emailPreviewFrame').srcdoc = generatedEmailHtml;
+  document.getElementById('btnCopyEmail').disabled = false;
+  showToast('Email HTML generated! Preview it on the right.');
+}
+
+function copyEmailHtml() {
+  if (!generatedEmailHtml) { showToast('Generate the email first'); return; }
+  navigator.clipboard.writeText(generatedEmailHtml).then(() => showToast('Email HTML copied to clipboard!'));
+}
+
+// ─── Utilities ───
+function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2800); }
+</script>
+</body>
+</html>
