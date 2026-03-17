@@ -482,6 +482,7 @@ def _do_fetch_background(date_from=None, date_to=None):
         else:
             query = date_clause.lstrip("^") if date_clause else ""
         print(f"  {C_CYAN}  Querying {table_name}...{C_RESET}")
+        print(f"  {C_DIM}  Query: {query}{C_RESET}")
         _update("fetching", f"Querying {table_name}...", pages=page_num, records=len(all_records))
 
         first_row = 0
@@ -581,13 +582,13 @@ def _do_fetch_background(date_from=None, date_to=None):
                 stale_streak = 0
                 prev_unique = cur_unique
 
-            if stale_streak >= 5:
+            if stale_streak >= 10:
                 print(f"  {C_DIM}  No new records after {stale_streak} pages "
                       f"for {table_name}, moving on{C_RESET}")
                 break
 
-            if page_num >= 200:
-                print(f"  {C_DIM}  Hit page limit for {table_name}{C_RESET}")
+            if page_num >= 500:
+                print(f"  {C_DIM}  Hit page limit ({page_num} pages) for {table_name}{C_RESET}")
                 break
 
     DashboardHandler.cached_data = all_records
