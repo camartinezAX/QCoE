@@ -466,9 +466,9 @@ def _do_fetch_background(date_from=None, date_to=None):
 
     date_clause = ""
     if date_from:
-        date_clause += f"^sys_created_on>={date_from}"
+        date_clause += f"^sys_created_on>={date_from}T00:00:00"
     if date_to:
-        date_clause += f"^sys_created_on<={date_to} 23:59:59"
+        date_clause += f"^sys_created_on<={date_to}T23:59:59"
 
     all_records = []
     page_num = 0
