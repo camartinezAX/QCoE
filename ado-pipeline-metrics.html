@@ -621,13 +621,6 @@ kbd{background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px;font-size
       </div>
     </div>
 
-    <div class="field">
-      <div class="field-label">Last N Executions
-        <span class="info-trigger">i<span class="info-tip">How many recent build executions to fetch <strong>per pipeline</strong>. For example, "3" fetches the last 3 runs for each pipeline.<br><br>Use <strong>0</strong> to fetch <strong>ALL</strong> available runs (can be slow).</span></span>
-      </div>
-      <input class="field-input" id="cfgBuilds" type="number" min="0" max="200" value="3">
-    </div>
-
     <div class="panel-divider"></div>
 
     <button class="adv-toggle" onclick="toggleAdvanced()">
@@ -828,7 +821,7 @@ function renderConfigs() {
       ${hasFilters ? `<div class="config-detail"><span class="label">Path</span><span class="val">${esc(c.pathFilter || '-')}</span></div>` : ''}
       ${c.nameFilter ? `<div class="config-detail"><span class="label">Name</span><span class="val">${esc(c.nameFilter)}</span></div>` : ''}
       <div class="config-meta">
-        <span class="config-tag tag-builds">${(parseInt(c.buildsPerPipeline,10)===0) ? 'ALL executions' : `Last ${c.buildsPerPipeline} executions`}</span>
+        <span class="config-tag tag-builds">Runs set in Fetch Data</span>
         ${hasUrls ? `<span class="config-tag tag-filter">${urlCount} URL${urlCount !== 1 ? 's' : ''}</span>` : ''}
         ${c.nameFilter ? `<span class="config-tag tag-filter">${esc(c.nameFilter)}</span>` : ''}
       </div>
@@ -984,7 +977,6 @@ function openAddPanel() {
   document.getElementById('cfgProject')._userEdited = false;
   document.getElementById('cfgPath').value = '';
   document.getElementById('cfgNameFilter').value = '';
-  document.getElementById('cfgBuilds').value = '3';
   document.getElementById('advSection').classList.remove('open');
   document.getElementById('advChevron').classList.remove('open');
   document.getElementById('panelOverlay').classList.add('open');
@@ -999,7 +991,6 @@ function editConfig(id) {
   document.getElementById('panelTitle').textContent = 'Edit Configuration';
   document.getElementById('panelSaveBtn').textContent = 'Save Changes';
   document.getElementById('cfgName').value = c.name;
-  document.getElementById('cfgBuilds').value = c.buildsPerPipeline;
   document.getElementById('cfgOrg').value = c.orgUrl;
   document.getElementById('cfgOrg')._userEdited = true;
   document.getElementById('cfgProject').value = c.project;
@@ -1043,12 +1034,6 @@ function saveConfig() {
   const project = document.getElementById('cfgProject').value.trim();
   const pathFilter = document.getElementById('cfgPath').value.trim();
   const nameFilter = document.getElementById('cfgNameFilter').value.trim();
-  const buildsRaw = (document.getElementById('cfgBuilds').value || '').trim();
-  const buildsNum = parseInt(buildsRaw, 10);
-  let buildsPerPipeline = 3;
-  if (Number.isFinite(buildsNum) && buildsNum >= 0) {
-    buildsPerPipeline = buildsNum === 0 ? 0 : Math.min(200, buildsNum);
-  }
 
   if (!name) { showToast('Please enter a configuration name'); return; }
 
@@ -1064,7 +1049,7 @@ function saveConfig() {
   const config = {
     id: editingConfigId || generateId(),
     name, orgUrl: effectiveOrg, project: effectiveProject,
-    pipelineUrls, definitionIds, pathFilter, nameFilter, buildsPerPipeline
+    pipelineUrls, definitionIds, pathFilter, nameFilter
   };
 
   if (editingConfigId) {
@@ -1143,7 +1128,7 @@ function generateScript() {
   if (!active.length) return '// No pipeline configurations selected. Go to the Pipelines tab and select at least one.';
 
   const pref = getPreferredExecutions();
-  const prefExec = pref === 'all' ? 0 : (pref || 0);
+  const prefExec = pref === 'all' ? 0 : (pref || 10);
   const wantAll = pref === 'all';
   const configsJson = JSON.stringify(active.map(c => ({
     orgUrl: c.orgUrl,
@@ -1151,7 +1136,7 @@ function generateScript() {
     definitionIds: c.definitionIds || [],
     pathFilter: c.pathFilter || '',
     nameFilter: c.nameFilter || '',
-    buildsPerPipeline: wantAll ? 0 : ((parseInt(c.buildsPerPipeline, 10) === 0) ? 0 : Math.max(parseInt(c.buildsPerPipeline, 10) || 3, prefExec))
+    buildsPerPipeline: wantAll ? 0 : prefExec
   })));
 
   return `(async()=>{
@@ -1448,25 +1433,11 @@ function syncFetchCountToExecutions() {
   const wantAll = f.executions === 0;
   const n = f.executions;
 
-  let updated = 0;
-  configs.forEach(c => {
-    if (!selectedConfigIds.has(c.id)) return;
-    const curRaw = parseInt(c.buildsPerPipeline, 10);
-    const cur = Number.isFinite(curRaw) ? curRaw : 3;
-    if (wantAll) {
-      if (cur !== 0) { c.buildsPerPipeline = 0; updated++; }
-      return;
-    }
-    if (cur === 0) return; // already fetching all history
-    if (cur < n) { c.buildsPerPipeline = n; updated++; }
-  });
-  if (!updated) { showToast(wantAll ? 'Selected configs already fetch ALL runs per pipeline' : `Selected configs already fetch at least ${n} runs per pipeline`); return; }
-
-  saveConfigs();
-  renderConfigs();
+  setPreferredExecutions(wantAll ? 'all' : (n || null));
+  applyPreferredExecToInputs();
   updateScript();
   switchView('fetch');
-  showToast(wantAll ? 'Updated selected configs to fetch ALL runs per pipeline (this can be slow). Re-run the script in ADO, then load the new JSON.' : `Updated selected configs to fetch ${n} runs per pipeline. Re-run the script in ADO, then load the new JSON.`);
+  showToast(wantAll ? 'Set fetch to ALL runs per pipeline (this can be slow). Re-run the script in ADO, then load the new JSON.' : `Set fetch to ${n} runs per pipeline. Re-run the script in ADO, then load the new JSON.`);
 }
 
 // ─── Dashboard Rendering ───
@@ -1484,7 +1455,7 @@ function renderDashboard() {
   if (hintEl) {
     if (!pipelines.length) hintEl.textContent = '';
     else if (!maxFetched) hintEl.textContent = 'No build executions loaded.';
-    else if (f.executions > 0 && f.executions > maxFetched) hintEl.textContent = `Requested last ${f.executions}, but only ${maxFetched} fetched per pipeline. Increase "Last N Executions" in Pipelines and re-fetch.`;
+    else if (f.executions > 0 && f.executions > maxFetched) hintEl.textContent = `Requested last ${f.executions}, but only ${maxFetched} fetched per pipeline. Increase "Runs to fetch (per pipeline)" in Fetch Data and re-fetch.`;
     else if (f.executions > 0) hintEl.textContent = `Showing last ${Math.min(f.executions, maxFetched)} of up to ${maxFetched} fetched per pipeline.`;
     else hintEl.textContent = `Showing all fetched (up to ${maxFetched} per pipeline).`;
   }
