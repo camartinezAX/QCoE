@@ -16,6 +16,7 @@ import threading
 import warnings
 from pathlib import Path
 from datetime import datetime, timedelta
+import time
 
 warnings.filterwarnings("ignore")
 sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, "reconfigure") else None
@@ -29,6 +30,11 @@ DASHBOARD_HTML = "Environment_Downtime_Dashboard.html"
 DASHBOARD_URL = "https://camartinezax.github.io/QCoE/Environment_Downtime_Dashboard.html"
 COOKIE_CACHE_FILE = Path(__file__).parent / ".snow_cookie_jar.json"
 COOKIE_JAR_MAX_AGE = timedelta(hours=12)
+
+PUBLISHED_CONFIG_FILE = SCRIPT_DIR / ".snow_published_dashboards.json"
+PUBLISHED_DIR = SCRIPT_DIR / "published"
+PUBLISHED_SNAPSHOTS_DIR = PUBLISHED_DIR / "snapshots"
+PUBLISHED_INDEX_FILE = PUBLISHED_DIR / "index.json"
 
 SNOW_TABLES = {
     "sc_req_item": {
@@ -112,6 +118,20 @@ fetch_progress = {
     "error": None,
 }
 _fetch_lock = threading.Lock()
+
+_publisher_lock = threading.Lock()
+_publisher_stop = threading.Event()
+_publisher_thread = None
+
+publisher_progress = {
+    "state": "idle",  # idle | running | error
+    "message": "",
+    "current_dashboard_id": None,
+    "dashboards_done": 0,
+    "dashboards_total": 0,
+    "last_run_at": None,
+    "last_error": None,
+}
 
 
 _NO_WINDOW = 0x08000000
@@ -730,6 +750,300 @@ def ensure_dashboard_html():
         return False
 
 
+def _ensure_published_dirs():
+    try:
+        PUBLISHED_DIR.mkdir(parents=True, exist_ok=True)
+        PUBLISHED_SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
+        return True
+    except Exception:
+        return False
+
+
+def _safe_dashboard_id(dash_id: str) -> str:
+    # Avoid path traversal or odd filenames (keep it simple).
+    s = (dash_id or "").strip()
+    if not s:
+        return ""
+    keep = []
+    for ch in s:
+        if ch.isalnum() or ch in ("-", "_"):
+            keep.append(ch)
+    return "".join(keep)[:80]
+
+
+def load_published_dashboards():
+    if not PUBLISHED_CONFIG_FILE.exists():
+        return []
+    try:
+        data = json.loads(PUBLISHED_CONFIG_FILE.read_text(encoding="utf-8"))
+        dashboards = data.get("dashboards", data) if isinstance(data, dict) else data
+        if not isinstance(dashboards, list):
+            return []
+        out = []
+        for d in dashboards:
+            if not isinstance(d, dict):
+                continue
+            did = _safe_dashboard_id(d.get("id", ""))
+            if not did:
+                continue
+            out.append({**d, "id": did})
+        return out
+    except Exception:
+        return []
+
+
+def save_published_dashboards(dashboards):
+    _ensure_published_dirs()
+    safe = []
+    for d in dashboards or []:
+        if not isinstance(d, dict):
+            continue
+        did = _safe_dashboard_id(d.get("id", ""))
+        if not did:
+            continue
+        safe.append({**d, "id": did})
+    payload = {
+        "updated_at": datetime.now().isoformat(),
+        "dashboards": safe,
+    }
+    PUBLISHED_CONFIG_FILE.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return safe
+
+
+def _snapshot_path(dash_id: str) -> Path:
+    did = _safe_dashboard_id(dash_id)
+    return PUBLISHED_SNAPSHOTS_DIR / f"{did}.json"
+
+
+def _read_snapshot_meta(dash_id: str):
+    p = _snapshot_path(dash_id)
+    if not p.exists():
+        return None
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+        cached_at = data.get("cached_at")
+        records = data.get("records", [])
+        return {
+            "cached_at": cached_at,
+            "count": len(records) if isinstance(records, list) else 0,
+            "error": data.get("error"),
+        }
+    except Exception:
+        return None
+
+
+def build_published_index(dashboards=None):
+    dashboards = dashboards if dashboards is not None else load_published_dashboards()
+    items = []
+    for d in dashboards:
+        meta = _read_snapshot_meta(d.get("id")) or {}
+        items.append({
+            **d,
+            "snapshot": meta or None,
+        })
+    return {
+        "generated_at": datetime.now().isoformat(),
+        "instance": INSTANCE,
+        "dashboards": items,
+        "publisher": {
+            "running": bool(_publisher_thread and _publisher_thread.is_alive() and not _publisher_stop.is_set()),
+            "progress": publisher_progress,
+        }
+    }
+
+
+def write_published_index():
+    _ensure_published_dirs()
+    idx = build_published_index()
+    try:
+        PUBLISHED_INDEX_FILE.write_text(json.dumps(idx, ensure_ascii=False, indent=2), encoding="utf-8")
+        return True
+    except Exception:
+        return False
+
+
+def _interval_seconds(dashboard: dict) -> int:
+    # Supports either:
+    # - dashboard.sync: { every: <int>, unit: "minutes"|"hours"|"days" }
+    # - dashboard.syncEvery: { value: <int>, unit: ... } (older naming)
+    sync = dashboard.get("sync") if isinstance(dashboard, dict) else None
+    if not isinstance(sync, dict):
+        sync = dashboard.get("syncEvery") if isinstance(dashboard, dict) else None
+    if not isinstance(sync, dict):
+        return 300  # default 5 minutes
+    unit = (sync.get("unit") or sync.get("u") or "minutes").lower().strip()
+    every = sync.get("every", sync.get("value", 5))
+    try:
+        every = int(every)
+    except Exception:
+        every = 5
+    if every <= 0 or unit in ("off", "disabled", "none"):
+        return 0
+    if unit.startswith("hour"):
+        return every * 3600
+    if unit.startswith("day"):
+        return every * 86400
+    return every * 60
+
+
+def _parse_cached_at(s: str):
+    if not s:
+        return None
+    try:
+        return datetime.fromisoformat(s)
+    except Exception:
+        return None
+
+
+def _should_sync_dashboard(dashboard: dict) -> bool:
+    interval = _interval_seconds(dashboard)
+    if interval <= 0:
+        return False
+    meta = _read_snapshot_meta(dashboard.get("id")) or {}
+    last = _parse_cached_at(meta.get("cached_at"))
+    if not last:
+        return True
+    return (datetime.now() - last).total_seconds() >= interval
+
+
+def _run_fetch_blocking(date_from, date_to, fetch_filters, stop_event=None, timeout_s=900):
+    """Start a fetch and block until done/error/timeout."""
+    start_ts = time.time()
+    while True:
+        if stop_event and stop_event.is_set():
+            return False, "stopped"
+        started = start_fetch(date_from, date_to, fetch_filters)
+        if started:
+            break
+        if time.time() - start_ts > timeout_s:
+            return False, "timeout waiting for fetch slot"
+        time.sleep(1.5)
+
+    while True:
+        if stop_event and stop_event.is_set():
+            return False, "stopped"
+        with _fetch_lock:
+            state = fetch_progress.get("state")
+            err = fetch_progress.get("error")
+        if state == "done":
+            return True, None
+        if state == "error":
+            return False, err or "fetch failed"
+        if time.time() - start_ts > timeout_s:
+            return False, "timeout"
+        time.sleep(1.0)
+
+
+def publish_dashboard_snapshot(dashboard: dict, stop_event=None):
+    """Fetch + write a snapshot for one dashboard. Returns (ok, error)."""
+    did = _safe_dashboard_id(dashboard.get("id", ""))
+    if not did:
+        return False, "invalid dashboard id"
+
+    date_from = dashboard.get("from")
+    date_to = dashboard.get("to")
+    ff = dashboard.get("fetchFilters") or {}
+    if not isinstance(ff, dict):
+        ff = {}
+
+    ok, err = _run_fetch_blocking(date_from, date_to, ff, stop_event=stop_event, timeout_s=900)
+    if not ok:
+        return False, err
+
+    records = DashboardHandler.cached_data or []
+    snap = {
+        "cached_at": datetime.now().isoformat(),
+        "dashboard": {
+            "id": did,
+            "name": dashboard.get("name"),
+            "from": date_from,
+            "to": date_to,
+            "fetchFilters": ff,
+            "sync": dashboard.get("sync") or dashboard.get("syncEvery"),
+        },
+        "records": records,
+    }
+    try:
+        _ensure_published_dirs()
+        _snapshot_path(did).write_text(json.dumps(snap, ensure_ascii=False), encoding="utf-8")
+        write_published_index()
+        return True, None
+    except Exception as e:
+        return False, str(e)
+
+
+def publish_all_due_dashboards(stop_event=None, force=False):
+    dashboards = load_published_dashboards()
+    total = len(dashboards)
+    if total == 0:
+        return True, None
+
+    publisher_progress["state"] = "running"
+    publisher_progress["dashboards_total"] = total
+    publisher_progress["dashboards_done"] = 0
+    publisher_progress["last_error"] = None
+    publisher_progress["message"] = "Starting auto-sync..."
+    publisher_progress["current_dashboard_id"] = None
+
+    for d in dashboards:
+        if stop_event and stop_event.is_set():
+            publisher_progress["message"] = "Stopped"
+            publisher_progress["state"] = "idle"
+            publisher_progress["current_dashboard_id"] = None
+            return False, "stopped"
+
+        if not force and not _should_sync_dashboard(d):
+            continue
+
+        did = d.get("id")
+        publisher_progress["current_dashboard_id"] = did
+        publisher_progress["message"] = f"Syncing {d.get('name') or did}..."
+
+        ok, err = publish_dashboard_snapshot(d, stop_event=stop_event)
+        publisher_progress["dashboards_done"] = min(total, publisher_progress["dashboards_done"] + 1)
+        if not ok:
+            publisher_progress["last_error"] = err
+            publisher_progress["state"] = "error"
+            publisher_progress["message"] = f"Error syncing {d.get('name') or did}"
+
+    publisher_progress["last_run_at"] = datetime.now().isoformat()
+    publisher_progress["current_dashboard_id"] = None
+    if publisher_progress["state"] != "error":
+        publisher_progress["state"] = "idle"
+        publisher_progress["message"] = "Idle"
+    return True, None
+
+
+def _publisher_loop():
+    while not _publisher_stop.is_set():
+        try:
+            publish_all_due_dashboards(stop_event=_publisher_stop, force=False)
+        except Exception as e:
+            publisher_progress["state"] = "error"
+            publisher_progress["last_error"] = str(e)
+            publisher_progress["message"] = "Publisher crashed"
+        for _ in range(10):
+            if _publisher_stop.is_set():
+                break
+            time.sleep(1)
+
+
+def start_publisher():
+    global _publisher_thread
+    with _publisher_lock:
+        if _publisher_thread and _publisher_thread.is_alive():
+            return False
+        _publisher_stop.clear()
+        _publisher_thread = threading.Thread(target=_publisher_loop, daemon=True)
+        _publisher_thread.start()
+        return True
+
+
+def stop_publisher():
+    _publisher_stop.set()
+    return True
+
+
 class ReuseHTTPServer(http.server.HTTPServer):
     allow_reuse_address = True
 
@@ -751,6 +1065,33 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        if parsed.path == "/api/published/index":
+            self.send_json(build_published_index())
+            return
+        if parsed.path == "/api/published/snapshot":
+            qs = parse_qs(parsed.query)
+            did = _safe_dashboard_id(qs.get("id", [None])[0] or "")
+            if not did:
+                self.send_json({"ok": False, "error": "missing id"})
+                return
+            p = _snapshot_path(did)
+            if not p.exists():
+                self.send_json({"ok": False, "error": "snapshot not found", "id": did})
+                return
+            try:
+                data = json.loads(p.read_text(encoding="utf-8"))
+                self.send_json({"ok": True, **data})
+            except Exception:
+                self.send_json({"ok": False, "error": "invalid snapshot", "id": did})
+            return
+        if parsed.path == "/api/published/status":
+            self.send_json({
+                "ok": True,
+                "running": bool(_publisher_thread and _publisher_thread.is_alive() and not _publisher_stop.is_set()),
+                "progress": publisher_progress,
+                "config_count": len(load_published_dashboards()),
+            })
+            return
         if parsed.path == "/" or parsed.path == "":
             self.send_response(302)
             self.send_header("Location", f"/{DASHBOARD_HTML}")
@@ -792,7 +1133,36 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         super().do_GET()
 
     def do_POST(self):
-        if self.path == "/api/receive":
+        parsed = urlparse(self.path)
+        if parsed.path == "/api/published/config":
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length).decode("utf-8") if length else "{}"
+            try:
+                data = json.loads(body)
+            except Exception:
+                data = {}
+            dashboards = data.get("dashboards", data.get("items", [])) if isinstance(data, dict) else []
+            if not isinstance(dashboards, list):
+                dashboards = []
+            saved = save_published_dashboards(dashboards)
+            write_published_index()
+            self.send_json({"ok": True, "count": len(saved)})
+            return
+        if parsed.path == "/api/published/start":
+            started = start_publisher()
+            self.send_json({"ok": True, "started": started})
+            return
+        if parsed.path == "/api/published/stop":
+            stop_publisher()
+            self.send_json({"ok": True, "stopped": True})
+            return
+        if parsed.path == "/api/published/run-once":
+            def _run_once():
+                publish_all_due_dashboards(stop_event=_publisher_stop, force=True)
+            threading.Thread(target=_run_once, daemon=True).start()
+            self.send_json({"ok": True, "started": True})
+            return
+        if parsed.path == "/api/receive":
             length = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(length).decode("utf-8")
             data = json.loads(body)
@@ -830,6 +1200,8 @@ def main():
     banner()
 
     ensure_dashboard_html()
+    _ensure_published_dirs()
+    write_published_index()
 
     records = check_cache()
     if records:
@@ -873,6 +1245,8 @@ def main():
     threading.Timer(0.5, lambda: webbrowser.open(url)).start()
 
     try:
+        if load_published_dashboards():
+            start_publisher()
         server.serve_forever()
     except KeyboardInterrupt:
         print(f"\n  {C_ORANGE}Dashboard stopped.{C_RESET}\n")
@@ -882,6 +1256,8 @@ def main():
 def run_daemon():
     """Run in background mode: no banner, no browser, just serve."""
     ensure_dashboard_html()
+    _ensure_published_dirs()
+    write_published_index()
     records = check_cache()
     if records:
         DashboardHandler.cached_data = records
@@ -903,6 +1279,8 @@ def run_daemon():
         pass
     server = ReuseHTTPServer(("", PORT), DashboardHandler)
     try:
+        if load_published_dashboards():
+            start_publisher()
         server.serve_forever()
     except KeyboardInterrupt:
         server.server_close()
