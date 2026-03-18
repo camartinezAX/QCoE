@@ -595,130 +595,6 @@
             font-size:16px;
         }
 
-        /* ─── ADMIN / VIEWER HUB ─── */
-        .mode-hub{
-            position:fixed; inset:0; z-index:99998;
-            display:none; align-items:center; justify-content:center;
-            background:
-                radial-gradient(1200px 800px at 15% 10%, rgba(250,167,74,.22), transparent 55%),
-                radial-gradient(900px 600px at 80% 35%, rgba(96,165,250,.18), transparent 60%),
-                linear-gradient(135deg, #070a12 0%, #0b1020 35%, #070a12 100%);
-        }
-        .mode-shell{
-            width:min(980px, 92vw);
-            padding:34px 34px 26px;
-            border-radius:20px;
-            background: rgba(10,14,26,.72);
-            border:1px solid rgba(255,255,255,.10);
-            box-shadow: 0 24px 80px rgba(0,0,0,.55);
-            backdrop-filter: blur(10px);
-        }
-        .mode-top{
-            display:flex; align-items:center; justify-content:space-between;
-            gap:14px; margin-bottom:16px;
-        }
-        .mode-brand{
-            display:flex; align-items:center; gap:10px;
-            font-weight:900; letter-spacing:2px; color:#FAA74A; font-size:11px;
-            text-transform:uppercase;
-        }
-        .mode-chip{
-            font-size:11px; font-weight:800; letter-spacing:.6px;
-            padding:7px 10px; border-radius:999px;
-            background: rgba(255,255,255,.06);
-            border:1px solid rgba(255,255,255,.10);
-            color: rgba(255,255,255,.70);
-        }
-        .mode-title{
-            margin:0 0 8px 0;
-            font-size:30px; font-weight:900; color:#fff;
-            letter-spacing:-.6px;
-        }
-        .mode-sub{
-            margin:0 0 22px 0;
-            color: rgba(255,255,255,.62);
-            font-size:14px; line-height:1.7;
-            max-width:720px;
-        }
-        .mode-grid{
-            display:grid;
-            grid-template-columns: 1fr 1fr;
-            gap:14px;
-        }
-        .mode-card{
-            text-align:left;
-            border-radius:18px;
-            padding:18px 18px 16px;
-            background: rgba(255,255,255,.04);
-            border:1px solid rgba(255,255,255,.10);
-            cursor:pointer;
-            transition: transform .16s ease, border-color .16s ease, background .16s ease, box-shadow .16s ease;
-            display:flex; flex-direction:column; gap:10px;
-            min-height:150px;
-        }
-        .mode-card:hover{
-            transform: translateY(-2px);
-            border-color: rgba(250,167,74,.38);
-            background: rgba(255,255,255,.06);
-            box-shadow: 0 14px 38px rgba(0,0,0,.28);
-        }
-        .mode-card .kicker{
-            display:flex; align-items:center; gap:10px;
-            color: rgba(255,255,255,.82);
-            font-weight:900; font-size:14px;
-            letter-spacing:.2px;
-        }
-        .mode-ico{
-            width:40px; height:40px; border-radius:14px;
-            display:flex; align-items:center; justify-content:center;
-            font-size:18px;
-            background: rgba(250,167,74,.14);
-            border:1px solid rgba(250,167,74,.20);
-        }
-        .mode-card.viewer .mode-ico{
-            background: rgba(96,165,250,.14);
-            border:1px solid rgba(96,165,250,.22);
-        }
-        .mode-card p{
-            margin:0;
-            color: rgba(255,255,255,.62);
-            font-size:12.5px; line-height:1.6;
-        }
-        .mode-card .cta{
-            margin-top:auto;
-            display:flex; align-items:center; justify-content:space-between;
-            gap:10px;
-        }
-        .mode-btn{
-            padding:10px 14px;
-            border-radius:12px;
-            font-weight:900;
-            letter-spacing:.2px;
-            border:none;
-            cursor:pointer;
-            color:#0a0e1a;
-            background: linear-gradient(135deg,#FAA74A,#e8923a);
-        }
-        .mode-card.viewer .mode-btn{
-            background: linear-gradient(135deg,#60a5fa,#3b82f6);
-            color:#071023;
-        }
-        .mode-note{
-            color: rgba(255,255,255,.45);
-            font-size:11px;
-            margin-top:14px;
-            display:flex; gap:10px; align-items:center; justify-content:space-between;
-            flex-wrap:wrap;
-        }
-        .mode-link{
-            color: rgba(255,255,255,.68);
-            text-decoration: underline;
-            cursor:pointer;
-        }
-        @media (max-width: 860px){
-            .mode-grid{ grid-template-columns: 1fr; }
-        }
-
         @media (max-width: 900px) {
             .content { padding: 16px; }
             .charts-row { grid-template-columns: 1fr; }
@@ -730,8 +606,8 @@
 <body>
 <script>
 (function(){
-    const isGitHubPages = /github\.io$/i.test(location.hostname);
-    if (!isGitHubPages) return;
+    const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    if (isLocal) return;
     document.addEventListener('DOMContentLoaded', function(){
         const overlay = document.createElement('div');
         overlay.id = 'ghLanding';
@@ -814,41 +690,6 @@
 })();
 </script>
 <div class="bg-pattern"></div>
-<div class="mode-hub" id="modeHub">
-    <div class="mode-shell">
-        <div class="mode-top">
-            <div class="mode-brand">AXOS <span style="opacity:.55;">·</span> QCOE</div>
-            <div class="mode-chip" id="modeHubHint">Choose a mode</div>
-        </div>
-        <h2 class="mode-title">Pick your dashboard mode</h2>
-        <p class="mode-sub">
-            <b>Admin</b> can fetch from ServiceNow and publish auto-synced snapshots.<br>
-            <b>Viewer</b> can only browse the published dashboards and tickets (no fetch controls).
-        </p>
-        <div class="mode-grid">
-            <div class="mode-card admin" role="button" tabindex="0" onclick="chooseAdminMode()" onkeydown="if(event.key==='Enter')chooseAdminMode()">
-                <div class="kicker"><span class="mode-ico">🛠️</span> Admin Mode</div>
-                <p>Full dashboard: fetch tickets, manage dashboards, set auto-sync frequency, publish snapshots for everyone.</p>
-                <div class="cta">
-                    <button class="mode-btn" type="button">Unlock admin</button>
-                    <span style="color:rgba(255,255,255,.45);font-size:11px;">Password required</span>
-                </div>
-            </div>
-            <div class="mode-card viewer" role="button" tabindex="0" onclick="chooseViewerMode()" onkeydown="if(event.key==='Enter')chooseViewerMode()">
-                <div class="kicker"><span class="mode-ico">👀</span> Viewer Mode</div>
-                <p>Read-only: pick a saved dashboard and view its latest published ticket snapshot. Perfect for “is there already a ticket?”</p>
-                <div class="cta">
-                    <button class="mode-btn" type="button">Enter viewer</button>
-                    <span style="color:rgba(255,255,255,.45);font-size:11px;">No password</span>
-                </div>
-            </div>
-        </div>
-        <div class="mode-note">
-            <span>Tip: You can switch modes later.</span>
-            <span class="mode-link" onclick="localStorage.removeItem('snow_app_mode_v1');showModeHub(true)">Reset mode</span>
-        </div>
-    </div>
-</div>
 <div class="app">
     <div class="header">
         <div class="header-logo">AXOS</div>
@@ -871,7 +712,6 @@
                 Select a date range and click <b>Fetch Tickets</b> to load data.
             </span>
             <button class="btn btn-secondary" onclick="exportCSV()" id="exportBtn" style="display:none;">Export CSV</button>
-            <button class="btn btn-secondary" onclick="exportEmailHTML()" id="exportEmailBtn" style="display:none;">Export Email HTML</button>
         </div>
 
         <!-- Date Range Picker -->
@@ -885,8 +725,7 @@
             <label style="display:flex;align-items:center;gap:6px;margin-left:12px;font-size:13px;color:var(--text-secondary);cursor:pointer;">
                 <input type="checkbox" id="excludeWeekendsChk" checked onchange="applyFilters()"> Exclude weekends
             </label>
-            <span id="snapshotSummary" style="margin-left:12px;color:var(--text-secondary);font-size:12px;display:none;"></span>
-            <span id="ptHint" style="margin-left:auto;color:var(--text-muted);font-size:11px;letter-spacing:.2px;">Times shown in Pacific Time (PT)</span>
+            <span style="margin-left:auto;color:var(--text-muted);font-size:11px;letter-spacing:.2px;">Times shown in Pacific Time (PT)</span>
             <div class="date-preset-chips" id="datePresets">
                 <span class="date-preset-chip" data-preset="today" onclick="setDatePreset('today',this)">Today</span>
                 <span class="date-preset-chip active" data-preset="week" onclick="setDatePreset('week',this)">This Week</span>
@@ -1090,13 +929,7 @@
                 <button class="dash-filter-chip" onclick="toggleDashboardsFilter('st', this)">State</button>
                 <button class="dash-filter-chip clear" onclick="clearDashboardsFilters()">Clear</button>
             </div>
-            <span id="publisherStatusPill" style="padding:8px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.18);color:rgba(255,255,255,.72);font-size:11px;font-weight:800;letter-spacing:.4px;white-space:nowrap;display:none;">
-                Publisher: --
-            </span>
-            <button class="btn btn-secondary" id="publisherSyncNowBtn" onclick="publisherSyncNow()" title="Admin only" style="display:none;">🔄 Sync now</button>
-            <button class="btn btn-secondary" id="publisherStartBtn" onclick="publisherStartAutoSync()" title="Admin only" style="display:none;">📡 Auto-sync</button>
-            <button class="btn btn-secondary" id="publisherStopBtn" onclick="publisherStopAutoSync()" title="Admin only" style="display:none;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.22);color:#ffb4b4;">🛑 Stop</button>
-            <button class="btn btn-secondary" id="dashboardsSaveBtn" onclick="openCreateDashboardFromCurrent()" title="Admin only">➕ Save current as dashboard</button>
+            <button class="btn btn-secondary" onclick="openCreateDashboardFromCurrent()" title="Admin only">➕ Save current as dashboard</button>
         </div>
         <div id="dashboardsEmpty" class="empty-state" style="display:none;">
             <div class="empty-icon">🗂️</div>
@@ -1126,31 +959,6 @@
             <button class="modal-close" onclick="closeDrillModal()">✕</button>
         </div>
         <div class="modal-body" id="drillBody" style="max-height:70vh;overflow-y:auto;"></div>
-    </div>
-</div>
-
-<!-- Export Email HTML Modal -->
-<div class="modal-overlay" id="emailExportModal" onclick="if(event.target===this)closeEmailExportModal()">
-    <div class="modal" style="max-width:900px;">
-        <div class="modal-hdr">
-            <h2>Export Email (Outlook HTML)</h2>
-            <button class="modal-close" onclick="closeEmailExportModal()">✕</button>
-        </div>
-        <div class="modal-body">
-            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:12px;">
-                <div style="font-size:12px;color:var(--text-secondary);line-height:1.6;">
-                    This is a <b>paste-ready</b> HTML email for Outlook. Use <b>Copy HTML</b>, then paste into an Outlook email.
-                </div>
-                <div style="display:flex;gap:10px;">
-                    <button class="btn btn-secondary" id="copyEmailHtmlBtn" onclick="copyEmailHtmlToClipboard()">Copy HTML</button>
-                    <button class="btn" id="downloadEmailHtmlBtn" onclick="downloadEmailHtml()">Download .html</button>
-                </div>
-            </div>
-            <iframe id="emailExportPreview" style="width:100%;min-height:520px;border:1px solid var(--border-color);border-radius:12px;background:#fff;"></iframe>
-            <div style="margin-top:10px;font-size:11px;color:var(--text-muted);">
-                Tip: If Outlook strips styling, use <b>Insert → Attach File</b> to attach the downloaded `.html`, open it, then copy/paste from the opened file.
-            </div>
-        </div>
     </div>
 </div>
 
@@ -1195,21 +1003,6 @@
                 <div class="detail-item">
                     <label>State contains</label>
                     <div class="val"><input id="dashFfSt" type="text" placeholder="e.g. Closed, Work in Progress" style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border-color);background:var(--bg-tertiary);color:var(--text-primary);"></div>
-                </div>
-                <div class="detail-item">
-                    <label>Auto-sync frequency</label>
-                    <div class="val" style="display:flex;gap:10px;align-items:center;">
-                        <input id="dashSyncEvery" type="number" min="0" step="1" placeholder="5" style="width:110px;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border-color);background:var(--bg-tertiary);color:var(--text-primary);">
-                        <select id="dashSyncUnit" style="flex:1;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border-color);background:var(--bg-tertiary);color:var(--text-primary);">
-                            <option value="minutes">Minutes</option>
-                            <option value="hours">Hours</option>
-                            <option value="days">Days</option>
-                            <option value="off">Off</option>
-                        </select>
-                    </div>
-                    <div style="margin-top:6px;color:var(--text-muted);font-size:11px;line-height:1.4;">
-                        Controls how often the publisher refreshes this dashboard’s ticket snapshot.
-                    </div>
                 </div>
             </div>
             <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
@@ -1326,16 +1119,6 @@ let charts = {};
 let isFetchingNow = false;
 let lastFetchSuccessful = false;
 
-// ─── APP MODE (Admin vs Viewer) ───
-const APP_MODE_KEY = 'snow_app_mode_v1';
-let appMode = null; // 'admin' | 'viewer'
-let viewerActiveDashboardId = null;
-let viewerSnapshotCachedAt = null;
-let lastPublishedIndex = null;
-
-function isViewerMode() { return appMode === 'viewer'; }
-function isAdminMode() { return appMode === 'admin'; }
-
 function updateClock() {
     const now = new Date();
     document.getElementById('headerTime').textContent = now.toLocaleString('en-US', {
@@ -1451,9 +1234,6 @@ function getDateRange() {
 }
 
 function getProxyBase() {
-    // If we're already being served by the helper (localhost OR a publisher host on :8080),
-    // use same-origin endpoints.
-    if (String(location.port) === '8080') return '';
     const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     return isLocal ? '' : 'http://localhost:8080';
 }
@@ -1535,132 +1315,6 @@ function clearFetchFilters() {
     showToast('Fetch filters cleared');
 }
 
-function setAppMode(mode) {
-    appMode = mode;
-    try { localStorage.setItem(APP_MODE_KEY, mode); } catch {}
-    applyAppModeUI();
-}
-
-function showModeHub(force = false) {
-    const isGitHubPages = /github\.io$/i.test(location.hostname);
-    if (isGitHubPages) return; // GitHub landing overlay owns the UX there
-
-    const hub = document.getElementById('modeHub');
-    const app = document.querySelector('.app');
-    if (!hub || !app) return;
-
-    if (!force) {
-        const saved = (() => { try { return localStorage.getItem(APP_MODE_KEY); } catch { return null; } })();
-        if (saved === 'viewer') {
-            setAppMode('viewer');
-            hub.style.display = 'none';
-            app.style.filter = '';
-            app.style.pointerEvents = '';
-            return;
-        }
-    }
-
-    hub.style.display = 'flex';
-    app.style.filter = 'blur(10px)';
-    app.style.pointerEvents = 'none';
-    const hint = document.getElementById('modeHubHint');
-    if (hint) hint.textContent = 'Choose a mode';
-}
-
-function hideModeHub() {
-    const hub = document.getElementById('modeHub');
-    const app = document.querySelector('.app');
-    if (hub) hub.style.display = 'none';
-    if (app) {
-        app.style.filter = '';
-        app.style.pointerEvents = '';
-    }
-}
-
-function chooseViewerMode() {
-    setAppMode('viewer');
-    hideModeHub();
-    showDashboardsView();
-}
-
-function chooseAdminMode() {
-    // Admin mode requires the existing password gate.
-    window.__pendingAdminAction = 'enterAdminMode';
-    document.getElementById('adminGateModal').classList.add('show');
-    setTimeout(() => {
-        const inp = document.getElementById('adminPassInput');
-        if (inp) { inp.value = ''; inp.focus(); }
-    }, 100);
-}
-
-function applyAppModeUI() {
-    const viewer = isViewerMode();
-
-    // Fetch-only controls
-    const fetchFilterBar = document.getElementById('fetchFilterBar');
-    if (fetchFilterBar) fetchFilterBar.style.display = viewer ? 'none' : '';
-
-    const dateFrom = document.getElementById('dateFrom');
-    const dateTo = document.getElementById('dateTo');
-    const dateSep = document.querySelector('#dateRangeBar .date-sep');
-    const fetchBtn = document.getElementById('dateFetchBtn');
-    const presets = document.getElementById('datePresets');
-    const saveBtn = document.getElementById('saveDashboardBtn');
-    const snapSummary = document.getElementById('snapshotSummary');
-
-    if (dateFrom) dateFrom.style.display = viewer ? 'none' : '';
-    if (dateTo) dateTo.style.display = viewer ? 'none' : '';
-    if (dateSep) dateSep.style.display = viewer ? 'none' : '';
-    if (fetchBtn) fetchBtn.style.display = viewer ? 'none' : '';
-    if (presets) presets.style.display = viewer ? 'none' : '';
-    if (saveBtn) saveBtn.style.display = viewer ? 'none' : saveBtn.style.display;
-
-    if (snapSummary) {
-        if (viewer) {
-            snapSummary.style.display = '';
-            const d = dashboards?.find?.(x => x.id === viewerActiveDashboardId) || null;
-            const name = d?.name ? escapeHtml(d.name) : (viewerActiveDashboardId ? escapeHtml(viewerActiveDashboardId) : 'Pick a dashboard');
-            const range = d?.from && d?.to ? `${escapeHtml(d.from)} → ${escapeHtml(d.to)}` : '';
-            const updated = viewerSnapshotCachedAt ? ` · Updated ${escapeHtml(formatDateTimePT(viewerSnapshotCachedAt))}` : '';
-            snapSummary.innerHTML = `<b>Snapshot</b>: ${name}${range ? ` · ${range}` : ''}${updated}`;
-        } else {
-            snapSummary.style.display = 'none';
-            snapSummary.textContent = '';
-        }
-    }
-
-    // Dashboards view admin controls
-    ['publisherStatusPill','publisherSyncNowBtn','publisherStartBtn','publisherStopBtn','dashboardsSaveBtn'].forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        if (viewer) el.style.display = 'none';
-    });
-
-    // Setup button is useful for Admin only.
-    const setupBtn = document.querySelector('.header button[onclick="showSetupPanel()"]');
-    if (setupBtn) setupBtn.style.display = viewer ? 'none' : '';
-
-    // Viewer-mode copy (only when nothing is loaded yet)
-    if (viewer && (!Array.isArray(allTickets) || allTickets.length === 0)) {
-        const statusEl = document.getElementById('authStatus');
-        if (statusEl) {
-            statusEl.className = 'auth-status ok';
-            statusEl.textContent = 'Viewer mode — open the Dashboards tab and pick a dashboard to view its latest snapshot.';
-        }
-        const empty = document.getElementById('emptyState');
-        if (empty) {
-            empty.style.display = '';
-            empty.innerHTML = `
-                <div class="empty-icon">🗂️</div>
-                <h3>Pick a dashboard to view tickets</h3>
-                <p style="color:var(--text-muted);max-width:520px;margin:8px auto;line-height:1.7;">
-                    Go to <b>Dashboards</b>, then click <b>View</b> on the dashboard you want.
-                </p>
-            `;
-        }
-    }
-}
-
 // ─── DASHBOARDS (saved fetch presets) ───
 const DASHBOARDS_KEY = 'snow_saved_dashboards_v1';
 let dashboards = [];
@@ -1675,128 +1329,6 @@ function loadDashboards() {
 
 function saveDashboards() {
     localStorage.setItem(DASHBOARDS_KEY, JSON.stringify(dashboards));
-}
-
-async function loadPublishedDashboards() {
-    const proxyBase = getProxyBase();
-    try {
-        const resp = await fetch(proxyBase + '/api/published/index', { cache: 'no-store', signal: AbortSignal.timeout(8000) });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const data = await resp.json();
-        lastPublishedIndex = data;
-        dashboards = Array.isArray(data.dashboards) ? data.dashboards : [];
-    } catch (e) {
-        lastPublishedIndex = null;
-        dashboards = [];
-    }
-}
-
-async function loadPublishedSnapshot(dashboardId) {
-    const proxyBase = getProxyBase();
-    const id = String(dashboardId || '').trim();
-    if (!id) {
-        showToast('Missing dashboard id', 'error');
-        return;
-    }
-    showF1Loader('Loading published snapshot...');
-    try {
-        const resp = await fetch(proxyBase + '/api/published/snapshot?id=' + encodeURIComponent(id), { cache: 'no-store', signal: AbortSignal.timeout(15000) });
-        const data = await resp.json();
-        if (!data.ok) throw new Error(data.error || 'Snapshot not available');
-        viewerActiveDashboardId = id;
-        viewerSnapshotCachedAt = data.cached_at || null;
-        const records = data.records || [];
-        const recArr = Array.isArray(records) ? records : [];
-        loadRecords(recArr);
-        hideF1Loader(true);
-        applyAppModeUI();
-        showToast(`Loaded snapshot: ${recArr.length} tickets`);
-    } catch (e) {
-        hideF1Loader(false);
-        showToast(e.message || 'Failed to load snapshot', 'error');
-    }
-}
-
-function refreshPublisherStatus() {
-    const pill = document.getElementById('publisherStatusPill');
-    const btnNow = document.getElementById('publisherSyncNowBtn');
-    const btnStart = document.getElementById('publisherStartBtn');
-    const btnStop = document.getElementById('publisherStopBtn');
-    if (!pill || !btnNow || !btnStart || !btnStop) return;
-
-    if (isViewerMode()) {
-        pill.style.display = 'none';
-        btnNow.style.display = 'none';
-        btnStart.style.display = 'none';
-        btnStop.style.display = 'none';
-        return;
-    }
-
-    // show admin controls (they're password-gated on click)
-    pill.style.display = '';
-    btnNow.style.display = '';
-    btnStart.style.display = '';
-
-    (async () => {
-        const proxyBase = getProxyBase();
-        try {
-            const resp = await fetch(proxyBase + '/api/published/status', { cache: 'no-store', signal: AbortSignal.timeout(5000) });
-            const st = await resp.json();
-            const running = !!st.running;
-            const msg = st?.progress?.message || (running ? 'Running' : 'Idle');
-            pill.textContent = `Publisher: ${running ? 'ON' : 'OFF'} · ${msg}`;
-            btnStop.style.display = running ? '' : 'none';
-        } catch {
-            pill.textContent = 'Publisher: --';
-            btnStop.style.display = 'none';
-        }
-    })();
-}
-
-function publisherStartAutoSync() {
-    ensureAdminThen(async () => {
-        const proxyBase = getProxyBase();
-        loadDashboards();
-        if (!dashboards.length) {
-            showToast('No dashboards to publish yet', 'error');
-            return;
-        }
-        await fetch(proxyBase + '/api/published/config', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ dashboards }),
-        });
-        await fetch(proxyBase + '/api/published/start', { method: 'POST' });
-        await fetch(proxyBase + '/api/published/run-once', { method: 'POST' });
-        showToast('Auto-sync started. Snapshots will refresh automatically.');
-        refreshPublisherStatus();
-    });
-}
-
-function publisherStopAutoSync() {
-    ensureAdminThen(async () => {
-        const proxyBase = getProxyBase();
-        await fetch(proxyBase + '/api/published/stop', { method: 'POST' });
-        showToast('Auto-sync stopped');
-        refreshPublisherStatus();
-    });
-}
-
-function publisherSyncNow() {
-    ensureAdminThen(async () => {
-        const proxyBase = getProxyBase();
-        loadDashboards();
-        if (dashboards.length) {
-            await fetch(proxyBase + '/api/published/config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ dashboards }),
-            });
-        }
-        await fetch(proxyBase + '/api/published/run-once', { method: 'POST' });
-        showToast('Publishing snapshots...');
-        refreshPublisherStatus();
-    });
 }
 
 function setDashboardsSearch(v) {
@@ -1828,9 +1360,8 @@ function showTicketsView() {
     document.getElementById('tabDashboards').classList.remove('active');
 }
 
-async function showDashboardsView() {
-    if (isViewerMode()) await loadPublishedDashboards();
-    else loadDashboards();
+function showDashboardsView() {
+    loadDashboards();
     renderDashboards();
     document.getElementById('ticketsView').style.display = 'none';
     document.getElementById('dashboardsView').style.display = '';
@@ -1838,7 +1369,6 @@ async function showDashboardsView() {
     document.getElementById('tabDashboards').classList.add('active');
     const s = document.getElementById('dashboardsSearch');
     if (s) s.value = dashboardsSearchTerm || '';
-    refreshPublisherStatus();
     // sync chip UI
     document.querySelectorAll('#dashboardsView .dash-filter-chip').forEach(b => {
         const t = (b.textContent || '').trim().toLowerCase();
@@ -1900,26 +1430,13 @@ function renderDashboards() {
         if (d.fetchFilters?.rb) badges.push(`<span class="dash-badge" title="Fetch filter: Reported By contains">Reported By</span>`);
         if (d.fetchFilters?.rf) badges.push(`<span class="dash-badge" title="Fetch filter: Requested For contains">Requested For</span>`);
         if (d.fetchFilters?.st) badges.push(`<span class="dash-badge" title="Fetch filter: State contains">State</span>`);
-
-        const sync = d.sync || d.syncEvery || {};
-        const unitRaw = (sync.unit || sync.u || 'minutes');
-        const unit = String(unitRaw).toLowerCase().trim();
-        const everyRaw = (sync.every ?? sync.value ?? 5);
-        const every = Number.isFinite(+everyRaw) ? parseInt(everyRaw, 10) : 5;
-        const syncLabel = (unit === 'off' || every <= 0) ? 'Auto-sync: off' : `Auto-sync: every ${every} ${unit.startsWith('hour') ? 'hour' : unit.startsWith('day') ? 'day' : 'minute'}${every === 1 ? '' : 's'}`;
-
-        const snapAt = d.snapshot?.cached_at || null;
-        const snapLabel = snapAt ? `Updated ${formatDateTimePT(snapAt)}` : (isViewerMode() ? 'Not published yet' : '');
-        const meta3 = [syncLabel, snapLabel].filter(Boolean).join(' · ');
-
-        const editBtn = isViewerMode() ? '' : `<button class="dash-edit" title="Edit (admin)" onclick="event.stopPropagation();editDashboard('${d.id}')">✎</button>`;
         return `
         <div class="dash-card" onclick="viewDashboard('${d.id}')">
-            ${editBtn}
+            <button class="dash-edit" title="Edit (admin)" onclick="event.stopPropagation();editDashboard('${d.id}')">✎</button>
             <div class="dash-hdr">
                 <div>
                     <div class="dash-name">${escapeHtml(d.name || 'Untitled')}</div>
-                    <div class="dash-meta">${escapeHtml(d.from || '--')} → ${escapeHtml(d.to || '--')}<br>${escapeHtml(ffSummary || 'No fetch filters')}${meta3 ? `<br>${escapeHtml(meta3)}` : ''}</div>
+                    <div class="dash-meta">${escapeHtml(d.from)} → ${escapeHtml(d.to)}<br>${escapeHtml(ffSummary || 'No fetch filters')}</div>
                 </div>
             </div>
             <div class="dash-badges">${badges.join('')}</div>
@@ -1980,11 +1497,7 @@ function viewDashboard(id) {
     if (!d) return;
     showTicketsView();
     applyFetchConfig(d);
-    if (isViewerMode()) {
-        loadPublishedSnapshot(d.id);
-    } else {
-        fetchWithDateRange();
-    }
+    fetchWithDateRange();
 }
 
 function ensureAdminThen(fn) {
@@ -2017,7 +1530,6 @@ function openDashboardEditor({ mode, dashboard }) {
         from: cfg.from || formatDateISO(new Date()),
         to: cfg.to || formatDateISO(new Date()),
         fetchFilters: cfg.fetchFilters,
-        sync: { every: 5, unit: 'minutes' },
     };
     document.getElementById('dashEditTitle').textContent = mode === 'edit' ? 'Edit Dashboard' : 'Create Dashboard';
     document.getElementById('dashId').value = d.id;
@@ -2029,11 +1541,6 @@ function openDashboardEditor({ mode, dashboard }) {
     document.getElementById('dashFfRf').value = d.fetchFilters?.rf || '';
     document.getElementById('dashFfRt').value = d.fetchFilters?.rt || '';
     document.getElementById('dashFfSt').value = d.fetchFilters?.st || '';
-    const sync = d.sync || d.syncEvery || { every: 5, unit: 'minutes' };
-    const unit = (sync.unit || 'minutes');
-    const every = (unit === 'off') ? 0 : (sync.every ?? sync.value ?? 5);
-    document.getElementById('dashSyncEvery').value = Number.isFinite(+every) ? parseInt(every, 10) : 5;
-    document.getElementById('dashSyncUnit').value = unit;
     document.getElementById('dashDeleteBtn').style.display = mode === 'edit' ? '' : 'none';
     document.getElementById('dashEditModal').classList.add('show');
 }
@@ -2046,9 +1553,6 @@ function saveDashboardFromModal() {
     const name = document.getElementById('dashName').value.trim() || 'Untitled';
     const from = document.getElementById('dashFrom').value;
     const to = document.getElementById('dashTo').value;
-    const syncUnit = (document.getElementById('dashSyncUnit')?.value || 'minutes').trim().toLowerCase();
-    const syncEveryRaw = document.getElementById('dashSyncEvery')?.value;
-    const syncEvery = Number.isFinite(+syncEveryRaw) ? parseInt(syncEveryRaw, 10) : 5;
     const d = {
         id,
         name,
@@ -2060,10 +1564,6 @@ function saveDashboardFromModal() {
             rf: document.getElementById('dashFfRf').value.trim(),
             rt: document.getElementById('dashFfRt').value.trim(),
             st: document.getElementById('dashFfSt').value.trim(),
-        },
-        sync: {
-            every: (syncUnit === 'off') ? 0 : (syncEvery > 0 ? syncEvery : 5),
-            unit: syncUnit,
         },
         updatedAt: new Date().toISOString(),
     };
@@ -2409,7 +1909,6 @@ function loadRecords(records) {
     statusEl.className = 'auth-status ok';
     statusEl.textContent = `${allTickets.length} tickets loaded`;
     document.getElementById('exportBtn').style.display = '';
-    document.getElementById('exportEmailBtn').style.display = '';
     updateSaveDashboardVisibility();
     renderDashboard();
 }
@@ -3617,7 +3116,6 @@ function loadDemoData() {
     document.getElementById('authStatus').className = 'auth-status ok';
     document.getElementById('authStatus').textContent = `Loaded ${allTickets.length} demo tickets`;
     document.getElementById('exportBtn').style.display = '';
-    document.getElementById('exportEmailBtn').style.display = '';
     renderDashboard();
     showToast(`Loaded ${allTickets.length} demo tickets for preview`);
 }
@@ -3643,261 +3141,6 @@ function exportCSV() {
     a.href = url; a.download = `environment_downtime_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click(); URL.revokeObjectURL(url);
     showToast(`Exported ${filteredTickets.length} tickets to CSV`);
-}
-
-// ─── EXPORT EMAIL (OUTLOOK HTML) ───
-let lastEmailHtml = '';
-
-function closeEmailExportModal() {
-    document.getElementById('emailExportModal').classList.remove('show');
-    const frame = document.getElementById('emailExportPreview');
-    if (frame) frame.srcdoc = '';
-}
-
-function exportEmailHTML() {
-    if (filteredTickets.length === 0) return showToast('No tickets to export', 'error');
-    lastEmailHtml = buildOutlookEmailHtml();
-    const frame = document.getElementById('emailExportPreview');
-    if (frame) frame.srcdoc = lastEmailHtml;
-    document.getElementById('emailExportModal').classList.add('show');
-}
-
-function downloadEmailHtml() {
-    if (!lastEmailHtml) return showToast('Generate the email first', 'error');
-    const blob = new Blob([lastEmailHtml], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `servicenow_tickets_email_${new Date().toISOString().slice(0, 10)}.html`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast('Downloaded email HTML');
-}
-
-async function copyEmailHtmlToClipboard() {
-    if (!lastEmailHtml) return showToast('Generate the email first', 'error');
-    try {
-        if (navigator.clipboard && window.ClipboardItem) {
-            const item = new ClipboardItem({
-                'text/html': new Blob([lastEmailHtml], { type: 'text/html' }),
-                'text/plain': new Blob([lastEmailHtml], { type: 'text/plain' }),
-            });
-            await navigator.clipboard.write([item]);
-        } else {
-            await navigator.clipboard.writeText(lastEmailHtml);
-        }
-        showToast('Copied email HTML to clipboard');
-    } catch (e) {
-        console.warn('Clipboard copy failed', e);
-        try {
-            await navigator.clipboard.writeText(lastEmailHtml);
-            showToast('Copied (plain text) to clipboard');
-        } catch {
-            showToast('Clipboard blocked by browser', 'error');
-        }
-    }
-}
-
-function getFetchFiltersSnapshot() {
-    const get = (id) => (document.getElementById(id)?.value || '').trim();
-    return {
-        sd: get('ffShortDesc'),
-        rb: get('ffReportedBy'),
-        rf: get('ffRequestedFor'),
-        rt: get('ffRequestType'),
-        st: get('ffState'),
-    };
-}
-
-function getMetricsSnapshot() {
-    const pick = (id) => (document.getElementById(id)?.textContent || '').trim();
-    return [
-        { label: 'Total Tickets', value: pick('mTotal'), sub: pick('mTotalSub'), accent: '#1E3860' },
-        { label: 'Currently Open', value: pick('mOpen'), sub: pick('mOpenSub'), accent: '#ef4444' },
-        { label: 'Resolved', value: pick('mClosed'), sub: pick('mClosedSub'), accent: '#10b981' },
-        { label: 'Avg Resolution Time', value: pick('mAvgTime'), sub: pick('mAvgTimeSub'), accent: '#f59e0b' },
-        { label: 'Top Reporter', value: pick('mTopReq'), sub: pick('mTopReqSub'), accent: '#8b5cf6' },
-        { label: 'Longest Open', value: pick('mRecent'), sub: pick('mRecentSub'), accent: '#06b6d4' },
-    ];
-}
-
-function emailStateBadge(stateRaw) {
-    const s = String(stateRaw || '').toLowerCase();
-    let bg = '#e2e8f0', fg = '#334155';
-    if (s.includes('open') || s.includes('new')) { bg = '#fee2e2'; fg = '#991b1b'; }
-    else if (s.includes('hold') || s.includes('progress') || s.includes('wip') || s.includes('pending')) { bg = '#fef3c7'; fg = '#92400e'; }
-    else if (s.includes('closed') || s.includes('complete') || s.includes('resolved')) { bg = '#d1fae5'; fg = '#065f46'; }
-    else if (s.includes('cancel')) { bg = '#e5e7eb'; fg = '#374151'; }
-    const label = stateRaw || 'Unknown';
-    return `<span style="display:inline-block;padding:6px 12px;background-color:${bg};color:${fg};border-radius:999px;font-size:12px;font-weight:bold;font-family:Arial,sans-serif;white-space:nowrap;">${escapeHtml(label)}</span>`;
-}
-
-function buildOutlookEmailHtml() {
-    const instance = document.getElementById('instanceUrl').value.trim();
-    const { from, to } = getDateRange();
-    const ff = getFetchFiltersSnapshot();
-    const excludeWeekends = document.getElementById('excludeWeekendsChk')?.checked || false;
-    const keyword = (document.getElementById('keywordInput')?.value || '').trim();
-    const retrievedCount = Array.isArray(allTickets) ? allTickets.length : 0;
-    const exportedCount = Array.isArray(filteredTickets) ? filteredTickets.length : 0;
-
-    const nowPT = new Date().toLocaleString('en-US', {
-        timeZone: 'America/Los_Angeles',
-        year: 'numeric', month: 'long', day: 'numeric',
-        hour: '2-digit', minute: '2-digit'
-    });
-
-    const title = 'ServiceNow Tickets Report';
-    const subtitle = `${from || '--'} → ${to || '--'} (PT)`;
-
-    const metrics = getMetricsSnapshot();
-    const exported = filteredTickets.slice().sort((a, b) => new Date(b.opened_at || b.sys_created_on || 0) - new Date(a.opened_at || a.sys_created_on || 0));
-    const maxRows = 50;
-    const rows = exported.slice(0, maxRows);
-
-    const ffLines = [];
-    if (ff.sd) ffLines.push(`<strong>Short Description</strong>: ${escapeHtml(ff.sd)}`);
-    if (ff.rt) ffLines.push(`<strong>Request Type</strong>: ${escapeHtml(ff.rt)}`);
-    if (ff.rb) ffLines.push(`<strong>Reported By</strong>: ${escapeHtml(ff.rb)}`);
-    if (ff.rf) ffLines.push(`<strong>Requested For</strong>: ${escapeHtml(ff.rf)}`);
-    if (ff.st) ffLines.push(`<strong>State</strong>: ${escapeHtml(ff.st)}`);
-    const ffHtml = ffLines.length ? ffLines.join('<br>') : '<span style="color:#64748b;">(none)</span>';
-
-    const keywordHtml = keyword ? escapeHtml(keyword) : '<span style="color:#64748b;">(none)</span>';
-
-    const metricsHtml = (() => {
-        const cards = metrics.map(m => `
-            <td width="33%" style="background-color:#f1f5f9;padding:18px 16px;border-radius:8px;border-left:4px solid ${m.accent};text-align:left;vertical-align:top;">
-                <p style="margin:0 0 6px 0;font-weight:bold;color:#475569;font-size:11px;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.4px;">${escapeHtml(m.label)}</p>
-                <p style="margin:0 0 6px 0;font-size:26px;font-weight:bold;color:${m.accent};font-family:Arial,sans-serif;line-height:1.1;">${escapeHtml(m.value || '--')}</p>
-                <p style="margin:0;font-size:12px;color:#64748b;font-family:Arial,sans-serif;line-height:1.5;">${escapeHtml(m.sub || '')}</p>
-            </td>
-        `);
-        // 2 rows x 3 cols
-        return `
-            <table width="100%" cellpadding="0" cellspacing="12" border="0" style="border-collapse:separate;">
-                <tr>${cards.slice(0,3).join('')}</tr>
-                <tr>${cards.slice(3,6).join('')}</tr>
-            </table>`;
-    })();
-
-    const ticketRowsHtml = rows.map((t, idx) => {
-        const bg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
-        const href = getServiceNowRecordUrl(t, instance);
-        const num = t.number || '--';
-        const sd = getDisplayVal(t.short_description) || t.short_description || '--';
-        const state = t.state || 'Unknown';
-        const reporter = getDisplayVal(t.opened_by) || getDisplayVal(t.caller_id) || t.opened_by || t.caller_id || '--';
-        const requestedFor = getDisplayVal(t.requested_for) || t.requested_for || '--';
-        const opened = formatDate(getDisplayVal(t.opened_at) || t.opened_at || '');
-        const closed = isClosedState(t.state) ? formatDate(getDisplayVal(t.closed_at) || t.closed_at || '') : '--';
-        const dur = calcDuration(t.opened_at, isClosedState(t.state) ? t.closed_at : null, excludeWeekends);
-        const reqType = (t._source_table === 'incident')
-            ? (getDisplayVal(t.category) || t.category || '--')
-            : (getDisplayVal(t.cat_item) || t.cat_item || '--');
-
-        return `<tr style="background-color:${bg};">
-            <td style="padding:12px 12px;border-bottom:1px solid #e2e8f0;font-family:Arial,sans-serif;font-size:12px;white-space:nowrap;">
-                <a href="${href}" style="color:#1E3860;text-decoration:underline;font-weight:bold;">${escapeHtml(num)}</a>
-            </td>
-            <td style="padding:12px 12px;border-bottom:1px solid #e2e8f0;font-family:Arial,sans-serif;font-size:12px;color:#0f172a;line-height:1.5;">
-                ${escapeHtml(sd)}
-            </td>
-            <td style="padding:12px 12px;border-bottom:1px solid #e2e8f0;font-family:Arial,sans-serif;font-size:12px;white-space:nowrap;text-align:center;">
-                ${emailStateBadge(state)}
-            </td>
-            <td style="padding:12px 12px;border-bottom:1px solid #e2e8f0;font-family:Arial,sans-serif;font-size:12px;color:#334155;white-space:nowrap;">
-                ${escapeHtml(String(reporter))}
-            </td>
-            <td style="padding:12px 12px;border-bottom:1px solid #e2e8f0;font-family:Arial,sans-serif;font-size:12px;color:#334155;white-space:nowrap;">
-                ${escapeHtml(String(requestedFor))}
-            </td>
-            <td style="padding:12px 12px;border-bottom:1px solid #e2e8f0;font-family:Arial,sans-serif;font-size:12px;color:#334155;white-space:nowrap;text-align:center;">
-                ${escapeHtml(opened || '--')}
-            </td>
-            <td style="padding:12px 12px;border-bottom:1px solid #e2e8f0;font-family:Arial,sans-serif;font-size:12px;color:#334155;white-space:nowrap;text-align:center;">
-                ${escapeHtml(closed || '--')}
-            </td>
-            <td style="padding:12px 12px;border-bottom:1px solid #e2e8f0;font-family:Arial,sans-serif;font-size:12px;color:#334155;white-space:nowrap;text-align:right;">
-                <strong>${escapeHtml(dur || '--')}</strong>
-            </td>
-            <td style="padding:12px 12px;border-bottom:1px solid #e2e8f0;font-family:Arial,sans-serif;font-size:12px;color:#334155;">
-                ${escapeHtml(String(reqType))}
-            </td>
-        </tr>`;
-    }).join('');
-
-    const ticketsTableHtml = `
-        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
-            <tr style="background-color:#1E3860;">
-                <th style="padding:14px 12px;text-align:left;color:#ffffff;font-weight:bold;font-size:12px;font-family:Arial,sans-serif;border:none;">Ticket</th>
-                <th style="padding:14px 12px;text-align:left;color:#ffffff;font-weight:bold;font-size:12px;font-family:Arial,sans-serif;border:none;">Short Description</th>
-                <th style="padding:14px 12px;text-align:center;color:#ffffff;font-weight:bold;font-size:12px;font-family:Arial,sans-serif;border:none;">State</th>
-                <th style="padding:14px 12px;text-align:left;color:#ffffff;font-weight:bold;font-size:12px;font-family:Arial,sans-serif;border:none;">Reported By</th>
-                <th style="padding:14px 12px;text-align:left;color:#ffffff;font-weight:bold;font-size:12px;font-family:Arial,sans-serif;border:none;">Requested For</th>
-                <th style="padding:14px 12px;text-align:center;color:#ffffff;font-weight:bold;font-size:12px;font-family:Arial,sans-serif;border:none;">Opened</th>
-                <th style="padding:14px 12px;text-align:center;color:#ffffff;font-weight:bold;font-size:12px;font-family:Arial,sans-serif;border:none;">Closed</th>
-                <th style="padding:14px 12px;text-align:right;color:#ffffff;font-weight:bold;font-size:12px;font-family:Arial,sans-serif;border:none;">Duration</th>
-                <th style="padding:14px 12px;text-align:left;color:#ffffff;font-weight:bold;font-size:12px;font-family:Arial,sans-serif;border:none;">Request Type</th>
-            </tr>
-            ${ticketRowsHtml || `<tr><td colspan="9" style="padding:18px;text-align:center;color:#64748b;font-family:Arial,sans-serif;">No tickets</td></tr>`}
-        </table>
-        <p style="margin:10px 0 0 0;font-size:12px;color:#64748b;font-family:Arial,sans-serif;font-style:italic;">
-            Showing ${rows.length} of ${exported.length} tickets. Times shown in Pacific Time (PT). Duration ${excludeWeekends ? 'excludes' : 'includes'} weekends.
-        </p>`;
-
-    return `<!DOCTYPE html><html lang="en" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
-<head>
-<meta charset="utf-8">
-<meta http-equiv="X-UA-Compatible" content="IE=edge">
-<!--[if gte mso 9]><xml><o:OfficeDocumentSettings><o:AllowPNG/><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
-<style>
-body{margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background-color:#f4f6f9;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}
-table{border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt}
-</style>
-</head>
-<body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background-color:#f4f6f9;">
-<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f4f6f9" style="background-color:#f4f6f9;">
-  <tr><td align="center" style="padding:20px 0;">
-    <table width="700" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="background-color:#ffffff;border-radius:8px;overflow:hidden;">
-      <tr>
-        <td bgcolor="#1E3860" style="background-color:#1E3860;padding:34px 34px;text-align:center;">
-          <img src="https://companieslogo.com/img/orig/AX.D-45977c0c.png?t=1720244490" alt="Axos" width="48" height="48" style="display:block;margin:0 auto 12px auto;height:48px;">
-          <h1 style="margin:0;font-size:28px;font-weight:bold;color:#ffffff;font-family:Arial,sans-serif;">${escapeHtml(title)}</h1>
-          <p style="margin:10px 0 0 0;font-size:14px;color:#FAA74A;font-weight:700;font-family:Arial,sans-serif;">${escapeHtml(subtitle)}</p>
-          <p style="margin:10px 0 0 0;font-size:12px;color:#94a3b8;font-family:Arial,sans-serif;">Generated ${escapeHtml(nowPT)}</p>
-        </td>
-      </tr>
-      <tr><td style="padding:26px 30px;">
-
-        <table width="100%" cellpadding="18" cellspacing="0" border="0" bgcolor="#eff6ff" style="background-color:#eff6ff;border-radius:8px;margin-bottom:18px;">
-          <tr><td>
-            <p style="margin:0;font-size:14px;color:#1E3860;font-weight:bold;font-family:Arial,sans-serif;">How this data was retrieved</p>
-            <p style="margin:8px 0 0 0;font-size:13px;color:#475569;font-family:Arial,sans-serif;line-height:1.7;">
-              <strong>Date Range</strong>: ${escapeHtml(from || '--')} → ${escapeHtml(to || '--')}<br>
-              <strong>Fetch Filters (server-side)</strong>:<br>${ffHtml}<br><br>
-              <strong>Keyword Filter (view)</strong>: ${keywordHtml}<br>
-              <strong>Duration</strong>: ${excludeWeekends ? 'Excludes weekends' : 'Includes weekends'}<br>
-              <strong>Counts</strong>: Retrieved ${retrievedCount} (from fetch) · Exporting ${exportedCount} (after view filters)
-            </p>
-          </td></tr>
-        </table>
-
-        <h2 style="margin:0 0 14px 0;font-size:20px;font-weight:bold;color:#0f172a;font-family:Arial,sans-serif;">Summary Metrics</h2>
-        ${metricsHtml}
-
-        <h2 style="margin:26px 0 14px 0;font-size:20px;font-weight:bold;color:#0f172a;font-family:Arial,sans-serif;">Tickets</h2>
-        ${ticketsTableHtml}
-
-        <p style="margin:20px 0 0 0;font-size:11px;color:#94a3b8;font-family:Arial,sans-serif;text-align:center;">
-          AXOS · QCOE · ServiceNow dashboard export · Retrieved ${retrievedCount} · Exported ${exportedCount}
-        </p>
-
-      </td></tr>
-    </table>
-  </td></tr>
-</table>
-</body></html>`;
 }
 
 // ─── DRILL-DOWN ───
@@ -3998,14 +3241,7 @@ function verifyAdmin() {
         adminUnlocked = true;
         document.getElementById('adminGateModal').classList.remove('show');
         document.dispatchEvent(new Event('adminUnlocked'));
-        if (window.__pendingAdminAction === 'enterAdminMode') {
-            window.__pendingAdminAction = null;
-            setAppMode('admin');
-            hideModeHub();
-            showTicketsView();
-            applyAppModeUI();
-            refreshPublisherStatus();
-        } else if (window.__pendingAdminAction === 'aiSettings') {
+        if (window.__pendingAdminAction === 'aiSettings') {
             window.__pendingAdminAction = null;
             loadAISettings();
             document.getElementById('settingsModal').classList.add('show');
@@ -4262,23 +3498,6 @@ RULES:
         sendBtn.style.opacity = '1';
     }
 }
-
-// ─── INIT: show Admin/Viewer hub ───
-(function initAppMode() {
-    const isGitHubPages = /github\.io$/i.test(location.hostname);
-    if (isGitHubPages) return;
-    let saved = null;
-    try { saved = localStorage.getItem(APP_MODE_KEY); } catch {}
-    if (saved === 'viewer') {
-        setAppMode('viewer');
-        hideModeHub();
-        showDashboardsView();
-    } else {
-        // Always re-prompt for Admin access (password gate is in-memory).
-        showModeHub(true);
-        applyAppModeUI();
-    }
-})();
 </script>
 </body>
 </html>
