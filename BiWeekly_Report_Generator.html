@@ -342,7 +342,7 @@ body.chat-open .chat-fab{display:none}
     <button class="chat-hdr-btn" onclick="toggleChat()" title="Close">&times;</button>
   </div>
   <div class="chat-messages" id="chatMessages">
-    <div class="chat-msg system">Paste your raw report text here and I'll parse it, or ask me to modify any section of your report. Requires OpenAI API key in Settings.</div>
+    <div class="chat-msg system">Paste your raw report text here and I'll parse it, or ask me to modify any section of your report.</div>
   </div>
   <div class="chat-input-row">
     <input id="chatInput" placeholder="e.g. Add a Risks section with..." onkeydown="if(event.key==='Enter')sendChat()">
@@ -599,9 +599,43 @@ function copyMeta(type){
 }
 
 // ─── SETTINGS ───
-function loadSettings(){const s=JSON.parse(localStorage.getItem('rg_settings')||'{}');document.getElementById('settingsProvider').value=s.provider||'openai';document.getElementById('settingsApiKey').value=s.apiKey||'';document.getElementById('settingsModel').value=s.model||'gpt-4o-mini';document.getElementById('settingsAzureEndpoint').value=s.azureEndpoint||'';document.getElementById('settingsAzureDeployment').value=s.azureDeployment||'';toggleAzureFields();}
-function saveSettings(){const s={provider:document.getElementById('settingsProvider').value,apiKey:document.getElementById('settingsApiKey').value,model:document.getElementById('settingsModel').value,azureEndpoint:document.getElementById('settingsAzureEndpoint').value,azureDeployment:document.getElementById('settingsAzureDeployment').value};localStorage.setItem('rg_settings',JSON.stringify(s));toggleAzureFields();}
-function getSettings(){return JSON.parse(localStorage.getItem('rg_settings')||'{}');}
+const EMBEDDED_AI_DEFAULTS={provider:'azure',model:'gpt-4o',azureEndpoint:'https://axosopenai.openai.azure.com',azureDeployment:'gpt-4o'};
+// Obfuscated key (xor+base64). Note: this can still be extracted in the browser.
+const EMBEDDED_AZURE_API_KEY_XOR_BASE64='VSxZJRgPCy0DUC8QMxIkA24rPUc+LCQ0N0wWIWoGEDIBKyggNwsMMnsXMAUmUQ0AE0w1HGc8ND5LUCE3IDs2Fm8HIyw4WhRAIDkuMWwuKjMxDAk5';
+function xorBase64Decode(b64,key){if(!b64)return'';const k=key||'axos-metrics';const bin=atob(b64);let out='';for(let i=0;i<bin.length;i++){out+=String.fromCharCode(bin.charCodeAt(i)^k.charCodeAt(i%k.length));}return out;}
+function getEmbeddedAzureApiKey(){return xorBase64Decode(EMBEDDED_AZURE_API_KEY_XOR_BASE64,'axos-metrics');}
+
+function loadSettings(){
+  const raw=JSON.parse(localStorage.getItem('rg_settings')||'{}');
+  const provider=raw.provider||EMBEDDED_AI_DEFAULTS.provider;
+  document.getElementById('settingsProvider').value=provider;
+  // Don't populate the key field from embedded defaults (keeps UI from exposing it via DOM value).
+  document.getElementById('settingsApiKey').value=raw.apiKey||'';
+  document.getElementById('settingsModel').value=raw.model||EMBEDDED_AI_DEFAULTS.model;
+  document.getElementById('settingsAzureEndpoint').value=raw.azureEndpoint||EMBEDDED_AI_DEFAULTS.azureEndpoint;
+  document.getElementById('settingsAzureDeployment').value=raw.azureDeployment||EMBEDDED_AI_DEFAULTS.azureDeployment;
+  toggleAzureFields();
+}
+function saveSettings(){
+  const s={provider:document.getElementById('settingsProvider').value,apiKey:document.getElementById('settingsApiKey').value,model:document.getElementById('settingsModel').value,azureEndpoint:document.getElementById('settingsAzureEndpoint').value,azureDeployment:document.getElementById('settingsAzureDeployment').value};
+  localStorage.setItem('rg_settings',JSON.stringify(s));
+  toggleAzureFields();
+}
+function getSettings(){
+  const s=JSON.parse(localStorage.getItem('rg_settings')||'{}');
+  let provider=s.provider||EMBEDDED_AI_DEFAULTS.provider;
+  let apiKey=s.apiKey||'';
+  const embedded=getEmbeddedAzureApiKey();
+  // If no key is configured, fall back to embedded Azure key and force Azure provider.
+  if(!apiKey&&embedded){apiKey=embedded;provider='azure';}
+  return {
+    provider,
+    apiKey,
+    model:s.model||EMBEDDED_AI_DEFAULTS.model,
+    azureEndpoint:(s.azureEndpoint||EMBEDDED_AI_DEFAULTS.azureEndpoint),
+    azureDeployment:(s.azureDeployment||EMBEDDED_AI_DEFAULTS.azureDeployment)
+  };
+}
 function toggleAzureFields(){const a=document.getElementById('settingsProvider').value==='azure';document.getElementById('azureEndpointRow').style.display=a?'flex':'none';document.getElementById('azureDeploymentRow').style.display=a?'flex':'none';}
 
 // ─── UI RENDERING ───
