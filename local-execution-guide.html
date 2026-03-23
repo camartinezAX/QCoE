@@ -1,0 +1,2351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Axos Mobile - Local Execution Guide</title>
+<style>
+  /* ========== RESET & BASE ========== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --orange: #FAA74A;
+    --orange-light: #fdd9a3;
+    --orange-dark: #d98a2a;
+    --navy: #1E3860;
+    --navy-light: #2b4f85;
+    --navy-dark: #132640;
+    --bg: #f4f6fa;
+    --card-bg: #ffffff;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --code-bg: #1e293b;
+    --code-text: #e2e8f0;
+    --success: #22c55e;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --border-radius: 16px;
+    --shadow: 0 4px 24px rgba(30, 56, 96, 0.08);
+    --shadow-lg: 0 8px 40px rgba(30, 56, 96, 0.12);
+  }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+  a { color: var(--orange-dark); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+    background: rgba(30, 56, 96, 0.07);
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.88em;
+    color: var(--navy);
+  }
+
+  /* ========== ANIMATIONS ========== */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(40px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes slideInLeft {
+    from { opacity: 0; transform: translateX(-60px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes slideInRight {
+    from { opacity: 0; transform: translateX(60px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.08); opacity: 0.85; }
+  }
+  @keyframes cableConnect {
+    0% { stroke-dashoffset: 200; }
+    100% { stroke-dashoffset: 0; }
+  }
+  @keyframes phoneBounce {
+    0%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-12px); }
+    60% { transform: translateY(-6px); }
+  }
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+  @keyframes checkmark {
+    0% { stroke-dashoffset: 30; }
+    100% { stroke-dashoffset: 0; }
+  }
+  @keyframes statusPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+    50% { box-shadow: 0 0 0 12px rgba(34, 197, 94, 0); }
+  }
+  @keyframes typewriter {
+    from { width: 0; }
+    to   { width: 100%; }
+  }
+  @keyframes blink {
+    50% { border-color: transparent; }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  @keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  .animate-on-scroll {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .animate-on-scroll.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ========== NAV ========== */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(30, 56, 96, 0.95);
+    backdrop-filter: blur(20px);
+    padding: 0 2rem;
+    height: 64px;
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+  }
+  nav .brand {
+    display: flex; align-items: center; gap: 12px;
+    font-weight: 700; font-size: 1.1rem; color: #fff;
+  }
+  nav .brand span { color: var(--orange); }
+  nav .nav-links { display: flex; gap: 24px; }
+  nav .nav-links a {
+    color: rgba(255,255,255,0.75);
+    font-size: 0.85rem; font-weight: 500;
+    transition: color 0.2s;
+  }
+  nav .nav-links a:hover { color: var(--orange); text-decoration: none; }
+
+  /* ========== HERO ========== */
+  .hero {
+    margin-top: 64px;
+    background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 50%, var(--navy-light) 100%);
+    background-size: 200% 200%;
+    animation: gradientShift 8s ease infinite;
+    padding: 6rem 2rem 4rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at 30% 20%, rgba(250, 167, 74, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 70% 80%, rgba(250, 167, 74, 0.06) 0%, transparent 50%);
+  }
+  .hero h1 {
+    font-size: 3rem; font-weight: 800; color: #fff;
+    margin-bottom: 1rem; position: relative;
+  }
+  .hero h1 span { color: var(--orange); }
+  .hero p {
+    font-size: 1.2rem; color: rgba(255,255,255,0.7);
+    max-width: 600px; margin: 0 auto 3rem; position: relative;
+  }
+
+  /* Device connection animation */
+  .device-anim {
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    gap: 0; height: 180px; margin-top: 1rem;
+  }
+  .device-anim .laptop {
+    width: 140px; height: 100px;
+    background: linear-gradient(145deg, #334155, #1e293b);
+    border-radius: 8px; border: 2px solid #475569;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .device-anim .laptop::after {
+    content: '';
+    position: absolute; bottom: -12px; left: -20px; right: -20px;
+    height: 10px; background: #334155; border-radius: 0 0 6px 6px;
+  }
+  .device-anim .laptop .screen {
+    width: 110px; height: 70px;
+    background: var(--navy-dark);
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .device-anim .laptop .terminal-text {
+    font-family: monospace; font-size: 8px;
+    color: var(--success); text-align: left; padding: 6px;
+    line-height: 1.5;
+  }
+  .device-anim .cable-container {
+    width: 120px; height: 40px; position: relative;
+    display: flex; align-items: center;
+  }
+  .device-anim .cable-container svg { width: 100%; height: 100%; }
+  .device-anim .cable-container .cable-line {
+    stroke: var(--orange);
+    stroke-width: 3;
+    stroke-dasharray: 200;
+    animation: cableConnect 2s ease-in-out infinite;
+    fill: none;
+  }
+  .device-anim .cable-container .data-dots {
+    fill: var(--orange);
+    animation: float 1.5s ease-in-out infinite;
+  }
+  .device-anim .phone {
+    width: 60px; height: 110px;
+    background: linear-gradient(145deg, #334155, #1e293b);
+    border-radius: 14px; border: 2px solid #475569;
+    display: flex; align-items: center; justify-content: center;
+    animation: phoneBounce 3s ease-in-out infinite;
+    position: relative;
+  }
+  .device-anim .phone .phone-screen {
+    width: 48px; height: 88px;
+    background: linear-gradient(180deg, var(--navy) 0%, var(--navy-light) 100%);
+    border-radius: 10px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 4px;
+  }
+  .device-anim .phone .phone-screen .axos-logo {
+    font-size: 10px; font-weight: 800; color: var(--orange);
+    letter-spacing: 1px;
+  }
+  .device-anim .phone .status-dot {
+    position: absolute; top: -4px; right: -4px;
+    width: 14px; height: 14px; background: var(--success);
+    border-radius: 50%; border: 2px solid var(--navy-dark);
+    animation: statusPulse 2s infinite;
+  }
+
+  /* ========== CONTAINER ========== */
+  .container { max-width: 960px; margin: 0 auto; padding: 0 1.5rem; }
+
+  /* ========== SECTION ========== */
+  section { padding: 4rem 0; }
+  section .section-header {
+    text-align: center; margin-bottom: 3rem;
+  }
+  section .section-header h2 {
+    font-size: 2rem; font-weight: 700; color: var(--navy);
+    margin-bottom: 0.5rem;
+  }
+  section .section-header p { color: var(--text-muted); font-size: 1.05rem; }
+  section .section-header .badge {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--orange), var(--orange-dark));
+    color: #fff; font-size: 0.75rem; font-weight: 700;
+    padding: 4px 14px; border-radius: 100px;
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 0.75rem;
+  }
+
+  /* ========== CARDS ========== */
+  .card {
+    background: var(--card-bg);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid rgba(30, 56, 96, 0.06);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+  .card h3 {
+    font-size: 1.25rem; font-weight: 700; color: var(--navy);
+    margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .card h3 .icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--orange), var(--orange-dark));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+
+  /* ========== CODE BLOCK ========== */
+  .code-block {
+    background: var(--code-bg);
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 1rem 0;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    position: relative;
+  }
+  .code-block .code-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px;
+    background: rgba(255,255,255,0.05);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .code-block .code-header .dots {
+    display: flex; gap: 6px;
+  }
+  .code-block .code-header .dots span {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+  .code-block .code-header .dots span:nth-child(1) { background: #ef4444; }
+  .code-block .code-header .dots span:nth-child(2) { background: #f59e0b; }
+  .code-block .code-header .dots span:nth-child(3) { background: #22c55e; }
+  .code-block .code-header .lang {
+    font-size: 0.75rem; color: rgba(255,255,255,0.4);
+    font-family: monospace;
+  }
+  /* Hide lang label when copy button exists to avoid overlap */
+  .code-block:has(> .copy-btn) .code-header .lang {
+    display: none;
+  }
+  .code-block pre {
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    line-height: 1.7;
+    color: var(--code-text);
+  }
+  .code-block pre .comment { color: #64748b; }
+  .code-block pre .keyword { color: #c084fc; }
+  .code-block pre .string { color: #86efac; }
+  .code-block pre .tag {
+    color: #fbbf24; font-weight: 700;
+    background: rgba(251, 191, 36, 0.15);
+    border-radius: 4px; padding: 1px 6px;
+    display: inline; font-size: inherit;
+  }
+  .code-block pre .flag { color: #93c5fd; }
+  .code-block pre .prompt { color: var(--orange); font-weight: 700; }
+
+  /* ========== TABS ========== */
+  .tabs {
+    display: flex; gap: 4px;
+    background: rgba(30, 56, 96, 0.06);
+    border-radius: 12px; padding: 4px;
+    margin-bottom: 1.5rem;
+    width: fit-content;
+  }
+  .tabs button {
+    padding: 10px 24px;
+    border: none; background: transparent;
+    border-radius: 10px; cursor: pointer;
+    font-weight: 600; font-size: 0.9rem;
+    color: var(--text-muted);
+    transition: all 0.3s ease;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .tabs button.active {
+    background: var(--navy);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(30, 56, 96, 0.2);
+  }
+  .tabs button:hover:not(.active) { color: var(--navy); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; animation: fadeInUp 0.4s ease; }
+
+  /* ========== PLATFORM SUB-TABS (Win/Mac) ========== */
+  .os-tabs {
+    display: flex; gap: 3px;
+    background: rgba(30, 56, 96, 0.04);
+    border-radius: 10px; padding: 3px;
+    margin-bottom: 1.25rem;
+    width: fit-content;
+  }
+  .os-tabs button {
+    padding: 6px 16px;
+    border: none; background: transparent;
+    border-radius: 8px; cursor: pointer;
+    font-weight: 600; font-size: 0.8rem;
+    color: var(--text-muted);
+    transition: all 0.25s ease;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .os-tabs button.active {
+    background: var(--navy-light);
+    color: #fff;
+    box-shadow: 0 1px 4px rgba(30, 56, 96, 0.15);
+  }
+  .os-tabs button:hover:not(.active) { color: var(--navy); }
+  .os-content { display: none; }
+  .os-content.active { display: block; animation: fadeInUp 0.3s ease; }
+
+  /* Platform badges */
+  .platform-badge {
+    display: inline-block;
+    font-size: 0.68rem; font-weight: 700;
+    padding: 2px 10px; border-radius: 100px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    vertical-align: middle; margin-left: 8px;
+  }
+  .platform-badge.mac-only {
+    background: rgba(30, 56, 96, 0.08);
+    color: var(--navy);
+  }
+  .platform-badge.cross-platform {
+    background: rgba(34, 197, 94, 0.08);
+    color: #166534;
+  }
+
+  /* ========== STEPS ========== */
+  .steps { counter-reset: step; }
+  .step {
+    display: flex; gap: 1.25rem;
+    margin-bottom: 1.5rem;
+    padding-left: 0.5rem;
+  }
+  .step .step-num {
+    counter-increment: step;
+    width: 40px; height: 40px; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--navy), var(--navy-light));
+    color: var(--orange); font-weight: 800; font-size: 1rem;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .step .step-num::before { content: counter(step); }
+  .step .step-body h4 {
+    font-size: 1rem; font-weight: 700; color: var(--navy);
+    margin-bottom: 0.25rem;
+  }
+  .step .step-body p { color: var(--text-muted); font-size: 0.95rem; }
+
+  /* ========== TABLE ========== */
+  .ref-table {
+    width: 100%; border-collapse: separate; border-spacing: 0;
+    background: var(--card-bg);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    font-size: 0.9rem;
+  }
+  .ref-table thead {
+    background: var(--navy);
+    color: #fff;
+  }
+  .ref-table th {
+    padding: 14px 18px; text-align: left;
+    font-weight: 600; font-size: 0.8rem;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .ref-table td {
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(30, 56, 96, 0.06);
+    vertical-align: top;
+  }
+  .ref-table tbody tr:last-child td { border-bottom: none; }
+  .ref-table tbody tr:hover { background: rgba(250, 167, 74, 0.04); }
+
+  /* ========== FLOW DIAGRAM ========== */
+  .flow {
+    display: flex; align-items: center; justify-content: center;
+    flex-wrap: wrap; gap: 12px;
+    margin: 2rem 0;
+  }
+  .flow-node {
+    background: var(--navy);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 0.85rem; font-weight: 600;
+    text-align: center;
+    min-width: 120px;
+    box-shadow: 0 4px 12px rgba(30, 56, 96, 0.15);
+  }
+  .flow-node.orange {
+    background: linear-gradient(135deg, var(--orange), var(--orange-dark));
+  }
+  .flow-node.success { background: var(--success); }
+  .flow-node.danger { background: var(--danger); }
+  .flow-arrow {
+    font-size: 1.5rem; color: var(--text-muted);
+  }
+
+  /* ========== ALERT ========== */
+  .alert {
+    padding: 1rem 1.25rem 1rem 1.5rem;
+    border-radius: 12px;
+    margin: 1rem 0;
+    font-size: 0.92rem;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .alert .alert-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 1px; }
+  .alert-info {
+    background: rgba(30, 56, 96, 0.06);
+    border-left: 4px solid var(--navy);
+    color: var(--navy);
+  }
+  .alert-warning {
+    background: rgba(245, 158, 11, 0.08);
+    border-left: 4px solid var(--warning);
+    color: #92400e;
+  }
+  .alert-success {
+    background: rgba(34, 197, 94, 0.08);
+    border-left: 4px solid var(--success);
+    color: #166534;
+  }
+
+  /* ========== TAG BADGES ========== */
+  .tag {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--orange), var(--orange-dark));
+    color: #fff; font-size: 0.78rem; font-weight: 700;
+    padding: 3px 12px; border-radius: 100px;
+    font-family: monospace;
+  }
+  .tag.navy { background: linear-gradient(135deg, var(--navy), var(--navy-light)); }
+
+  /* ========== GRID ========== */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+  @media (max-width: 768px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 2rem; }
+    nav .nav-links { display: none; }
+    .device-anim { flex-direction: column; height: auto; gap: 20px; }
+    .device-anim .cable-container { width: 40px; height: 60px; transform: rotate(90deg); }
+  }
+
+  /* ========== FOOTER ========== */
+  footer {
+    background: var(--navy-dark);
+    color: rgba(255,255,255,0.5);
+    text-align: center;
+    padding: 2rem;
+    font-size: 0.85rem;
+  }
+  footer span { color: var(--orange); }
+
+  /* ========== COPY BUTTON ========== */
+  .copy-btn {
+    position: absolute; top: 8px; right: 12px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.6);
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    z-index: 1;
+  }
+  .copy-btn:hover { background: rgba(255,255,255,0.2); color: #fff; }
+  .copy-btn.copied { background: var(--success); color: #fff; border-color: var(--success); }
+
+  /* Copy button inside table cells — compact layout */
+  /* Inline command blocks (label + code-block stacked) */
+  .expandable-body > .code-block { margin: 0 0 0.75rem; }
+  .expandable-body > .code-block:last-child { margin-bottom: 0; }
+
+  /* Command label above a code block inside a table cell */
+  .cmd-label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    letter-spacing: 0.3px;
+  }
+
+  /* Spinner anim */
+  .spinner-demo {
+    display: flex; align-items: center; gap: 16px;
+    padding: 1.5rem;
+    background: rgba(30, 56, 96, 0.04);
+    border-radius: 12px;
+    margin: 1rem 0;
+  }
+  .spinner-demo .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid rgba(30, 56, 96, 0.1);
+    border-top-color: var(--orange);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  .spinner-demo p { color: var(--text-muted); font-weight: 500; }
+
+  /* Check animation */
+  .check-anim {
+    display: flex; align-items: center; gap: 16px;
+    padding: 1.5rem;
+    background: rgba(34, 197, 94, 0.06);
+    border-radius: 12px;
+    margin: 1rem 0;
+  }
+  .check-anim svg {
+    width: 32px; height: 32px; flex-shrink: 0;
+  }
+  .check-anim svg .check-circle { fill: var(--success); }
+  .check-anim svg .check-path {
+    stroke: #fff; stroke-width: 3;
+    stroke-dasharray: 30; stroke-linecap: round; stroke-linejoin: round;
+    animation: checkmark 0.6s ease forwards;
+    fill: none;
+  }
+  .check-anim p { color: #166534; font-weight: 600; }
+
+  /* ========== AI PROMPT CARD ========== */
+  .prompt-card {
+    background: linear-gradient(135deg, var(--navy-dark), var(--navy));
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin: 1rem 0;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(250, 167, 74, 0.2);
+  }
+  .prompt-card::before {
+    content: '';
+    position: absolute; top: 0; right: 0;
+    width: 120px; height: 120px;
+    background: radial-gradient(circle, rgba(250, 167, 74, 0.12) 0%, transparent 70%);
+  }
+  .prompt-card .prompt-label {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.72rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1.5px;
+    color: var(--orange); margin-bottom: 0.75rem;
+  }
+  .prompt-card .prompt-label svg {
+    width: 16px; height: 16px; fill: var(--orange);
+  }
+  .prompt-card .prompt-text {
+    font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    color: var(--code-text);
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+    position: relative;
+  }
+  .prompt-card .prompt-copy {
+    position: absolute; top: 12px; right: 12px;
+    background: rgba(250, 167, 74, 0.15);
+    border: 1px solid rgba(250, 167, 74, 0.3);
+    color: var(--orange);
+    padding: 6px 16px;
+    border-radius: 8px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    z-index: 1;
+  }
+  .prompt-card .prompt-copy:hover { background: rgba(250, 167, 74, 0.3); color: #fff; }
+  .prompt-card .prompt-copy.copied { background: var(--success); color: #fff; border-color: var(--success); }
+  .prompt-card .prompt-desc {
+    font-size: 0.85rem; color: rgba(255,255,255,0.55);
+    margin-top: 0.75rem; font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  /* ========== EXPANDABLE SECTION ========== */
+  .expandable-section {
+    background: var(--card-bg);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    border: 1px solid rgba(30, 56, 96, 0.06);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+  }
+  .expandable-section > summary {
+    cursor: pointer;
+    padding: 1.25rem 1.5rem;
+    font-weight: 700; font-size: 1.1rem;
+    color: var(--navy);
+    display: flex; align-items: center; gap: 12px;
+    list-style: none;
+    transition: background 0.2s;
+    user-select: none;
+  }
+  .expandable-section > summary::-webkit-details-marker { display: none; }
+  .expandable-section > summary::before {
+    content: ''; display: inline-block;
+    width: 8px; height: 8px;
+    border-right: 2.5px solid var(--orange);
+    border-bottom: 2.5px solid var(--orange);
+    transform: rotate(-45deg);
+    transition: transform 0.3s;
+    flex-shrink: 0;
+  }
+  .expandable-section[open] > summary::before {
+    transform: rotate(45deg);
+  }
+  .expandable-section > summary:hover { background: rgba(30, 56, 96, 0.02); }
+  .expandable-section > summary .section-tag {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--orange), var(--orange-dark));
+    color: #fff; font-size: 0.65rem; font-weight: 700;
+    padding: 3px 10px; border-radius: 100px;
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-left: auto;
+  }
+  .expandable-section .expandable-body {
+    padding: 0 1.5rem 1.5rem;
+  }
+  /* When expandable-section is inside a card, remove duplicate card styling */
+  .card > .expandable-section {
+    box-shadow: none;
+    border: none;
+    margin-bottom: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .card > .expandable-section > summary {
+    padding: 0 0 1rem 0;
+    font-size: 1.15rem;
+  }
+  .card > .expandable-section .expandable-body {
+    padding: 0;
+  }
+
+  /* Scroll indicator */
+  .scroll-indicator {
+    position: fixed; top: 64px; left: 0; right: 0;
+    height: 3px; background: rgba(30, 56, 96, 0.1);
+    z-index: 99;
+  }
+  .scroll-indicator .bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--orange), var(--orange-dark));
+    width: 0%;
+    transition: width 0.1s;
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="brand">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <rect width="28" height="28" rx="8" fill="#FAA74A"/>
+      <text x="5" y="20" font-family="Arial" font-weight="900" font-size="16" fill="#1E3860">A</text>
+    </svg>
+    <span>Axos</span> Mobile Local Execution
+  </div>
+  <div class="nav-links">
+    <a href="#prerequisites">Prerequisites</a>
+    <a href="#changing-device">Device Swap</a>
+    <a href="#running-tests">Running Tests</a>
+    <a href="#reports">Reports</a>
+    <a href="#reference">Reference</a>
+    <a href="#troubleshooting">Troubleshooting</a>
+  </div>
+</nav>
+
+<div class="scroll-indicator"><div class="bar" id="scrollBar"></div></div>
+
+<!-- HERO -->
+<section class="hero">
+  <h1>Run Tests <span>Locally</span></h1>
+  <p>Your complete guide to running Axos mobile tests on a physical device plugged into your machine &mdash; on <strong>macOS</strong> or <strong>Windows</strong>.</p>
+
+  <div class="device-anim">
+    <div class="laptop">
+      <div class="screen">
+        <div class="terminal-text">
+          $ npm run test:android<br>
+          &nbsp;&nbsp;GREP=@Sanity_Login<br>
+          <span style="color:#22c55e;">&#10003;</span> 2 passing (48s)<br>
+          <span style="color:#FAA74A;">&#8635;</span> 1 retried (flaky)
+        </div>
+      </div>
+    </div>
+    <div class="cable-container">
+      <svg viewBox="0 0 120 40">
+        <path class="cable-line" d="M0,20 Q30,5 60,20 Q90,35 120,20"/>
+        <circle class="data-dots" cx="40" cy="14" r="3" opacity="0.6"/>
+        <circle class="data-dots" cx="60" cy="20" r="3" style="animation-delay:0.3s"/>
+        <circle class="data-dots" cx="80" cy="26" r="3" opacity="0.6" style="animation-delay:0.6s"/>
+      </svg>
+    </div>
+    <div class="phone">
+      <div class="phone-screen">
+        <div class="axos-logo">AXOS</div>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FAA74A" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+      </div>
+      <div class="status-dot"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PREREQUISITES -->
+<!-- ============================================================ -->
+<section id="prerequisites">
+  <div class="container">
+    <div class="section-header animate-on-scroll">
+      <div class="badge">Before You Start</div>
+      <h2>Prerequisites</h2>
+      <p>Make sure these are ready before connecting a device.</p>
+    </div>
+
+    <div class="card animate-on-scroll">
+      <h3><span class="icon">&#128187;</span> Platform Support</h3>
+      <table class="ref-table" style="margin-top: 0.5rem;">
+        <thead>
+          <tr><th>Platform</th><th>macOS</th><th>Windows</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Android tests</strong></td>
+            <td style="color: var(--success); font-weight:700;">Supported</td>
+            <td style="color: var(--success); font-weight:700;">Supported</td>
+          </tr>
+          <tr>
+            <td><strong>iOS tests</strong></td>
+            <td style="color: var(--success); font-weight:700;">Supported</td>
+            <td style="color: var(--danger); font-weight:700;">Not supported</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="alert alert-warning" style="margin-top: 1rem;">
+        <span class="alert-icon">&#9888;&#65039;</span>
+        <div><strong>iOS requires macOS</strong> &mdash; Xcode and Apple&rsquo;s toolchain are only available on Mac. Windows users can run <strong>Android tests only</strong>.</div>
+      </div>
+    </div>
+
+    <div class="card animate-on-scroll">
+      <h3><span class="icon">&#128230;</span> Required Tools</h3>
+      <div class="grid-2" style="margin-top: 0.5rem;">
+        <div>
+          <p style="font-weight:700; color: var(--navy); margin-bottom: 0.5rem;">Both platforms</p>
+          <ul style="margin-left: 1.25rem; color: var(--text-muted); line-height: 2.2;">
+            <li><strong>Node.js 18+</strong> &amp; npm</li>
+            <li><strong>Java JDK 11+</strong> (set <code>JAVA_HOME</code>)</li>
+            <li><strong>npm install</strong> (run in project root)</li>
+          </ul>
+        </div>
+        <div>
+          <p style="font-weight:700; color: var(--navy); margin-bottom: 0.5rem;">Per platform</p>
+          <ul style="margin-left: 1.25rem; color: var(--text-muted); line-height: 2.2;">
+            <li><strong>Android:</strong> Android SDK with <code>adb</code> in PATH + <code>ANDROID_HOME</code> set</li>
+            <li><strong>iOS (Mac):</strong> Xcode + Apple Developer account</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="card animate-on-scroll">
+      <details class="expandable-section">
+      <summary><span class="icon">&#9881;&#65039;</span> First-Time Setup</summary>
+      <div class="expandable-body">
+      <div class="steps">
+        <div class="step">
+          <div class="step-num"></div>
+          <div class="step-body">
+            <h4>Clone &amp; install dependencies</h4>
+            <div class="code-block">
+              <div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">terminal</span></div>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+              <pre><span class="prompt">$</span> git clone &lt;repo-url&gt; &amp;&amp; cd Axos.Auto_Mobile
+<span class="prompt">$</span> npm install</pre>
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num"></div>
+          <div class="step-body">
+            <h4>Set <code>ANDROID_HOME</code> <span class="platform-badge cross-platform">Android</span></h4>
+            <p>Appium needs this to find SDK tools. Skip if already set.</p>
+            <div class="os-tabs" id="prereqOsTabs">
+              <button class="active" onclick="switchOsTab('prereq','mac')">macOS</button>
+              <button onclick="switchOsTab('prereq','win')">Windows</button>
+            </div>
+            <div class="os-content active" id="prereq-mac">
+              <div class="code-block">
+                <div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">~/.zshrc</span></div>
+                <pre><span class="keyword">export</span> ANDROID_HOME=<span class="string">$HOME/Library/Android/sdk</span>
+<span class="keyword">export</span> PATH=<span class="string">$ANDROID_HOME/platform-tools:$PATH</span></pre>
+              </div>
+              <p style="color: var(--text-muted); font-size: 0.88rem;">Then run <code>source ~/.zshrc</code> or open a new terminal.</p>
+            </div>
+            <div class="os-content" id="prereq-win">
+              <div class="code-block">
+                <div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">PowerShell</span></div>
+                <pre><span class="comment"># Set ANDROID_HOME and ANDROID_SDK_ROOT permanently (typical path)</span>
+<span class="keyword">$sdk</span> = <span class="string">"$env:LOCALAPPDATA\Android\Sdk"</span>
+<span class="prompt">&gt;</span> setx ANDROID_HOME <span class="keyword">$sdk</span>
+<span class="prompt">&gt;</span> setx ANDROID_SDK_ROOT <span class="keyword">$sdk</span>
+<span class="prompt">&gt;</span> setx PATH <span class="string">"$env:PATH;$sdk\platform-tools"</span></pre>
+              </div>
+              <div class="alert alert-warning" style="margin-top: 0.5rem;">
+                <span class="alert-icon">&#9888;&#65039;</span>
+                <div><strong>CRITICAL:</strong> After running <code>setx</code> commands, you must <strong>fully restart Cursor</strong> (not just the terminal). Environment variables set with <code>setx</code> only take effect in new processes.</div>
+              </div>
+              <p style="color: var(--text-muted); font-size: 0.88rem;">Verify after restart with <code>adb --version</code> and <code>echo $env:ANDROID_HOME</code>.</p>
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num"></div>
+          <div class="step-body">
+            <h4>Install the Axos app on your device</h4>
+            <p>The app must be installed on the device <strong>before</strong> running tests (when using <code>USE_INSTALLED_APP=true</code>).</p>
+            <table class="ref-table" style="margin-top: 0.75rem; font-size: 0.88rem;">
+              <thead>
+                <tr><th>Platform</th><th>Where to download</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Android</strong></td>
+                  <td>
+                    <strong>Firebase</strong> (internal builds &mdash; UAT, QA, STG)<br>
+                    <strong>Google Play Store</strong> (prod)
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>iOS</strong></td>
+                  <td>
+                    <strong>Firebase</strong> (internal builds &mdash; UAT, QA, STG)<br>
+                    <strong>Apple App Store</strong> (prod)
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="alert alert-info" style="margin-top: 0.75rem;">
+              <span class="alert-icon">&#128161;</span>
+              <div>For <strong>prod</strong> testing, simply download the public app from the Play Store / App Store, set <code>TEST_ENV=prod</code> in <code>.env</code>, and you&rsquo;re good to go. For internal environments (UAT, QA), get the build from <strong>Firebase</strong>.</div>
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num"></div>
+          <div class="step-body">
+            <h4>Configure <code>.env</code></h4>
+            <p>Set these <strong>before</strong> running any tests:</p>
+            <div class="code-block">
+              <div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">.env</span></div>
+              <pre><span class="comment"># Which test environment to target:</span>
+TEST_ENV=<span class="tag">UAT</span>          <span class="comment"># Options: qa, UAT, stg, prod</span>
+
+USE_INSTALLED_APP=<span class="tag">true</span>   <span class="comment"># App is already installed on device</span></pre>
+            </div>
+            <div class="alert alert-info" style="margin-top: 0.5rem;">
+              <span class="alert-icon">&#128161;</span>
+              <div>The AI prompt below will configure the rest of <code>.env</code> for you automatically (UDID, platform, app paths, etc.).</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="prompt-card" style="margin-top: 1.25rem;">
+        <button class="prompt-copy" onclick="copyPrompt(this)">Copy Prompt</button>
+        <div class="prompt-label">
+          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          SKIP ALL MANUAL SETUP &mdash; PASTE THIS INTO CURSOR
+        </div>
+        <div class="prompt-text">I need to set up my machine for local mobile test execution. Please do the full first-time setup:
+
+1. Detect my OS (macOS or Windows)
+2. Check if `node_modules` exists — if not, run `npm install`
+3. Check if `ANDROID_HOME` is set — if not, search for my Android SDK path and set it permanently using `setx` (Windows) or shell profile (macOS). If the Android SDK is NOT installed anywhere on my machine, DO NOT attempt to install it — instead STOP and tell me: "Android SDK is not installed. Please open the local execution guide (docs/local-execution-guide.html), go to Prerequisites → First-Time Setup, and expand the section '🚨 JDK or Android SDK Not Installed? (ServiceNow Request)' for instructions on requesting it through IT."
+4. Check if `JAVA_HOME` is set — if not, search for my Java JDK installation. If a JDK is NOT installed anywhere on my machine, DO NOT attempt to install it — instead STOP and tell me the same message as step 3 (refer me to the ServiceNow request section in the guide).
+5. Check if `adb` is on PATH — if not, add platform-tools to PATH permanently
+6. Ask me: "Will you run Android tests, iOS tests, or both?"
+7. Ask me which test environment I want to target (qa, UAT, stg, prod) and set `TEST_ENV` in `.env` accordingly.
+8. Ask me: "Do you already have the app installed on your device, or do you want to provide an APK/IPA file?"
+   - If the app is already installed: set `USE_INSTALLED_APP=true`
+   - If they want to provide a file: set `USE_INSTALLED_APP=false` and ask for the path, then set `ANDROID_APP` and/or `IOS_APP` in `.env`
+9. Ask me how many retries I want per failed test (default and recommended is `1`). Set `RETRIES` in `.env`.
+10. Run `adb devices` to detect my connected Android device
+11. Update `LOCAL_ANDROID_UDID` in `.env` with the detected UDID
+12. Uninstall old Appium UIAutomator2 packages to prevent signature conflicts:
+    - `adb uninstall io.appium.uiautomator2.server`
+    - `adb uninstall io.appium.uiautomator2.server.test`
+13. If on macOS and running iOS: detect the iOS device using `xcrun xctrace list devices` and update `LOCAL_IOS_UDID` and `LOCAL_IOS_PLATFORM_VERSION` in .env
+14. If on Windows:
+    - Remind me to RESTART Cursor/terminal after setting env vars with `setx` (required for changes to take effect)
+    - Remind me to use `npx cross-env GREP=@Tag npm run test:android` instead of `GREP="..." npm run`
+15. Confirm everything is ready and show me the command to run my first test</div>
+        <p class="prompt-desc">One prompt does it all &mdash; detects your OS, sets env vars permanently, cleans old Appium packages, configures .env, detects your device, and gets you ready to run.</p>
+      </div>
+
+      <details class="expandable-section" style="margin-top: 1.25rem; border-left: 4px solid var(--danger);">
+        <summary>
+          &#128680; JDK or Android SDK Not Installed? (ServiceNow Request)
+          <span class="section-tag" style="background: var(--danger);">Action Required</span>
+        </summary>
+        <div class="expandable-body" style="padding-left: 1rem;">
+          <p style="margin-top: 0.5rem; margin-bottom: 1rem;">If the AI prompt above detects that <strong>Java JDK</strong> or <strong>Android SDK</strong> are missing and installation fails (e.g., <code>winget</code> / <code>brew</code> blocked by corporate network), you need to <strong>request the software through IT</strong> via a single ServiceNow ticket.</p>
+
+          <div class="alert alert-warning" style="margin-top: 0;">
+            <span class="alert-icon">&#9888;&#65039;</span>
+            <div><strong>Corporate machines</strong> often block direct downloads via package managers due to proxy/firewall policies. This is expected. Do <em>not</em> try to bypass these restrictions &mdash; use the official software request process below.</div>
+          </div>
+
+          <p style="font-weight:700; color: var(--navy); margin: 1.25rem 0 0.75rem;">Submit a Software Request</p>
+          <p style="margin-bottom: 0.75rem;">Open the ServiceNow form and submit <strong>one request</strong> for both tools:</p>
+          <a href="https://bofi.service-now.com/sp?id=sc_cat_item&sys_id=9cc58b18dbe6b2008a4a572e5e9619c8" target="_blank" style="display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, var(--navy), var(--navy-light)); color: #fff; padding: 10px 20px; border-radius: 10px; font-weight: 600; font-size: 0.9rem; text-decoration: none; margin-bottom: 1.25rem; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 2px 8px rgba(30,56,96,0.2);" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 16px rgba(30,56,96,0.3)';" onmouseout="this.style.transform='none';this.style.boxShadow='0 2px 8px rgba(30,56,96,0.2)';">
+            &#127899; Open ServiceNow Software Request
+          </a>
+
+          <p style="font-weight:700; color: var(--navy); margin: 0.5rem 0 0.5rem;">How to Fill Out the Form</p>
+          <table class="ref-table" style="margin-top: 0; margin-bottom: 1.25rem;">
+            <thead>
+              <tr><th>Field</th><th>Value</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>What Software do you need?</strong></td>
+                <td>Select <strong style="color: var(--navy);">OTHER</strong></td>
+              </tr>
+              <tr>
+                <td><strong>Is this already used by the bank?</strong></td>
+                <td>Select <strong style="color: var(--navy);">Yes</strong></td>
+              </tr>
+              <tr>
+                <td><strong>Short Description</strong></td>
+                <td>Copy the text below</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p style="font-weight:700; color: var(--navy); margin: 0.5rem 0 0.5rem;">Copy-Paste for Short Description</p>
+          <div class="code-block">
+            <div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">Short Description</span></div>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            <pre>Request: Java JDK + Android SDK for Mobile QE Test Automation
+
+Please install the following on my machine:
+
+1. Java Development Kit (JDK) 11 or higher (JDK 17 recommended)
+   - Microsoft Build of OpenJDK, Adoptium/Temurin, or Oracle JDK are all fine
+   - Please set the JAVA_HOME environment variable to the JDK install path
+
+2. Android Studio (which includes the Android SDK and adb)
+   - Please set the ANDROID_HOME environment variable to the SDK path
+   - Please add the SDK's platform-tools folder to the system PATH
+
+Both are required for Appium-based mobile test automation used by the QE team.
+These tools are already used by other QE engineers at the bank.</pre>
+          </div>
+
+          <div class="alert alert-info" style="margin-top: 1rem;">
+            <span class="alert-icon">&#128161;</span>
+            <div><strong>After IT installs the software:</strong> Close and reopen Cursor completely, then re-run the AI prompt above. It will detect the newly installed tools and finish the rest of the setup automatically.</div>
+          </div>
+
+          <div class="alert alert-info" style="margin-top: 0.5rem;">
+            <span class="alert-icon">&#128187;</span>
+            <div><strong>macOS users:</strong> If <code>brew install</code> is blocked, include <strong>Homebrew</strong> in your software request as well, or ask IT to install the JDK and Android SDK directly. Alternatively, download <a href="https://developer.android.com/studio" target="_blank" style="color: var(--navy);">Android Studio</a> and <a href="https://adoptium.net/" target="_blank" style="color: var(--navy);">Adoptium JDK</a> manually if your browser allows it.</div>
+          </div>
+        </div>
+      </details>
+      </div><!-- expandable-body -->
+      </details><!-- First-Time Setup -->
+    </div>
+  </div>
+</section>
+
+<!-- Device Setup section removed — fully covered by the First-Time Setup AI prompt -->
+<!-- Device swap instructions remain in the Connecting a Different Device section -->
+<section id="device-setup-removed" style="display:none;">
+
+    <div class="tabs" id="deviceTabs">
+      <button class="active" onclick="switchTab('android')">&#129302; Android <span class="platform-badge cross-platform">Win + Mac</span></button>
+      <button onclick="switchTab('ios')">&#127822; iOS <span class="platform-badge mac-only">Mac Only</span></button>
+    </div>
+
+    <!-- ==================== ANDROID TAB ==================== -->
+    <div class="tab-content active" id="tab-android">
+      <div class="card animate-on-scroll">
+        <h3><span class="icon">&#128268;</span> Connect &amp; Get UDID</h3>
+
+        <div class="os-tabs" id="androidOsTabs">
+          <button class="active" onclick="switchOsTab('android','mac')">macOS</button>
+          <button onclick="switchOsTab('android','win')">Windows</button>
+        </div>
+
+        <!-- ANDROID macOS -->
+        <div class="os-content active" id="android-mac">
+          <div class="steps">
+            <div class="step">
+              <div class="step-num"></div>
+              <div class="step-body">
+                <h4>Enable USB Debugging</h4>
+                <p><strong>Settings &gt; About Phone</strong> &rarr; tap <strong>Build Number</strong> 7 times. Then <strong>Developer Options</strong> &rarr; enable <strong>USB Debugging</strong>.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num"></div>
+              <div class="step-body">
+                <h4>Connect via USB &amp; allow</h4>
+                <p>Plug in the device. Tap <strong>Allow</strong> on the "Allow USB debugging?" prompt.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num"></div>
+              <div class="step-body">
+                <h4>Get the UDID</h4>
+                <div class="code-block">
+                  <div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">terminal</span></div>
+                  <pre><span class="prompt">$</span> adb devices
+List of devices attached
+<span class="tag">RFCTA0GW7SK</span>    device     <span class="comment"># &lt;-- This is your UDID</span></pre>
+                </div>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num"></div>
+              <div class="step-body">
+                <h4>Update <code>.env</code></h4>
+                <div class="code-block">
+                  <div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">.env</span></div>
+                  <pre>LOCAL_ANDROID_UDID=<span class="tag">RFCTA0GW7SK</span></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="prompt-card">
+            <button class="prompt-copy" onclick="copyPrompt(this)">Copy Prompt</button>
+            <div class="prompt-label">
+              <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              OR SKIP ALL THAT &mdash; PASTE THIS INTO CURSOR
+            </div>
+            <div class="prompt-text">I have an Android device connected via USB on macOS. Please:
+1. Run `adb devices` to detect the connected device UDID
+2. Update my .env file's LOCAL_ANDROID_UDID with the detected UDID
+3. Make sure USE_INSTALLED_APP=true in .env (app is already installed on the device)
+4. Confirm the update was made and tell me the device UDID</div>
+            <p class="prompt-desc">The AI will detect your device, update .env, and confirm &mdash; no manual copy-paste needed.</p>
+          </div>
+        </div>
+
+        <!-- ANDROID WINDOWS -->
+        <div class="os-content" id="android-win">
+          <div class="steps">
+            <div class="step">
+              <div class="step-num"></div>
+              <div class="step-body">
+                <h4>Enable USB Debugging</h4>
+                <p><strong>Settings &gt; About Phone</strong> &rarr; tap <strong>Build Number</strong> 7 times. Then <strong>Developer Options</strong> &rarr; enable <strong>USB Debugging</strong>.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num"></div>
+              <div class="step-body">
+                <h4>Connect via USB &amp; allow</h4>
+                <p>Plug in the device. Tap <strong>Allow</strong> on the "Allow USB debugging?" prompt. Windows may install USB drivers automatically.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num"></div>
+              <div class="step-body">
+                <h4>Verify <code>adb</code> is available</h4>
+                <div class="code-block">
+                  <div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">PowerShell</span></div>
+                  <pre><span class="prompt">&gt;</span> adb --version
+
+<span class="comment"># If "not recognized", adb is not in your PATH.</span>
+<span class="comment"># Common location on Windows:</span>
+<span class="prompt">&gt;</span> &amp; "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" --version</pre>
+                </div>
+                <div class="alert alert-info" style="margin-top: 0.5rem;">
+                  <span class="alert-icon">&#128161;</span>
+                  <div>If <code>adb</code> is not found, see the <a href="#prerequisites">Prerequisites</a> section to set <code>ANDROID_HOME</code> and add <code>platform-tools</code> to your PATH.</div>
+                </div>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num"></div>
+              <div class="step-body">
+                <h4>Get the UDID</h4>
+                <div class="code-block">
+                  <div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">PowerShell</span></div>
+                  <pre><span class="prompt">&gt;</span> adb devices
+List of devices attached
+<span class="tag">R5CWB231CKL</span>    device     <span class="comment"># &lt;-- This is your UDID</span></pre>
+                </div>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num"></div>
+              <div class="step-body">
+                <h4>Update <code>.env</code></h4>
+                <div class="code-block">
+                  <div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">.env</span></div>
+                  <pre>LOCAL_ANDROID_UDID=<span class="tag">R5CWB231CKL</span></pre>
+                </div>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num"></div>
+              <div class="step-body">
+                <h4>Clean old Appium helpers (first time only)</h4>
+                <p>If Appium was previously used on this device by a different machine, old UiAutomator2 packages may conflict. Clear them:</p>
+                <div class="code-block">
+                  <div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">PowerShell</span></div>
+                  <pre><span class="prompt">&gt;</span> adb uninstall io.appium.uiautomator2.server
+<span class="prompt">&gt;</span> adb uninstall io.appium.uiautomator2.server.test
+<span class="comment"># "Failure" is fine — means they weren't installed</span></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="prompt-card">
+            <button class="prompt-copy" onclick="copyPrompt(this)">Copy Prompt</button>
+            <div class="prompt-label">
+              <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              OR SKIP ALL THAT &mdash; PASTE THIS INTO CURSOR (WINDOWS)
+            </div>
+            <div class="prompt-text">I have an Android device connected via USB on Windows. Please:
+1. Check if `adb` is available on PATH. If not, look for it at %LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe or similar Android SDK locations
+2. Check that ANDROID_HOME and ANDROID_SDK_ROOT environment variables are set. If not, detect the Android SDK path and SET THEM PERMANENTLY using `setx` commands (not just for the session)
+3. Run `adb devices` to detect the connected device UDID
+4. Update my .env file: set LOCAL_ANDROID_UDID with the detected UDID
+5. Set USE_INSTALLED_APP=true and TEST_ENV=UAT in .env
+6. Uninstall old Appium UiAutomator2 packages to avoid signature conflicts:
+   - `adb uninstall io.appium.uiautomator2.server`
+   - `adb uninstall io.appium.uiautomator2.server.test`
+7. IMPORTANT: If you set env vars with `setx`, tell me I MUST RESTART Cursor completely for the changes to take effect
+8. Once restarted (if needed), run the test: `npx cross-env GREP=@Login npm run test:android`
+9. Confirm all updates and remind me to use `npx cross-env` syntax on Windows</div>
+            <p class="prompt-desc">Handles all Windows-specific setup: finds adb, sets ANDROID_HOME <strong>permanently</strong>, cleans old packages, updates .env, and reminds you to restart Cursor.</p>
+          </div>
+        </div>
+
+        <div class="check-anim" style="margin-top: 1rem;">
+          <svg viewBox="0 0 32 32"><circle class="check-circle" cx="16" cy="16" r="16"/><polyline class="check-path" points="9,17 14,22 23,11"/></svg>
+          <p>Android device connected and configured!</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== iOS TAB ==================== -->
+    <div class="tab-content" id="tab-ios">
+      <div class="alert alert-warning" style="margin-bottom: 1.5rem;">
+        <span class="alert-icon">&#127822;</span>
+        <div><strong>macOS only.</strong> iOS testing requires Xcode, Apple Developer tools, and WebDriverAgent &mdash; none of which are available on Windows.</div>
+      </div>
+
+      <div class="card animate-on-scroll">
+        <h3><span class="icon">&#128268;</span> iOS Device &amp; Xcode Setup</h3>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num"></div>
+            <div class="step-body">
+              <h4>Add an Apple Account in Xcode</h4>
+              <p>You need an Apple ID signed into Xcode to code-sign WebDriverAgent. <strong>Any personal Apple ID works</strong> &mdash; it does not have to be an Axos account or a paid developer account.</p>
+              <ol style="margin: 0.75rem 0 0 1.25rem; line-height: 2; color: var(--text-muted);">
+                <li>Open <strong>Xcode &rarr; Settings</strong> (or <kbd>&#8984;,</kbd>)</li>
+                <li>Go to the <strong>Accounts</strong> tab</li>
+                <li>Click the <strong>+</strong> button (bottom-left) &rarr; <strong>Apple ID</strong></li>
+                <li>Sign in with your Apple ID (personal is fine)</li>
+                <li>Once added, note the <strong>Team ID</strong> shown under your account &mdash; you&rsquo;ll need it for WDA setup</li>
+              </ol>
+              <div class="alert alert-info" style="margin-top:0.75rem;">
+                <span class="alert-icon">&#128161;</span>
+                <div>Free Apple IDs generate provisioning profiles that <strong>expire every ~7 days</strong>. The framework handles this automatically &mdash; see the note below about the auto-rebuild &amp; trust cycle.</div>
+              </div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num"></div>
+            <div class="step-body">
+              <h4>Enable Developer Mode (iOS 16+)</h4>
+              <p>On the device: <strong>Settings &rarr; Privacy &amp; Security &rarr; Developer Mode</strong> &rarr; toggle ON. The device will restart.</p>
+              <div class="alert alert-warning" style="margin-top:0.5rem;">
+                <span class="alert-icon">&#9888;&#65039;</span>
+                <div>Without Developer Mode, Appium <strong>cannot</strong> install or launch apps on the device.</div>
+              </div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num"></div>
+            <div class="step-body">
+              <h4>Connect via USB &amp; Trust</h4>
+              <p>Plug the iPhone into your Mac. Tap <strong>Trust</strong> on the "Trust This Computer?" dialog. Confirm the device appears in <strong>Xcode &rarr; Window &rarr; Devices and Simulators</strong>.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num"></div>
+            <div class="step-body">
+              <h4>Get UDID (choose one method)</h4>
+              <p><strong>Option A (Terminal):</strong></p>
+              <div class="code-block">
+                <div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">terminal</span></div>
+                <pre><span class="prompt">$</span> xcrun xctrace list devices
+== Devices ==
+iPhone (26.0.1) (<span class="tag">00008030-001A28462128202E</span>)   <span class="comment"># &lt;-- UDID</span></pre>
+              </div>
+              <p style="margin-top:0.75rem;"><strong>Option B (Xcode):</strong> Window &rarr; Devices and Simulators &rarr; Select your device &rarr; Copy the <strong>Identifier</strong> field.</p>
+              <p style="margin-top:0.75rem;"><strong>Option C (Finder):</strong> Click device in sidebar &rarr; click the subtitle text under the device name (it cycles: Serial &rarr; <strong>UDID</strong> &rarr; ECID).</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num"></div>
+            <div class="step-body">
+              <h4>Get iOS Version</h4>
+              <p>On the device: <strong>Settings &rarr; General &rarr; About</strong>. Note the <strong>Software Version</strong> (e.g. <code>26.0.1</code>).</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num"></div>
+            <div class="step-body">
+              <h4>Update <code>.env</code></h4>
+              <div class="code-block">
+                <div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">.env</span></div>
+                <pre>LOCAL_IOS_UDID=<span class="tag">00008030-001A28462128202E</span>
+LOCAL_IOS_PLATFORM_VERSION=<span class="tag">26.0.1</span></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="alert alert-info">
+          <span class="alert-icon">&#128161;</span>
+          <div><strong>iOS requires WDA (WebDriverAgent)</strong> to be pre-built. The framework auto-rebuilds WDA when the provisioning profile expires, so you only need to do the initial setup once. Expand the section below for manual steps, or use the AI Prompt to let Cursor do it for you automatically.</div>
+        </div>
+
+        <div class="alert alert-warning" style="margin-top: 1rem;">
+          <span class="alert-icon">&#128260;</span>
+          <div>
+            <strong>Every ~7 days: Trust the Developer Certificate</strong>
+            <p style="margin: 0.5rem 0 0 0; line-height: 1.7;">Free Apple Developer provisioning profiles expire approximately every 7 days. When this happens, the framework <strong>automatically rebuilds</strong> WebDriverAgent with a fresh profile and installs it on your device. Because it&rsquo;s a newly signed app, iOS will block it until you trust the developer certificate again.</p>
+            <p style="margin: 0.5rem 0 0 0; line-height: 1.7;">The framework detects this and <strong>stops the test run</strong> with a clear message telling you exactly what to do:</p>
+            <ol style="margin: 0.5rem 0 0 1.25rem; line-height: 2;">
+              <li>On your iPhone: <strong>Settings &rarr; General &rarr; VPN &amp; Device Management</strong></li>
+              <li>Tap your <strong>Apple Development</strong> certificate</li>
+              <li>Tap <strong>&ldquo;Trust&rdquo;</strong> and confirm</li>
+              <li>Re-run your tests &mdash; they will start normally</li>
+            </ol>
+            <p style="margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 0.88rem;">This is a normal part of iOS development with free Apple IDs. No action is needed until the framework tells you.</p>
+          </div>
+        </div>
+
+        <details id="ios-wda-setup" class="expandable-section" style="margin-top: 1rem;">
+          <summary>
+            WebDriverAgent (WDA) One-Time Setup
+            <span class="section-tag">iOS 17+ Required</span>
+          </summary>
+          <div class="expandable-body">
+            <div class="alert alert-info" style="margin-top: 0.5rem;">
+              <span class="alert-icon">&#128161;</span>
+              <div><strong>Why?</strong> Appium uses WDA (WebDriverAgent) to control iOS devices. WDA must be pre-built and code-signed with your Apple Developer account. The framework uses <code>xcodebuild</code> to install and launch WDA on every test run automatically.</div>
+            </div>
+
+            <div class="alert alert-success" style="margin-top: 0.75rem;">
+              <span class="alert-icon">&#9989;</span>
+              <div><strong>Auto-rebuild:</strong> The framework automatically checks your WDA provisioning profile before every run. If it&rsquo;s expired or about to expire (free profiles last ~7 days), WDA is rebuilt automatically &mdash; no manual steps needed after initial setup. After a rebuild, the framework stops and prompts you to trust the developer certificate on your device before continuing.</div>
+            </div>
+
+            <p style="font-weight:700; color: var(--navy); margin: 1.25rem 0 0.25rem;">Prerequisites</p>
+            <ul style="margin: 0 0 1rem 1.5rem; color: var(--text-muted); line-height: 2;">
+              <li>Xcode installed (version &ge; device iOS version)</li>
+              <li>Apple Developer account added to Xcode (free Apple ID works)</li>
+              <li>Developer Mode ON &amp; device visible in Xcode</li>
+            </ul>
+
+            <p style="font-weight:700; color: var(--navy); margin: 1.25rem 0 0.5rem;">Build WDA (one-time)</p>
+            <div class="code-block">
+              <div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">terminal</span></div>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+              <pre><span class="keyword">TEAM_ID</span>=<span class="string">"YOUR_TEAM_ID"</span>
+<span class="keyword">WDA_BUNDLE</span>=<span class="string">"com.yourname.wda.runner"</span>
+<span class="keyword">DERIVED</span>=<span class="string">"/Users/$USER/DerivedData/WDA"</span>
+<span class="keyword">WDA_PROJECT</span>=<span class="string">"$(find node_modules/appium-xcuitest-driver -name WebDriverAgent.xcodeproj -maxdepth 5 | head -1)"</span>
+
+<span class="prompt">$</span> xcodebuild build-for-testing \
+    -project "$WDA_PROJECT" -scheme WebDriverAgentRunner \
+    -destination "generic/platform=iOS" -derivedDataPath "$DERIVED" \
+    -allowProvisioningUpdates \
+    DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_IDENTITY="Apple Development" \
+    PRODUCT_BUNDLE_IDENTIFIER="$WDA_BUNDLE" CODE_SIGNING_ALLOWED=YES</pre>
+            </div>
+            <p style="color: var(--text-muted); font-size: 0.88rem; margin-top: 0.5rem;">If the device asks to trust the developer certificate: <strong>Settings &rarr; General &rarr; VPN &amp; Device Management</strong>.</p>
+
+            <p style="font-weight:700; color: var(--navy); margin: 1.25rem 0 0.5rem;">When to redo?</p>
+            <ul style="margin: 0 0 0.5rem 1.5rem; color: var(--text-muted); line-height: 2; font-size: 0.9rem;">
+              <li><strong>Free profile expired (7 days):</strong> Handled automatically &mdash; the framework rebuilds WDA on the next test run</li>
+              <li><strong>New device (same account):</strong> Update <code>.env</code> with new UDID &mdash; WDA is installed automatically</li>
+              <li><strong>Different Apple account:</strong> Rebuild WDA with the new Team ID</li>
+              <li><strong>Appium driver update:</strong> Rebuild WDA (use the AI prompt below)</li>
+              <li><strong>Normal daily runs:</strong> Nothing &mdash; just plug in and go</li>
+            </ul>
+          </div>
+        </details>
+
+        <p style="font-weight:700; color: var(--navy); margin: 1.5rem 0 0.5rem; font-size: 1.05rem;">Let Cursor do it for you</p>
+        <p style="color: var(--text-muted); margin-bottom: 0.75rem; font-size: 0.9rem;">Pick the prompt that matches your situation, copy it, and paste into Cursor.</p>
+
+        <div class="prompt-card">
+          <button class="prompt-copy" onclick="copyPrompt(this)">Copy Prompt</button>
+          <div class="prompt-label">
+            <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            DETECT DEVICE &amp; UPDATE .ENV
+          </div>
+          <div class="prompt-text">I have an iOS device connected via USB. Please:
+1. Run `xcrun xctrace list devices` (or `xcrun devicectl list devices` if xctrace fails) to detect the device
+2. Extract the UDID and iOS version from the output
+3. Update my .env file: set LOCAL_IOS_UDID and LOCAL_IOS_PLATFORM_VERSION with the detected values
+4. Make sure USE_INSTALLED_APP=true in .env (app is already installed on the device)
+5. Confirm the update and show me what was set</div>
+          <p class="prompt-desc">Use this every time you connect a new device. Just detects + updates .env.</p>
+        </div>
+
+        <div class="prompt-card" style="margin-top: 0.75rem;">
+          <button class="prompt-copy" onclick="copyPrompt(this)">Copy Prompt</button>
+          <div class="prompt-label">
+            <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            FIRST TIME ON THIS MAC? FULL WDA SETUP
+          </div>
+          <div class="prompt-text">I need to set up WebDriverAgent (WDA) for local iOS testing.
+
+Please do the full WDA setup:
+1. Find the WebDriverAgent.xcodeproj inside node_modules/appium-xcuitest-driver
+2. Get my device UDID from .env (LOCAL_IOS_UDID) or detect it
+3. Ask me for my Apple Developer Team ID (find it in Xcode > Settings > Accounts)
+4. Build WDA with xcodebuild build-for-testing using my Team ID, with derivedDataPath ~/DerivedData/WDA, destination "generic/platform=iOS", and CODE_SIGNING_ALLOWED=YES
+5. Update wdio.ios.conf.js capabilities (xcodeOrgId, updatedWDABundleId, prebuiltWDAPath, derivedDataPath) to match what was built
+6. Make sure usePreinstalledWDA is set to false in wdio.ios.conf.js (Appium uses xcodebuild to launch WDA)
+7. Run a quick test: GREP="@Sanity_Login" npm run test:ios
+
+Note: The framework has auto-rebuild built in (tools/ensure-wda.js). After initial setup, WDA is automatically rebuilt when the provisioning profile expires (~7 days for free accounts). When a rebuild happens, the framework will stop and tell you to trust the developer certificate on your iPhone (Settings > General > VPN &amp; Device Management) before re-running.</div>
+          <p class="prompt-desc">One-time setup (~5 min). Only needed once per Mac + Apple account.</p>
+        </div>
+
+        <div class="prompt-card" style="margin-top: 0.75rem;">
+          <button class="prompt-copy" onclick="copyPrompt(this)">Copy Prompt</button>
+          <div class="prompt-label">
+            <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            APPIUM DRIVER UPDATED? REBUILD WDA
+          </div>
+          <div class="prompt-text">My appium-xcuitest-driver was updated and I need to rebuild WDA.
+
+Please:
+1. Read wdio.ios.conf.js to get current xcodeOrgId, updatedWDABundleId, and derivedDataPath
+2. Find WebDriverAgent.xcodeproj in node_modules
+3. Rebuild WDA with xcodebuild build-for-testing using those values, destination "generic/platform=iOS", CODE_SIGNING_ALLOWED=YES
+4. Verify with a quick test run: GREP="@Sanity_Login" npm run test:ios
+
+Note: You do NOT need to rebuild for expired provisioning profiles — the framework auto-rebuilds WDA when the profile expires (see tools/ensure-wda.js). This prompt is only for when the Appium driver itself is updated.</div>
+          <p class="prompt-desc">Only needed after npm update changes appium-xcuitest-driver. Profile expiry is handled automatically.</p>
+        </div>
+
+        <div class="check-anim" style="margin-top: 1rem;">
+          <svg viewBox="0 0 32 32"><circle class="check-circle" cx="16" cy="16" r="16"/><polyline class="check-path" points="9,17 14,22 23,11"/></svg>
+          <p>iOS device connected and configured!</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- CONNECTING A DIFFERENT DEVICE -->
+<!-- ============================================================ -->
+<section id="changing-device" style="background: rgba(30,56,96,0.02);">
+  <div class="container">
+    <div class="section-header animate-on-scroll">
+      <div class="badge">Device Swap</div>
+      <h2>Connecting a Different Device</h2>
+      <p>When you plug in a new phone, here's exactly what to update.</p>
+    </div>
+
+    <details class="expandable-section animate-on-scroll">
+    <summary>Show Android &amp; iOS device swap steps</summary>
+    <div class="expandable-body">
+    <div class="grid-2">
+      <div class="card animate-on-scroll">
+        <h3><span class="icon">&#129302;</span> New Android Device</h3>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num"></div>
+            <div class="step-body">
+              <h4>Get the new UDID</h4>
+              <div class="code-block">
+                <div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">terminal</span></div>
+                <pre><span class="prompt">$</span> adb devices</pre>
+              </div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num"></div>
+            <div class="step-body">
+              <h4>Update <code>.env</code></h4>
+              <p>Change <strong>one line</strong>:</p>
+              <div class="code-block">
+                <div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">.env</span></div>
+                <pre>LOCAL_ANDROID_UDID=<span class="tag">NEW_UDID_HERE</span></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="alert alert-success">
+          <span class="alert-icon">&#10004;&#65039;</span>
+          <div>That's it. Just <strong>1 value</strong> to change for Android.</div>
+        </div>
+      </div>
+
+      <div class="card animate-on-scroll">
+        <h3><span class="icon">&#127822;</span> New iOS Device <span class="platform-badge mac-only">Mac Only</span></h3>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num"></div>
+            <div class="step-body">
+              <h4>Get the new UDID</h4>
+              <div class="code-block">
+                <div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">terminal</span></div>
+                <pre><span class="prompt">$</span> xcrun xctrace list devices</pre>
+              </div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num"></div>
+            <div class="step-body">
+              <h4>Update <code>.env</code> (2 values)</h4>
+              <div class="code-block">
+                <div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">.env</span></div>
+                <pre>LOCAL_IOS_UDID=<span class="tag">NEW_UDID</span>
+LOCAL_IOS_PLATFORM_VERSION=<span class="tag">XX.X</span></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="alert alert-success">
+          <span class="alert-icon">&#10004;&#65039;</span>
+          <div>That's it. Just <strong>2 values</strong> to change for iOS.</div>
+        </div>
+      </div>
+    </div>
+    </div><!-- expandable-body -->
+    </details><!-- device swap -->
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- RUNNING TESTS -->
+<!-- ============================================================ -->
+<section id="running-tests">
+  <div class="container">
+    <div class="section-header animate-on-scroll">
+      <div class="badge">The Fun Part</div>
+      <h2>Running Tests</h2>
+      <p>Plug in, pick a tag, run. Change the <code>GREP</code> value to target different test groups.</p>
+    </div>
+
+    <div class="card animate-on-scroll">
+      <details class="expandable-section">
+      <summary><span class="icon">&#9889;</span> Local &mdash; Android</summary>
+      <div class="expandable-body">
+      <p style="margin-bottom: 0.75rem; color: var(--text-muted);">Works on <strong>macOS</strong> and <strong>Windows</strong>. Change the tag after <code>GREP=</code> to run different tests.</p>
+
+      <div class="os-tabs" id="androidRunOsTabs">
+        <button class="active" onclick="switchOsTab('androidRun','mac')">macOS / Linux</button>
+        <button onclick="switchOsTab('androidRun','win')">Windows (CMD)</button>
+      </div>
+
+      <div class="os-content active" id="androidRun-mac">
+        <span class="cmd-label">Sanity &mdash; Login only</span>
+        <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>GREP="@Sanity_Login" npm run test:android</pre></div>
+        <span class="cmd-label">Sanity &mdash; Bank only</span>
+        <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>GREP="@Sanity_Bank" npm run test:android</pre></div>
+        <span class="cmd-label">All Sanity tests</span>
+        <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>GREP="@Sanity" npm run test:android</pre></div>
+        <span class="cmd-label">Regression &mdash; Bank</span>
+        <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>GREP="@Regression_Bank" npm run test:android</pre></div>
+        <span class="cmd-label">Run ALL tests (no filter)</span>
+        <div class="code-block" style="margin:0;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>npm run test:android</pre></div>
+      </div>
+
+      <div class="os-content" id="androidRun-win">
+        <span class="cmd-label">Sanity &mdash; Login only</span>
+        <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>npx cross-env GREP=@Sanity_Login npm run test:android</pre></div>
+        <span class="cmd-label">Sanity &mdash; Bank only</span>
+        <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>npx cross-env GREP=@Sanity_Bank npm run test:android</pre></div>
+        <span class="cmd-label">All Sanity tests</span>
+        <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>npx cross-env GREP=@Sanity npm run test:android</pre></div>
+        <span class="cmd-label">Regression &mdash; Bank</span>
+        <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>npx cross-env GREP=@Regression_Bank npm run test:android</pre></div>
+        <span class="cmd-label">Run ALL tests (no filter)</span>
+        <div class="code-block" style="margin:0;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>npm run test:android</pre></div>
+      </div>
+
+    </div><!-- expandable-body -->
+    </details><!-- Local Android -->
+    </div>
+
+    <div class="card animate-on-scroll">
+      <details class="expandable-section">
+      <summary><span class="icon">&#127822;</span> Local &mdash; iOS <span class="platform-badge mac-only">Mac Only</span></summary>
+      <div class="expandable-body">
+      <p style="margin-bottom: 0.75rem; color: var(--text-muted);">Same pattern, just swap <code>test:android</code> for <code>test:ios</code>.</p>
+
+      <span class="cmd-label">Sanity &mdash; Login only</span>
+      <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>GREP="@Sanity_Login" npm run test:ios</pre></div>
+      <span class="cmd-label">Sanity &mdash; Bank only</span>
+      <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>GREP="@Sanity_Bank" npm run test:ios</pre></div>
+      <span class="cmd-label">All Sanity tests</span>
+      <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>GREP="@Sanity" npm run test:ios</pre></div>
+      <span class="cmd-label">Regression &mdash; Bank</span>
+      <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>GREP="@Regression_Bank" npm run test:ios</pre></div>
+      <span class="cmd-label">Run ALL tests (no filter)</span>
+      <div class="code-block" style="margin:0;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>npm run test:ios</pre></div>
+    </div><!-- expandable-body -->
+    </details><!-- Local iOS -->
+    </div>
+
+    <div class="card animate-on-scroll">
+      <details class="expandable-section">
+      <summary><span class="icon">&#9729;&#65039;</span> BrowserStack</summary>
+      <div class="expandable-body">
+      <p style="margin-bottom: 0.75rem; color: var(--text-muted);">Works on <strong>macOS</strong> and <strong>Windows</strong>. Split + run in one command &mdash; change the <code>--grep</code> tag to target different tests.</p>
+
+      <div style="display: inline-block; background: var(--orange); color: var(--navy); font-weight: 700; font-size: 0.78rem; padding: 3px 10px; border-radius: 20px; margin-bottom: 0.75rem; letter-spacing: 0.3px;">RECOMMENDED</div>
+      <p style="color: var(--text-muted); font-size: 0.88rem; margin: 0 0 1rem;">The <code>split</code> command breaks each <code>it()</code> into its own spec file so BrowserStack can run them across multiple devices <strong>in parallel</strong> instead of sequentially on one device. Temp files are cleaned up automatically after the run.</p>
+
+      <div class="os-tabs" id="bsRunOsTabs">
+        <button class="active" onclick="switchOsTab('bsRun','mac')">macOS / Linux</button>
+        <button onclick="switchOsTab('bsRun','win')">Windows (CMD)</button>
+      </div>
+
+      <div class="os-content active" id="bsRun-mac">
+        <p style="font-weight:600; color: var(--navy); margin: 0.5rem 0 0.25rem;">Android</p>
+        <span class="cmd-label">Sanity &mdash; Login only</span>
+        <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>npm run split -- --grep "@Sanity_Login" && npm run bs:android:parallel</pre></div>
+        <span class="cmd-label">Sanity &mdash; Bank only</span>
+        <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>npm run split -- --grep "@Sanity_Bank" && npm run bs:android:parallel</pre></div>
+        <span class="cmd-label">All Sanity tests</span>
+        <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>npm run split -- --grep "@Sanity" && npm run bs:android:parallel</pre></div>
+        <span class="cmd-label">Regression &mdash; Bank</span>
+        <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>npm run split -- --grep "@Regression_Bank" && npm run bs:android:parallel</pre></div>
+        <span class="cmd-label">Run ALL tests (no filter)</span>
+        <div class="code-block" style="margin:0 0 1.25rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>npm run split && npm run bs:android:parallel</pre></div>
+
+        <p style="font-weight:600; color: var(--navy); margin: 0.5rem 0 0.25rem;">iOS</p>
+        <span class="cmd-label">Sanity &mdash; Login only</span>
+        <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>npm run split -- --grep "@Sanity_Login" && npm run bs:ios:parallel</pre></div>
+        <span class="cmd-label">Sanity &mdash; Bank only</span>
+        <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>npm run split -- --grep "@Sanity_Bank" && npm run bs:ios:parallel</pre></div>
+        <span class="cmd-label">All Sanity tests</span>
+        <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>npm run split -- --grep "@Sanity" && npm run bs:ios:parallel</pre></div>
+        <span class="cmd-label">Regression &mdash; Invest</span>
+        <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>npm run split -- --grep "@Regression_Invest" && npm run bs:ios:parallel</pre></div>
+        <span class="cmd-label">Run ALL tests (no filter)</span>
+        <div class="code-block" style="margin:0;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>npm run split && npm run bs:ios:parallel</pre></div>
+      </div>
+
+      <div class="os-content" id="bsRun-win">
+        <p style="font-weight:600; color: var(--navy); margin: 0.5rem 0 0.25rem;">Android</p>
+        <span class="cmd-label">Sanity &mdash; Login only</span>
+        <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>npm run split -- --grep "@Sanity_Login" &amp;&amp; npm run bs:android:parallel</pre></div>
+        <span class="cmd-label">Sanity &mdash; Bank only</span>
+        <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>npm run split -- --grep "@Sanity_Bank" &amp;&amp; npm run bs:android:parallel</pre></div>
+        <span class="cmd-label">All Sanity tests</span>
+        <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>npm run split -- --grep "@Sanity" &amp;&amp; npm run bs:android:parallel</pre></div>
+        <span class="cmd-label">Regression &mdash; Bank</span>
+        <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>npm run split -- --grep "@Regression_Bank" &amp;&amp; npm run bs:android:parallel</pre></div>
+        <span class="cmd-label">Run ALL tests (no filter)</span>
+        <div class="code-block" style="margin:0 0 1.25rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>npm run split &amp;&amp; npm run bs:android:parallel</pre></div>
+
+        <p style="font-weight:600; color: var(--navy); margin: 0.5rem 0 0.25rem;">iOS</p>
+        <span class="cmd-label">Sanity &mdash; Login only</span>
+        <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>npm run split -- --grep "@Sanity_Login" &amp;&amp; npm run bs:ios:parallel</pre></div>
+        <span class="cmd-label">Sanity &mdash; Bank only</span>
+        <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>npm run split -- --grep "@Sanity_Bank" &amp;&amp; npm run bs:ios:parallel</pre></div>
+        <span class="cmd-label">All Sanity tests</span>
+        <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>npm run split -- --grep "@Sanity" &amp;&amp; npm run bs:ios:parallel</pre></div>
+        <span class="cmd-label">Regression &mdash; Invest</span>
+        <div class="code-block" style="margin:0 0 0.75rem;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>npm run split -- --grep "@Regression_Invest" &amp;&amp; npm run bs:ios:parallel</pre></div>
+        <span class="cmd-label">Run ALL tests (no filter)</span>
+        <div class="code-block" style="margin:0;"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>npm run split &amp;&amp; npm run bs:ios:parallel</pre></div>
+      </div>
+    </div><!-- expandable-body -->
+    </details><!-- BrowserStack -->
+    </div>
+
+    <div class="card animate-on-scroll">
+      <details class="expandable-section">
+      <summary><span class="icon">&#9881;&#65039;</span> How It Works</summary>
+      <div class="expandable-body">
+
+      <details class="expandable-section">
+        <summary>Execution Flow</summary>
+        <div class="expandable-body">
+          <p>When you run with a GREP tag, here's the exact flow:</p>
+          <div class="flow">
+            <div class="flow-node orange">GREP filter</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-node">Load matching specs</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-node">Start Appium</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-node orange">Create session</div>
+          </div>
+          <div class="flow">
+            <div class="flow-node">Run test 1</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-node orange">afterTest: reload</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-node">Run test 2</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-node orange">afterTest: reload</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-node success">Done</div>
+          </div>
+          <div class="alert alert-info" style="margin-top:1.5rem;">
+            <span class="alert-icon">&#128161;</span>
+            <div><strong>Two layers of GREP filtering:</strong><br>
+            <strong>Layer 1 (spec files):</strong> The shared config scans all spec file <em>contents</em> for the GREP pattern &mdash; only matching files are loaded.<br>
+            <strong>Layer 2 (test titles):</strong> Mocha's <code>grep</code> option filters individual <code>it()</code> titles &mdash; only matching tests execute.</div>
+          </div>
+        </div>
+      </details>
+
+      <details class="expandable-section" style="margin-top: 0.75rem;">
+        <summary>Fresh App Guarantee</summary>
+        <div class="expandable-body">
+          <p>After <strong>every single test</strong> (pass or fail), the local <code>afterTest</code> hook calls <code>browser.reloadSession()</code>. This:</p>
+          <ul style="margin: 1rem 0 0 1.5rem; color: var(--text-muted);">
+            <li>Terminates the current Appium session (kills the app)</li>
+            <li>Creates a brand new session with <code>noReset: false</code></li>
+            <li>Clears app data (Android: <code>pm clear</code>, iOS: sandbox wipe)</li>
+            <li>Launches the app from the very beginning (sign-in screen)</li>
+          </ul>
+          <div class="alert alert-success" style="margin-top: 1rem;">
+            <span class="alert-icon">&#10004;&#65039;</span>
+            <div>Every test &mdash; and every retry &mdash; <strong>always starts from scratch</strong>. No leaked state.</div>
+          </div>
+        </div>
+      </details>
+
+      <details class="expandable-section" style="margin-top: 0.75rem;">
+        <summary>Retry Behavior (RETRIES in .env)</summary>
+        <div class="expandable-body">
+          <div class="flow">
+            <div class="flow-node">Test runs</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-node danger">FAIL</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-node orange">screenshot + reload</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-node">Retry 1 (fresh app)</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-node success">PASS = flaky</div>
+          </div>
+
+          <div style="margin-top:1.5rem;">
+            <table class="ref-table">
+              <thead>
+                <tr><th>Scenario</th><th>What Happens</th><th>Allure Label</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Pass on 1st attempt</td>
+                  <td>Session reloads for next test</td>
+                  <td><span class="tag" style="background:var(--success);">passed</span></td>
+                </tr>
+                <tr>
+                  <td>Fail, retry passes</td>
+                  <td>App restarts, retry runs on fresh state</td>
+                  <td><span class="tag" style="background:var(--warning);">flaky</span></td>
+                </tr>
+                <tr>
+                  <td>Fail, retry also fails</td>
+                  <td>Marked as failed, moves to next test</td>
+                  <td><span class="tag" style="background:var(--danger);">failed</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="alert alert-info" style="margin-top:1rem;">
+            <span class="alert-icon">&#128204;</span>
+            <div>
+              <strong>Key:</strong> Only the specific failed <code>it()</code> is retried &mdash; not the entire file.<br>
+              <strong>Config:</strong> <code>RETRIES=1</code> in <code>.env</code> &rarr; each test gets <strong>1 retry</strong> on failure.<br>
+              <strong>Change it:</strong> Set <code>RETRIES=2</code> for 2 retries, <code>RETRIES=0</code> for none.
+            </div>
+          </div>
+        </div>
+      </details>
+    </div><!-- expandable-body -->
+    </details><!-- How It Works -->
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- REPORTS -->
+<!-- ============================================================ -->
+<section id="reports">
+  <div class="container">
+    <div class="section-header animate-on-scroll">
+      <div class="badge">Results</div>
+      <h2>Viewing Your Report</h2>
+      <p>Every local run generates an <strong>Allure report</strong> with screenshots, flaky markers, and timing data.</p>
+    </div>
+
+    <div class="card animate-on-scroll">
+      <details class="expandable-section">
+      <summary><span class="icon">&#128202;</span> Generate &amp; Open</summary>
+      <div class="expandable-body">
+      <p>After your run finishes:</p>
+      <div class="code-block">
+        <div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">terminal</span></div>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="comment"># Generate static report and open it in your browser</span>
+<span class="prompt">$</span> npm run allure:generate && npm run allure:open
+
+<span class="comment"># OR quick one-shot (serves from allure-results directly)</span>
+<span class="prompt">$</span> npm run allure:serve</pre>
+      </div>
+
+      <div class="alert alert-info" style="margin-top: 1rem;">
+        <span class="alert-icon">&#128193;</span>
+        <div>
+          <strong>Where do reports live?</strong><br>
+          <code>allure-results/</code> &mdash; raw JSON data (auto-cleaned on each run by <code>onPrepare</code>). Each run wipes the previous results so your report only shows the latest execution.<br>
+          <code>allure-report/</code> &mdash; generated HTML (created by <code>allure:generate</code>)
+        </div>
+      </div>
+      <div class="alert alert-success" style="margin-top: 0.5rem;">
+        <span class="alert-icon">&#10004;&#65039;</span>
+        <div><strong>No stale data:</strong> Both the Android and iOS configs auto-clean <code>allure-results/</code> before each run, and write platform-specific environment metadata (device name, OS version, platform). You'll never see leftover Android results in an iOS report or vice-versa.</div>
+      </div>
+    </div><!-- expandable-body -->
+    </details><!-- Generate & Open -->
+    </div>
+
+    <div class="card animate-on-scroll">
+      <details class="expandable-section">
+      <summary><span class="icon">&#127912;</span> What's in the Report</summary>
+      <div class="expandable-body">
+      <div class="grid-2" style="margin-top:1rem;">
+        <div>
+          <p style="font-weight:700; color: var(--navy); margin-bottom: 0.75rem;">Per-test details</p>
+          <ul style="margin-left: 1.25rem; color: var(--text-muted); line-height: 2.2;">
+            <li>Pass / Fail / Flaky status</li>
+            <li>Failure <strong>screenshots</strong> (attached automatically)</li>
+            <li>Retry count &amp; flaky label</li>
+            <li>Execution time per test</li>
+            <li>Full error stack traces</li>
+          </ul>
+        </div>
+        <div>
+          <p style="font-weight:700; color: var(--navy); margin-bottom: 0.75rem;">Environment metadata</p>
+          <ul style="margin-left: 1.25rem; color: var(--text-muted); line-height: 2.2;">
+            <li>Platform (Android / iOS)</li>
+            <li>Device name &amp; OS version</li>
+            <li>Build name &amp; timestamp</li>
+            <li>Test environment (UAT, QA, etc.)</li>
+            <li>Retry setting value</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="spinner-demo" style="margin-top: 1.5rem;">
+        <div class="spinner"></div>
+        <p>Report generating... this takes ~2 seconds</p>
+      </div>
+      <div class="check-anim">
+        <svg viewBox="0 0 32 32"><circle class="check-circle" cx="16" cy="16" r="16"/><polyline class="check-path" points="9,17 14,22 23,11"/></svg>
+        <p>Report ready &mdash; opens automatically in your default browser!</p>
+      </div>
+    </div><!-- expandable-body -->
+    </details><!-- What's in the Report -->
+    </div>
+
+    <div class="card animate-on-scroll">
+      <details class="expandable-section">
+      <summary><span class="icon">&#128230;</span> Sharing Reports with Your Team</summary>
+      <div class="expandable-body">
+      <p>Allure reports use JavaScript to load data, so <strong>double-clicking <code>index.html</code> won't work</strong> &mdash; browsers block <code>file://</code> fetch requests. You need to either zip and share, or serve it locally.</p>
+
+      <p style="font-weight:700; color: var(--navy); margin: 1.25rem 0 0.5rem;">Step 1 &mdash; Generate &amp; zip (sender)</p>
+      <div class="code-block">
+        <div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">terminal</span></div>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="comment"># Generate the report from the latest run</span>
+<span class="prompt">$</span> npm run allure:generate
+
+<span class="comment"># Zip the report folder (timestamped so each zip is unique)</span>
+<span class="prompt">$</span> zip -r "allure-report_$(date +%Y-%m-%d_%H%M%S).zip" allure-report/</pre>
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.88rem; margin-top: 0.5rem;">Creates a file like <code>allure-report_2026-02-11_143052.zip</code> in the project root. Send it via Slack, email, Teams, etc.</p>
+
+      <div class="alert alert-warning" style="margin-top: 1rem;">
+        <span class="alert-icon">&#9888;&#65039;</span>
+        <div><strong>Do this before your next test run.</strong> Each run wipes <code>allure-results/</code>, so if you don&rsquo;t generate + zip first, the previous report is gone.</div>
+      </div>
+
+      <p style="font-weight:700; color: var(--navy); margin: 1.25rem 0 0.5rem;">Step 2 &mdash; View it (receiver)</p>
+      <p style="color: var(--text-muted); margin-bottom: 0.75rem;">Unzip the file, then serve it with a local web server (one command):</p>
+
+      <div class="os-tabs" id="shareOsTabs">
+        <button class="active" onclick="switchOsTab('share','mac')">macOS / Linux</button>
+        <button onclick="switchOsTab('share','win')">Windows</button>
+      </div>
+
+      <div class="os-content active" id="share-mac">
+        <div class="code-block">
+          <div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">terminal</span></div>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <pre><span class="comment"># Unzip (use the actual filename you received)</span>
+<span class="prompt">$</span> unzip allure-report_2026-02-11_143052.zip
+
+<span class="comment"># Serve it (Python is pre-installed on macOS)</span>
+<span class="prompt">$</span> cd allure-report && python3 -m http.server 8080
+
+<span class="comment"># Open in browser</span>
+<span class="prompt">$</span> open http://localhost:8080</pre>
+        </div>
+      </div>
+
+      <div class="os-content" id="share-win">
+        <div class="code-block">
+          <div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">PowerShell</span></div>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <pre><span class="comment"># Unzip (PowerShell)</span>
+<span class="prompt">&gt;</span> Expand-Archive allure-report_2026-02-11_143052.zip -DestinationPath allure-report
+
+<span class="comment"># Serve it (Python or npx — use whichever is available)</span>
+<span class="prompt">&gt;</span> cd allure-report; python -m http.server 8080
+
+<span class="comment"># OR if Python is not installed:</span>
+<span class="prompt">&gt;</span> npx serve allure-report
+
+<span class="comment"># Then open http://localhost:8080 in your browser</span></pre>
+        </div>
+      </div>
+
+      <div class="alert alert-info" style="margin-top: 1rem;">
+        <span class="alert-icon">&#128161;</span>
+        <div><strong>Why can't I just open <code>index.html</code>?</strong> Allure loads test data via JavaScript <code>fetch()</code> calls. Browsers block these on <code>file://</code> URLs for security reasons. A tiny local web server (<code>python3 -m http.server</code>) serves the files over <code>http://localhost</code>, which browsers allow.</div>
+      </div>
+
+      <div class="alert alert-info" style="margin-top: 0.5rem;">
+        <span class="alert-icon">&#128204;</span>
+        <div><strong>If the receiver has Node.js</strong> but not Python, <code>npx serve allure-report</code> works just as well (no install needed, npx downloads it on the fly).</div>
+      </div>
+    </div><!-- expandable-body -->
+    </details><!-- Sharing Reports -->
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- REFERENCE -->
+<!-- ============================================================ -->
+<section id="reference">
+  <div class="container">
+    <div class="section-header animate-on-scroll">
+      <div class="badge">Reference</div>
+      <h2>Environment Variables</h2>
+    </div>
+
+    <details class="expandable-section animate-on-scroll">
+    <summary>Every <code>.env</code> variable that affects local execution</summary>
+    <div class="expandable-body">
+
+    <div class="card" style="padding: 0; overflow: hidden;">
+      <table class="ref-table">
+        <thead>
+          <tr><th>Variable</th><th>Purpose</th><th>Example</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>TEST_ENV</code></td>
+            <td>Which environment to target (qa, UAT, stg, prod)</td>
+            <td><code>UAT</code></td>
+          </tr>
+          <tr>
+            <td><code>USE_INSTALLED_APP</code></td>
+            <td><code>true</code> = use app already on device (bundleId/appPackage).<br><code>false</code> = install APK/IPA from disk.</td>
+            <td><code>true</code></td>
+          </tr>
+          <tr>
+            <td><code>LOCAL_ANDROID_UDID</code></td>
+            <td>Android device serial (from <code>adb devices</code>)</td>
+            <td><code>RFCTA0GW7SK</code></td>
+          </tr>
+          <tr>
+            <td><code>LOCAL_IOS_UDID</code></td>
+            <td>iOS device UDID (from <code>xctrace</code>) <span class="platform-badge mac-only">Mac</span></td>
+            <td><code>00008030-001A...</code></td>
+          </tr>
+          <tr>
+            <td><code>LOCAL_IOS_PLATFORM_VERSION</code></td>
+            <td>iOS version on the device <span class="platform-badge mac-only">Mac</span></td>
+            <td><code>26.0.1</code></td>
+          </tr>
+          <tr>
+            <td><code>RETRIES</code></td>
+            <td>Number of Mocha-level retries per failed <code>it()</code></td>
+            <td><code>1</code></td>
+          </tr>
+          <tr>
+            <td><code>ANDROID_APP</code></td>
+            <td>Path to local APK (only when <code>USE_INSTALLED_APP=false</code>)</td>
+            <td><code>/path/to/app.apk</code></td>
+          </tr>
+          <tr>
+            <td><code>IOS_APP</code></td>
+            <td>Path to local IPA/APP (only when <code>USE_INSTALLED_APP=false</code>) <span class="platform-badge mac-only">Mac</span></td>
+            <td><code>/path/to/app.ipa</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card" style="margin-top: 1.5rem; padding: 0; overflow: hidden;">
+      <table class="ref-table">
+        <thead>
+          <tr><th>System Variable</th><th>Purpose</th><th>How to Set</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>ANDROID_HOME</code></td>
+            <td>Android SDK location (required for Appium)</td>
+            <td>Mac: <code>~/Library/Android/sdk</code><br>Win: <code>%LOCALAPPDATA%\Android\Sdk</code></td>
+          </tr>
+          <tr>
+            <td><code>JAVA_HOME</code></td>
+            <td>Java JDK location (required for Appium)</td>
+            <td>Mac: <code>/usr/libexec/java_home</code> output<br>Win: JDK install path</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card" style="margin-top: 1.5rem;">
+      <h3><span class="icon">&#128736;</span> Config File Map</h3>
+      <div class="grid-2" style="margin-top:1rem;">
+        <div>
+          <p style="font-weight:700; color: var(--navy); margin-bottom: 0.5rem;">Local Execution</p>
+          <ul style="margin-left: 1.25rem; color: var(--text-muted); line-height: 2;">
+            <li><code>configs/wdio.android.conf.js</code> &rarr; local Android</li>
+            <li><code>configs/wdio.ios.conf.js</code> &rarr; local iOS</li>
+            <li><code>configs/wdio.shared.conf.js</code> &rarr; shared base (hooks, suites, retries)</li>
+          </ul>
+        </div>
+        <div>
+          <p style="font-weight:700; color: var(--navy); margin-bottom: 0.5rem;">BrowserStack Execution</p>
+          <ul style="margin-left: 1.25rem; color: var(--text-muted); line-height: 2;">
+            <li><code>configs/wdio.bs.android.conf.js</code></li>
+            <li><code>configs/wdio.bs.ios.conf.js</code></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    </div><!-- expandable-body -->
+    </details><!-- Environment Variables -->
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- TROUBLESHOOTING -->
+<!-- ============================================================ -->
+<section id="troubleshooting" style="background: rgba(30,56,96,0.02);">
+  <div class="container">
+    <div class="section-header animate-on-scroll">
+      <div class="badge">Help</div>
+      <h2>Troubleshooting</h2>
+    </div>
+
+    <details class="expandable-section animate-on-scroll">
+    <summary>Common issues &amp; fixes</summary>
+    <div class="expandable-body">
+
+    <div class="alert alert-info" style="margin-bottom: 1.5rem;">
+      <span class="alert-icon">&#129302;</span>
+      <div><strong>Easiest fix?</strong> Copy the error message, paste it into Cursor, and ask the AI to help. It already knows this project's setup and can usually solve it in seconds.</div>
+    </div>
+
+    <div class="card animate-on-scroll">
+      <h3><span class="icon">&#128165;</span> Common Issues &mdash; All Platforms</h3>
+
+      <details style="margin-bottom: 1rem;">
+        <summary style="cursor:pointer; font-weight:600; padding: 0.5rem 0;">Appium server fails to start on port 4723</summary>
+        <div style="padding: 0.5rem 0 0 1rem; color: var(--text-muted);">
+          <p>Another Appium instance is already running. Kill it:</p>
+          <p style="font-weight:600; margin-top:0.5rem;">macOS:</p>
+          <div class="code-block"><div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">terminal</span></div>
+          <pre><span class="prompt">$</span> lsof -i :4723
+<span class="prompt">$</span> kill -9 &lt;PID&gt;</pre></div>
+          <p style="font-weight:600; margin-top:0.5rem;">Windows:</p>
+          <div class="code-block"><div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">PowerShell</span></div>
+          <pre><span class="prompt">&gt;</span> netstat -ano | findstr :4723
+<span class="prompt">&gt;</span> taskkill /PID &lt;PID&gt; /F</pre></div>
+        </div>
+      </details>
+
+      <details style="margin-bottom: 1rem;">
+        <summary style="cursor:pointer; font-weight:600; padding: 0.5rem 0;">No tests run (0 passing)</summary>
+        <div style="padding: 0.5rem 0 0 1rem; color: var(--text-muted);">
+          <p>Your GREP pattern doesn't match any test titles. Tags are <strong>case-sensitive</strong>: <code>@Sanity_Login</code> is not <code>@sanity_login</code>.</p>
+        </div>
+      </details>
+
+      <details style="margin-bottom: 1rem;">
+        <summary style="cursor:pointer; font-weight:600; padding: 0.5rem 0;">reloadSession keeps failing</summary>
+        <div style="padding: 0.5rem 0 0 1rem; color: var(--text-muted);">
+          <p>Usually the device disconnected or the app crashed hard. Check USB. The error is caught and logged &mdash; the next test will try to create a fresh session anyway.</p>
+        </div>
+      </details>
+    </div>
+
+    <div class="card animate-on-scroll">
+      <h3><span class="icon">&#129302;</span> Android Issues</h3>
+
+      <details style="margin-bottom: 1rem;">
+        <summary style="cursor:pointer; font-weight:600; padding: 0.5rem 0;">"device not found" or "unauthorized"</summary>
+        <div style="padding: 0.5rem 0 0 1rem; color: var(--text-muted);">
+          <p>Ensure USB debugging is enabled and you've tapped "Allow" on the device. Try:</p>
+          <div class="code-block"><div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">terminal</span></div>
+          <pre><span class="prompt">$</span> adb kill-server && adb start-server && adb devices</pre></div>
+        </div>
+      </details>
+
+      <details style="margin-bottom: 1rem;">
+        <summary style="cursor:pointer; font-weight:600; padding: 0.5rem 0;">UiAutomator2 signature mismatch</summary>
+        <div style="padding: 0.5rem 0 0 1rem; color: var(--text-muted);">
+          <p>Appium's helper app on the device was installed by a different machine with a different signing key. Fix:</p>
+          <div class="code-block"><div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">terminal</span></div>
+          <pre><span class="prompt">$</span> adb uninstall io.appium.uiautomator2.server
+<span class="prompt">$</span> adb uninstall io.appium.uiautomator2.server.test
+<span class="comment"># Then re-run your test &mdash; Appium will reinstall them</span></pre></div>
+        </div>
+      </details>
+
+      <details style="margin-bottom: 1rem;">
+        <summary style="cursor:pointer; font-weight:600; padding: 0.5rem 0;">ANDROID_HOME not set (Appium can't find SDK)</summary>
+        <div style="padding: 0.5rem 0 0 1rem; color: var(--text-muted);">
+          <p>Appium needs <code>ANDROID_HOME</code> to locate SDK tools. See the <a href="#prerequisites">Prerequisites</a> section for setup instructions for your OS.</p>
+        </div>
+      </details>
+    </div>
+
+    <div class="card animate-on-scroll">
+      <h3><span class="icon">&#127987;&#65039;</span> Windows-Specific Issues</h3>
+
+      <details style="margin-bottom: 1rem;">
+        <summary style="cursor:pointer; font-weight:600; padding: 0.5rem 0;">GREP="..." npm run doesn't work</summary>
+        <div style="padding: 0.5rem 0 0 1rem; color: var(--text-muted);">
+          <p><code>GREP="@Tag" npm run test:android</code> is <strong>Bash/Unix syntax</strong>. It will silently fail or error in PowerShell and CMD.</p>
+          <p style="margin-top:0.5rem;"><strong>Fix:</strong> Always use <code>cross-env</code> on Windows:</p>
+          <div class="code-block"><div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">PowerShell / CMD</span></div>
+          <pre><span class="prompt">&gt;</span> npx cross-env GREP=@Sanity_Login npm run test:android</pre></div>
+          <p style="margin-top:0.5rem;">Or use the built-in scripts that already use <code>cross-env</code>: <code>npm run test:android:sanity</code></p>
+        </div>
+      </details>
+
+      <details style="margin-bottom: 1rem;">
+        <summary style="cursor:pointer; font-weight:600; padding: 0.5rem 0;">adb: "not recognized as a command"</summary>
+        <div style="padding: 0.5rem 0 0 1rem; color: var(--text-muted);">
+          <p><code>adb</code> is not in your system PATH. Either:</p>
+          <ul style="margin: 0.5rem 0 0 1.5rem; line-height: 2;">
+            <li>Use the full path: <code>%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe</code></li>
+            <li>Or add <code>platform-tools</code> to your PATH permanently (see <a href="#prerequisites">Prerequisites</a>)</li>
+          </ul>
+        </div>
+      </details>
+
+      <details style="margin-bottom: 1rem;">
+        <summary style="cursor:pointer; font-weight:600; padding: 0.5rem 0;">JDK or Android SDK installation fails (network/proxy error)</summary>
+        <div style="padding: 0.5rem 0 0 1rem; color: var(--text-muted);">
+          <p>Corporate machines often block <code>winget</code>, <code>choco</code>, or direct downloads due to proxy/firewall policies. <strong>Do not try to bypass these restrictions.</strong></p>
+          <p style="margin-top:0.5rem;"><strong>Fix:</strong> Submit a single <a href="https://bofi.service-now.com/sp?id=sc_cat_item&sys_id=9cc58b18dbe6b2008a4a572e5e9619c8" target="_blank">ServiceNow Software Request</a> for <strong>Java JDK 11+</strong> and <strong>Android Studio</strong>. Select <strong>OTHER</strong> and <strong>Yes</strong> in the form. See the <a href="#prerequisites">Prerequisites &rarr; First-Time Setup</a> section for exact copy-paste text.</p>
+          <p style="margin-top:0.5rem;">After IT installs them, restart Cursor and re-run the setup AI prompt.</p>
+        </div>
+      </details>
+
+      <details style="margin-bottom: 1rem;">
+        <summary style="cursor:pointer; font-weight:600; padding: 0.5rem 0;">npm install fails or node_modules missing</summary>
+        <div style="padding: 0.5rem 0 0 1rem; color: var(--text-muted);">
+          <p>Make sure you run <code>npm install</code> in the project root before anything else. This installs Appium, WebDriverIO, cross-env, and all dependencies.</p>
+        </div>
+      </details>
+
+      <details style="margin-bottom: 1rem;">
+        <summary style="cursor:pointer; font-weight:600; padding: 0.5rem 0;">"ANDROID_HOME not set" even after running setx</summary>
+        <div style="padding: 0.5rem 0 0 1rem; color: var(--text-muted);">
+          <p>The <code>setx</code> command sets environment variables <strong>permanently</strong>, but they only take effect in <strong>new processes</strong>. The terminal you're currently using still has the old environment.</p>
+          <p style="margin-top:0.5rem;"><strong>Fix:</strong> You must <strong>fully restart Cursor</strong> (close it completely and reopen). Reopening just the terminal is not enough.</p>
+          <p style="margin-top:0.5rem;">After restarting, verify:</p>
+          <div class="code-block"><div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">PowerShell</span></div>
+          <pre><span class="prompt">&gt;</span> echo $env:ANDROID_HOME
+<span class="comment"># Should show your SDK path, e.g. C:\Users\YourName\AppData\Local\Android\Sdk</span></pre></div>
+        </div>
+      </details>
+
+      <details style="margin-bottom: 1rem;">
+        <summary style="cursor:pointer; font-weight:600; padding: 0.5rem 0;">Appium timeout: "uiautomator2ServerInstallTimeout"</summary>
+        <div style="padding: 0.5rem 0 0 1rem; color: var(--text-muted);">
+          <p>The first time Appium runs on a device, it installs UIAutomator2 server packages. This can take &gt;20 seconds on some devices.</p>
+          <p style="margin-top:0.5rem;">The config already has increased timeouts (<code>uiautomator2ServerInstallTimeout: 120000</code>). If you still see this error:</p>
+          <ul style="margin: 0.5rem 0 0 1.5rem; line-height: 2;">
+            <li>Uninstall old packages: <code>adb uninstall io.appium.uiautomator2.server</code> and <code>io.appium.uiautomator2.server.test</code></li>
+            <li>Make sure the device screen is unlocked</li>
+            <li>Try a USB 3.0 port for faster transfer</li>
+          </ul>
+        </div>
+      </details>
+
+      <details style="margin-bottom: 1rem;">
+        <summary style="cursor:pointer; font-weight:600; padding: 0.5rem 0;">Port 4723 already in use</summary>
+        <div style="padding: 0.5rem 0 0 1rem; color: var(--text-muted);">
+          <p>Another Appium server (or a previous stuck process) is using the port. Kill it:</p>
+          <div class="code-block"><div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">PowerShell</span></div>
+          <pre><span class="prompt">&gt;</span> taskkill /F /IM node.exe /T
+<span class="comment"># This kills all Node processes. If you have other Node apps, find the specific PID instead.</span></pre></div>
+        </div>
+      </details>
+    </div>
+
+    <div class="card animate-on-scroll">
+      <h3><span class="icon">&#127822;</span> iOS Issues <span class="platform-badge mac-only">Mac Only</span></h3>
+
+      <details style="margin-bottom: 1rem;">
+        <summary style="cursor:pointer; font-weight:600; padding: 0.5rem 0;"><code>xcrun xctrace list devices</code> crashes</summary>
+        <div style="padding: 0.5rem 0 0 1rem; color: var(--text-muted);">
+          <p>Intermittent Xcode bug. Two fixes:</p>
+          <p style="margin-top: 0.5rem;"><strong>Fix 1:</strong> Warm up Xcode's device service, then retry:</p>
+          <div class="code-block"><div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">terminal</span></div>
+          <pre><span class="prompt">$</span> xcrun devicectl list devices   <span class="comment"># may hang — Ctrl+C after 5s</span>
+<span class="prompt">$</span> xcrun xctrace list devices     <span class="comment"># should work now</span></pre></div>
+          <p style="margin-top: 0.5rem;"><strong>Fix 2:</strong> Use <code>idevice_id</code> instead: <code>brew install libimobiledevice && idevice_id -l</code></p>
+        </div>
+      </details>
+
+      <details style="margin-bottom: 1rem;">
+        <summary style="cursor:pointer; font-weight:600; padding: 0.5rem 0;">WDA build fails (code signing error)</summary>
+        <div style="padding: 0.5rem 0 0 1rem; color: var(--text-muted);">
+          <p>Make sure your Apple Developer account is added to Xcode, the device is registered, and <code>xcodeOrgId</code> in <code>wdio.ios.conf.js</code> matches your Team ID. Use the <strong>Full WDA Setup</strong> AI prompt in the Device Setup section.</p>
+        </div>
+      </details>
+
+      <details style="margin-bottom: 1rem;">
+        <summary style="cursor:pointer; font-weight:600; padding: 0.5rem 0;">WDA session times out / tests never start</summary>
+        <div style="padding: 0.5rem 0 0 1rem; color: var(--text-muted);">
+          <p>If the auto-rebuild did not fix it, try a manual rebuild:</p>
+          <div class="code-block"><div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">terminal</span></div>
+          <pre><span class="comment"># Delete old build and rebuild fresh</span>
+<span class="prompt">$</span> rm -rf ~/DerivedData/WDA
+<span class="prompt">$</span> GREP="@Sanity_Login" npm run test:ios  <span class="comment"># auto-rebuild triggers on next run</span></pre></div>
+          <p style="margin-top: 0.5rem;">If that still fails, use the <strong>Full WDA Setup</strong> AI prompt.</p>
+        </div>
+      </details>
+
+      <details style="margin-bottom: 1rem;">
+        <summary style="cursor:pointer; font-weight:600; padding: 0.5rem 0;">"Automation Running &mdash; Hold both volume buttons to stop"</summary>
+        <div style="padding: 0.5rem 0 0 1rem; color: var(--text-muted);">
+          <p><strong>This is completely normal.</strong> WDA launched successfully. Do <em>not</em> press the volume buttons.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary style="cursor:pointer; font-weight:600; padding: 0.5rem 0;">Free Apple ID provisioning profile expired</summary>
+        <div style="padding: 0.5rem 0 0 1rem; color: var(--text-muted);">
+          <p>Free profiles expire every 7 days. <strong>This is now handled automatically</strong> &mdash; the framework detects expired profiles and rebuilds WDA before tests run (see <code>tools/ensure-wda.js</code>). Just run your tests normally and the rebuild happens in the background. You&rsquo;ll see <code>[ensure-wda]</code> log messages showing the auto-rebuild.</p>
+        </div>
+      </details>
+    </div>
+
+    </div><!-- expandable-body -->
+    </details><!-- Troubleshooting -->
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p>Built for <span>Axos Financial</span> Mobile QA &mdash; Local Execution Guide &copy; 2026</p>
+</footer>
+
+<script>
+  // Tab switching (Android/iOS)
+  function switchTab(tab) {
+    document.querySelectorAll('#deviceTabs ~ .tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('#deviceTabs button').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    const idx = tab === 'android' ? 0 : 1;
+    document.querySelectorAll('#deviceTabs button')[idx].classList.add('active');
+  }
+
+  // OS sub-tab switching (Mac/Win)
+  function switchOsTab(group, os) {
+    var tabsId = group + 'OsTabs';
+    var tabs = document.getElementById(tabsId);
+    if (!tabs) return;
+    // Deactivate all OS tabs in this group
+    tabs.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    // Activate clicked tab
+    var idx = os === 'mac' ? 0 : 1;
+    tabs.querySelectorAll('button')[idx].classList.add('active');
+    // Show/hide content
+    var macEl = document.getElementById(group + '-mac');
+    var winEl = document.getElementById(group + '-win');
+    if (macEl) macEl.classList.toggle('active', os === 'mac');
+    if (winEl) winEl.classList.toggle('active', os === 'win');
+  }
+
+  // Copy code
+  function copyCode(btn) {
+    var pre = btn.parentElement.querySelector('pre');
+    var text = pre.innerText.replace(/^\$\s*/gm, '').replace(/^>\s*/gm, '').replace(/#.*$/gm, '').trim();
+    navigator.clipboard.writeText(text).then(function() {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(function() { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+
+  // Copy AI prompt
+  function copyPrompt(btn) {
+    var card = btn.closest('.prompt-card');
+    var text = card.querySelector('.prompt-text').innerText.trim();
+    navigator.clipboard.writeText(text).then(function() {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(function() { btn.textContent = 'Copy Prompt'; btn.classList.remove('copied'); }, 2500);
+    });
+  }
+
+  // Scroll progress
+  window.addEventListener('scroll', function() {
+    var bar = document.getElementById('scrollBar');
+    var scrollTop = document.documentElement.scrollTop;
+    var scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+    bar.style.width = (scrollTop / scrollHeight * 100) + '%';
+  });
+
+  // Intersection Observer for scroll animations
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+  document.querySelectorAll('.animate-on-scroll').forEach(function(el) { observer.observe(el); });
+</script>
+</body>
+</html>

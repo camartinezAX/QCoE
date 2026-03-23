@@ -1,0 +1,1979 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AXOS Mobile Automation Framework Guidelines</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Axos Brand Colors */
+            --axos-orange: #FAA74A;
+            --axos-orange-light: #fdd9a8;
+            --axos-orange-dark: #e8922a;
+            --axos-navy: #1E3860;
+            --axos-navy-dark: #152844;
+            --axos-navy-light: #2a4a7a;
+            
+            /* UI Colors */
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-tertiary: #1f2937;
+            --bg-card: #161d2e;
+            --border-color: #2d3748;
+            
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            
+            /* Status Colors */
+            --success: #10b981;
+            --success-bg: rgba(16, 185, 129, 0.1);
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --info: #3b82f6;
+            
+            /* Code Colors */
+            --code-bg: #0d1117;
+            --code-border: #30363d;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+        
+        /* Animated Background */
+        .bg-pattern {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(ellipse at 20% 20%, rgba(30, 56, 96, 0.3) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(30, 56, 96, 0.2) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(250, 167, 74, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        /* Floating Particles */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: var(--axos-orange);
+            border-radius: 50%;
+            opacity: 0.3;
+            animation: float 20s infinite ease-in-out;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.3; }
+            90% { opacity: 0.3; }
+            100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
+        }
+        
+        /* Hero Section */
+        .hero {
+            position: relative;
+            min-height: 80vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 40px 20px;
+            z-index: 1;
+        }
+        
+        .hero-content {
+            max-width: 900px;
+        }
+        
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 20px;
+            background: rgba(250, 167, 74, 0.15);
+            border: 1px solid rgba(250, 167, 74, 0.3);
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--axos-orange);
+            margin-bottom: 24px;
+            animation: fadeInUp 0.8s ease;
+        }
+        
+        .hero h1 {
+            font-size: clamp(40px, 7vw, 72px);
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 24px;
+            animation: fadeInUp 0.8s ease 0.2s both;
+        }
+        
+        .hero h1 .gradient-text {
+            background: linear-gradient(135deg, var(--axos-orange) 0%, #fdd9a8 50%, var(--axos-orange) 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shimmerText 3s ease-in-out infinite;
+        }
+        
+        @keyframes shimmerText {
+            0% { background-position: 0% center; }
+            50% { background-position: 100% center; }
+            100% { background-position: 0% center; }
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .hero-subtitle {
+            font-size: 20px;
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin: 0 auto 40px;
+            animation: fadeInUp 0.8s ease 0.4s both;
+        }
+        
+        /* Navigation */
+        .nav-container {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10, 14, 26, 0.9);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .nav {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 16px 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .nav-link {
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-link:hover,
+        .nav-link.active {
+            color: var(--axos-orange);
+            background: rgba(250, 167, 74, 0.1);
+        }
+        
+        /* Main Content */
+        .main-content {
+            position: relative;
+            z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 60px 24px;
+        }
+        
+        /* Section Styles */
+        section {
+            margin-bottom: 80px;
+            animation: fadeInUp 0.6s ease;
+        }
+        
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        
+        .section-icon {
+            width: 56px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--axos-navy), var(--axos-navy-light));
+            border-radius: 16px;
+            font-size: 28px;
+        }
+        
+        .section-title {
+            font-size: 32px;
+            font-weight: 700;
+        }
+        
+        .section-title .highlight {
+            color: var(--axos-orange);
+        }
+        
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            border-color: rgba(250, 167, 74, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .card-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card-title .icon {
+            font-size: 24px;
+        }
+        
+        /* Grid Layouts */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 24px;
+        }
+        
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+        
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+        }
+        
+        /* Tables */
+        .table-container {
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        th, td {
+            padding: 14px 18px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        th {
+            background: var(--bg-tertiary);
+            font-weight: 600;
+            color: var(--axos-orange);
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+        
+        tr:hover {
+            background: rgba(250, 167, 74, 0.05);
+        }
+        
+        tr:last-child td {
+            border-bottom: none;
+        }
+        
+        /* Code Blocks */
+        .code-block {
+            background: var(--code-bg);
+            border: 1px solid var(--code-border);
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 16px 0;
+        }
+        
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid var(--code-border);
+        }
+        
+        .code-lang {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+        
+        .code-copy {
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .code-copy:hover {
+            color: var(--axos-orange);
+            border-color: var(--axos-orange);
+        }
+        
+        pre {
+            padding: 20px;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+        
+        code {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        .inline-code {
+            background: rgba(250, 167, 74, 0.15);
+            color: var(--axos-orange);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        
+        /* Syntax Highlighting */
+        .keyword { color: #ff7b72; }
+        .string { color: #a5d6ff; }
+        .comment { color: #8b949e; }
+        .function { color: #d2a8ff; }
+        .variable { color: #ffa657; }
+        .operator { color: #ff7b72; }
+        .number { color: #79c0ff; }
+        
+        /* Comparison Cards */
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        
+        .do-card {
+            border-color: var(--success);
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), transparent);
+        }
+        
+        .do-card .card-title {
+            color: var(--success);
+        }
+        
+        .dont-card {
+            border-color: var(--error);
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), transparent);
+        }
+        
+        .dont-card .card-title {
+            color: var(--error);
+        }
+        
+        /* Tag Pills */
+        .tag-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 16px 0;
+        }
+        
+        .tag {
+            padding: 6px 14px;
+            font-size: 13px;
+            font-weight: 500;
+            border-radius: 50px;
+            background: rgba(250, 167, 74, 0.15);
+            color: var(--axos-orange);
+            border: 1px solid rgba(250, 167, 74, 0.3);
+        }
+        
+        .tag.success {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+        
+        .tag.info {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--info);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+        
+        .tag.warning {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+            border-color: rgba(245, 158, 11, 0.3);
+        }
+        
+        /* File Tree */
+        .file-tree {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            background: var(--code-bg);
+            border: 1px solid var(--code-border);
+            border-radius: 12px;
+            padding: 20px;
+            line-height: 1.8;
+            white-space: pre;
+            overflow-x: auto;
+        }
+        
+        .file-tree .folder {
+            color: var(--axos-orange);
+        }
+        
+        .file-tree .file {
+            color: var(--text-secondary);
+        }
+        
+        .file-tree .comment {
+            color: var(--text-muted);
+            font-style: italic;
+        }
+        
+        /* Alert Boxes */
+        .alert {
+            padding: 20px 24px;
+            border-radius: 12px;
+            margin: 20px 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+        }
+        
+        .alert-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+        
+        .alert-warning {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+        
+        .alert-warning .alert-icon {
+            color: var(--warning);
+        }
+        
+        .alert-success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        
+        .alert-success .alert-icon {
+            color: var(--success);
+        }
+        
+        .alert-error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        
+        .alert-error .alert-icon {
+            color: var(--error);
+        }
+        
+        .alert-info {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        
+        .alert-info .alert-icon {
+            color: var(--info);
+        }
+        
+        /* Interactive Mobile Screen Demo */
+        .mobile-demo {
+            background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-card));
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 16px;
+            max-width: 320px;
+            margin: 24px auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+        }
+        
+        .mobile-screen {
+            background: #fff;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        
+        .mobile-header {
+            background: var(--axos-navy);
+            color: white;
+            padding: 16px 20px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .mobile-menu-item {
+            padding: 16px 20px;
+            border-bottom: 1px solid #eee;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .mobile-menu-item:hover {
+            background: #f5f5f5;
+        }
+        
+        .mobile-menu-item.section-header-item {
+            background: #f8f8f8;
+            font-weight: 600;
+            color: var(--axos-navy);
+            font-size: 14px;
+        }
+        
+        .mobile-menu-item.highlight {
+            background: linear-gradient(135deg, rgba(250, 167, 74, 0.2), rgba(250, 167, 74, 0.05));
+            border-left: 3px solid var(--axos-orange);
+        }
+        
+        /* Interactive Terminal Demo */
+        .terminal-demo {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-card) 100%);
+            border: 2px solid var(--border-color);
+            border-radius: 16px;
+            overflow: hidden;
+            margin: 24px 0;
+        }
+        
+        .terminal-header {
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .terminal-dot.red { background: #ef4444; }
+        .terminal-dot.yellow { background: #f59e0b; }
+        .terminal-dot.green { background: #10b981; }
+        
+        .terminal-title {
+            flex: 1;
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        
+        .terminal-body {
+            padding: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.8;
+            min-height: 200px;
+        }
+        
+        .terminal-line {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin-bottom: 8px;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+        }
+        
+        .terminal-line.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .terminal-prompt {
+            color: var(--axos-orange);
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        
+        .terminal-command {
+            color: var(--text-primary);
+        }
+        
+        .terminal-output {
+            color: var(--text-secondary);
+            padding-left: 20px;
+        }
+        
+        .terminal-success {
+            color: var(--success);
+        }
+        
+        .terminal-controls {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            padding: 16px;
+            background: var(--bg-tertiary);
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .demo-btn {
+            padding: 10px 24px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .demo-btn-primary {
+            background: linear-gradient(135deg, var(--axos-orange) 0%, var(--axos-orange-dark) 100%);
+            color: var(--bg-primary);
+        }
+        
+        .demo-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(250, 167, 74, 0.4);
+        }
+        
+        .demo-btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .demo-btn-secondary:hover {
+            border-color: var(--axos-orange);
+        }
+        
+        /* Typing cursor animation */
+        .typing-cursor {
+            display: inline-block;
+            width: 8px;
+            height: 16px;
+            background: var(--axos-orange);
+            margin-left: 2px;
+            animation: blink 1s step-end infinite;
+        }
+        
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+        
+        /* Flow Animation */
+        .flow-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            padding: 30px 0;
+        }
+        
+        .flow-node {
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px 24px;
+            text-align: center;
+            min-width: 120px;
+            transition: all 0.3s ease;
+        }
+        
+        .flow-node.active {
+            border-color: var(--axos-orange);
+            background: rgba(250, 167, 74, 0.1);
+            box-shadow: 0 0 20px rgba(250, 167, 74, 0.3);
+        }
+        
+        .flow-arrow {
+            font-size: 24px;
+            color: var(--text-muted);
+            animation: bounceHorizontal 1s ease-in-out infinite;
+        }
+        
+        @keyframes bounceHorizontal {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(5px); }
+        }
+        
+        /* Accordion */
+        .accordion {
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .accordion-item {
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .accordion-item:last-child {
+            border-bottom: none;
+        }
+        
+        .accordion-header {
+            padding: 20px 24px;
+            background: var(--bg-card);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+        
+        .accordion-header:hover {
+            background: var(--bg-tertiary);
+        }
+        
+        .accordion-title {
+            font-weight: 600;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .accordion-arrow {
+            transition: transform 0.3s ease;
+        }
+        
+        .accordion-item.active .accordion-arrow {
+            transform: rotate(180deg);
+        }
+        
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        
+        .accordion-item.active .accordion-content {
+            max-height: 2000px;
+        }
+        
+        .accordion-body {
+            padding: 24px;
+            background: var(--bg-secondary);
+        }
+        
+        /* Quick Reference Box */
+        .quick-ref {
+            background: linear-gradient(135deg, var(--axos-navy-dark), var(--axos-navy));
+            border-radius: 16px;
+            padding: 32px;
+            margin: 40px 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 2;
+            border: 1px solid var(--axos-navy-light);
+        }
+        
+        .quick-ref-title {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            color: var(--axos-orange);
+        }
+        
+        .quick-ref-section {
+            margin-bottom: 20px;
+        }
+        
+        .quick-ref-section h4 {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: var(--axos-orange-light);
+            margin-bottom: 8px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 60px 20px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            position: relative;
+            z-index: 1;
+        }
+        
+        footer p {
+            color: var(--text-secondary);
+        }
+        
+        /* Scroll to top button */
+        .scroll-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            background: var(--axos-orange);
+            color: var(--bg-primary);
+            border: none;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+        
+        .scroll-top.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .scroll-top:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(250, 167, 74, 0.4);
+        }
+        
+        /* Highlight pulse */
+        .pulse-highlight {
+            animation: pulseHighlight 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulseHighlight {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(250, 167, 74, 0.4); }
+            50% { box-shadow: 0 0 0 15px rgba(250, 167, 74, 0); }
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .grid-2, .grid-3, .grid-4 {
+                grid-template-columns: 1fr;
+            }
+            
+            .nav {
+                gap: 4px;
+            }
+            
+            .nav-link {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+            
+            .section-title {
+                font-size: 24px;
+            }
+            
+            .section-icon {
+                width: 48px;
+                height: 48px;
+                font-size: 24px;
+            }
+            
+            .flow-diagram {
+                flex-direction: column;
+            }
+            
+            .flow-arrow {
+                transform: rotate(90deg);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="bg-pattern"></div>
+    
+    <!-- Floating Particles -->
+    <div class="particles">
+        <div class="particle" style="left: 10%; animation-delay: 0s;"></div>
+        <div class="particle" style="left: 20%; animation-delay: 2s;"></div>
+        <div class="particle" style="left: 30%; animation-delay: 4s;"></div>
+        <div class="particle" style="left: 40%; animation-delay: 6s;"></div>
+        <div class="particle" style="left: 50%; animation-delay: 8s;"></div>
+        <div class="particle" style="left: 60%; animation-delay: 1s;"></div>
+        <div class="particle" style="left: 70%; animation-delay: 3s;"></div>
+        <div class="particle" style="left: 80%; animation-delay: 5s;"></div>
+        <div class="particle" style="left: 90%; animation-delay: 7s;"></div>
+    </div>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="hero-badge">
+                <span>📱</span>
+                <span>AXOS QCoE Mobile Automation</span>
+            </div>
+            <h1>
+                Framework<br>
+                <span class="gradient-text">Standards & Guidelines</span>
+            </h1>
+            <p class="hero-subtitle">
+                A comprehensive guide to building maintainable, consistent, and high-quality mobile automation tests for the AXOS Mobile application.
+            </p>
+        </div>
+    </section>
+
+    <!-- Navigation -->
+    <div class="nav-container">
+        <nav class="nav">
+            <a href="#structure" class="nav-link">Structure</a>
+            <a href="#naming" class="nav-link">Naming</a>
+            <a href="#specs" class="nav-link">Spec Files</a>
+            <a href="#tags" class="nav-link">Tags</a>
+            <a href="#locators" class="nav-link">Locators</a>
+            <a href="#bizobjects" class="nav-link">BizObjects</a>
+            <a href="#rules" class="nav-link">Code Rules</a>
+            <a href="#commands" class="nav-link">Commands</a>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        
+        <!-- Repository Structure Section -->
+        <section id="structure">
+            <div class="section-header">
+                <div class="section-icon">📁</div>
+                <h2 class="section-title">Repository <span class="highlight">Structure</span></h2>
+            </div>
+            
+            <div class="file-tree">
+<span class="folder">📦 Axos.Auto_Mobile/</span>
+├── <span class="folder">configs/</span>
+│   ├── wdio.shared.conf.js        <span class="comment"># Shared WebdriverIO configuration</span>
+│   ├── wdio.android.conf.js       <span class="comment"># Android execution setup</span>
+│   ├── wdio.ios.conf.js           <span class="comment"># iOS execution setup</span>
+│   ├── wdio.bs.android.conf.js    <span class="comment"># BrowserStack Android</span>
+│   ├── wdio.bs.ios.conf.js        <span class="comment"># BrowserStack iOS</span>
+│   └── <span class="folder">env/</span>                       <span class="comment"># Environment configs (qa, uat, stg, prod)</span>
+│
+├── <span class="folder">src/</span>
+│   ├── <span class="folder">bizobjects/</span>                <span class="comment"># Page Objects (Business Objects)</span>
+│   │   ├── <span class="file">login.js</span>
+│   │   ├── <span class="file">megaMenu.js</span>
+│   │   ├── <span class="file">home.js</span>
+│   │   └── <span class="file">bank.js</span>
+│   │
+│   ├── <span class="folder">locators/</span>                  <span class="comment"># Cross-platform element locators</span>
+│   │   ├── <span class="file">login.locators.js</span>
+│   │   ├── <span class="file">megaMenu.locators.js</span>
+│   │   └── <span class="file">generic.locators.js</span>
+│   │
+│   └── <span class="folder">utils/</span>                     <span class="comment"># Shared utilities (helpers, DB, etc.)</span>
+│       ├── <span class="file">helpers.js</span>             <span class="comment"># Reusable helper functions</span>
+│       ├── <span class="file">selector.js</span>            <span class="comment"># Platform-aware selector resolver</span>
+│       └── <span class="file">data.js</span>                <span class="comment"># Test data utilities</span>
+│
+├── <span class="folder">suites/</span>                        <span class="comment"># Test specifications by vertical</span>
+│   ├── <span class="folder">01_Registration/</span>
+│   ├── <span class="folder">02_Login/</span>
+│   ├── <span class="folder">03_MegaMenu/</span>
+│   ├── <span class="folder">06_Bank/</span>
+│   └── ...
+│
+├── <span class="folder">data/</span>                          <span class="comment"># Test data files (Excel)</span>
+│   ├── <span class="file">02_login.xlsx</span>
+│   └── <span class="file">03_megaMenu.xlsx</span>
+│
+└── <span class="folder">tools/</span>                         <span class="comment"># CLI tools and scripts</span>
+            </div>
+        </section>
+
+        <!-- Naming Conventions Section -->
+        <section id="naming">
+            <div class="section-header">
+                <div class="section-icon">📝</div>
+                <h2 class="section-title">File <span class="highlight">Naming Conventions</span></h2>
+            </div>
+            
+            <div class="card">
+                <h3 class="card-title"><span class="icon">✅</span> Correct Patterns</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>File Type</th>
+                                <th>Pattern</th>
+                                <th>Example</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Business Object</td>
+                                <td><code class="inline-code">{vertical}.js</code></td>
+                                <td>login.js, megaMenu.js, bank.js</td>
+                            </tr>
+                            <tr>
+                                <td>Locators</td>
+                                <td><code class="inline-code">{vertical}.locators.js</code></td>
+                                <td>login.locators.js, bank.locators.js</td>
+                            </tr>
+                            <tr>
+                                <td>Spec Files</td>
+                                <td><code class="inline-code">{feature}.spec.js</code></td>
+                                <td>login.spec.js, deposit.spec.js</td>
+                            </tr>
+                            <tr>
+                                <td>Suite Folders</td>
+                                <td><code class="inline-code">{##}_{VerticalName}/</code></td>
+                                <td>02_Login/, 06_Bank/</td>
+                            </tr>
+                            <tr>
+                                <td>Data Files</td>
+                                <td><code class="inline-code">{##}_{vertical}.xlsx</code></td>
+                                <td>02_login.xlsx, 06_bank.xlsx</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="comparison-grid">
+                <div class="card do-card">
+                    <h3 class="card-title"><span class="icon">✅</span> DO</h3>
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-lang">File Names</span>
+                        </div>
+                        <pre><span class="comment">// BizObjects</span>
+<span class="string">login.js</span>
+<span class="string">megaMenu.js</span>
+<span class="string">bank.js</span>
+
+<span class="comment">// Locators</span>
+<span class="string">login.locators.js</span>
+<span class="string">megaMenu.locators.js</span>
+
+<span class="comment">// Suite Folders</span>
+<span class="string">02_Login/</span>
+<span class="string">06_Bank/</span></pre>
+                    </div>
+                </div>
+                
+                <div class="card dont-card">
+                    <h3 class="card-title"><span class="icon">❌</span> DON'T</h3>
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-lang">Anti-Patterns</span>
+                        </div>
+                        <pre><span class="comment">// ❌ Wrong - Random naming</span>
+<span class="string">mssqlDBEnrollmentFlows.js</span>
+
+<span class="comment">// ❌ Wrong - Using PascalCase</span>
+<span class="string">MyLoginTests.spec.js</span>
+
+<span class="comment">// ❌ Wrong - Hyphens instead of dots</span>
+<span class="string">bank-locators.js</span>
+
+<span class="comment">// ❌ Wrong - Single digit prefix</span>
+<span class="string">6_Bank/</span></pre>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="alert alert-warning">
+                <span class="alert-icon">⚠️</span>
+                <div>
+                    <strong>Database Utilities</strong><br>
+                    Database-related code should go in <code class="inline-code">src/utils/</code>, not in bizobjects. Example: <code class="inline-code">src/utils/enrollmentDb.js</code>
+                </div>
+            </div>
+        </section>
+
+        <!-- Spec File Structure Section -->
+        <section id="specs">
+            <div class="section-header">
+                <div class="section-icon">📄</div>
+                <h2 class="section-title">Spec File <span class="highlight">Structure</span></h2>
+            </div>
+            
+            <div class="alert alert-info">
+                <span class="alert-icon">💡</span>
+                <div>
+                    <strong>The Golden Rule</strong><br>
+                    Your <code class="inline-code">describe</code> blocks should mirror the <strong>user's navigation path</strong> through the app.
+                </div>
+            </div>
+            
+            <div class="grid-2">
+                <div>
+                    <h3 style="margin-bottom: 16px;">Why Separate Describes?</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                        Different menu items lead to <strong>completely different screens and flows</strong>, 
+                        even if they're under the same parent section.
+                    </p>
+                    
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-lang">javascript</span>
+                        </div>
+                        <pre><span class="comment">// ✅ CORRECT - Separate describes for different screens</span>
+<span class="keyword">describe</span>(<span class="string">'Mega menu -> Profile -> Personal Information'</span>, () => {
+  <span class="keyword">it</span>(<span class="string">'Update Contact Information @Sanity_MegaMenu'</span>, <span class="keyword">async</span> () => {
+    <span class="comment">// Tests for Personal Information screen</span>
+  });
+});
+
+<span class="keyword">describe</span>(<span class="string">'Mega menu -> Profile -> Business Information'</span>, () => {
+  <span class="keyword">it</span>(<span class="string">'Read-Only Validation @Sanity_MegaMenu'</span>, <span class="keyword">async</span> () => {
+    <span class="comment">// Tests for Business Information screen</span>
+  });
+});</pre>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 style="margin-bottom: 16px;">Visual Reference</h3>
+                    <div class="mobile-demo">
+                        <div class="mobile-screen">
+                            <div class="mobile-header">
+                                Welcome
+                                <span>✕</span>
+                            </div>
+                            <div class="mobile-menu-item section-header-item">Profile</div>
+                            <div class="mobile-menu-item highlight">
+                                <span>👤</span>
+                                Personal Information
+                            </div>
+                            <div class="mobile-menu-item highlight">
+                                <span>🏢</span>
+                                Business Information
+                            </div>
+                            <div class="mobile-menu-item">
+                                <span>📄</span>
+                                Statements & Documents
+                            </div>
+                            <div class="mobile-menu-item">
+                                <span>💰</span>
+                                Direct Deposit
+                            </div>
+                            <div class="mobile-menu-item section-header-item">Communication</div>
+                            <div class="mobile-menu-item">
+                                <span>✉️</span>
+                                Messages
+                            </div>
+                        </div>
+                    </div>
+                    <p style="text-align: center; color: var(--text-muted); font-size: 13px; margin-top: 12px;">
+                        Each highlighted item = Different <code class="inline-code">describe</code> block
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tags Section -->
+        <section id="tags">
+            <div class="section-header">
+                <div class="section-icon">🏷️</div>
+                <h2 class="section-title">Tag <span class="highlight">System</span></h2>
+            </div>
+            
+            <p style="color: var(--text-secondary); margin-bottom: 24px;">
+                Tags are used for filtering tests during execution. Follow this hierarchy for consistent test organization.
+            </p>
+            
+            <div class="grid-3">
+                <div class="card">
+                    <h3 class="card-title">Combined Tags (Preferred)</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 12px;">Use this format for all tests</p>
+                    <div class="tag-container">
+                        <span class="tag success">@Sanity_Login</span>
+                        <span class="tag success">@Sanity_MegaMenu</span>
+                        <span class="tag success">@Sanity_Bank</span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">Regression Priority Tags</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 12px;">Only for ADO-classified regression tests</p>
+                    <div class="tag-container">
+                        <span class="tag warning">@Regression_P0</span>
+                        <span class="tag warning">@Regression_P1</span>
+                        <span class="tag warning">@Regression_P2</span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">Work Item Tags</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 12px;">For ADO traceability</p>
+                    <div class="tag-container">
+                        <span class="tag info">@2193771</span>
+                        <span class="tag info">@2193995</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card" style="margin-top: 24px;">
+                <h3 class="card-title"><span class="icon">📊</span> Complete Tag Reference</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Format</th>
+                                <th>Example</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Sanity</strong></td>
+                                <td><code class="inline-code">@Sanity_{Vertical}</code></td>
+                                <td>@Sanity_Login, @Sanity_MegaMenu</td>
+                                <td>Primary tag format for sanity tests</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Regression</strong></td>
+                                <td><code class="inline-code">@Regression_{Vertical}</code></td>
+                                <td>@Regression_Bank, @Regression_Invest</td>
+                                <td>Primary tag format for regression tests</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Regression Priority</strong></td>
+                                <td><code class="inline-code">@Regression_P0/P1/P2</code></td>
+                                <td>@Regression_P0</td>
+                                <td>Only for tests classified in ADO</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Work Item</strong></td>
+                                <td><code class="inline-code">@{ADO_ID}</code></td>
+                                <td>@2193771</td>
+                                <td>For traceability to ADO work items</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="comparison-grid" style="margin-top: 24px;">
+                <div class="card do-card">
+                    <h3 class="card-title"><span class="icon">✅</span> Correct Tags</h3>
+                    <div class="code-block">
+                        <pre><span class="comment">// ✅ Combined format (preferred)</span>
+<span class="keyword">it</span>(<span class="string">'Reset Password @Sanity_Login'</span>)
+
+<span class="comment">// ✅ With work item ID</span>
+<span class="keyword">it</span>(<span class="string">'Validate Deposit @Regression_Bank @2193771'</span>)
+
+<span class="comment">// ✅ With ADO priority (only if classified in ADO)</span>
+<span class="keyword">it</span>(<span class="string">'Critical Flow @Regression_Bank @Regression_P0'</span>)</pre>
+                    </div>
+                </div>
+                
+                <div class="card dont-card">
+                    <h3 class="card-title"><span class="icon">❌</span> Wrong Tags</h3>
+                    <div class="code-block">
+                        <pre><span class="comment">// ❌ Wrong - Separate tags (use combined)</span>
+<span class="keyword">it</span>(<span class="string">'Reset Password @MegaMenu @Sanity'</span>)
+
+<span class="comment">// ❌ Wrong - Tags with spaces</span>
+<span class="keyword">it</span>(<span class="string">'Reset Password @Sanity Login'</span>)
+
+<span class="comment">// ❌ Wrong - P0/P1/P2 without ADO classification</span>
+<span class="keyword">it</span>(<span class="string">'Some Test @Regression_P0'</span>)</pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-warning" style="margin-top: 24px;">
+                <span class="alert-icon">⚠️</span>
+                <div>
+                    <strong>Priority Tags Rule</strong><br>
+                    <code class="inline-code">@Regression_P0</code>, <code class="inline-code">@Regression_P1</code>, and <code class="inline-code">@Regression_P2</code> should <strong>only</strong> be used for tests that are explicitly classified with priority levels in Azure DevOps.
+                </div>
+            </div>
+        </section>
+
+        <!-- Commands Section with Interactive Demo -->
+        <section id="commands">
+            <div class="section-header">
+                <div class="section-icon">⚡</div>
+                <h2 class="section-title">Execution <span class="highlight">Commands</span></h2>
+            </div>
+            
+            <div class="alert alert-info">
+                <span class="alert-icon">💡</span>
+                <div>
+                    <strong>Parallel Execution Pattern</strong><br>
+                    Use <code class="inline-code">npm run split</code> to create temporary spec files, enabling all <code class="inline-code">it</code> tests to run <strong>in parallel</strong> across devices.
+                </div>
+            </div>
+            
+            <!-- Interactive Terminal Demo -->
+            <div class="terminal-demo" id="terminalDemo">
+                <div class="terminal-header">
+                    <div class="terminal-dot red"></div>
+                    <div class="terminal-dot yellow"></div>
+                    <div class="terminal-dot green"></div>
+                    <span class="terminal-title">Terminal — Parallel Execution Demo</span>
+                </div>
+                <div class="terminal-body" id="terminalBody">
+                    <div class="terminal-line" id="line1">
+                        <span class="terminal-prompt">$</span>
+                        <span class="terminal-command">npm run split -- --grep "@Sanity_Login" && npm run bs:android:parallel</span>
+                    </div>
+                    <div class="terminal-line" id="line2">
+                        <span class="terminal-output">> split-tests.js</span>
+                    </div>
+                    <div class="terminal-line" id="line3">
+                        <span class="terminal-output terminal-success">✓ Found 5 tests matching @Sanity_Login</span>
+                    </div>
+                    <div class="terminal-line" id="line4">
+                        <span class="terminal-output terminal-success">✓ Created .temp-specs/test_1.spec.js</span>
+                    </div>
+                    <div class="terminal-line" id="line5">
+                        <span class="terminal-output terminal-success">✓ Created .temp-specs/test_2.spec.js</span>
+                    </div>
+                    <div class="terminal-line" id="line6">
+                        <span class="terminal-output terminal-success">✓ Created .temp-specs/test_3.spec.js</span>
+                    </div>
+                    <div class="terminal-line" id="line7">
+                        <span class="terminal-output terminal-success">✓ Created .temp-specs/test_4.spec.js</span>
+                    </div>
+                    <div class="terminal-line" id="line8">
+                        <span class="terminal-output terminal-success">✓ Created .temp-specs/test_5.spec.js</span>
+                    </div>
+                    <div class="terminal-line" id="line9">
+                        <span class="terminal-output">> wdio run ./configs/wdio.bs.android.conf.js --spec .temp-specs/*.spec.js</span>
+                    </div>
+                    <div class="terminal-line" id="line10">
+                        <span class="terminal-output terminal-success">✓ Starting 5 parallel sessions on BrowserStack...</span>
+                    </div>
+                </div>
+                <div class="terminal-controls">
+                    <button class="demo-btn demo-btn-primary" onclick="playTerminalDemo()">
+                        ▶️ Play Demo
+                    </button>
+                    <button class="demo-btn demo-btn-secondary" onclick="resetTerminalDemo()">
+                        🔄 Reset
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Flow Diagram -->
+            <div class="card" style="margin-top: 32px;">
+                <h3 class="card-title"><span class="icon">🔄</span> Parallel Execution Flow</h3>
+                <div class="flow-diagram" id="flowDiagram">
+                    <div class="flow-node" id="node1">
+                        <div style="font-size: 24px; margin-bottom: 8px;">📝</div>
+                        <div style="font-weight: 600;">npm run split</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">Creates temp specs</div>
+                    </div>
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-node" id="node2">
+                        <div style="font-size: 24px; margin-bottom: 8px;">📂</div>
+                        <div style="font-weight: 600;">.temp-specs/</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">Individual test files</div>
+                    </div>
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-node" id="node3">
+                        <div style="font-size: 24px; margin-bottom: 8px;">🚀</div>
+                        <div style="font-weight: 600;">Parallel Run</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">All tests in parallel</div>
+                    </div>
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-node" id="node4">
+                        <div style="font-size: 24px; margin-bottom: 8px;">📊</div>
+                        <div style="font-weight: 600;">Results</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">BrowserStack Report</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid-2" style="margin-top: 24px;">
+                <div class="card">
+                    <h3 class="card-title"><span class="icon">📱</span> Android Commands</h3>
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-lang">bash</span>
+                            <button class="code-copy" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <pre><span class="comment"># Run with grep filter (parallel)</span>
+npm run split -- --grep <span class="string">"@Sanity_Login"</span> && npm run bs:android:parallel
+
+<span class="comment"># Run by test name</span>
+npm run split -- --grep <span class="string">"Recover username using"</span> && npm run bs:android:parallel
+
+<span class="comment"># Run all Regression P0</span>
+npm run split -- --grep <span class="string">"@Regression_P0"</span> && npm run bs:android:parallel
+
+<span class="comment"># Local execution</span>
+npm run test:android</pre>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title"><span class="icon">🍎</span> iOS Commands</h3>
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-lang">bash</span>
+                            <button class="code-copy" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <pre><span class="comment"># Run with grep filter (parallel)</span>
+npm run split -- --grep <span class="string">"@Sanity_MegaMenu"</span> && npm run bs:ios:parallel
+
+<span class="comment"># Run by test name</span>
+npm run split -- --grep <span class="string">"Reset Password"</span> && npm run bs:ios:parallel
+
+<span class="comment"># Run all Bank sanity tests</span>
+npm run split -- --grep <span class="string">"@Sanity_Bank"</span> && npm run bs:ios:parallel
+
+<span class="comment"># Local execution</span>
+npm run test:ios</pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Locators Section -->
+        <section id="locators">
+            <div class="section-header">
+                <div class="section-icon">🎯</div>
+                <h2 class="section-title">Locator <span class="highlight">Patterns</span></h2>
+            </div>
+            
+            <div class="alert alert-info">
+                <span class="alert-icon">💡</span>
+                <div>
+                    <strong>Cross-Platform Required</strong><br>
+                    Every locator <strong>must</strong> have both <code class="inline-code">android</code> and <code class="inline-code">ios</code> selectors.
+                </div>
+            </div>
+            
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">javascript</span>
+                    <button class="code-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><span class="comment">// src/locators/megaMenu.locators.js</span>
+<span class="keyword">module</span>.<span class="keyword">exports</span> = {
+  <span class="comment">// Simple element</span>
+  <span class="variable">megaMenuHamburger</span>: {
+    <span class="variable">android</span>: <span class="string">"//*[contains(@content-desc,'hamburger Icon')]"</span>,
+    <span class="variable">ios</span>: <span class="string">"//*[contains(@label,'hamburger Icon')]"</span>
+  },
+  
+  <span class="comment">// Section with prefix</span>
+  <span class="variable">hA_streetAddressEntry</span>: {
+    <span class="variable">android</span>: <span class="string">"(//*[@text='Home Address']/.../descendant::EditText)[1]"</span>,
+    <span class="variable">ios</span>: <span class="string">"//XCUIElementTypeTextField[@name='HAStreetAddressInputField']"</span>
+  },
+  
+  <span class="comment">// Dynamic locator with placeholder</span>
+  <span class="variable">locator_by_text</span>: {
+    <span class="variable">android</span>: <span class="string">"-android uiautomator:new UiSelector().text(\"__TEXT__\")"</span>,
+    <span class="variable">ios</span>: <span class="string">"//XCUIElementTypeButton[contains(@name, \"__TEXT__\")]"</span>
+  }
+};</pre>
+            </div>
+            
+            <div class="card" style="margin-top: 24px;">
+                <h3 class="card-title"><span class="icon">📌</span> Common Prefixes</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Prefix</th>
+                                <th>Meaning</th>
+                                <th>Example</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code class="inline-code">hA_</code></td>
+                                <td>Home Address</td>
+                                <td>hA_streetAddressEntry</td>
+                            </tr>
+                            <tr>
+                                <td><code class="inline-code">mA_</code></td>
+                                <td>Mailing Address</td>
+                                <td>mA_zipCodeEntry</td>
+                            </tr>
+                            <tr>
+                                <td><code class="inline-code">bi_</code></td>
+                                <td>Business Information</td>
+                                <td>bi_companyName</td>
+                            </tr>
+                            <tr>
+                                <td><code class="inline-code">otp_</code></td>
+                                <td>OTP Related</td>
+                                <td>otp_sendNewCodeButton</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- BizObjects Section -->
+        <section id="bizobjects">
+            <div class="section-header">
+                <div class="section-icon">🧩</div>
+                <h2 class="section-title">Business Object <span class="highlight">Patterns</span></h2>
+            </div>
+            
+            <p style="color: var(--text-secondary); margin-bottom: 24px;">
+                Business objects encapsulate page interactions. They should be <strong>reusable</strong> and <strong>readable</strong>.
+            </p>
+            
+            <div class="card">
+                <h3 class="card-title"><span class="icon">📝</span> Method Naming Conventions</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Pattern</th>
+                                <th>Use Case</th>
+                                <th>Example</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code class="inline-code">tap{Element}</code></td>
+                                <td>Tap/click actions</td>
+                                <td>tapPersonalInformationLabel()</td>
+                            </tr>
+                            <tr>
+                                <td><code class="inline-code">navigate{To}</code></td>
+                                <td>Navigation actions</td>
+                                <td>navigateToBusinessInformationSection()</td>
+                            </tr>
+                            <tr>
+                                <td><code class="inline-code">verify{State}</code></td>
+                                <td>Verification actions</td>
+                                <td>verifyBusinessInformationReadOnly()</td>
+                            </tr>
+                            <tr>
+                                <td><code class="inline-code">enter{Data}</code></td>
+                                <td>Input actions</td>
+                                <td>enterEmploymentDetails()</td>
+                            </tr>
+                            <tr>
+                                <td><code class="inline-code">select{Option}</code></td>
+                                <td>Selection actions</td>
+                                <td>selectEmploymentStatus(status)</td>
+                            </tr>
+                            <tr>
+                                <td><code class="inline-code">handle{Popup}</code></td>
+                                <td>Popup handlers</td>
+                                <td>handleNoThanksPopup()</td>
+                            </tr>
+                            <tr>
+                                <td><code class="inline-code">validate{Condition}</code></td>
+                                <td>Validation actions</td>
+                                <td>validateDepositLimit()</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Code Quality Rules Section -->
+        <section id="rules">
+            <div class="section-header">
+                <div class="section-icon">🛡️</div>
+                <h2 class="section-title">Code Quality <span class="highlight">Rules</span></h2>
+            </div>
+            
+            <div class="accordion">
+                <div class="accordion-item active">
+                    <div class="accordion-header" onclick="toggleAccordion(this)">
+                        <span class="accordion-title">
+                            <span style="color: var(--error);">❌</span>
+                            No Commented Code Blocks
+                        </span>
+                        <span class="accordion-arrow">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <p style="margin-bottom: 16px; color: var(--text-secondary);">
+                                Remove all commented code before committing. Version control tracks history.
+                            </p>
+                            <div class="comparison-grid">
+                                <div class="card dont-card">
+                                    <h4 style="color: var(--error); margin-bottom: 8px;">❌ Wrong</h4>
+                                    <div class="code-block">
+                                        <pre><span class="keyword">async function</span> <span class="function">validateAddress</span>() {
+  <span class="keyword">await</span> helpers.clickWhenVisible(saveButton);
+  <span class="comment">// await helpers.strictWait(5000);</span>
+  <span class="comment">// await helpers.scrollUntilVisible(streetSelector);</span>
+  <span class="comment">// var streetSelector = `//*[@text='Home']`;</span>
+}</pre>
+                                    </div>
+                                </div>
+                                <div class="card do-card">
+                                    <h4 style="color: var(--success); margin-bottom: 8px;">✅ Correct</h4>
+                                    <div class="code-block">
+                                        <pre><span class="keyword">async function</span> <span class="function">validateAddress</span>() {
+  <span class="keyword">await</span> helpers.clickWhenVisible(saveButton);
+}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="accordion-item">
+                    <div class="accordion-header" onclick="toggleAccordion(this)">
+                        <span class="accordion-title">
+                            <span style="color: var(--error);">❌</span>
+                            No Duplicate Code - Reuse Helpers
+                        </span>
+                        <span class="accordion-arrow">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <p style="margin-bottom: 16px; color: var(--text-secondary);">
+                                Always use existing helpers from <code class="inline-code">src/utils/helpers.js</code>.
+                            </p>
+                            <div class="comparison-grid">
+                                <div class="card dont-card">
+                                    <h4 style="color: var(--error); margin-bottom: 8px;">❌ Wrong</h4>
+                                    <div class="code-block">
+                                        <pre><span class="keyword">await</span> browser.pause(<span class="number">5000</span>);
+<span class="keyword">const</span> elem = <span class="keyword">await</span> $(selector);
+<span class="keyword">await</span> elem.click();</pre>
+                                    </div>
+                                </div>
+                                <div class="card do-card">
+                                    <h4 style="color: var(--success); margin-bottom: 8px;">✅ Correct</h4>
+                                    <div class="code-block">
+                                        <pre><span class="keyword">await</span> helpers.clickWhenVisible(selector, { 
+  timeout: <span class="number">5000</span> 
+});</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="accordion-item">
+                    <div class="accordion-header" onclick="toggleAccordion(this)">
+                        <span class="accordion-title">
+                            <span style="color: var(--error);">❌</span>
+                            No Improper File Placement
+                        </span>
+                        <span class="accordion-arrow">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <p style="margin-bottom: 16px; color: var(--text-secondary);">
+                                Files must be placed in the correct directory based on their purpose.
+                            </p>
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>File Type</th>
+                                            <th style="color: var(--error);">❌ Wrong</th>
+                                            <th style="color: var(--success);">✅ Correct</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Database Utils</td>
+                                            <td>src/bizobjects/mssqlDBEnrollmentFlows.js</td>
+                                            <td>src/utils/enrollmentDb.js</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Helpers</td>
+                                            <td>src/locators/myCustomHelpers.js</td>
+                                            <td>src/utils/myCustomHelpers.js</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="accordion-item">
+                    <div class="accordion-header" onclick="toggleAccordion(this)">
+                        <span class="accordion-title">
+                            <span style="color: var(--success);">✅</span>
+                            Always Include Author Documentation
+                        </span>
+                        <span class="accordion-arrow">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <div class="code-block">
+                                <pre><span class="keyword">describe</span>(<span class="string">'Bank -> Deposit'</span>, () => {
+  <span class="comment">/**
+   * @VijayLachwani          ← Author tag
+   */</span>
+  <span class="keyword">it</span>(<span class="string">'Validate Deposit Limit @Sanity_Bank @2193771'</span>, <span class="keyword">async</span> () => {
+    <span class="comment">// Test implementation</span>
+  });
+});</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quick Reference -->
+        <div class="quick-ref">
+            <h3 class="quick-ref-title">📋 Quick Reference Card</h3>
+            
+            <div class="quick-ref-section">
+                <h4>Naming Conventions</h4>
+                <div style="color: var(--text-secondary);">
+                    BizObject: <code style="color: var(--axos-orange);">src/bizobjects/{vertical}.js</code><br>
+                    Locators: <code style="color: var(--axos-orange);">src/locators/{vertical}.locators.js</code><br>
+                    Specs: <code style="color: var(--axos-orange);">suites/{##}_{Vertical}/{feature}.spec.js</code><br>
+                    Data: <code style="color: var(--axos-orange);">data/{##}_{vertical}.xlsx</code>
+                </div>
+            </div>
+            
+            <div class="quick-ref-section">
+                <h4>Tag Format</h4>
+                <div style="color: var(--text-secondary);">
+                    Sanity: <code style="color: var(--axos-orange);">@Sanity_Login, @Sanity_MegaMenu, @Sanity_Bank</code><br>
+                    Regression: <code style="color: var(--axos-orange);">@Regression_Bank, @Regression_Invest</code><br>
+                    Priority (ADO only): <code style="color: var(--axos-orange);">@Regression_P0, @Regression_P1, @Regression_P2</code><br>
+                    Work Item: <code style="color: var(--axos-orange);">@2193771</code>
+                </div>
+            </div>
+            
+            <div class="quick-ref-section">
+                <h4>Parallel Execution Commands</h4>
+                <div style="color: var(--text-secondary);">
+                    Android: <code style="color: var(--axos-orange);">npm run split -- --grep "@Sanity_Login" && npm run bs:android:parallel</code><br>
+                    iOS: <code style="color: var(--axos-orange);">npm run split -- --grep "@Sanity_Login" && npm run bs:ios:parallel</code>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <p style="font-size: 18px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">
+            Built with ❤️ by the AXOS QCoE Team
+        </p>
+        <p>
+            Mobile Automation Framework Guidelines v2.0
+        </p>
+    </footer>
+
+    <!-- Scroll to Top Button -->
+    <button class="scroll-top" onclick="scrollToTop()">↑</button>
+
+    <script>
+        // Accordion functionality
+        function toggleAccordion(header) {
+            const item = header.parentElement;
+            const isActive = item.classList.contains('active');
+            
+            // Close all items
+            document.querySelectorAll('.accordion-item').forEach(i => {
+                i.classList.remove('active');
+            });
+            
+            // Open clicked item if it wasn't active
+            if (!isActive) {
+                item.classList.add('active');
+            }
+        }
+        
+        // Copy code functionality
+        function copyCode(button) {
+            const codeBlock = button.closest('.code-block');
+            const code = codeBlock.querySelector('pre').innerText;
+            navigator.clipboard.writeText(code).then(() => {
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                button.style.color = '#10b981';
+                button.style.borderColor = '#10b981';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.color = '';
+                    button.style.borderColor = '';
+                }, 2000);
+            });
+        }
+        
+        // Terminal Demo
+        let demoRunning = false;
+        
+        function playTerminalDemo() {
+            if (demoRunning) return;
+            demoRunning = true;
+            
+            resetTerminalDemo();
+            
+            const lines = document.querySelectorAll('.terminal-line');
+            const nodes = document.querySelectorAll('.flow-node');
+            
+            lines.forEach((line, index) => {
+                setTimeout(() => {
+                    line.classList.add('visible');
+                    
+                    // Animate flow nodes at key points
+                    if (index === 0) {
+                        nodes[0].classList.add('active');
+                    } else if (index === 2) {
+                        nodes[0].classList.remove('active');
+                        nodes[1].classList.add('active');
+                    } else if (index === 8) {
+                        nodes[1].classList.remove('active');
+                        nodes[2].classList.add('active');
+                    } else if (index === 9) {
+                        nodes[2].classList.remove('active');
+                        nodes[3].classList.add('active');
+                        
+                        setTimeout(() => {
+                            nodes[3].classList.remove('active');
+                            demoRunning = false;
+                        }, 2000);
+                    }
+                }, index * 400);
+            });
+        }
+        
+        function resetTerminalDemo() {
+            const lines = document.querySelectorAll('.terminal-line');
+            const nodes = document.querySelectorAll('.flow-node');
+            
+            lines.forEach(line => line.classList.remove('visible'));
+            nodes.forEach(node => node.classList.remove('active'));
+            demoRunning = false;
+        }
+        
+        // Scroll to top
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        
+        // Show/hide scroll button
+        window.addEventListener('scroll', () => {
+            const scrollButton = document.querySelector('.scroll-top');
+            if (window.scrollY > 500) {
+                scrollButton.classList.add('visible');
+            } else {
+                scrollButton.classList.remove('visible');
+            }
+        });
+        
+        // Smooth scroll for nav links
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const target = document.querySelector(link.getAttribute('href'));
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+        
+        // Active nav link on scroll
+        const sections = document.querySelectorAll('section[id]');
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (scrollY >= sectionTop - 200) {
+                    current = section.getAttribute('id');
+                }
+            });
+            
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === `#${current}`) {
+                    link.classList.add('active');
+                }
+            });
+        });
+        
+        // Auto-play terminal demo when section is visible
+        const commandsSection = document.getElementById('commands');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && !demoRunning) {
+                    setTimeout(() => playTerminalDemo(), 500);
+                }
+            });
+        }, { threshold: 0.3 });
+        
+        observer.observe(commandsSection);
+    </script>
+</body>
+</html>

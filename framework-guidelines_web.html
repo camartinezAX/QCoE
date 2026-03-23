@@ -1,0 +1,2055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AXOS Web Automation Framework Guidelines</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Axos Brand Colors */
+            --axos-orange: #FAA74A;
+            --axos-orange-light: #fdd9a8;
+            --axos-orange-dark: #e8922a;
+            --axos-navy: #1E3860;
+            --axos-navy-dark: #152844;
+            --axos-navy-light: #2a4a7a;
+            
+            /* UI Colors */
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-tertiary: #1f2937;
+            --bg-card: #161d2e;
+            --border-color: #2d3748;
+            
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            
+            /* Status Colors */
+            --success: #10b981;
+            --success-bg: rgba(16, 185, 129, 0.1);
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --info: #3b82f6;
+            
+            /* Playwright Colors */
+            --playwright-green: #2EAD33;
+            --browserstack-orange: #F5A623;
+            
+            /* Code Colors */
+            --code-bg: #0d1117;
+            --code-border: #30363d;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+        
+        /* Animated Background */
+        .bg-pattern {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(ellipse at 20% 20%, rgba(30, 56, 96, 0.3) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(46, 173, 51, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(250, 167, 74, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        /* Floating Particles */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: var(--playwright-green);
+            border-radius: 50%;
+            opacity: 0.3;
+            animation: float 20s infinite ease-in-out;
+        }
+        
+        .particle:nth-child(odd) {
+            background: var(--axos-orange);
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.3; }
+            90% { opacity: 0.3; }
+            100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
+        }
+        
+        /* Hero Section */
+        .hero {
+            position: relative;
+            min-height: 80vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 40px 20px;
+            z-index: 1;
+        }
+        
+        .hero-content {
+            max-width: 900px;
+        }
+        
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 20px;
+            background: rgba(46, 173, 51, 0.15);
+            border: 1px solid rgba(46, 173, 51, 0.3);
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--playwright-green);
+            margin-bottom: 24px;
+            animation: fadeInUp 0.8s ease;
+        }
+        
+        .hero h1 {
+            font-size: clamp(40px, 7vw, 72px);
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 24px;
+            animation: fadeInUp 0.8s ease 0.2s both;
+        }
+        
+        .hero h1 .gradient-text {
+            background: linear-gradient(135deg, var(--playwright-green) 0%, var(--axos-orange) 50%, var(--playwright-green) 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shimmerText 3s ease-in-out infinite;
+        }
+        
+        @keyframes shimmerText {
+            0% { background-position: 0% center; }
+            50% { background-position: 100% center; }
+            100% { background-position: 0% center; }
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .hero-subtitle {
+            font-size: 20px;
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin: 0 auto 40px;
+            animation: fadeInUp 0.8s ease 0.4s both;
+        }
+        
+        .hero-badges {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            animation: fadeInUp 0.8s ease 0.6s both;
+        }
+        
+        .tech-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+        
+        .tech-badge.playwright {
+            border-color: rgba(46, 173, 51, 0.5);
+            color: var(--playwright-green);
+        }
+        
+        .tech-badge.browserstack {
+            border-color: rgba(245, 166, 35, 0.5);
+            color: var(--browserstack-orange);
+        }
+        
+        /* Navigation */
+        .nav-container {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10, 14, 26, 0.9);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .nav {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 16px 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .nav-link {
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-link:hover,
+        .nav-link.active {
+            color: var(--playwright-green);
+            background: rgba(46, 173, 51, 0.1);
+        }
+        
+        /* Main Content */
+        .main-content {
+            position: relative;
+            z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 60px 24px;
+        }
+        
+        /* Section Styles */
+        section {
+            margin-bottom: 80px;
+            animation: fadeInUp 0.6s ease;
+        }
+        
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        
+        .section-icon {
+            width: 56px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--axos-navy), var(--axos-navy-light));
+            border-radius: 16px;
+            font-size: 28px;
+        }
+        
+        .section-title {
+            font-size: 32px;
+            font-weight: 700;
+        }
+        
+        .section-title .highlight {
+            color: var(--playwright-green);
+        }
+        
+        .section-title .highlight-orange {
+            color: var(--axos-orange);
+        }
+        
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            border-color: rgba(46, 173, 51, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .card-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card-title .icon {
+            font-size: 24px;
+        }
+        
+        /* Grid Layouts */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 24px;
+        }
+        
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+        
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+        }
+        
+        /* Tables */
+        .table-container {
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        th, td {
+            padding: 14px 18px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        th {
+            background: var(--bg-tertiary);
+            font-weight: 600;
+            color: var(--playwright-green);
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+        
+        tr:hover {
+            background: rgba(46, 173, 51, 0.05);
+        }
+        
+        tr:last-child td {
+            border-bottom: none;
+        }
+        
+        /* Code Blocks */
+        .code-block {
+            background: var(--code-bg);
+            border: 1px solid var(--code-border);
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 16px 0;
+        }
+        
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid var(--code-border);
+        }
+        
+        .code-lang {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+        
+        .code-copy {
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .code-copy:hover {
+            color: var(--playwright-green);
+            border-color: var(--playwright-green);
+        }
+        
+        pre {
+            padding: 20px;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+        
+        code {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        .inline-code {
+            background: rgba(46, 173, 51, 0.15);
+            color: var(--playwright-green);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        
+        /* Syntax Highlighting */
+        .keyword { color: #ff7b72; }
+        .string { color: #a5d6ff; }
+        .comment { color: #8b949e; }
+        .function { color: #d2a8ff; }
+        .variable { color: #ffa657; }
+        .operator { color: #ff7b72; }
+        .number { color: #79c0ff; }
+        
+        /* Comparison Cards */
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        
+        .do-card {
+            border-color: var(--success);
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), transparent);
+        }
+        
+        .do-card .card-title {
+            color: var(--success);
+        }
+        
+        .dont-card {
+            border-color: var(--error);
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), transparent);
+        }
+        
+        .dont-card .card-title {
+            color: var(--error);
+        }
+        
+        /* Tag Pills */
+        .tag-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 16px 0;
+        }
+        
+        .tag {
+            padding: 6px 14px;
+            font-size: 13px;
+            font-weight: 500;
+            border-radius: 50px;
+            background: rgba(46, 173, 51, 0.15);
+            color: var(--playwright-green);
+            border: 1px solid rgba(46, 173, 51, 0.3);
+        }
+        
+        .tag.success {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+        
+        .tag.info {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--info);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+        
+        .tag.warning {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+            border-color: rgba(245, 158, 11, 0.3);
+        }
+        
+        .tag.orange {
+            background: rgba(250, 167, 74, 0.15);
+            color: var(--axos-orange);
+            border-color: rgba(250, 167, 74, 0.3);
+        }
+        
+        /* File Tree */
+        .file-tree {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            background: var(--code-bg);
+            border: 1px solid var(--code-border);
+            border-radius: 12px;
+            padding: 20px;
+            line-height: 1.8;
+            white-space: pre;
+            overflow-x: auto;
+        }
+        
+        .file-tree .folder {
+            color: var(--playwright-green);
+        }
+        
+        .file-tree .file {
+            color: var(--text-secondary);
+        }
+        
+        .file-tree .comment {
+            color: var(--text-muted);
+            font-style: italic;
+        }
+        
+        /* Alert Boxes */
+        .alert {
+            padding: 20px 24px;
+            border-radius: 12px;
+            margin: 20px 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+        }
+        
+        .alert-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+        
+        .alert-warning {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+        
+        .alert-warning .alert-icon {
+            color: var(--warning);
+        }
+        
+        .alert-success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        
+        .alert-success .alert-icon {
+            color: var(--success);
+        }
+        
+        .alert-error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        
+        .alert-error .alert-icon {
+            color: var(--error);
+        }
+        
+        .alert-info {
+            background: rgba(46, 173, 51, 0.1);
+            border: 1px solid rgba(46, 173, 51, 0.3);
+        }
+        
+        .alert-info .alert-icon {
+            color: var(--playwright-green);
+        }
+        
+        /* Interactive Terminal Demo */
+        .terminal-demo {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-card) 100%);
+            border: 2px solid var(--border-color);
+            border-radius: 16px;
+            overflow: hidden;
+            margin: 24px 0;
+        }
+        
+        .terminal-header {
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .terminal-dot.red { background: #ef4444; }
+        .terminal-dot.yellow { background: #f59e0b; }
+        .terminal-dot.green { background: #10b981; }
+        
+        .terminal-title {
+            flex: 1;
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        
+        .terminal-body {
+            padding: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.8;
+            min-height: 200px;
+        }
+        
+        .terminal-line {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin-bottom: 8px;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+        }
+        
+        .terminal-line.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .terminal-prompt {
+            color: var(--playwright-green);
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        
+        .terminal-command {
+            color: var(--text-primary);
+        }
+        
+        .terminal-output {
+            color: var(--text-secondary);
+            padding-left: 20px;
+        }
+        
+        .terminal-success {
+            color: var(--success);
+        }
+        
+        .terminal-browserstack {
+            color: var(--browserstack-orange);
+        }
+        
+        .terminal-controls {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            padding: 16px;
+            background: var(--bg-tertiary);
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .demo-btn {
+            padding: 10px 24px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .demo-btn-primary {
+            background: linear-gradient(135deg, var(--playwright-green) 0%, #1a8f24 100%);
+            color: white;
+        }
+        
+        .demo-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(46, 173, 51, 0.4);
+        }
+        
+        .demo-btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .demo-btn-secondary:hover {
+            border-color: var(--playwright-green);
+        }
+        
+        /* Flow Animation */
+        .flow-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            padding: 30px 0;
+        }
+        
+        .flow-node {
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px 24px;
+            text-align: center;
+            min-width: 120px;
+            transition: all 0.3s ease;
+        }
+        
+        .flow-node.active {
+            border-color: var(--playwright-green);
+            background: rgba(46, 173, 51, 0.1);
+            box-shadow: 0 0 20px rgba(46, 173, 51, 0.3);
+        }
+        
+        .flow-arrow {
+            font-size: 24px;
+            color: var(--text-muted);
+            animation: bounceHorizontal 1s ease-in-out infinite;
+        }
+        
+        @keyframes bounceHorizontal {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(5px); }
+        }
+        
+        /* Accordion */
+        .accordion {
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .accordion-item {
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .accordion-item:last-child {
+            border-bottom: none;
+        }
+        
+        .accordion-header {
+            padding: 20px 24px;
+            background: var(--bg-card);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+        
+        .accordion-header:hover {
+            background: var(--bg-tertiary);
+        }
+        
+        .accordion-title {
+            font-weight: 600;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .accordion-arrow {
+            transition: transform 0.3s ease;
+        }
+        
+        .accordion-item.active .accordion-arrow {
+            transform: rotate(180deg);
+        }
+        
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        
+        .accordion-item.active .accordion-content {
+            max-height: 2000px;
+        }
+        
+        .accordion-body {
+            padding: 24px;
+            background: var(--bg-secondary);
+        }
+        
+        /* Quick Reference Box */
+        .quick-ref {
+            background: linear-gradient(135deg, var(--axos-navy-dark), var(--axos-navy));
+            border-radius: 16px;
+            padding: 32px;
+            margin: 40px 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 2;
+            border: 1px solid var(--axos-navy-light);
+        }
+        
+        .quick-ref-title {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            color: var(--playwright-green);
+        }
+        
+        .quick-ref-section {
+            margin-bottom: 20px;
+        }
+        
+        .quick-ref-section h4 {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: var(--axos-orange-light);
+            margin-bottom: 8px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 60px 20px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            position: relative;
+            z-index: 1;
+        }
+        
+        footer p {
+            color: var(--text-secondary);
+        }
+        
+        /* Scroll to top button */
+        .scroll-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            background: var(--playwright-green);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+        
+        .scroll-top.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .scroll-top:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(46, 173, 51, 0.4);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .grid-2, .grid-3, .grid-4 {
+                grid-template-columns: 1fr;
+            }
+            
+            .nav {
+                gap: 4px;
+            }
+            
+            .nav-link {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+            
+            .section-title {
+                font-size: 24px;
+            }
+            
+            .section-icon {
+                width: 48px;
+                height: 48px;
+                font-size: 24px;
+            }
+            
+            .flow-diagram {
+                flex-direction: column;
+            }
+            
+            .flow-arrow {
+                transform: rotate(90deg);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="bg-pattern"></div>
+    
+    <!-- Floating Particles -->
+    <div class="particles">
+        <div class="particle" style="left: 10%; animation-delay: 0s;"></div>
+        <div class="particle" style="left: 20%; animation-delay: 2s;"></div>
+        <div class="particle" style="left: 30%; animation-delay: 4s;"></div>
+        <div class="particle" style="left: 40%; animation-delay: 6s;"></div>
+        <div class="particle" style="left: 50%; animation-delay: 8s;"></div>
+        <div class="particle" style="left: 60%; animation-delay: 1s;"></div>
+        <div class="particle" style="left: 70%; animation-delay: 3s;"></div>
+        <div class="particle" style="left: 80%; animation-delay: 5s;"></div>
+        <div class="particle" style="left: 90%; animation-delay: 7s;"></div>
+    </div>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="hero-badge">
+                <span>🌐</span>
+                <span>AXOS QCoE Web Automation</span>
+            </div>
+            <h1>
+                Framework<br>
+                <span class="gradient-text">Standards & Guidelines</span>
+            </h1>
+            <p class="hero-subtitle">
+                A comprehensive guide to building maintainable, consistent, and high-quality web automation tests using Playwright with BrowserStack integration.
+            </p>
+            <div class="hero-badges">
+                <span class="tech-badge playwright">🎭 Playwright</span>
+                <span class="tech-badge browserstack">☁️ BrowserStack</span>
+                <span class="tech-badge">📊 Allure Reports</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Navigation -->
+    <div class="nav-container">
+        <nav class="nav">
+            <a href="#structure" class="nav-link">Structure</a>
+            <a href="#commands" class="nav-link">Commands</a>
+            <a href="#env" class="nav-link">Environment</a>
+            <a href="#pages" class="nav-link">Page Objects</a>
+            <a href="#locators" class="nav-link">Locators</a>
+            <a href="#tags" class="nav-link">Tags</a>
+            <a href="#browserstack" class="nav-link">BrowserStack</a>
+            <a href="#rules" class="nav-link">Code Rules</a>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        
+        <!-- Repository Structure Section -->
+        <section id="structure">
+            <div class="section-header">
+                <div class="section-icon">📁</div>
+                <h2 class="section-title">Repository <span class="highlight">Structure</span></h2>
+            </div>
+            
+            <div class="file-tree">
+<span class="folder">📦 Axos.Auto_Web/</span>
+├── <span class="folder">configs/</span>
+│   ├── <span class="folder">env/</span>                           <span class="comment"># Environment configs (qa, uat, stg, prod)</span>
+│   └── <span class="file">browsers.json</span>               <span class="comment"># Browser configurations</span>
+│
+├── <span class="folder">src/</span>
+│   ├── <span class="folder">fixtures/</span>                      <span class="comment"># Playwright fixtures</span>
+│   │   ├── <span class="file">base.fixture.js</span>         <span class="comment"># Extended test with BrowserStack</span>
+│   │   └── <span class="file">global-teardown.js</span>      <span class="comment"># Post-test session renaming</span>
+│   │
+│   ├── <span class="folder">locators/</span>                      <span class="comment"># Element selectors</span>
+│   │   └── <span class="file">login.locators.js</span>
+│   │
+│   ├── <span class="folder">pages/</span>                         <span class="comment"># Page Objects (Functional Style)</span>
+│   │   └── <span class="file">login.page.js</span>
+│   │
+│   └── <span class="folder">utils/</span>                         <span class="comment"># Shared utilities</span>
+│       ├── <span class="file">browserstack.js</span>         <span class="comment"># BrowserStack executor helpers</span>
+│       ├── <span class="file">bs-rename-sessions.js</span>   <span class="comment"># API-based session renaming</span>
+│       ├── <span class="file">data.js</span>                 <span class="comment"># Test data utilities</span>
+│       └── <span class="file">helpers.js</span>              <span class="comment"># Reusable helper functions</span>
+│
+├── <span class="folder">suites/</span>                            <span class="comment"># Test specifications by feature</span>
+│   ├── <span class="folder">01_Login/</span>
+│   │   └── <span class="file">login.spec.js</span>
+│   ├── <span class="folder">02_Dashboard/</span>
+│   ├── <span class="folder">03_Accounts/</span>
+│   └── ...
+│
+├── <span class="folder">tools/</span>                             <span class="comment"># CLI tools and scripts</span>
+│   ├── <span class="file">browser-selector.js</span>        <span class="comment"># Dynamic browser selection</span>
+│   └── <span class="file">generate-browserstack-yml.js</span>
+│
+├── <span class="folder">data/</span>                              <span class="comment"># Test data files (Excel, JSON)</span>
+├── <span class="folder">docs/</span>                              <span class="comment"># Documentation</span>
+├── <span class="file">playwright.config.js</span>              <span class="comment"># Playwright configuration</span>
+└── <span class="file">.env</span>                               <span class="comment"># Environment variables</span>
+            </div>
+        </section>
+
+        <!-- Commands Section -->
+        <section id="commands">
+            <div class="section-header">
+                <div class="section-icon">⚡</div>
+                <h2 class="section-title">Execution <span class="highlight">Commands</span></h2>
+            </div>
+            
+            <div class="alert alert-info">
+                <span class="alert-icon">💡</span>
+                <div>
+                    <strong>Native Parallelism</strong><br>
+                    Playwright has built-in parallel execution. Use <code class="inline-code">--workers</code> to control concurrency.
+                </div>
+            </div>
+            
+            <!-- Interactive Terminal Demo -->
+            <div class="terminal-demo" id="terminalDemo">
+                <div class="terminal-header">
+                    <div class="terminal-dot red"></div>
+                    <div class="terminal-dot yellow"></div>
+                    <div class="terminal-dot green"></div>
+                    <span class="terminal-title">Terminal — BrowserStack Execution Demo</span>
+                </div>
+                <div class="terminal-body" id="terminalBody">
+                    <div class="terminal-line" id="line1">
+                        <span class="terminal-prompt">$</span>
+                        <span class="terminal-command">npm run bs:sanity</span>
+                    </div>
+                    <div class="terminal-line" id="line2">
+                        <span class="terminal-output">> node tools/generate-browserstack-yml.js</span>
+                    </div>
+                    <div class="terminal-line" id="line3">
+                        <span class="terminal-output terminal-browserstack">🔧 Selected browser: Chrome 131 on Windows 11</span>
+                    </div>
+                    <div class="terminal-line" id="line4">
+                        <span class="terminal-output terminal-success">✓ Generated browserstack.yml</span>
+                    </div>
+                    <div class="terminal-line" id="line5">
+                        <span class="terminal-output">> browserstack-node-sdk playwright test --grep "@Sanity"</span>
+                    </div>
+                    <div class="terminal-line" id="line6">
+                        <span class="terminal-output terminal-browserstack">╔════════════════════════════════════════════════════════════╗</span>
+                    </div>
+                    <div class="terminal-line" id="line7">
+                        <span class="terminal-output terminal-browserstack">║   🚀 RUNNING TESTS ON ENVIRONMENT: UAT                     ║</span>
+                    </div>
+                    <div class="terminal-line" id="line8">
+                        <span class="terminal-output terminal-browserstack">╚════════════════════════════════════════════════════════════╝</span>
+                    </div>
+                    <div class="terminal-line" id="line9">
+                        <span class="terminal-output terminal-success">✓ OLB Secure Login (15.2s)</span>
+                    </div>
+                    <div class="terminal-line" id="line10">
+                        <span class="terminal-output terminal-success">✓ 1 passed (15.2s)</span>
+                    </div>
+                </div>
+                <div class="terminal-controls">
+                    <button class="demo-btn demo-btn-primary" onclick="playTerminalDemo()">
+                        ▶️ Play Demo
+                    </button>
+                    <button class="demo-btn demo-btn-secondary" onclick="resetTerminalDemo()">
+                        🔄 Reset
+                    </button>
+                </div>
+            </div>
+            
+            <div class="grid-2" style="margin-top: 24px;">
+                <div class="card">
+                    <h3 class="card-title"><span class="icon">💻</span> Local Commands</h3>
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-lang">bash</span>
+                            <button class="code-copy" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <pre><span class="comment"># Run all tests (headless)</span>
+npm test
+
+<span class="comment"># Run with browser visible</span>
+npm run test:headed
+
+<span class="comment"># Debug mode with Playwright Inspector</span>
+npm run test:debug
+
+<span class="comment"># UI mode for interactive debugging</span>
+npm run test:ui
+
+<span class="comment"># Run specific tag</span>
+npx playwright test --grep <span class="string">"@Sanity"</span>
+
+<span class="comment"># Run specific suite</span>
+npx playwright test suites/01_Login/</pre>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title"><span class="icon">☁️</span> BrowserStack Commands</h3>
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-lang">bash</span>
+                            <button class="code-copy" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <pre><span class="comment"># Run all tests on BrowserStack</span>
+npm run bs:test
+
+<span class="comment"># Run Sanity tests</span>
+npm run bs:sanity
+
+<span class="comment"># Run Regression tests</span>
+npm run bs:regression
+
+<span class="comment"># Run Smoke tests</span>
+npm run bs:smoke
+
+<span class="comment"># Run with parallel workers</span>
+npm run bs:test:parallel
+
+<span class="comment"># Custom grep pattern</span>
+npm run bs:test -- --grep <span class="string">"@Login"</span></pre>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Allure Reporting -->
+            <div class="card" style="margin-top: 24px;">
+                <h3 class="card-title"><span class="icon">📊</span> Allure Reporting (v3)</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 16px;">
+                    This project uses <strong>Allure 3</strong> (TypeScript-based, no Java required). The <code class="inline-code">allure</code> npm package is included as a <code class="inline-code">devDependency</code> and provides the CLI via <code class="inline-code">npx allure</code>.
+                </p>
+
+                <div class="alert alert-info" style="margin-top: 0;">
+                    <span class="alert-icon">💡</span>
+                    <div>
+                        <strong>How It Works</strong><br>
+                        <ol style="margin: 8px 0 0 20px; color: var(--text-secondary); line-height: 2;">
+                            <li>Clean previous results: <code class="inline-code">npm run clean</code> and <code class="inline-code">npm run clean:state</code></li>
+                            <li>Run any test command (<code class="inline-code">npm test</code>, <code class="inline-code">npm run bs:sanity</code>, etc.) — results are saved to <code class="inline-code">allure-results/</code></li>
+                            <li>Run <code class="inline-code">npm run allure:generate</code> to build the HTML report into <code class="inline-code">allure-report/</code></li>
+                            <li>Run <code class="inline-code">npm run allure:open</code> to view it in the browser</li>
+                            <li>Or use <code class="inline-code">npm run allure:serve</code> as a one-step generate + open</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <div class="alert alert-warning" style="margin-top: 16px;">
+                    <span class="alert-icon">⚠️</span>
+                    <div>
+                        <strong>Always Clean Before Running Tests</strong><br>
+                        Previous test results accumulate in <code class="inline-code">allure-results/</code> and will pollute your report with stale data. Always run cleanup before executing tests:
+                        <div class="code-block" style="margin-top: 12px;">
+                            <div class="code-header">
+                                <span class="code-lang">bash</span>
+                                <button class="code-copy" onclick="copyCode(this)">Copy</button>
+                            </div>
+                            <pre><span class="comment"># Clean reports and BrowserStack artifacts</span>
+npm run clean
+npm run clean:state
+
+<span class="comment"># Then run tests (local or BrowserStack)</span>
+npm test
+<span class="comment"># or</span>
+npm run bs:sanity
+
+<span class="comment"># Then generate and view the report</span>
+npm run allure:serve</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-success" style="margin-top: 16px;">
+                    <span class="alert-icon">✅</span>
+                    <div>
+                        <strong>Verify Installation</strong><br>
+                        Run <code class="inline-code">npx allure --version</code> — you should see version <code class="inline-code">3.x.x</code>. If you get an error, run <code class="inline-code">npm install</code> to restore dependencies.
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 24px;">
+                <h3 class="card-title"><span class="icon">🛠️</span> Utility Commands</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Command</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code class="inline-code">npm run allure:generate</code></td>
+                                <td>Generate Allure report from results</td>
+                            </tr>
+                            <tr>
+                                <td><code class="inline-code">npm run allure:open</code></td>
+                                <td>Open Allure report in browser</td>
+                            </tr>
+                            <tr>
+                                <td><code class="inline-code">npm run allure:serve</code></td>
+                                <td>Generate and open Allure report in one step</td>
+                            </tr>
+                            <tr>
+                                <td><code class="inline-code">npm run clean</code></td>
+                                <td>Remove all test artifacts (results + reports)</td>
+                            </tr>
+                            <tr>
+                                <td><code class="inline-code">npm run clean:state</code></td>
+                                <td>Clear browser selector state files</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Environment Variables Section -->
+        <section id="env">
+            <div class="section-header">
+                <div class="section-icon">⚙️</div>
+                <h2 class="section-title">Environment <span class="highlight-orange">Variables</span></h2>
+            </div>
+            
+            <div class="grid-2">
+                <div class="card">
+                    <h3 class="card-title"><span class="icon">🔐</span> BrowserStack Credentials</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Variable</th>
+                                    <th>Required</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code class="inline-code">BROWSERSTACK_USERNAME</code></td>
+                                    <td>✅ Yes</td>
+                                </tr>
+                                <tr>
+                                    <td><code class="inline-code">BROWSERSTACK_ACCESS_KEY</code></td>
+                                    <td>✅ Yes</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title"><span class="icon">🌍</span> Test Environment</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Variable</th>
+                                    <th>Default</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code class="inline-code">TEST_ENV</code></td>
+                                    <td>uat</td>
+                                </tr>
+                                <tr>
+                                    <td><code class="inline-code">BASE_URL</code></td>
+                                    <td>(from config)</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card" style="margin-top: 24px;">
+                <h3 class="card-title"><span class="icon">🌐</span> Browser Selection</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Variable</th>
+                                <th>Description</th>
+                                <th>Default</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code class="inline-code">BS_RANDOM_BROWSER</code></td>
+                                <td>Randomly select browser from API</td>
+                                <td>true</td>
+                            </tr>
+                            <tr>
+                                <td><code class="inline-code">USE_POPULAR_BROWSERS</code></td>
+                                <td>Use only popular browsers (1 random: Chrome or Edge)</td>
+                                <td>true</td>
+                            </tr>
+                            <tr>
+                                <td><code class="inline-code">USE_ALL_BS_BROWSERS</code></td>
+                                <td>Use all available browsers</td>
+                                <td>false</td>
+                            </tr>
+                            <tr>
+                                <td><code class="inline-code">BS_BROWSER_NAME</code></td>
+                                <td>Specific browser (when random=false)</td>
+                                <td>chrome</td>
+                            </tr>
+                            <tr>
+                                <td><code class="inline-code">BS_BROWSER_VERSION</code></td>
+                                <td>Specific version</td>
+                                <td>latest</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="card" style="margin-top: 24px;">
+                <h3 class="card-title"><span class="icon">📊</span> Test Data Structure</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 16px;">
+                    Each environment JSON includes credentials AND base URLs per test data ID:
+                </p>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">json</span>
+                    </div>
+                    <pre><span class="comment">// configs/env/uat.json</span>
+{
+  <span class="string">"TD_001"</span>: {
+    <span class="string">"Username"</span>: <span class="string">"TestUser_001"</span>,
+    <span class="string">"Password"</span>: <span class="string">"Pass$1234"</span>,
+    <span class="string">"BaseUrl"</span>: <span class="string">"https://secure.uat.axosbank.com"</span>
+  },
+  <span class="string">"TD_002"</span>: {
+    <span class="string">"Username"</span>: <span class="string">"OutSystemsUser"</span>,
+    <span class="string">"Password"</span>: <span class="string">"Pass$5678"</span>,
+    <span class="string">"BaseUrl"</span>: <span class="string">"https://axosbank-test.outsystems.app"</span>
+  }
+}</pre>
+                </div>
+                <div class="alert alert-success" style="margin-top: 16px;">
+                    <span class="alert-icon">✅</span>
+                    <div>
+                        Each test data ID can point to a <strong>different application URL</strong>, enabling multi-app testing.
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card" style="margin-top: 24px;">
+                <h3 class="card-title"><span class="icon">🔒</span> BrowserStack Local Tunnel</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 16px;">
+                    Enable tunnel to test private/internal applications:
+                </p>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">bash</span>
+                    </div>
+                    <pre><span class="comment"># Enable via .env</span>
+USE_BS_LOCAL_TUNNEL=<span class="keyword">true</span>
+
+<span class="comment"># Or via command line</span>
+USE_BS_LOCAL_TUNNEL=<span class="keyword">true</span> npm run bs:test</pre>
+                </div>
+                <div class="alert alert-success" style="margin-top: 16px;">
+                    <span class="alert-icon">✅</span>
+                    <div>
+                        When enabled, you'll see a banner: <strong>"🔒 BROWSERSTACK LOCAL TUNNEL: ENABLED"</strong>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Page Objects Section -->
+        <section id="pages">
+            <div class="section-header">
+                <div class="section-icon">🧩</div>
+                <h2 class="section-title">Page Objects <span class="highlight">(Functional Style)</span></h2>
+            </div>
+            
+            <div class="alert alert-info">
+                <span class="alert-icon">💡</span>
+                <div>
+                    <strong>Functional Style</strong><br>
+                    Use pure functions that receive <code class="inline-code">page</code> as parameter. No <code class="inline-code">this.page</code> or class instances.
+                </div>
+            </div>
+            
+            <div class="comparison-grid">
+                <div class="card do-card">
+                    <h3 class="card-title"><span class="icon">✅</span> Correct (Functional)</h3>
+                    <div class="code-block">
+                        <pre><span class="comment">// src/pages/login.page.js</span>
+<span class="keyword">const</span> locators = <span class="keyword">require</span>(<span class="string">'../locators/login.locators'</span>);
+<span class="keyword">const</span> helpers = <span class="keyword">require</span>(<span class="string">'../utils/helpers'</span>);
+
+<span class="keyword">async function</span> <span class="function">login</span>(page, { username, password, baseUrl }) {
+  <span class="keyword">const</span> url = baseUrl ? <span class="string">`${baseUrl}/login`</span> : <span class="string">'/login'</span>;
+  <span class="keyword">await</span> page.goto(url);
+  <span class="keyword">await</span> helpers.inputText(page, locators.usernameInput, username);
+  <span class="keyword">await</span> helpers.inputText(page, locators.passwordInput, password);
+  <span class="keyword">await</span> helpers.clickElement(page, locators.signInButton);
+  <span class="comment">// ... rest of flow</span>
+  <span class="keyword">return</span> <span class="keyword">true</span>;
+}
+
+<span class="keyword">module</span>.<span class="keyword">exports</span> = { login };</pre>
+                    </div>
+                </div>
+                
+                <div class="card dont-card">
+                    <h3 class="card-title"><span class="icon">❌</span> Wrong (Class-Based)</h3>
+                    <div class="code-block">
+                        <pre><span class="comment">// DON'T do this</span>
+<span class="keyword">class</span> <span class="function">LoginPage</span> {
+  <span class="keyword">constructor</span>(page) {
+    <span class="keyword">this</span>.page = page;  <span class="comment">// Avoid this pattern</span>
+  }
+  
+  <span class="keyword">async</span> <span class="function">login</span>(username, password) {
+    <span class="keyword">await</span> <span class="keyword">this</span>.page.goto(<span class="string">'/login'</span>);
+    <span class="keyword">await</span> <span class="keyword">this</span>.page.fill(<span class="string">'#user'</span>, username);
+    <span class="comment">// ...</span>
+  }
+}
+
+<span class="keyword">module</span>.<span class="keyword">exports</span> = LoginPage;</pre>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card" style="margin-top: 24px;">
+                <h3 class="card-title"><span class="icon">📝</span> Using in Tests</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">javascript</span>
+                        <button class="code-copy" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <pre><span class="keyword">const</span> { test, expect } = <span class="keyword">require</span>(<span class="string">'../../src/fixtures/base.fixture'</span>);
+<span class="keyword">const</span> { login } = <span class="keyword">require</span>(<span class="string">'../../src/pages/login.page'</span>);
+<span class="keyword">const</span> Data = <span class="keyword">require</span>(<span class="string">'../../src/utils/data'</span>);
+
+test.describe(<span class="string">'Login @Login'</span>, () => {
+  
+  test(<span class="string">'OLB Secure Login @Sanity @Smoke'</span>, <span class="keyword">async</span> ({ page }) => {
+    <span class="keyword">const</span> creds = Data.getCredentials(<span class="string">'TD_001'</span>);
+    
+    <span class="keyword">await</span> login(page, {
+      username: creds.Username,
+      password: creds.Password,
+      baseUrl: creds.BaseUrl  <span class="comment">// URL from test data JSON</span>
+    });
+  });
+  
+});</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Locators Section -->
+        <section id="locators">
+            <div class="section-header">
+                <div class="section-icon">🎯</div>
+                <h2 class="section-title">Locator <span class="highlight-orange">Patterns</span></h2>
+            </div>
+            
+            <div class="alert alert-warning">
+                <span class="alert-icon">⚠️</span>
+                <div>
+                    <strong>XPath with Normalization</strong><br>
+                    Always use <code class="inline-code">translate(normalize-space(text()), ...)</code> for case-insensitive, whitespace-normalized matching.
+                </div>
+            </div>
+            
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">javascript</span>
+                    <button class="code-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><span class="comment">// src/locators/login.locators.js</span>
+<span class="keyword">module</span>.<span class="keyword">exports</span> = {
+  <span class="comment">// ✅ Text-based (case-insensitive, whitespace-normalized)</span>
+  <span class="variable">signInHeader</span>: <span class="string">"//*[translate(normalize-space(text()), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz') = 'sign into your account']"</span>,
+  
+  <span class="comment">// ✅ Contains text (partial match)</span>
+  <span class="variable">loadingIndicator</span>: <span class="string">"//*[contains(translate(normalize-space(text()), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'loading')]"</span>,
+  
+  <span class="comment">// ✅ Simple index-based</span>
+  <span class="variable">usernameInput</span>: <span class="string">"(//input)[1]"</span>,
+  <span class="variable">passwordInput</span>: <span class="string">"(//input)[2]"</span>,
+  
+  <span class="comment">// ✅ Attribute-based</span>
+  <span class="variable">submitButton</span>: <span class="string">"//button[@type='submit']"</span>,
+};</pre>
+            </div>
+            
+            <div class="comparison-grid" style="margin-top: 24px;">
+                <div class="card do-card">
+                    <h3 class="card-title"><span class="icon">✅</span> DO - Use XPath</h3>
+                    <div class="code-block">
+                        <pre><span class="comment">// Simple, readable XPath</span>
+<span class="string">"//*[translate(normalize-space(text())...]"</span>
+<span class="string">"(//input)[1]"</span>
+<span class="string">"//button[@type='submit']"</span>
+<span class="string">"//a[contains(@href, 'dashboard')]"</span></pre>
+                    </div>
+                </div>
+                
+                <div class="card dont-card">
+                    <h3 class="card-title"><span class="icon">❌</span> DON'T - Complex CSS</h3>
+                    <div class="code-block">
+                        <pre><span class="comment">// Avoid fragile selectors</span>
+<span class="string">"#app > div.main > form > input"</span>
+<span class="string">".btn-primary.submit-form.large"</span>
+<span class="string">"[data-testid='login-form'] input"</span></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tags Section -->
+        <section id="tags">
+            <div class="section-header">
+                <div class="section-icon">🏷️</div>
+                <h2 class="section-title">Tag <span class="highlight">System</span></h2>
+            </div>
+            
+            <p style="color: var(--text-secondary); margin-bottom: 24px;">
+                Tags are used for filtering tests during execution. Include tags in the test title.
+            </p>
+            
+            <div class="grid-3">
+                <div class="card">
+                    <h3 class="card-title">Primary Tags</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 12px;">Use for test classification</p>
+                    <div class="tag-container">
+                        <span class="tag success">@Sanity</span>
+                        <span class="tag warning">@Regression</span>
+                        <span class="tag info">@Smoke</span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">Feature Tags</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 12px;">Use for feature grouping</p>
+                    <div class="tag-container">
+                        <span class="tag orange">@Login</span>
+                        <span class="tag orange">@Dashboard</span>
+                        <span class="tag orange">@Accounts</span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">Control Tags</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 12px;">Use for test control</p>
+                    <div class="tag-container">
+                        <span class="tag" style="background: rgba(239, 68, 68, 0.15); color: var(--error); border-color: rgba(239, 68, 68, 0.3);">@Skip</span>
+                        <span class="tag" style="background: rgba(239, 68, 68, 0.15); color: var(--error); border-color: rgba(239, 68, 68, 0.3);">@Flaky</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="code-block" style="margin-top: 24px;">
+                <div class="code-header">
+                    <span class="code-lang">javascript</span>
+                    <button class="code-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><span class="comment">// Correct tag usage in test titles</span>
+test(<span class="string">'OLB Secure Login @Sanity @Smoke'</span>, <span class="keyword">async</span> ({ page }) => {
+  <span class="comment">// Test implementation</span>
+});
+
+test(<span class="string">'Dashboard Widget Load @Regression @Dashboard'</span>, <span class="keyword">async</span> ({ page }) => {
+  <span class="comment">// Test implementation</span>
+});
+
+<span class="comment">// Run commands</span>
+<span class="comment">// npm run bs:sanity           → Runs all @Sanity tests</span>
+<span class="comment">// npm run bs:regression       → Runs all @Regression tests</span>
+<span class="comment">// npx playwright test --grep "@Login" → Runs all @Login tests</span></pre>
+            </div>
+        </section>
+
+        <!-- BrowserStack Section -->
+        <section id="browserstack">
+            <div class="section-header">
+                <div class="section-icon">☁️</div>
+                <h2 class="section-title">BrowserStack <span class="highlight-orange">Integration</span></h2>
+            </div>
+            
+            <div class="grid-2">
+                <div class="card">
+                    <h3 class="card-title"><span class="icon">📛</span> Session Naming</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 16px;">
+                        Sessions are automatically renamed with clean test names:
+                    </p>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Shows As</th>
+                                    <th>Instead Of</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="color: var(--success);">OLB Secure Login</td>
+                                    <td style="color: var(--error); font-size: 11px;">01_Login/login.spec.js - Login @Login - OLB Secure Login @Sanity</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title"><span class="icon">🏗️</span> Build Naming</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 16px;">
+                        Build names include source and grep pattern:
+                    </p>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Source</th>
+                                    <th>Build Name</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>CI/CD</td>
+                                    <td><code class="inline-code">CI 1234 - grep: @Sanity</code></td>
+                                </tr>
+                                <tr>
+                                    <td>Local</td>
+                                    <td><code class="inline-code">Local 07:31:20 AM - grep: @Smoke</code></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Flow Diagram -->
+            <div class="card" style="margin-top: 24px;">
+                <h3 class="card-title"><span class="icon">🔄</span> Execution Flow</h3>
+                <div class="flow-diagram" id="flowDiagram">
+                    <div class="flow-node" id="node1">
+                        <div style="font-size: 24px; margin-bottom: 8px;">📝</div>
+                        <div style="font-weight: 600;">bs:config</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">Generate yml</div>
+                    </div>
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-node" id="node2">
+                        <div style="font-size: 24px; margin-bottom: 8px;">🌐</div>
+                        <div style="font-weight: 600;">Select Browser</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">From API</div>
+                    </div>
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-node" id="node3">
+                        <div style="font-size: 24px; margin-bottom: 8px;">🎭</div>
+                        <div style="font-weight: 600;">Run Tests</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">Playwright</div>
+                    </div>
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-node" id="node4">
+                        <div style="font-size: 24px; margin-bottom: 8px;">✏️</div>
+                        <div style="font-weight: 600;">Rename Sessions</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">API call</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Code Rules Section -->
+        <section id="rules">
+            <div class="section-header">
+                <div class="section-icon">🛡️</div>
+                <h2 class="section-title">Code Quality <span class="highlight">Rules</span></h2>
+            </div>
+            
+            <div class="accordion">
+                <div class="accordion-item active">
+                    <div class="accordion-header" onclick="toggleAccordion(this)">
+                        <span class="accordion-title">
+                            <span style="color: var(--success);">✅</span>
+                            Use Helper Functions
+                        </span>
+                        <span class="accordion-arrow">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <p style="margin-bottom: 16px; color: var(--text-secondary);">
+                                Always use helpers from <code class="inline-code">src/utils/helpers.js</code> for common operations.
+                            </p>
+                            <div class="comparison-grid">
+                                <div class="card do-card">
+                                    <h4 style="color: var(--success); margin-bottom: 8px;">✅ Correct</h4>
+                                    <div class="code-block">
+                                        <pre><span class="keyword">await</span> helpers.waitForElement(page, locator);
+<span class="keyword">await</span> helpers.clickElement(page, locator);
+<span class="keyword">await</span> helpers.inputText(page, locator, text);
+<span class="keyword">await</span> helpers.validateElement(page, locator);</pre>
+                                    </div>
+                                </div>
+                                <div class="card dont-card">
+                                    <h4 style="color: var(--error); margin-bottom: 8px;">❌ Wrong</h4>
+                                    <div class="code-block">
+                                        <pre><span class="keyword">await</span> page.waitForSelector(locator);
+<span class="keyword">await</span> page.click(locator);
+<span class="keyword">await</span> page.fill(locator, text);
+<span class="keyword">await</span> page.waitForTimeout(<span class="number">5000</span>); <span class="comment">// Never!</span></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="accordion-item">
+                    <div class="accordion-header" onclick="toggleAccordion(this)">
+                        <span class="accordion-title">
+                            <span style="color: var(--error);">❌</span>
+                            No Commented Code
+                        </span>
+                        <span class="accordion-arrow">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <p style="margin-bottom: 16px; color: var(--text-secondary);">
+                                Remove all commented code before committing. Version control tracks history.
+                            </p>
+                            <div class="code-block">
+                                <pre><span class="comment">// ❌ DON'T leave commented code</span>
+<span class="keyword">async function</span> <span class="function">loginFlow</span>() {
+  <span class="keyword">await</span> helpers.click(submitBtn);
+  <span class="comment">// await helpers.wait(5000);</span>
+  <span class="comment">// await oldMethod();</span>
+  <span class="comment">// const debug = true;</span>
+}
+
+<span class="comment">// ✅ DO keep it clean</span>
+<span class="keyword">async function</span> <span class="function">loginFlow</span>() {
+  <span class="keyword">await</span> helpers.click(submitBtn);
+}</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="accordion-item">
+                    <div class="accordion-header" onclick="toggleAccordion(this)">
+                        <span class="accordion-title">
+                            <span style="color: var(--error);">❌</span>
+                            No Hard-Coded Waits
+                        </span>
+                        <span class="accordion-arrow">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <p style="margin-bottom: 16px; color: var(--text-secondary);">
+                                Never use <code class="inline-code">page.waitForTimeout()</code>. Use smart waits instead.
+                            </p>
+                            <div class="comparison-grid">
+                                <div class="card do-card">
+                                    <h4 style="color: var(--success); margin-bottom: 8px;">✅ Smart Waits</h4>
+                                    <div class="code-block">
+                                        <pre><span class="keyword">await</span> helpers.waitForElement(page, locator);
+<span class="keyword">await</span> helpers.waitForEnabledAndClick(page, btn);
+<span class="keyword">await</span> helpers.waitForElementToDisappear(page, loader);</pre>
+                                    </div>
+                                </div>
+                                <div class="card dont-card">
+                                    <h4 style="color: var(--error); margin-bottom: 8px;">❌ Hard Waits</h4>
+                                    <div class="code-block">
+                                        <pre><span class="keyword">await</span> page.waitForTimeout(<span class="number">5000</span>);
+<span class="keyword">await</span> <span class="keyword">new</span> Promise(r => setTimeout(r, <span class="number">3000</span>));
+<span class="comment">// Just wasting time!</span></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="accordion-item">
+                    <div class="accordion-header" onclick="toggleAccordion(this)">
+                        <span class="accordion-title">
+                            <span style="color: var(--success);">✅</span>
+                            Proper File Placement
+                        </span>
+                        <span class="accordion-arrow">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <p style="margin-bottom: 16px; color: var(--text-secondary);">
+                                Files must be placed in the correct directory based on their purpose.
+                            </p>
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>File Type</th>
+                                            <th>Location</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Page Objects</td>
+                                            <td><code class="inline-code">src/pages/{feature}.page.js</code></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Locators</td>
+                                            <td><code class="inline-code">src/locators/{feature}.locators.js</code></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Utilities</td>
+                                            <td><code class="inline-code">src/utils/{utility}.js</code></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Tests</td>
+                                            <td><code class="inline-code">suites/{##}_{Feature}/{test}.spec.js</code></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quick Reference -->
+        <div class="quick-ref">
+            <h3 class="quick-ref-title">📋 Quick Reference Card</h3>
+            
+            <div class="quick-ref-section">
+                <h4>Run Commands</h4>
+                <div style="color: var(--text-secondary);">
+                    Local: <code style="color: var(--playwright-green);">npm test</code> or <code style="color: var(--playwright-green);">npm run test:headed</code><br>
+                    BrowserStack: <code style="color: var(--playwright-green);">npm run bs:sanity</code> or <code style="color: var(--playwright-green);">npm run bs:smoke</code><br>
+                    Debug: <code style="color: var(--playwright-green);">npm run test:debug</code> or <code style="color: var(--playwright-green);">npm run test:ui</code>
+                </div>
+            </div>
+            
+            <div class="quick-ref-section">
+                <h4>File Naming</h4>
+                <div style="color: var(--text-secondary);">
+                    Pages: <code style="color: var(--axos-orange);">src/pages/{feature}.page.js</code><br>
+                    Locators: <code style="color: var(--axos-orange);">src/locators/{feature}.locators.js</code><br>
+                    Tests: <code style="color: var(--axos-orange);">suites/{##}_{Feature}/{test}.spec.js</code>
+                </div>
+            </div>
+            
+            <div class="quick-ref-section">
+                <h4>Tag Format</h4>
+                <div style="color: var(--text-secondary);">
+                    Classification: <code style="color: var(--axos-orange);">@Sanity, @Regression, @Smoke</code><br>
+                    Feature: <code style="color: var(--axos-orange);">@Login, @Dashboard, @Accounts</code><br>
+                    Example: <code style="color: var(--axos-orange);">test('My Test @Sanity @Login', ...)</code>
+                </div>
+            </div>
+            
+            <div class="quick-ref-section">
+                <h4>Environment Variables</h4>
+                <div style="color: var(--text-secondary);">
+                    Environment: <code style="color: var(--axos-orange);">TEST_ENV=uat</code><br>
+                    Tunnel: <code style="color: var(--axos-orange);">USE_BS_LOCAL_TUNNEL=true</code><br>
+                    Random Browser: <code style="color: var(--axos-orange);">BS_RANDOM_BROWSER=true USE_POPULAR_BROWSERS=true</code>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <p style="font-size: 18px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">
+            Built with ❤️ by the AXOS QCoE Team
+        </p>
+        <p>
+            Web Automation Framework Guidelines v1.0 | Playwright + BrowserStack
+        </p>
+    </footer>
+
+    <!-- Scroll to Top Button -->
+    <button class="scroll-top" onclick="scrollToTop()">↑</button>
+
+    <script>
+        // Accordion functionality
+        function toggleAccordion(header) {
+            const item = header.parentElement;
+            const isActive = item.classList.contains('active');
+            
+            // Close all items
+            document.querySelectorAll('.accordion-item').forEach(i => {
+                i.classList.remove('active');
+            });
+            
+            // Open clicked item if it wasn't active
+            if (!isActive) {
+                item.classList.add('active');
+            }
+        }
+        
+        // Copy code functionality
+        function copyCode(button) {
+            const codeBlock = button.closest('.code-block');
+            const code = codeBlock.querySelector('pre').innerText;
+            navigator.clipboard.writeText(code).then(() => {
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                button.style.color = '#10b981';
+                button.style.borderColor = '#10b981';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.color = '';
+                    button.style.borderColor = '';
+                }, 2000);
+            });
+        }
+        
+        // Terminal Demo
+        let demoRunning = false;
+        
+        function playTerminalDemo() {
+            if (demoRunning) return;
+            demoRunning = true;
+            
+            resetTerminalDemo();
+            
+            const lines = document.querySelectorAll('.terminal-line');
+            const nodes = document.querySelectorAll('.flow-node');
+            
+            lines.forEach((line, index) => {
+                setTimeout(() => {
+                    line.classList.add('visible');
+                    
+                    // Animate flow nodes at key points
+                    if (index === 0) {
+                        nodes[0].classList.add('active');
+                    } else if (index === 2) {
+                        nodes[0].classList.remove('active');
+                        nodes[1].classList.add('active');
+                    } else if (index === 4) {
+                        nodes[1].classList.remove('active');
+                        nodes[2].classList.add('active');
+                    } else if (index === 9) {
+                        nodes[2].classList.remove('active');
+                        nodes[3].classList.add('active');
+                        
+                        setTimeout(() => {
+                            nodes[3].classList.remove('active');
+                            demoRunning = false;
+                        }, 2000);
+                    }
+                }, index * 400);
+            });
+        }
+        
+        function resetTerminalDemo() {
+            const lines = document.querySelectorAll('.terminal-line');
+            const nodes = document.querySelectorAll('.flow-node');
+            
+            lines.forEach(line => line.classList.remove('visible'));
+            nodes.forEach(node => node.classList.remove('active'));
+            demoRunning = false;
+        }
+        
+        // Scroll to top
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        
+        // Show/hide scroll button
+        window.addEventListener('scroll', () => {
+            const scrollButton = document.querySelector('.scroll-top');
+            if (window.scrollY > 500) {
+                scrollButton.classList.add('visible');
+            } else {
+                scrollButton.classList.remove('visible');
+            }
+        });
+        
+        // Smooth scroll for nav links
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const target = document.querySelector(link.getAttribute('href'));
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+        
+        // Active nav link on scroll
+        const sections = document.querySelectorAll('section[id]');
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (scrollY >= sectionTop - 200) {
+                    current = section.getAttribute('id');
+                }
+            });
+            
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === `#${current}`) {
+                    link.classList.add('active');
+                }
+            });
+        });
+        
+        // Auto-play terminal demo when section is visible
+        const commandsSection = document.getElementById('commands');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && !demoRunning) {
+                    setTimeout(() => playTerminalDemo(), 500);
+                }
+            });
+        }, { threshold: 0.3 });
+        
+        observer.observe(commandsSection);
+    </script>
+</body>
+</html>
