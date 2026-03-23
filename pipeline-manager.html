@@ -912,6 +912,11 @@
         { id: '12', name: 'Registration' }
     ];
 
+    // Outsystems has its own feature set (kept dynamic via sync + a small seed list).
+    const OUTSYSTEMS_FEATURES = [
+        { id: '00', name: 'EWM' }
+    ];
+
     const TEST_TYPES = ['Regression', 'Sanity', 'Smoke', 'Health Check'];
 
     const BRAND_KEY_MAP = {
@@ -956,6 +961,41 @@
 
     function isMobilePipeline(p) { return p && p.platform === '01 Mobile'; }
     function isMobileForm() { return document.getElementById('fPlatform')?.value === '01 Mobile'; }
+
+    function isOutsystemsBrand(brand) {
+        return String(brand || '').trim().toLowerCase() === 'outsystems';
+    }
+
+    function extractFeatureKeyFromDetail(featureDetail) {
+        const m = String(featureDetail || '').match(/\bOLB_([^_]+)/);
+        return m ? m[1] : '';
+    }
+
+    function getWebFeatureListForBrand(brand) {
+        if (!isOutsystemsBrand(brand)) return FEATURES;
+
+        const names = new Set();
+        for (const f of OUTSYSTEMS_FEATURES) names.add(f.name);
+
+        // Pull any real-world features already in the synced pipelines (keeps the UI "latest").
+        for (const p of (Array.isArray(pipelines) ? pipelines : [])) {
+            if (!p || !isOutsystemsBrand(p.brand)) continue;
+            if (p.feature) names.add(p.feature);
+            const k = extractFeatureKeyFromDetail(p.featureDetail);
+            if (k) names.add(k);
+        }
+
+        const sorted = Array.from(names).filter(Boolean).sort((a, b) => a.localeCompare(b));
+        return sorted.map((name, idx) => ({
+            id: String(idx).padStart(2, '0'),
+            name
+        }));
+    }
+
+    function renderWebFeatureOptions(brand, selectedValue) {
+        const list = getWebFeatureListForBrand(brand);
+        return list.map(f => `<option value="${f.name}" ${selectedValue === f.name ? 'selected' : ''}>${f.id} ${f.name}</option>`).join('');
+    }
 
     let pipelines = [];
     let savedSnapshot = [];
@@ -1389,6 +1429,7 @@
     function pipelineCard(p) {
         const badgeClass = p.testType === 'Regression' ? 'badge-regression' : p.testType === 'Sanity' ? 'badge-sanity' : p.testType === 'Smoke' ? 'badge-smoke' : 'badge-health';
         const suiteOrFeature = (p.testSuite || p.feature || '');
+        const ghRepo = isMobilePipeline(p) ? 'Axos.QE.Mobile' : 'Axos.QE.TestIM';
         return `<div class="pipeline-card" data-filename="${p.filename}" onclick="viewPipeline('${p.filename}')">
             <div class="pipeline-card-header">
                 <div class="pipeline-card-name">
@@ -1397,6 +1438,11 @@
                     ${p.name}
                 </div>
                 <div class="pipeline-card-actions">
+                    <a class="card-btn" href="${getGhWorkflowUrl(p.name, ghRepo)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Open in GitHub">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:middle">
+                            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                        </svg>
+                    </a>
                     <button class="card-btn" onclick="event.stopPropagation(); clonePipeline('${p.filename}')" title="Clone">&#128203;</button>
                     <button class="card-btn" onclick="event.stopPropagation(); editPipeline('${p.filename}')" title="Edit">&#9998;</button>
                 </div>
@@ -1408,6 +1454,13 @@
                 ${p.scheduleEnabled ? `<div class="meta-item" style="color:var(--success);">&#128337; Scheduled</div>` : ''}
             </div>
         </div>`;
+    }
+
+    function getGhWorkflowUrl(workflowName, repoName) {
+        const owner = 'axos-financial';
+        const repo = repoName || 'Axos.QE.TestIM';
+        const q = `workflow:\"${workflowName}\"`;
+        return `https://github.com/${owner}/${repo}/actions?query=${encodeURIComponent(q)}`;
     }
 
     function showDeleteConfirm() {
@@ -1464,7 +1517,11 @@
                 `PARALLEL_SPLIT: ${p.parallelSplit || 'true'}\n` +
                 `RETRIES: ${p.retries || '1'}\n` +
                 `${appField}: ${p.appId || ''}\n` +
+                `${deviceNameField}: ${p.deviceName || ''}\n` +
+                `${deviceOsField}: ${p.deviceOS || ''}\n` +
                 `USE_BS_LOCAL_TUNNEL: ${p.tunnel || 'true'}\n` +
+                `BROWSERSTACK_USERNAME: ${p.bsUsername || ''}\n` +
+                `BROWSERSTACK_ACCESS_KEY: ${p.bsAccessKey || ''}\n` +
                 `JOB_TIMEOUT: ${p.jobTimeout || 120}\n` +
                 `RUNNER_LABEL: ${p.runnerLabel || 'QSDW-TFSBA01'}`;
 
@@ -1570,9 +1627,17 @@
 
         const projectLabel = isMobilePipeline(p) ? 'BrowserStack mobile pipeline' : 'Testim pipeline';
         let html = `<div class="main-header">
-            <div class="breadcrumb"><span onclick="selectFolder(null)" style="cursor:pointer;">All Pipelines</span><span class="sep">/</span><span style="color:var(--text-primary);font-weight:600;">${title}</span></div>
-            <h1>${title}</h1>
-            <p>${isView ? 'Viewing pipeline configuration' : isClone ? 'Creating a copy with different settings' : isEdit ? 'Modify pipeline settings and save' : 'Configure a new pipeline'}</p>
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
+                <div style="min-width:0;">
+                    <div class="breadcrumb"><span onclick="selectFolder(null)" style="cursor:pointer;">All Pipelines</span><span class="sep">/</span><span style="color:var(--text-primary);font-weight:600;">${title}</span></div>
+                    <h1>${title}</h1>
+                    <p>${isView ? 'Viewing pipeline configuration' : isClone ? 'Creating a copy with different settings' : isEdit ? 'Modify pipeline settings and save' : 'Configure a new pipeline'}</p>
+                </div>
+                <div style="display:flex; gap:8px; flex-shrink:0;">
+                    <button class="btn btn-secondary" onclick="selectFolder(selectedFolder)" style="padding:6px 16px;">&#9664; Back</button>
+                    ${isView && p.filename ? `<button class="btn btn-orange" onclick="editPipeline('${p.filename}')" style="padding:6px 16px;">&#9998; Edit</button>` : ''}
+                </div>
+            </div>
         </div>`;
 
         // Name Preview
@@ -1696,6 +1761,33 @@
                             <input type="text" id="fAppId" placeholder="bs://... or leave empty" value="${p.appId || ''}" ${isView ? 'disabled' : ''}>
                         </div>
                     </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Device Name <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(override — leave empty for default)</span></label>
+                            <input type="text" id="fDeviceName" placeholder="e.g. Google Pixel 7, iPhone 14" value="${p.deviceName || ''}" ${isView ? 'disabled' : ''}>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Device OS Version <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(override)</span></label>
+                            <input type="text" id="fDeviceOS" placeholder="e.g. 13.0, 16.0" value="${p.deviceOS || ''}" ${isView ? 'disabled' : ''}>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">BrowserStack Username <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(leave blank to use repo secrets)</span></label>
+                            <input type="text" id="fBsUsername" value="${p.bsUsername || ''}" ${isView ? 'disabled' : ''}>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">BrowserStack Access Key <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(leave blank to use repo secrets)</span></label>
+                            <input type="password" id="fBsAccessKey" value="${p.bsAccessKey || ''}" ${isView ? 'disabled' : ''}>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Runner Label</label>
+                        <select id="fRunnerLabel" ${isView ? 'disabled' : ''}>
+                            ${['QSDW-TFSBA01','QSDW-TFSBA02','QSDW-TFSBA03','QSDW-TFSBA04','QSDW-TFSBA05','QAAutomationMobile'].map(r => `<option value="${r}" ${(p.runnerLabel || 'QSDW-TFSBA01') === r ? 'selected' : ''}>${r}</option>`).join('')}
+                        </select>
+                        <span class="field-help">Windows self-hosted runner from the QAAutomationMobile pool</span>
+                    </div>
                 </div>
             </div>`;
         } else {
@@ -1716,7 +1808,7 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Brand <span class="req">*</span></label>
-                        <select id="fBrand" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
+                        <select id="fBrand" onchange="onBrandChange(); updateNamePreview()" ${isView ? 'disabled' : ''}>
                             <option value="">Select...</option>
                             ${p.platform === '02 Web' ? Object.keys(FOLDER_STRUCTURE['02 Web']).map(b => `<option value="${b}" ${p.brand === b ? 'selected' : ''}>${b}</option>`).join('') : ''}
                         </select>
@@ -1734,7 +1826,7 @@
                         <label class="form-label">Feature <span class="req">*</span></label>
                         <select id="fFeature" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
                             <option value="">Select...</option>
-                            ${FEATURES.map(f => `<option value="${f.name}" ${p.feature === f.name ? 'selected' : ''}>${f.id} ${f.name}</option>`).join('')}
+                            ${renderWebFeatureOptions(p.brand, p.feature)}
                         </select>
                     </div>
                     <div class="form-group">
@@ -1789,6 +1881,13 @@
                         <label class="form-label">Browser Wait (min)</label>
                         <input type="number" id="fBrowserTimeout" min="10" max="300" value="${p.browserTimeout || '30'}" ${isView ? 'disabled' : ''}>
                     </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Runner Label</label>
+                    <select id="fRunnerLabel" ${isView ? 'disabled' : ''}>
+                        ${['dsdl-timab21','dsdl-timab27','dsdl-timab31','QAAutomationTestIM'].map(r => `<option value="${r}" ${(p.runnerLabel || 'dsdl-timab31') === r ? 'selected' : ''}>${r}</option>`).join('')}
+                    </select>
+                    <span class="field-help">Linux self-hosted runner from the QAAutomationTestIM pool. QAAutomationTestIM auto-selects any available runner (requires admin setup).</span>
                 </div>
             </div>
         </div>`;
@@ -2029,6 +2128,7 @@
         html += '<div style="height:80px;"></div>';
         document.getElementById('mainContent').innerHTML = html;
         if (p.scheduleEnabled && p.schedule) initScheduleFromCron(p.schedule);
+        onBrandChange(p.feature || '');
         updateNamePreview();
         updateFormStatus();
     }
@@ -2332,6 +2432,21 @@
         }
     }
 
+    function onBrandChange(forceFeatureValue = '') {
+        if (isMobileForm()) return;
+        const brand = document.getElementById('fBrand')?.value || '';
+        const featureSelect = document.getElementById('fFeature');
+        if (!featureSelect) return;
+
+        const desired = forceFeatureValue || featureSelect.value || '';
+        featureSelect.innerHTML = `<option value="">Select...</option>${renderWebFeatureOptions(brand, desired)}`;
+
+        // If the saved feature isn't in the list (e.g. brand changed), keep it empty.
+        if (desired && Array.from(featureSelect.options).some(o => o.value === desired)) {
+            featureSelect.value = desired;
+        }
+    }
+
     function onEnvChange() {
         const env = document.getElementById('fEnv').value;
         const urlInput = document.getElementById('fBaseUrl');
@@ -2489,6 +2604,10 @@
             base.tunnel = v('fTunnel') || 'true';
             base.appId = v('fAppId');
             base.runnerLabel = v('fRunnerLabel') || 'QSDW-TFSBA01';
+            base.deviceName = v('fDeviceName');
+            base.deviceOS = v('fDeviceOS');
+            base.bsUsername = v('fBsUsername');
+            base.bsAccessKey = v('fBsAccessKey');
             base.jobTimeout = n('fJobTimeout', 120);
         } else {
             base.testSuite = v('fTestSuite');
@@ -2762,6 +2881,30 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
             if (inputs[k]) entry[outKey] = inputs[k];
         }
 
+        const mobileMap = {
+            TEST_ENV: 'env',
+            GREP: 'grep',
+            SUITE: 'suite',
+            SPEC: 'spec',
+            PARALLELS: 'parallel',
+            PARALLEL_SPLIT: 'parallelSplit',
+            RETRIES: 'retries',
+            USE_BS_LOCAL_TUNNEL: 'tunnel',
+            JOB_TIMEOUT: 'jobTimeout',
+            RUNNER_LABEL: 'runnerLabel',
+            BROWSERSTACK_USERNAME: 'bsUsername',
+            BROWSERSTACK_ACCESS_KEY: 'bsAccessKey'
+        };
+
+        for (const [k, outKey] of Object.entries(mobileMap)) {
+            if (inputs[k]) entry[outKey] = inputs[k];
+        }
+
+        // Mobile app/device overrides (optional)
+        entry.appId = inputs.IOS_APP || inputs.ANDROID_APP || '';
+        entry.deviceName = inputs.IOS_DEVICE_NAME || inputs.ANDROID_DEVICE_NAME || '';
+        entry.deviceOS = inputs.IOS_DEVICE_OS || inputs.ANDROID_DEVICE_OS || '';
+
         entry.schedule = scheduleCron;
         entry.scheduleEnabled = !!scheduleCron;
         return entry;
@@ -2887,6 +3030,17 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
                 if (entry.browserTimeout) parsed.browserTimeout = entry.browserTimeout;
                 if (entry.jobTimeout) parsed.jobTimeout = entry.jobTimeout;
                 if (entry.runnerLabel) parsed.runnerLabel = entry.runnerLabel;
+                if (entry.env) parsed.env = entry.env;
+                if (entry.grep !== undefined) parsed.grep = entry.grep;
+                if (entry.suite !== undefined) parsed.suite = entry.suite;
+                if (entry.spec !== undefined) parsed.spec = entry.spec;
+                if (entry.parallelSplit !== undefined) parsed.parallelSplit = entry.parallelSplit;
+                if (entry.tunnel !== undefined) parsed.tunnel = entry.tunnel;
+                if (entry.appId !== undefined) parsed.appId = entry.appId;
+                if (entry.deviceName !== undefined) parsed.deviceName = entry.deviceName;
+                if (entry.deviceOS !== undefined) parsed.deviceOS = entry.deviceOS;
+                if (entry.bsUsername !== undefined) parsed.bsUsername = entry.bsUsername;
+                if (entry.bsAccessKey !== undefined) parsed.bsAccessKey = entry.bsAccessKey;
                 if (entry.schedule) parsed.schedule = entry.schedule;
                 if (entry.scheduleEnabled !== undefined) parsed.scheduleEnabled = entry.scheduleEnabled;
 
@@ -3027,7 +3181,11 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
                 filename, name, platform: '01 Mobile', brand: subPlatform, env,
                 feature, featureDetail: feature, testType,
                 grep: '', suite: '', spec: '', parallel: '10', parallelSplit: 'true',
-                retries: '1', tunnel: 'true', appId: '', jobTimeout: 120,
+                retries: '1', tunnel: 'true', appId: '',
+                deviceName: '', deviceOS: '',
+                bsUsername: '', bsAccessKey: '',
+                runnerLabel: 'QSDW-TFSBA01',
+                jobTimeout: 120,
                 schedule: '', scheduleEnabled: false
             };
         }
@@ -3042,6 +3200,8 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
             if (parts[1] === key) { brand = displayName; break; }
         }
         if (!brand) brand = parts[1] || '';
+        const isOutsystems = isOutsystemsBrand(brand);
+        const featureListForParse = isOutsystems ? OUTSYSTEMS_FEATURES : FEATURES;
 
         const envFeaturePart = parts.slice(2).join('_');
         const envMatch = envFeaturePart.match(/^(DEV|QA|STG|UAT|PROD)-(.+)$/);
@@ -3064,7 +3224,7 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
 
             if (!foundExplicitType) {
                 featureDetail = rest;
-                for (const f of FEATURES) {
+                for (const f of featureListForParse) {
                     const fKey = f.name.replace(/\s+/g, '');
                     if (rest.includes(fKey)) {
                         for (const t of TEST_TYPES) {
@@ -3080,15 +3240,28 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         }
 
         let feature = '';
-        for (const f of FEATURES) {
+        for (const f of featureListForParse) {
             const fKey = f.name.replace(/\s+/g, '');
             if (featureDetail.includes(fKey)) { feature = f.name; break; }
         }
 
         if (!feature) {
             const tKey = testType.replace(/\s+/g, '');
-            for (const f of FEATURES) {
+            for (const f of featureListForParse) {
                 if (f.name.replace(/\s+/g, '') === tKey) { feature = f.name; break; }
+            }
+        }
+
+        // Outsystems (and any future feature not in the curated list): fall back to parsing the first token after OLB_.
+        if (!feature) {
+            const key = extractFeatureKeyFromDetail(featureDetail);
+            if (key) {
+                if (isOutsystems) {
+                    feature = key;
+                } else {
+                    const match = FEATURES.find(f => f.name.replace(/\s+/g, '') === key);
+                    if (match) feature = match.name;
+                }
             }
         }
 
