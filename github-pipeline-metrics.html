@@ -971,6 +971,24 @@
         { id: '12', name: 'Registration' }
     ];
 
+    const OUTSYSTEMS_FEATURES = [
+        'VM',
+        'EWM',
+        'EHP',
+        'OSG',
+        'PDS',
+        'GRC',
+        'CRV',
+        'FBO',
+        'UCAT',
+        'BSAQC',
+        'Meritocracy',
+        'Vision Canvas',
+        'Axos Clearing',
+        'Wires Manual',
+        'Commission Plans'
+    ];
+
     const TEST_TYPES = ['Regression', 'Sanity', 'Smoke', 'Health Check'];
 
     const BRAND_KEY_MAP = {
@@ -992,6 +1010,38 @@
         UAT: 'https://secure.uat.axosbank.com/login',
         PROD: 'https://onlinebanking.axosbank.com/auth/Login'
     };
+
+    function renderWebFeatureOptions(brand, selectedFeature) {
+        const b = (brand || '').toLowerCase();
+        const selected = selectedFeature || '';
+        const isOutsystems = b === 'outsystems';
+        const list = isOutsystems ? OUTSYSTEMS_FEATURES : FEATURES.map(f => f.name);
+
+        let html = '';
+        if (isOutsystems) {
+            html = list.map(name => `<option value="${name}" ${selected === name ? 'selected' : ''}>${name}</option>`).join('');
+        } else {
+            html = FEATURES.map(f => `<option value="${f.name}" ${selected === f.name ? 'selected' : ''}>${f.id} ${f.name}</option>`).join('');
+        }
+
+        if (selected && !list.includes(selected)) {
+            html += `<option value="${selected}" selected>${selected}</option>`;
+        }
+        return html;
+    }
+
+    function onBrandChange(initialSelectedFeature) {
+        if (isMobileForm()) return;
+        const brand = document.getElementById('fBrand')?.value || '';
+        const featureSelect = document.getElementById('fFeature');
+        if (!featureSelect) return;
+
+        const selected = typeof initialSelectedFeature === 'string'
+            ? initialSelectedFeature
+            : (featureSelect.value || '');
+
+        featureSelect.innerHTML = '<option value="">Select...</option>' + renderWebFeatureOptions(brand, selected);
+    }
 
     // ══════════════════════════════════════════
     //  MOBILE CONFIG
@@ -1784,7 +1834,7 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Brand <span class="req">*</span></label>
-                        <select id="fBrand" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
+                        <select id="fBrand" onchange="onBrandChange(); updateNamePreview()" ${isView ? 'disabled' : ''}>
                             <option value="">Select...</option>
                             ${p.platform === '02 Web' ? Object.keys(FOLDER_STRUCTURE['02 Web']).map(b => `<option value="${b}" ${p.brand === b ? 'selected' : ''}>${b}</option>`).join('') : ''}
                         </select>
@@ -1802,7 +1852,7 @@
                         <label class="form-label">Feature <span class="req">*</span></label>
                         <select id="fFeature" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
                             <option value="">Select...</option>
-                            ${FEATURES.map(f => `<option value="${f.name}" ${p.feature === f.name ? 'selected' : ''}>${f.id} ${f.name}</option>`).join('')}
+                            ${renderWebFeatureOptions(p.brand, p.feature)}
                         </select>
                     </div>
                     <div class="form-group">
@@ -2107,6 +2157,7 @@
         html += '<div style="height:80px;"></div>';
         document.getElementById('mainContent').innerHTML = html;
         if (p.scheduleEnabled && p.schedule) initScheduleFromCron(p.schedule);
+        onBrandChange(p.feature || '');
         updateNamePreview();
         updateFormStatus();
     }
@@ -2407,6 +2458,7 @@
                     brandSelect.innerHTML += `<option value="${b}">${b}</option>`;
                 }
             }
+            onBrandChange('');
         }
     }
 
@@ -2947,6 +2999,8 @@ RUNNER_LABEL: ${el('fRunnerLabel') || 'dsdl-timab31'}`;
         const envFeaturePart = parts.slice(2).join('_');
         const envMatch = envFeaturePart.match(/^(DEV|QA|STG|UAT|PROD)-(.+)$/);
         let env = '', featureDetail = '', testType = 'Regression';
+        const isOutsystems = (brand || '').toLowerCase() === 'outsystems';
+        const featureNamesForParse = isOutsystems ? OUTSYSTEMS_FEATURES : FEATURES.map(f => f.name);
 
         if (envMatch) {
             env = envMatch[1];
@@ -2965,8 +3019,8 @@ RUNNER_LABEL: ${el('fRunnerLabel') || 'dsdl-timab31'}`;
 
             if (!foundExplicitType) {
                 featureDetail = rest;
-                for (const f of FEATURES) {
-                    const fKey = f.name.replace(/\s+/g, '');
+                for (const fName of featureNamesForParse) {
+                    const fKey = fName.replace(/\s+/g, '');
                     if (rest.includes(fKey)) {
                         for (const t of TEST_TYPES) {
                             if (t.replace(/\s+/g, '') === fKey) {
@@ -2981,15 +3035,15 @@ RUNNER_LABEL: ${el('fRunnerLabel') || 'dsdl-timab31'}`;
         }
 
         let feature = '';
-        for (const f of FEATURES) {
-            const fKey = f.name.replace(/\s+/g, '');
-            if (featureDetail.includes(fKey)) { feature = f.name; break; }
+        for (const fName of featureNamesForParse) {
+            const fKey = fName.replace(/\s+/g, '');
+            if (featureDetail.includes(fKey)) { feature = fName; break; }
         }
 
         if (!feature) {
             const tKey = testType.replace(/\s+/g, '');
-            for (const f of FEATURES) {
-                if (f.name.replace(/\s+/g, '') === tKey) { feature = f.name; break; }
+            for (const fName of featureNamesForParse) {
+                if (fName.replace(/\s+/g, '') === tKey) { feature = fName; break; }
             }
         }
 
