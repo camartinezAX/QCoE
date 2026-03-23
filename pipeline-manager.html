@@ -1294,15 +1294,16 @@
     function selectionToolbar(filtered) {
         if (filtered.length === 0) return '';
         const count = selectedPipelines.size;
+        const disabledAttr = count > 0 ? '' : 'disabled style="opacity:0.45; pointer-events:none;"';
         return `<div class="selection-bar">
             <div class="selection-bar-left">
                 <button class="sel-link" onclick="selectAllPipelines()" title="Select All">Select All</button>
                 <button class="sel-link" onclick="deselectAllPipelines()" title="Deselect All" style="color:var(--text-muted);">Deselect All</button>
                 <span class="sel-count" id="selCount">${count > 0 ? count + ' selected' : ''}</span>
             </div>
-            <div class="selection-bar-right" id="selActions" style="${count > 0 ? '' : 'display:none;'}">
-                <button class="btn btn-secondary" onclick="generateSelectedPrompts()" style="padding:8px 12px;">&#128196; Generate Prompt</button>
-                <button class="btn-delete" onclick="showDeleteConfirm()">&#128465; Delete Selected</button>
+            <div class="selection-bar-right" id="selActions">
+                <button class="btn btn-secondary" onclick="generateSelectedPrompts()" style="padding:8px 12px;" ${disabledAttr}>&#128196; Generate Prompt</button>
+                <button class="btn-delete" onclick="showDeleteConfirm()" ${disabledAttr}>&#128465; Delete Selected</button>
             </div>
         </div>`;
     }
@@ -1338,9 +1339,7 @@
             card.style.borderColor = isSelected ? 'var(--axos-orange)' : '';
         });
         const countEl = document.getElementById('selCount');
-        const actionsEl = document.getElementById('selActions');
         if (countEl) countEl.textContent = selectedPipelines.size > 0 ? selectedPipelines.size + ' selected' : '';
-        if (actionsEl) actionsEl.style.display = selectedPipelines.size > 0 ? 'flex' : 'none';
     }
 
     function showFolderPipelines(folderKey) {
@@ -2590,6 +2589,8 @@
             const num = parseInt(v(id), 10);
             return Number.isFinite(num) ? num : fallback;
         };
+        const commitPush = !!document.getElementById('fCommitPush')?.checked;
+        const deleteOld = !!document.getElementById('fDeleteOld')?.checked;
 
         base.name = name;
         base.filename = filename;
@@ -2627,7 +2628,7 @@
         base.scheduleEnabled = scheduleEnabled && !!scheduleCron;
         base.schedule = base.scheduleEnabled ? scheduleCron : '';
 
-        if (editingPipeline && editingPipeline !== filename) {
+        if (deleteOld && editingPipeline && editingPipeline !== filename) {
             base.renamedFrom = editingPipeline;
         }
 
@@ -2643,10 +2644,19 @@
 
         editingPipeline = null;
         viewOnlyMode = false;
+        selectedPipelines = new Set([filename]);
+
+        // Jump to the saved pipeline’s folder so you can immediately Generate Prompt.
+        selectedFolder = [base.platform, base.brand, base.env, base.feature].filter(Boolean).join('__') || null;
         buildTree();
         showFolderPipelines(selectedFolder);
         updateSaveStatus();
-        showToast('Saved locally. Select it from the list and use “Generate Prompt”.');
+
+        // Immediately show the Cursor prompt after saving.
+        let prompt = buildPromptForPipeline(base);
+        if (commitPush) prompt += `\n\nAfter making these changes, commit and push to main.`;
+        document.getElementById('outputBox').textContent = prompt;
+        document.getElementById('outputModal').classList.add('show');
     }
 
     // ══════════════════════════════════════════
