@@ -1,0 +1,3009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interview Assessment Tool - QCoE</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --axos-orange: #FAA74A;
+            --axos-orange-light: #fdd9a8;
+            --axos-orange-dark: #e8922a;
+            --axos-navy: #1E3860;
+            --axos-navy-dark: #152844;
+            --axos-navy-light: #2a4a7a;
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-tertiary: #1f2937;
+            --bg-card: #161d2e;
+            --border-color: #2d3748;
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --success: #10b981;
+            --success-bg: rgba(16, 185, 129, 0.1);
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --info: #3b82f6;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        
+        .bg-pattern {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: 
+                radial-gradient(ellipse at 20% 20%, rgba(30, 56, 96, 0.3) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(30, 56, 96, 0.2) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(250, 167, 74, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .header-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 20px;
+            background: rgba(250, 167, 74, 0.15);
+            border: 1px solid rgba(250, 167, 74, 0.3);
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--axos-orange);
+            margin-bottom: 16px;
+        }
+        
+        .header h1 {
+            font-size: clamp(32px, 5vw, 48px);
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, var(--axos-orange) 0%, #fdd9a8 50%, var(--axos-orange) 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header p {
+            color: var(--text-secondary);
+            font-size: 16px;
+        }
+        
+        /* Candidate Tabs */
+        .candidates-container {
+            margin-bottom: 30px;
+        }
+        
+        .tabs-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        
+        .candidate-tab {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .candidate-tab:hover {
+            border-color: var(--axos-orange);
+            color: var(--text-primary);
+        }
+        
+        .candidate-tab.active {
+            background: linear-gradient(135deg, var(--axos-navy) 0%, var(--axos-navy-dark) 100%);
+            border-color: var(--axos-orange);
+            color: var(--text-primary);
+        }
+        
+        .candidate-tab .remove-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            background: rgba(239, 68, 68, 0.2);
+            border: none;
+            border-radius: 50%;
+            color: var(--error);
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+        
+        .candidate-tab .remove-btn:hover {
+            background: var(--error);
+            color: white;
+        }
+        
+        .add-candidate-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, var(--axos-orange) 0%, var(--axos-orange-dark) 100%);
+            border: none;
+            border-radius: 12px;
+            color: var(--bg-primary);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .add-candidate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(250, 167, 74, 0.3);
+        }
+        
+        /* Candidate Info Card */
+        .candidate-info {
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(30, 56, 96, 0.2) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 30px;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .form-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--axos-orange);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .form-group input, .form-group select {
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+        
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: var(--axos-orange);
+            box-shadow: 0 0 0 3px rgba(250, 167, 74, 0.1);
+        }
+        
+        /* Section Navigation */
+        .section-nav {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+            padding: 16px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .section-nav-btn {
+            padding: 10px 16px;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        
+        .section-nav-btn:hover {
+            border-color: var(--axos-orange);
+            color: var(--text-primary);
+        }
+        
+        .section-nav-btn.active {
+            background: var(--axos-orange);
+            border-color: var(--axos-orange);
+            color: var(--bg-primary);
+        }
+        
+        /* Interview Sections */
+        .section {
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(30, 56, 96, 0.15) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+        
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 24px;
+            background: rgba(30, 56, 96, 0.3);
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .section-header:hover {
+            background: rgba(30, 56, 96, 0.4);
+        }
+        
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .section-icon {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--axos-orange) 0%, var(--axos-orange-dark) 100%);
+            border-radius: 10px;
+            font-size: 18px;
+        }
+        
+        .section-title h2 {
+            font-size: 18px;
+            font-weight: 700;
+        }
+        
+        .section-title p {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        
+        .section-toggle {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            transition: all 0.3s ease;
+        }
+        
+        .section.collapsed .section-toggle {
+            transform: rotate(-90deg);
+        }
+        
+        .section-content {
+            padding: 24px;
+            display: block;
+        }
+        
+        .section.collapsed .section-content {
+            display: none;
+        }
+        
+        /* Question Card */
+        .question-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            transition: all 0.2s ease;
+        }
+        
+        .question-card:hover {
+            border-color: rgba(250, 167, 74, 0.3);
+        }
+        
+        .question-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .question-checkbox {
+            width: 24px;
+            height: 24px;
+            min-width: 24px;
+            accent-color: var(--axos-orange);
+            cursor: pointer;
+            margin-top: 2px;
+        }
+        
+        .question-text {
+            flex: 1;
+        }
+        
+        .question-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--axos-orange);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        
+        .question-label.optional {
+            color: var(--info);
+        }
+        
+        .question-text p {
+            font-size: 15px;
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+        
+        .answer-area {
+            margin-top: 12px;
+        }
+        
+        .answer-area textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 14px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            transition: all 0.2s ease;
+        }
+        
+        .answer-area textarea:focus {
+            outline: none;
+            border-color: var(--axos-orange);
+            box-shadow: 0 0 0 3px rgba(250, 167, 74, 0.1);
+        }
+        
+        .answer-area textarea::placeholder {
+            color: var(--text-muted);
+        }
+        
+        /* Example Answers Collapsible */
+        .example-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 8px;
+            color: var(--info);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            margin-top: 12px;
+            transition: all 0.2s ease;
+        }
+        
+        .example-toggle:hover {
+            background: rgba(59, 130, 246, 0.2);
+        }
+        
+        .example-toggle .arrow {
+            transition: transform 0.2s ease;
+        }
+        
+        .example-toggle.open .arrow {
+            transform: rotate(90deg);
+        }
+        
+        .example-content {
+            display: none;
+            margin-top: 12px;
+            padding: 16px;
+            background: rgba(59, 130, 246, 0.05);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 10px;
+        }
+        
+        .example-content.open {
+            display: block;
+        }
+        
+        .example-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .example-tab {
+            padding: 6px 14px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        
+        .example-tab:hover {
+            border-color: var(--axos-orange);
+            color: var(--text-primary);
+        }
+        
+        .example-tab.active {
+            background: var(--axos-orange);
+            border-color: var(--axos-orange);
+            color: var(--bg-primary);
+        }
+        
+        .example-code {
+            display: none;
+        }
+        
+        .example-code.active {
+            display: block;
+        }
+        
+        .example-code pre {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--text-primary);
+        }
+        
+        .example-code pre code {
+            color: inherit;
+        }
+        
+        /* Section Notes */
+        .section-notes {
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .section-notes label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--warning);
+            margin-bottom: 10px;
+        }
+        
+        .section-notes textarea {
+            width: 100%;
+            min-height: 80px;
+            padding: 14px;
+            background: rgba(245, 158, 11, 0.05);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+        }
+        
+        .section-notes textarea:focus {
+            outline: none;
+            border-color: var(--warning);
+        }
+        
+        /* Evaluation Section */
+        .evaluation-section {
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(16, 185, 129, 0.1) 100%);
+            border: 2px solid var(--success);
+            border-radius: 16px;
+            padding: 30px;
+            margin-top: 40px;
+        }
+        
+        .evaluation-section h2 {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            color: var(--success);
+        }
+        
+        .eval-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .eval-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        
+        .eval-item label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--axos-orange);
+            margin-bottom: 10px;
+        }
+        
+        .eval-item textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+        }
+        
+        .eval-item textarea:focus {
+            outline: none;
+            border-color: var(--axos-orange);
+        }
+        
+        /* Edit Question Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            animation: modalIn 0.3s ease;
+        }
+        
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .modal-header h3 {
+            font-size: 18px;
+            color: var(--axos-orange);
+        }
+        
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-tertiary);
+            border: none;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.2s ease;
+        }
+        
+        .modal-close:hover {
+            background: var(--error);
+            color: white;
+        }
+        
+        .modal-body {
+            padding: 24px;
+        }
+        
+        .modal-body .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .modal-body .form-group label {
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+        
+        .modal-body textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 14px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+        }
+        
+        .modal-body textarea:focus {
+            outline: none;
+            border-color: var(--axos-orange);
+        }
+        
+        .modal-footer {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            padding: 20px 24px;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .modal-btn {
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .modal-btn.secondary {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+        
+        .modal-btn.secondary:hover {
+            border-color: var(--text-secondary);
+            color: var(--text-primary);
+        }
+        
+        .modal-btn.primary {
+            background: linear-gradient(135deg, var(--axos-orange) 0%, var(--axos-orange-dark) 100%);
+            border: none;
+            color: var(--bg-primary);
+        }
+        
+        .modal-btn.primary:hover {
+            box-shadow: 0 4px 15px rgba(250, 167, 74, 0.3);
+        }
+        
+        .modal-btn.danger {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid var(--error);
+            color: var(--error);
+        }
+        
+        .modal-btn.danger:hover {
+            background: var(--error);
+            color: white;
+        }
+        
+        /* Edit button on questions */
+        .question-actions {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+        }
+        
+        .edit-question-btn {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 6px;
+            color: var(--info);
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+        
+        .edit-question-btn:hover {
+            background: var(--info);
+            color: white;
+        }
+        
+        .delete-question-btn {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 6px;
+            color: var(--error);
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+        
+        .delete-question-btn:hover {
+            background: var(--error);
+            color: white;
+        }
+        
+        /* Add Question Button */
+        .add-question-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 14px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 2px dashed rgba(16, 185, 129, 0.4);
+            border-radius: 12px;
+            color: var(--success);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            margin-top: 16px;
+        }
+        
+        .add-question-btn:hover {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: var(--success);
+        }
+        
+        /* Custom question indicator */
+        .custom-badge {
+            display: inline-flex;
+            padding: 2px 8px;
+            background: rgba(16, 185, 129, 0.2);
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--success);
+            margin-left: 8px;
+            text-transform: uppercase;
+        }
+        
+        /* Recommendation Options */
+        .recommendation-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-top: 20px;
+        }
+        
+        .recommendation-option {
+            position: relative;
+        }
+        
+        .recommendation-option input {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+        }
+        
+        .recommendation-option label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 16px 20px;
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        
+        .recommendation-option input:checked + label {
+            border-color: var(--axos-orange);
+            background: rgba(250, 167, 74, 0.1);
+            color: var(--axos-orange);
+        }
+        
+        .recommendation-option.strong-hire input:checked + label {
+            border-color: var(--success);
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+        
+        .recommendation-option.hire input:checked + label {
+            border-color: #22c55e;
+            background: rgba(34, 197, 94, 0.1);
+            color: #22c55e;
+        }
+        
+        .recommendation-option.leaning-no input:checked + label {
+            border-color: var(--warning);
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+        
+        .recommendation-option.no-hire input:checked + label {
+            border-color: var(--error);
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+        }
+        
+        /* AI Prompt Section */
+        .ai-prompt-section {
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(250, 167, 74, 0.1) 100%);
+            border: 2px solid var(--axos-orange);
+            border-radius: 16px;
+            padding: 30px;
+            margin-top: 30px;
+        }
+        
+        .ai-prompt-section h2 {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--axos-orange);
+        }
+        
+        .ai-prompt-section p {
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+        }
+        
+        .generate-prompt-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 28px;
+            background: linear-gradient(135deg, var(--axos-orange) 0%, var(--axos-orange-dark) 100%);
+            border: none;
+            border-radius: 12px;
+            color: var(--bg-primary);
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .generate-prompt-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(250, 167, 74, 0.4);
+        }
+        
+        .prompt-output {
+            margin-top: 20px;
+            padding: 20px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            display: none;
+        }
+        
+        .prompt-output.visible {
+            display: block;
+        }
+        
+        .prompt-output pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+        
+        .copy-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            margin-top: 12px;
+            transition: all 0.2s ease;
+        }
+        
+        .copy-btn:hover {
+            border-color: var(--axos-orange);
+            background: var(--bg-card);
+        }
+        
+        /* Actions Bar */
+        .actions-bar {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .action-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 28px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .action-btn:hover {
+            border-color: var(--axos-orange);
+            transform: translateY(-2px);
+        }
+        
+        .action-btn.primary {
+            background: linear-gradient(135deg, var(--axos-orange) 0%, var(--axos-orange-dark) 100%);
+            border-color: transparent;
+            color: var(--bg-primary);
+        }
+        
+        .action-btn.primary:hover {
+            box-shadow: 0 8px 25px rgba(250, 167, 74, 0.3);
+        }
+        
+        /* Syntax Highlighting */
+        .keyword { color: #c792ea; }
+        .string { color: #c3e88d; }
+        .comment { color: #546e7a; font-style: italic; }
+        .function { color: #82aaff; }
+        .number { color: #f78c6c; }
+        .operator { color: #89ddff; }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container { padding: 20px 15px; }
+            .tabs-header { gap: 8px; }
+            .candidate-tab { padding: 10px 14px; font-size: 13px; }
+            .section-header { padding: 16px 18px; }
+            .section-content { padding: 18px; }
+            .question-card { padding: 16px; }
+            .evaluation-section, .ai-prompt-section { padding: 20px; }
+        }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .candidate-form { animation: fadeIn 0.3s ease; }
+        
+        /* Back to Top Button */
+        .back-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--axos-orange) 0%, var(--axos-orange-dark) 100%);
+            border: none;
+            border-radius: 50%;
+            color: var(--bg-primary);
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(250, 167, 74, 0.4);
+            transition: all 0.3s ease;
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+        }
+        
+        .back-to-top.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .back-to-top:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(250, 167, 74, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-pattern"></div>
+    
+    <!-- Edit/Add Question Modal -->
+    <div class="modal-overlay" id="questionModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">Edit Question</h3>
+                <button class="modal-close" onclick="closeQuestionModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editQuestionId">
+                <input type="hidden" id="editAnswerName">
+                <input type="hidden" id="editSectionId">
+                <input type="hidden" id="editMode">
+                
+                <div class="form-group">
+                    <label>Question Type</label>
+                    <select id="editQuestionType" style="padding: 12px 16px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; color: var(--text-primary); font-size: 14px; width: 100%;">
+                        <option value="core">Core Question</option>
+                        <option value="optional">Optional Deep-Dive</option>
+                        <option value="exercise">Exercise</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Question Text</label>
+                    <textarea id="editQuestionText" placeholder="Enter the question..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="modal-btn secondary" onclick="closeQuestionModal()">Cancel</button>
+                <button type="button" class="modal-btn primary" onclick="saveQuestion()">Save Question</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Back to Top Button -->
+    <button class="back-to-top" id="backToTop" onclick="scrollToTop()">↑</button>
+    
+    <div class="container">
+        <header class="header">
+            <div class="header-badge">📋 Interview Assessment Tool</div>
+            <h1>Technical <span class="gradient-text">Interview</span></h1>
+            <p>By Carlos Martinez | Axos Quality Center of Excellence</p>
+        </header>
+        
+        <!-- Candidate Tabs -->
+        <div class="candidates-container">
+            <div class="tabs-header">
+                <div id="candidateTabs"></div>
+                <button class="add-candidate-btn" onclick="addCandidate()">
+                    <span>+</span> Add Candidate
+                </button>
+            </div>
+        </div>
+        
+        <!-- Main Content (per candidate) -->
+        <div id="candidateFormsContainer"></div>
+    </div>
+    
+    <script>
+        let candidates = [];
+        let activeCandidateId = null;
+        
+        // Initialize with one candidate
+        document.addEventListener('DOMContentLoaded', () => {
+            addCandidate();
+        });
+        
+        function generateId() {
+            return 'candidate_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+        
+        function addCandidate() {
+            const id = generateId();
+            const candidateNum = candidates.length + 1;
+            candidates.push({
+                id,
+                name: `Candidate ${candidateNum}`,
+                data: {}
+            });
+            activeCandidateId = id;
+            renderTabs();
+            renderCandidateForm();
+        }
+        
+        function removeCandidate(id) {
+            if (candidates.length <= 1) {
+                alert('You must have at least one candidate.');
+                return;
+            }
+            if (confirm('Are you sure you want to remove this candidate?')) {
+                candidates = candidates.filter(c => c.id !== id);
+                if (activeCandidateId === id) {
+                    activeCandidateId = candidates[0].id;
+                }
+                renderTabs();
+                renderCandidateForm();
+            }
+        }
+        
+        function switchCandidate(id) {
+            saveCurrentCandidateData();
+            activeCandidateId = id;
+            renderTabs();
+            renderCandidateForm();
+        }
+        
+        function saveCurrentCandidateData() {
+            const candidate = candidates.find(c => c.id === activeCandidateId);
+            if (!candidate) return;
+            
+            const form = document.getElementById('candidateForm_' + activeCandidateId);
+            if (!form) return;
+            
+            const formData = new FormData(form);
+            candidate.data = {};
+            formData.forEach((value, key) => {
+                candidate.data[key] = value;
+            });
+            
+            // Save checkboxes
+            form.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                candidate.data[cb.name] = cb.checked;
+            });
+            
+            // Save radio buttons
+            form.querySelectorAll('input[type="radio"]:checked').forEach(rb => {
+                candidate.data[rb.name] = rb.value;
+            });
+        }
+        
+        function renderTabs() {
+            const tabsContainer = document.getElementById('candidateTabs');
+            tabsContainer.innerHTML = candidates.map(c => `
+                <div class="candidate-tab ${c.id === activeCandidateId ? 'active' : ''}" onclick="switchCandidate('${c.id}')">
+                    <span>👤 ${c.name || 'Unnamed'}</span>
+                    <button class="remove-btn" onclick="event.stopPropagation(); removeCandidate('${c.id}')">×</button>
+                </div>
+            `).join('');
+        }
+        
+        function updateCandidateName(id) {
+            const candidate = candidates.find(c => c.id === id);
+            if (!candidate) return;
+            const input = document.querySelector(`input[name="candidateName"]`);
+            if (input) {
+                candidate.name = input.value || 'Unnamed';
+                renderTabs();
+            }
+        }
+        
+        function renderCandidateForm() {
+            const container = document.getElementById('candidateFormsContainer');
+            const candidate = candidates.find(c => c.id === activeCandidateId);
+            if (!candidate) return;
+            
+            container.innerHTML = getCandidateFormHTML(candidate);
+            
+            // Restore saved data
+            if (candidate.data) {
+                Object.keys(candidate.data).forEach(key => {
+                    const el = document.querySelector(`[name="${key}"]`);
+                    if (el) {
+                        if (el.type === 'checkbox') {
+                            el.checked = candidate.data[key];
+                        } else if (el.type === 'radio') {
+                            // For radio buttons, find the one with matching value
+                            const radio = document.querySelector(`[name="${key}"][value="${candidate.data[key]}"]`);
+                            if (radio) radio.checked = true;
+                        } else {
+                            el.value = candidate.data[key];
+                        }
+                    }
+                });
+            }
+        }
+        
+        function getCandidateFormHTML(candidate) {
+            return `
+            <form id="candidateForm_${candidate.id}" class="candidate-form">
+                <!-- Actions Bar -->
+                <div class="actions-bar">
+                    <button type="button" class="action-btn" onclick="saveToLocalStorage()">
+                        💾 Save Progress
+                    </button>
+                    <button type="button" class="action-btn" onclick="exportToJSON()">
+                        📤 Export JSON
+                    </button>
+                    <button type="button" class="action-btn primary" onclick="document.getElementById('importFile').click()">
+                        📥 Import JSON
+                    </button>
+                    <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importFromJSON(event)">
+                </div>
+                
+                <!-- Candidate Info -->
+                <div class="candidate-info">
+                    <div class="info-grid">
+                        <div class="form-group">
+                            <label>Candidate Name</label>
+                            <input type="text" name="candidateName" placeholder="Enter candidate name" 
+                                   value="${candidate.name}" onchange="updateCandidateName('${candidate.id}')">
+                        </div>
+                        <div class="form-group">
+                            <label>Role / Position</label>
+                            <input type="text" name="role" placeholder="e.g., Senior SDET">
+                        </div>
+                        <div class="form-group">
+                            <label>Seniority Level</label>
+                            <select name="seniority">
+                                <option value="">Select level...</option>
+                                <option value="junior">Junior</option>
+                                <option value="intermediate">Intermediate</option>
+                                <option value="senior">Senior</option>
+                                <option value="lead">Lead</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Team / Department</label>
+                            <input type="text" name="team" placeholder="e.g., QCoE">
+                        </div>
+                        <div class="form-group">
+                            <label>Interviewer</label>
+                            <input type="text" name="interviewer" placeholder="Your name" value="Carlos Martinez">
+                        </div>
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" name="interviewDate" value="${new Date().toISOString().split('T')[0]}">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Section Navigation -->
+                <nav class="section-nav">
+                    <button type="button" class="section-nav-btn active" onclick="scrollToSection('section0')">Intro</button>
+                    <button type="button" class="section-nav-btn" onclick="scrollToSection('section1')">Web</button>
+                    <button type="button" class="section-nav-btn" onclick="scrollToSection('section2')">Mobile</button>
+                    <button type="button" class="section-nav-btn" onclick="scrollToSection('section3')">API</button>
+                    <button type="button" class="section-nav-btn" onclick="scrollToSection('section4')">CI/CD</button>
+                    <button type="button" class="section-nav-btn" onclick="scrollToSection('section5')">AI & Low-Code</button>
+                    <button type="button" class="section-nav-btn" onclick="scrollToSection('section6')">SQL</button>
+                    <button type="button" class="section-nav-btn" onclick="scrollToSection('section7')">Performance</button>
+                    <button type="button" class="section-nav-btn" onclick="scrollToSection('section8')">Exercises</button>
+                    <button type="button" class="section-nav-btn" onclick="scrollToSection('evaluation')">Evaluation</button>
+                </nav>
+                
+                <!-- Section 0: Intro -->
+                <div class="section" id="section0">
+                    <div class="section-header" onclick="toggleSection(this)">
+                        <div class="section-title">
+                            <div class="section-icon">👋</div>
+                            <div>
+                                <h2>Section 0: Intro – Background & Communication</h2>
+                                <p>Understand candidate's background and communication style</p>
+                            </div>
+                        </div>
+                        <div class="section-toggle">▼</div>
+                    </div>
+                    <div class="section-content">
+                        ${renderQuestion('q0_1', 'Core Question', 'Tell me about your experience with automated testing and the frameworks you\'ve used.', 's0q1')}
+                        ${renderQuestion('q0_2', 'Core Question', 'What\'s the most challenging automation problem you\'ve solved?', 's0q2')}
+                        ${renderAddQuestionButton('section0')}
+                        ${renderSectionNotes('section0Notes')}
+                    </div>
+                </div>
+                
+                <!-- Section 1: Web Automation -->
+                <div class="section" id="section1">
+                    <div class="section-header" onclick="toggleSection(this)">
+                        <div class="section-title">
+                            <div class="section-icon">🌐</div>
+                            <div>
+                                <h2>Section 1: Web Automation</h2>
+                                <p>Assess depth in web UI automation and framework design</p>
+                            </div>
+                        </div>
+                        <div class="section-toggle">▼</div>
+                    </div>
+                    <div class="section-content">
+                        ${renderQuestion('q1_1', 'Core Question', 'How would you design a Selenium-based framework for a large-scale web app? Include which design patterns (e.g., Page Object Model) you would use and why.', 's1q1')}
+                        ${renderQuestion('q1_2', 'Core Question', 'How do you handle dynamic elements or flaky tests?', 's1q2')}
+                        ${renderQuestion('q1_3', 'Core Question', 'Explain the difference between implicit and explicit waits in Selenium.', 's1q3')}
+                        ${renderQuestion('q1_4', 'Core Question', 'What is the role of a test runner (e.g., JUnit, TestNG)?', 's1q4')}
+                        ${renderQuestion('q1_5', 'Optional Deep-Dive', 'How do you implement cross-browser testing efficiently?', 's1q5', true)}
+                        ${renderQuestion('q1_6', 'Optional Deep-Dive', 'How do you manage test data for UI tests?', 's1q6', true)}
+                        ${renderAddQuestionButton('section1')}
+                        ${renderSectionNotes('section1Notes')}
+                    </div>
+                </div>
+                
+                <!-- Section 2: Mobile Automation -->
+                <div class="section" id="section2">
+                    <div class="section-header" onclick="toggleSection(this)">
+                        <div class="section-title">
+                            <div class="section-icon">📱</div>
+                            <div>
+                                <h2>Section 2: Mobile Automation</h2>
+                                <p>Evaluate experience with mobile test automation</p>
+                            </div>
+                        </div>
+                        <div class="section-toggle">▼</div>
+                    </div>
+                    <div class="section-content">
+                        ${renderQuestion('q2_1', 'Core Question', 'How does Appium work for mobile automation? How do you manage different OS versions and devices?', 's2q1')}
+                        ${renderQuestion('q2_2', 'Core Question', 'What are Desired Capabilities in Appium?', 's2q2')}
+                        ${renderQuestion('q2_3', 'Core Question', 'How do you handle gestures or hybrid apps?', 's2q3')}
+                        ${renderQuestion('q2_4', 'Optional Deep-Dive', 'How do you ensure test stability across different screen resolutions and hardware configurations?', 's2q4', true)}
+                        ${renderQuestion('q2_5', 'Optional Deep-Dive', 'How do you manage test data and environment setup for mobile tests?', 's2q5', true)}
+                        ${renderAddQuestionButton('section2')}
+                        ${renderSectionNotes('section2Notes')}
+                    </div>
+                </div>
+                
+                <!-- Section 3: API Testing -->
+                <div class="section" id="section3">
+                    <div class="section-header" onclick="toggleSection(this)">
+                        <div class="section-title">
+                            <div class="section-icon">🔌</div>
+                            <div>
+                                <h2>Section 3: API Testing</h2>
+                                <p>Understand API testing strategy and tooling</p>
+                            </div>
+                        </div>
+                        <div class="section-toggle">▼</div>
+                    </div>
+                    <div class="section-content">
+                        ${renderQuestion('q3_1', 'Core Question', 'How do you validate REST API responses beyond status codes?', 's3q1')}
+                        ${renderQuestion('q3_2', 'Core Question', 'What tools do you prefer for API testing (e.g., Postman, RestAssured) and why?', 's3q2')}
+                        ${renderQuestion('q3_3', 'Core Question', 'How would you integrate API tests into a CI/CD pipeline?', 's3q3')}
+                        ${renderQuestion('q3_4', 'Optional Deep-Dive', 'How do you handle authentication in API tests (e.g., OAuth, JWT)?', 's3q4', true)}
+                        ${renderQuestion('q3_5', 'Optional Deep-Dive', 'How do you mock APIs for testing?', 's3q5', true)}
+                        ${renderAddQuestionButton('section3')}
+                        ${renderSectionNotes('section3Notes')}
+                    </div>
+                </div>
+                
+                <!-- Section 4: CI/CD -->
+                <div class="section" id="section4">
+                    <div class="section-header" onclick="toggleSection(this)">
+                        <div class="section-title">
+                            <div class="section-icon">⚙️</div>
+                            <div>
+                                <h2>Section 4: CI/CD & DevOps</h2>
+                                <p>Assess how automation fits into delivery pipelines</p>
+                            </div>
+                        </div>
+                        <div class="section-toggle">▼</div>
+                    </div>
+                    <div class="section-content">
+                        ${renderQuestion('q4_1', 'Core Question', 'Describe how you set up automated tests in a CI/CD pipeline (e.g., Jenkins, Azure DevOps).', 's4q1')}
+                        ${renderQuestion('q4_2', 'Core Question', 'How do you ensure fast feedback in pipelines?', 's4q2')}
+                        ${renderQuestion('q4_3', 'Core Question', 'How do you manage test environments and test data in CI/CD?', 's4q3')}
+                        ${renderQuestion('q4_4', 'Optional Deep-Dive', 'What strategies do you use for parallel execution of tests?', 's4q4', true)}
+                        ${renderQuestion('q4_5', 'Optional Deep-Dive', 'How do you integrate mobile, web, API, and performance tests into CI/CD pipelines?', 's4q5', true)}
+                        ${renderAddQuestionButton('section4')}
+                        ${renderSectionNotes('section4Notes')}
+                    </div>
+                </div>
+                
+                <!-- Section 5: AI & Low-Code -->
+                <div class="section" id="section5">
+                    <div class="section-header" onclick="toggleSection(this)">
+                        <div class="section-title">
+                            <div class="section-icon">🤖</div>
+                            <div>
+                                <h2>Section 5: AI & Low-Code/No-Code</h2>
+                                <p>Gauge familiarity with modern automation trends</p>
+                            </div>
+                        </div>
+                        <div class="section-toggle">▼</div>
+                    </div>
+                    <div class="section-content">
+                        ${renderQuestion('q5_1', 'Core Question', 'How can AI tools (e.g., self-healing locators) improve automation?', 's5q1')}
+                        ${renderQuestion('q5_2', 'Core Question', 'What\'s your view on low-code/no-code platforms? When would you recommend them?', 's5q2')}
+                        ${renderQuestion('q5_3', 'Optional Deep-Dive', 'Have you used predictive analytics for test coverage? If so, how?', 's5q3', true)}
+                        ${renderAddQuestionButton('section5')}
+                        ${renderSectionNotes('section5Notes')}
+                    </div>
+                </div>
+                
+                <!-- Section 6: SQL -->
+                <div class="section" id="section6">
+                    <div class="section-header" onclick="toggleSection(this)">
+                        <div class="section-title">
+                            <div class="section-icon">🗃️</div>
+                            <div>
+                                <h2>Section 6: SQL</h2>
+                                <p>Validate SQL knowledge and database concepts</p>
+                            </div>
+                        </div>
+                        <div class="section-toggle">▼</div>
+                    </div>
+                    <div class="section-content">
+                        ${renderQuestion('q6_1', 'Core Question', 'What is the difference between INNER JOIN, LEFT JOIN, and RIGHT JOIN? When would you use each?', 's6q1')}
+                        ${renderQuestion('q6_2', 'Core Question', 'Explain the difference between WHERE and HAVING clauses.', 's6q2')}
+                        ${renderQuestion('q6_3', 'Core Question', 'What are indexes and how do they improve query performance? Any downsides?', 's6q3')}
+                        ${renderQuestion('q6_4', 'Core Question', 'How would you find duplicate records in a table?', 's6q4')}
+                        ${renderAddQuestionButton('section6')}
+                        ${renderSectionNotes('section6Notes')}
+                    </div>
+                </div>
+                
+                <!-- Section 7: Performance Testing -->
+                <div class="section" id="section7">
+                    <div class="section-header" onclick="toggleSection(this)">
+                        <div class="section-title">
+                            <div class="section-icon">📊</div>
+                            <div>
+                                <h2>Section 7: Performance Testing</h2>
+                                <p>Understand exposure to performance and load testing</p>
+                            </div>
+                        </div>
+                        <div class="section-toggle">▼</div>
+                    </div>
+                    <div class="section-content">
+                        ${renderQuestion('q7_1', 'Core Question', 'What tools have you used for performance testing (e.g., JMeter)?', 's7q1')}
+                        ${renderQuestion('q7_2', 'Core Question', 'How do you interpret performance metrics?', 's7q2')}
+                        ${renderAddQuestionButton('section7')}
+                        ${renderSectionNotes('section7Notes')}
+                    </div>
+                </div>
+                
+                <!-- Section 8: Exercises -->
+                <div class="section" id="section8">
+                    <div class="section-header" onclick="toggleSection(this)">
+                        <div class="section-title">
+                            <div class="section-icon">💻</div>
+                            <div>
+                                <h2>Section 8: Coding Exercises</h2>
+                                <p>Assess hands-on coding and problem solving. Pick 1–2 based on seniority.</p>
+                            </div>
+                        </div>
+                        <div class="section-toggle">▼</div>
+                    </div>
+                    <div class="section-content">
+                        <h3 style="color: var(--axos-orange); margin-bottom: 20px; font-size: 16px;">📝 Exercise 1: API CRUD Task (8–10 min)</h3>
+                        ${renderQuestionWithAPIExample('ex1_1', 'Exercise', 'Using the endpoint https://jsonplaceholder.typicode.com/posts, retrieve the full list of posts, select a random id from the result set, and export all fields for that item: userId, id, title, body.', 'ex1q1', 'api_get_all')}
+                        ${renderQuestionWithAPIExample('ex1_2', 'Exercise', 'Using the endpoint https://jsonplaceholder.typicode.com/posts/{{id}}, use the previously selected id, assert the response contains the expected data for userId, id, title, body, and perform a negative test asserting an invalid id returns an appropriate error response.', 'ex1q2', 'api_get_by_id')}
+                        ${renderQuestionWithAPIExample('ex1_3', 'Exercise', 'Using the endpoint https://jsonplaceholder.typicode.com/posts/, create random data with fields title, body, and userId, send the POST request with the payload, assert the response contains an id.', 'ex1q3', 'api_post')}
+                        <div class="section-notes" style="margin-top: 16px; margin-bottom: 24px;">
+                            <label>📝 API Exercise Notes</label>
+                            <textarea name="ex1Notes" placeholder="Notes on candidate's API exercise performance..."></textarea>
+                        </div>
+                        
+                        <h3 style="color: var(--axos-orange); margin: 30px 0 20px; font-size: 16px;">📝 Exercise 2: Coding (8–10 min)</h3>
+                        ${renderQuestionWithCodingExample('ex2_1', 'Exercise', 'Write a function that takes a string and toggles the case of each alphabetical character (lowercase becomes uppercase, uppercase becomes lowercase). Example: "aBccD!2" → "AbCCd!2"', 'ex2q1', 'toggle_case')}
+                        ${renderQuestionWithCodingExample('ex2_2', 'Exercise', 'An isogram is a word with no repeating letters, ignoring case. Write a function that returns true if a string is an isogram. Examples: "Machine" → true, "isIsogram" → false.', 'ex2q2', 'isogram')}
+                        ${renderQuestionWithCodingExample('ex2_3', 'Exercise', 'Write a function that takes a string and returns the number of vowels (a, e, i, o, u). Examples: "Automation" → 5, "SDET" → 1.', 'ex2q3', 'vowel_counter')}
+                        <div class="section-notes" style="margin-top: 16px; margin-bottom: 24px;">
+                            <label>📝 Coding Exercise Notes</label>
+                            <textarea name="ex2Notes" placeholder="Notes on candidate's coding exercise performance..."></textarea>
+                        </div>
+                        
+                        <h3 style="color: var(--axos-orange); margin: 30px 0 20px; font-size: 16px;">📝 Exercise 3: Web Automation</h3>
+                        ${renderQuestionWithWebExample('ex3_1', 'Exercise', 'On https://amazon.com, get the visible list items between "Shop by Department" and "Programs and Features", ensuring only visible items are returned. Describe how you would locate and filter these elements.', 'ex3q1')}
+                        <div class="section-notes" style="margin-top: 16px; margin-bottom: 24px;">
+                            <label>📝 Web Automation Exercise Notes</label>
+                            <textarea name="ex3Notes" placeholder="Notes on candidate's web automation exercise performance..."></textarea>
+                        </div>
+                        
+                        <h3 style="color: var(--axos-orange); margin: 30px 0 20px; font-size: 16px;">📝 Exercise 4: SQL (8–10 min)</h3>
+                        <div class="question-card" style="background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3); margin-bottom: 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                <strong style="color: var(--info);">📋 SQL Exercise Scenario</strong>
+                                <button type="button" class="copy-btn" onclick="copySQLScenario()" style="margin: 0; padding: 8px 16px; font-size: 12px;">
+                                    📋 Copy to Teams
+                                </button>
+                            </div>
+                            <div id="sqlScenarioContent" style="font-size: 14px; color: var(--text-secondary);">
+                                <strong style="color: var(--text-primary);">You have two tables:</strong><br><br>
+                                
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 16px;">
+                                    <div>
+                                        <strong style="color: var(--axos-orange);">Users Table</strong>
+                                        <table style="width: 100%; margin-top: 8px; border-collapse: collapse; font-size: 12px;">
+                                            <thead>
+                                                <tr style="background: var(--bg-tertiary);">
+                                                    <th style="padding: 8px; border: 1px solid var(--border-color); text-align: left;">id</th>
+                                                    <th style="padding: 8px; border: 1px solid var(--border-color); text-align: left;">name</th>
+                                                    <th style="padding: 8px; border: 1px solid var(--border-color); text-align: left;">email</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr><td style="padding: 6px 8px; border: 1px solid var(--border-color);">1</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">Alice Johnson</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">alice@example.com</td></tr>
+                                                <tr><td style="padding: 6px 8px; border: 1px solid var(--border-color);">2</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">Bob Smith</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">bob@example.com</td></tr>
+                                                <tr><td style="padding: 6px 8px; border: 1px solid var(--border-color);">3</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">Charlie Brown</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">charlie@example.com</td></tr>
+                                                <tr><td style="padding: 6px 8px; border: 1px solid var(--border-color);">4</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">Diana Prince</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">diana@example.com</td></tr>
+                                                <tr><td style="padding: 6px 8px; border: 1px solid var(--border-color);">5</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">Ethan Hunt</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">ethan@example.com</td></tr>
+                                                <tr><td style="padding: 6px 8px; border: 1px solid var(--border-color);">6</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">David Martin</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">david@example.com</td></tr>
+                                                <tr><td style="padding: 6px 8px; border: 1px solid var(--border-color);">7</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">Marlene Jackson</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">marlene@example.com</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div>
+                                        <strong style="color: var(--axos-orange);">Orders Table</strong>
+                                        <table style="width: 100%; margin-top: 8px; border-collapse: collapse; font-size: 12px;">
+                                            <thead>
+                                                <tr style="background: var(--bg-tertiary);">
+                                                    <th style="padding: 8px; border: 1px solid var(--border-color); text-align: left;">id</th>
+                                                    <th style="padding: 8px; border: 1px solid var(--border-color); text-align: left;">user_id</th>
+                                                    <th style="padding: 8px; border: 1px solid var(--border-color); text-align: left;">amount</th>
+                                                    <th style="padding: 8px; border: 1px solid var(--border-color); text-align: left;">status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr><td style="padding: 6px 8px; border: 1px solid var(--border-color);">1</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">1</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">50.75</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">Completed</td></tr>
+                                                <tr><td style="padding: 6px 8px; border: 1px solid var(--border-color);">2</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">2</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">9.99</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">Pending</td></tr>
+                                                <tr><td style="padding: 6px 8px; border: 1px solid var(--border-color);">3</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">1</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">50.00</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">Shipped</td></tr>
+                                                <tr><td style="padding: 6px 8px; border: 1px solid var(--border-color);">4</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">3</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">0.50</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">Completed</td></tr>
+                                                <tr><td style="padding: 6px 8px; border: 1px solid var(--border-color);">5</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">4</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">5.25</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">Cancelled</td></tr>
+                                                <tr><td style="padding: 6px 8px; border: 1px solid var(--border-color);">6</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">2</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">0.00</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">Completed</td></tr>
+                                                <tr><td style="padding: 6px 8px; border: 1px solid var(--border-color);">7</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">5</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">20.00</td><td style="padding: 6px 8px; border: 1px solid var(--border-color);">Shipped</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                
+                                <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+                                    <strong style="color: var(--text-primary);">Write SQL queries for the following:</strong>
+                                    <ol style="margin-top: 12px; padding-left: 20px; line-height: 1.8;">
+                                        <li>Find all users who have not placed any orders.</li>
+                                        <li>Find the total amount of all orders for each user, showing the user's name and the total.</li>
+                                        <li>Find users who have placed more than one order.</li>
+                                        <li>Find the average order amount per status (Completed, Pending, Shipped, Cancelled).</li>
+                                        <li>Find the user with the highest total order amount.</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                        ${renderQuestionWithSQLExample('ex4_1', 'Exercise', 'Write a SQL query to find all users who have not placed any orders.', 'ex4q1', 'sql_no_orders')}
+                        ${renderQuestionWithSQLExample('ex4_2', 'Exercise', 'Write a SQL query to find the total amount of all orders for each user, showing the user\'s name and the total.', 'ex4q2', 'sql_total_amount')}
+                        ${renderQuestionWithSQLExample('ex4_3', 'Exercise', 'Write a SQL query to find users who have placed more than one order.', 'ex4q3', 'sql_multiple_orders')}
+                        ${renderQuestionWithSQLExample('ex4_4', 'Exercise', 'Write a SQL query to find the average order amount per status (Completed, Pending, Shipped, Cancelled).', 'ex4q4', 'sql_avg_by_status')}
+                        ${renderQuestionWithSQLExample('ex4_5', 'Exercise', 'Write a SQL query to find the user with the highest total order amount.', 'ex4q5', 'sql_highest_total')}
+                        <div class="section-notes" style="margin-top: 16px; margin-bottom: 24px;">
+                            <label>📝 SQL Exercise Notes</label>
+                            <textarea name="ex4Notes" placeholder="Notes on candidate's SQL exercise performance..."></textarea>
+                        </div>
+                        
+                        ${renderAddQuestionButton('section8')}
+                        ${renderSectionNotes('section8Notes', 'Candidate\'s approach, reasoning, and communication during exercises')}
+                    </div>
+                </div>
+                
+                <!-- Evaluation Section -->
+                <div class="evaluation-section" id="evaluation">
+                    <h2>✅ Your Recommendation</h2>
+                    <p style="color: var(--text-secondary); margin-bottom: 24px;">Select your overall recommendation. Use the AI Prompt Generator below to get a detailed evaluation summary (Strengths, Concerns, Technical Fit, Culture Fit) based on the answers you recorded.</p>
+                    
+                    <div>
+                        <label style="display: block; font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 16px;">
+                            📊 Overall Recommendation
+                        </label>
+                        <div class="recommendation-options">
+                            <div class="recommendation-option strong-hire">
+                                <input type="radio" name="recommendation" id="rec_strong_hire" value="strong_hire">
+                                <label for="rec_strong_hire">🌟 Strong Hire</label>
+                            </div>
+                            <div class="recommendation-option hire">
+                                <input type="radio" name="recommendation" id="rec_hire" value="hire">
+                                <label for="rec_hire">✅ Hire</label>
+                            </div>
+                            <div class="recommendation-option leaning-no">
+                                <input type="radio" name="recommendation" id="rec_leaning_no" value="leaning_no">
+                                <label for="rec_leaning_no">📚 Hire with Growth</label>
+                            </div>
+                            <div class="recommendation-option no-hire">
+                                <input type="radio" name="recommendation" id="rec_no_hire" value="no_hire">
+                                <label for="rec_no_hire">❌ No Hire</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 24px;">
+                        <label style="display: block; font-size: 13px; font-weight: 600; color: var(--warning); margin-bottom: 10px;">📝 Additional Notes (Optional)</label>
+                        <textarea name="additionalNotes" placeholder="Any final thoughts or context for the hiring team..." style="width: 100%; min-height: 80px; padding: 14px; background: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px; color: var(--text-primary); font-size: 14px; font-family: inherit; resize: vertical;"></textarea>
+                    </div>
+                </div>
+                
+                <!-- AI Prompt Generator -->
+                <div class="ai-prompt-section" id="aiPrompt">
+                    <h2>🤖 AI Evaluation Prompt Generator</h2>
+                    <p>Click the button below to generate a prompt that you can give to an AI assistant to help evaluate this candidate based on all the responses you've recorded.</p>
+                    <button type="button" class="generate-prompt-btn" onclick="generateAIPrompt()">
+                        ✨ Generate AI Evaluation Prompt
+                    </button>
+                <div class="prompt-output" id="promptOutput">
+                    <button type="button" class="copy-btn" onclick="copyPrompt()" style="margin-bottom: 12px;">
+                        📋 Copy to Clipboard
+                    </button>
+                    <pre id="promptText"></pre>
+                </div>
+                </div>
+                
+                <!-- Actions Bar -->
+                <div class="actions-bar">
+                    <button type="button" class="action-btn" onclick="saveToLocalStorage()">
+                        💾 Save Progress
+                    </button>
+                    <button type="button" class="action-btn" onclick="exportToJSON()">
+                        📤 Export JSON
+                    </button>
+                    <button type="button" class="action-btn primary" onclick="document.getElementById('importFile').click()">
+                        📥 Import JSON
+                    </button>
+                    <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importFromJSON(event)">
+                </div>
+            </form>
+            `;
+        }
+        
+        function renderQuestion(id, label, question, answerName, isOptional = false, isCustom = false) {
+            return `
+            <div class="question-card" data-question-id="${id}">
+                <div class="question-header">
+                    <input type="checkbox" class="question-checkbox" name="${id}_asked" id="${id}_asked">
+                    <div class="question-text">
+                        <div class="question-label ${isOptional ? 'optional' : ''}">${label}${isCustom ? '<span class="custom-badge">Custom</span>' : ''}</div>
+                        <p class="question-text-content">${question}</p>
+                    </div>
+                    <div class="question-actions">
+                        <button type="button" class="edit-question-btn" onclick="openEditQuestionModal('${id}', '${answerName}')" title="Edit Question">✏️</button>
+                        ${isCustom ? `<button type="button" class="delete-question-btn" onclick="deleteQuestion('${id}')" title="Delete Question">🗑️</button>` : ''}
+                    </div>
+                </div>
+                <div class="answer-area">
+                    <textarea name="${answerName}" placeholder="Record candidate's answer here..."></textarea>
+                </div>
+            </div>
+            `;
+        }
+        
+        function renderQuestionWithSQLExample(id, label, question, answerName, exampleType) {
+            const examples = getSQLExamples(exampleType);
+            return `
+            <div class="question-card" data-question-id="${id}">
+                <div class="question-header">
+                    <input type="checkbox" class="question-checkbox" name="${id}_asked" id="${id}_asked">
+                    <div class="question-text">
+                        <div class="question-label">${label}</div>
+                        <p class="question-text-content">${question}</p>
+                    </div>
+                    <div class="question-actions">
+                        <button type="button" class="edit-question-btn" onclick="openEditQuestionModal('${id}', '${answerName}')" title="Edit Question">✏️</button>
+                    </div>
+                </div>
+                <div class="answer-area">
+                    <textarea name="${answerName}" placeholder="Record candidate's SQL query here..."></textarea>
+                </div>
+                <button type="button" class="example-toggle" onclick="toggleExample(this)">
+                    <span class="arrow">▶</span> View Example Answer
+                </button>
+                <div class="example-content">
+                    <div class="example-code active">
+                        <pre><code>${examples}</code></pre>
+                    </div>
+                </div>
+            </div>
+            `;
+        }
+        
+        function renderQuestionWithAPIExample(id, label, question, answerName, exampleType) {
+            const examples = getAPIExamples(exampleType);
+            return `
+            <div class="question-card" data-question-id="${id}">
+                <div class="question-header">
+                    <input type="checkbox" class="question-checkbox" name="${id}_asked" id="${id}_asked">
+                    <div class="question-text">
+                        <div class="question-label">${label}</div>
+                        <p class="question-text-content">${question}</p>
+                    </div>
+                    <div class="question-actions">
+                        <button type="button" class="edit-question-btn" onclick="openEditQuestionModal('${id}', '${answerName}')" title="Edit Question">✏️</button>
+                    </div>
+                </div>
+                <div class="answer-area">
+                    <textarea name="${answerName}" placeholder="Record candidate's answer/code here..."></textarea>
+                </div>
+                <button type="button" class="example-toggle" onclick="toggleExample(this)">
+                    <span class="arrow">▶</span> View Example Answer (Postman JS)
+                </button>
+                <div class="example-content">
+                    <div class="example-code active">
+                        <pre><code>${examples}</code></pre>
+                    </div>
+                </div>
+            </div>
+            `;
+        }
+        
+        function renderQuestionWithCodingExample(id, label, question, answerName, exampleType) {
+            const examples = getCodingExamples(exampleType);
+            return `
+            <div class="question-card" data-question-id="${id}">
+                <div class="question-header">
+                    <input type="checkbox" class="question-checkbox" name="${id}_asked" id="${id}_asked">
+                    <div class="question-text">
+                        <div class="question-label">${label}</div>
+                        <p class="question-text-content">${question}</p>
+                    </div>
+                    <div class="question-actions">
+                        <button type="button" class="edit-question-btn" onclick="openEditQuestionModal('${id}', '${answerName}')" title="Edit Question">✏️</button>
+                    </div>
+                </div>
+                <div class="answer-area">
+                    <textarea name="${answerName}" placeholder="Record candidate's code/approach here..."></textarea>
+                </div>
+                <button type="button" class="example-toggle" onclick="toggleExample(this)">
+                    <span class="arrow">▶</span> View Example Answers
+                </button>
+                <div class="example-content">
+                    <div class="example-tabs">
+                        <button type="button" class="example-tab active" onclick="switchExampleTab(this, 'java')">Java</button>
+                        <button type="button" class="example-tab" onclick="switchExampleTab(this, 'javascript')">JavaScript</button>
+                        <button type="button" class="example-tab" onclick="switchExampleTab(this, 'python')">Python</button>
+                        <button type="button" class="example-tab" onclick="switchExampleTab(this, 'csharp')">C#</button>
+                    </div>
+                    <div class="example-code active" data-lang="java">
+                        <pre><code>${examples.java}</code></pre>
+                    </div>
+                    <div class="example-code" data-lang="javascript">
+                        <pre><code>${examples.javascript}</code></pre>
+                    </div>
+                    <div class="example-code" data-lang="python">
+                        <pre><code>${examples.python}</code></pre>
+                    </div>
+                    <div class="example-code" data-lang="csharp">
+                        <pre><code>${examples.csharp}</code></pre>
+                    </div>
+                </div>
+            </div>
+            `;
+        }
+        
+        function renderQuestionWithWebExample(id, label, question, answerName) {
+            const examples = getWebExamples();
+            return `
+            <div class="question-card" data-question-id="${id}">
+                <div class="question-header">
+                    <input type="checkbox" class="question-checkbox" name="${id}_asked" id="${id}_asked">
+                    <div class="question-text">
+                        <div class="question-label">${label}</div>
+                        <p class="question-text-content">${question}</p>
+                    </div>
+                    <div class="question-actions">
+                        <button type="button" class="edit-question-btn" onclick="openEditQuestionModal('${id}', '${answerName}')" title="Edit Question">✏️</button>
+                    </div>
+                </div>
+                <div class="answer-area">
+                    <textarea name="${answerName}" placeholder="Record candidate's locator strategy/code here..."></textarea>
+                </div>
+                <button type="button" class="example-toggle" onclick="toggleExample(this)">
+                    <span class="arrow">▶</span> View Example Locators
+                </button>
+                <div class="example-content">
+                    <div class="example-tabs">
+                        <button type="button" class="example-tab active" onclick="switchExampleTab(this, 'xpath')">XPath</button>
+                        <button type="button" class="example-tab" onclick="switchExampleTab(this, 'css')">CSS Selector</button>
+                        <button type="button" class="example-tab" onclick="switchExampleTab(this, 'selenium')">Selenium Code</button>
+                    </div>
+                    <div class="example-code active" data-lang="xpath">
+                        <pre><code>${examples.xpath}</code></pre>
+                    </div>
+                    <div class="example-code" data-lang="css">
+                        <pre><code>${examples.css}</code></pre>
+                    </div>
+                    <div class="example-code" data-lang="selenium">
+                        <pre><code>${examples.selenium}</code></pre>
+                    </div>
+                </div>
+            </div>
+            `;
+        }
+        
+        function renderSectionNotes(name, placeholder = 'Interviewer notes for this section...') {
+            return `
+            <div class="section-notes">
+                <label>📝 Interviewer Notes</label>
+                <textarea name="${name}" placeholder="${placeholder}"></textarea>
+            </div>
+            `;
+        }
+        
+        function renderAddQuestionButton(sectionId) {
+            return `
+            <button type="button" class="add-question-btn" onclick="openAddQuestionModal('${sectionId}')">
+                <span>+</span> Add Custom Question
+            </button>
+            `;
+        }
+        
+        // Example Data
+        function getSQLExamples(type) {
+            const examples = {
+                'sql_no_orders': `-- Find all users who have not placed any orders
+-- Method 1: Using LEFT JOIN with NULL check
+SELECT u.id, u.name, u.email
+FROM Users u
+LEFT JOIN Orders o ON u.id = o.user_id
+WHERE o.id IS NULL;
+
+-- Method 2: Using NOT EXISTS (often more efficient)
+SELECT u.id, u.name, u.email
+FROM Users u
+WHERE NOT EXISTS (
+    SELECT 1 FROM Orders o WHERE o.user_id = u.id
+);
+
+-- Method 3: Using NOT IN
+SELECT id, name, email
+FROM Users
+WHERE id NOT IN (SELECT DISTINCT user_id FROM Orders);`,
+
+                'sql_total_amount': `-- Calculate total order amount per user
+SELECT 
+    u.name,
+    COALESCE(SUM(o.amount), 0) AS total_amount
+FROM Users u
+LEFT JOIN Orders o ON u.id = o.user_id
+GROUP BY u.id, u.name
+ORDER BY total_amount DESC;
+
+-- Alternative: Only users with orders
+SELECT 
+    u.name,
+    SUM(o.amount) AS total_amount
+FROM Users u
+INNER JOIN Orders o ON u.id = o.user_id
+GROUP BY u.id, u.name
+ORDER BY total_amount DESC;`,
+
+                'sql_update_shipped': `-- Update all orders for a specific user to SHIPPED
+UPDATE Orders
+SET status = 'SHIPPED'
+WHERE user_id = 5;
+
+-- With safety check (best practice)
+UPDATE Orders
+SET status = 'SHIPPED'
+WHERE user_id = 5
+  AND status != 'SHIPPED';  -- Only update if not already shipped`,
+
+                'sql_avg_by_status': `-- Average order amount per status
+SELECT 
+    status,
+    AVG(amount) AS avg_amount,
+    COUNT(*) AS order_count
+FROM Orders
+GROUP BY status
+ORDER BY avg_amount DESC;
+
+-- Result would show:
+-- Completed: (50.75 + 0.50 + 0.00) / 3 = 17.08
+-- Shipped: (50.00 + 20.00) / 2 = 35.00
+-- Pending: 9.99
+-- Cancelled: 5.25`,
+
+                'sql_multiple_orders': `-- Users with more than one order
+SELECT 
+    u.id,
+    u.name,
+    COUNT(o.id) AS order_count
+FROM Users u
+INNER JOIN Orders o ON u.id = o.user_id
+GROUP BY u.id, u.name
+HAVING COUNT(o.id) > 1;
+
+-- Expected result:
+-- Alice Johnson (user_id=1) - 2 orders
+-- Bob Smith (user_id=2) - 2 orders`,
+
+                'sql_highest_total': `-- User with highest total order amount
+SELECT TOP 1
+    u.name,
+    SUM(o.amount) AS total_amount
+FROM Users u
+INNER JOIN Orders o ON u.id = o.user_id
+GROUP BY u.id, u.name
+ORDER BY total_amount DESC;
+
+-- MySQL/PostgreSQL version:
+SELECT 
+    u.name,
+    SUM(o.amount) AS total_amount
+FROM Users u
+INNER JOIN Orders o ON u.id = o.user_id
+GROUP BY u.id, u.name
+ORDER BY total_amount DESC
+LIMIT 1;
+
+-- Expected result: Alice Johnson - 100.75`
+            };
+            return examples[type] || '';
+        }
+        
+        function getAPIExamples(type) {
+            const examples = {
+                'api_get_all': `// Postman Pre-request Script & Tests for GET All Posts
+
+// === Tests Tab ===
+pm.test("Status code is 200", function() {
+    pm.response.to.have.status(200);
+});
+
+pm.test("Response is an array", function() {
+    const jsonData = pm.response.json();
+    pm.expect(Array.isArray(jsonData)).to.be.true;
+    pm.expect(jsonData.length).to.be.greaterThan(0);
+});
+
+// Select random post and store for next request
+const posts = pm.response.json();
+const randomPost = posts[Math.floor(Math.random() * posts.length)];
+
+pm.collectionVariables.set("selectedId", randomPost.id);
+pm.collectionVariables.set("expectedUserId", randomPost.userId);
+pm.collectionVariables.set("expectedTitle", randomPost.title);
+pm.collectionVariables.set("expectedBody", randomPost.body);
+
+console.log("Selected post ID:", randomPost.id);`,
+
+                'api_get_by_id': `// Postman Tests for GET Post by ID
+
+// === Positive Test ===
+pm.test("Status code is 200", function() {
+    pm.response.to.have.status(200);
+});
+
+pm.test("Response has correct structure", function() {
+    const jsonData = pm.response.json();
+    pm.expect(jsonData).to.have.property("userId");
+    pm.expect(jsonData).to.have.property("id");
+    pm.expect(jsonData).to.have.property("title");
+    pm.expect(jsonData).to.have.property("body");
+});
+
+pm.test("Response matches expected data", function() {
+    const jsonData = pm.response.json();
+    pm.expect(jsonData.id).to.eql(pm.collectionVariables.get("selectedId"));
+    pm.expect(jsonData.userId).to.eql(pm.collectionVariables.get("expectedUserId"));
+});
+
+// === Negative Test (use different request with invalid ID) ===
+// URL: https://jsonplaceholder.typicode.com/posts/99999
+pm.test("Invalid ID returns 404", function() {
+    pm.response.to.have.status(404);
+});
+
+pm.test("Response body is empty object", function() {
+    const jsonData = pm.response.json();
+    pm.expect(Object.keys(jsonData).length).to.eql(0);
+});`,
+
+                'api_post': `// Postman Pre-request Script & Tests for POST
+
+// === Pre-request Script ===
+const randomTitle = "Test Post " + Date.now();
+const randomBody = "This is automated test body content " + Math.random().toString(36).substring(7);
+const randomUserId = Math.floor(Math.random() * 10) + 1;
+
+pm.collectionVariables.set("newTitle", randomTitle);
+pm.collectionVariables.set("newBody", randomBody);
+pm.collectionVariables.set("newUserId", randomUserId);
+
+// === Body (raw JSON) ===
+/*
+{
+    "title": "{{newTitle}}",
+    "body": "{{newBody}}",
+    "userId": {{newUserId}}
+}
+*/
+
+// === Tests Tab ===
+pm.test("Status code is 201", function() {
+    pm.response.to.have.status(201);
+});
+
+pm.test("Response contains ID", function() {
+    const jsonData = pm.response.json();
+    pm.expect(jsonData).to.have.property("id");
+    pm.expect(jsonData.id).to.be.a("number");
+});
+
+pm.test("Response echoes sent data", function() {
+    const jsonData = pm.response.json();
+    pm.expect(jsonData.title).to.eql(pm.collectionVariables.get("newTitle"));
+    pm.expect(jsonData.body).to.eql(pm.collectionVariables.get("newBody"));
+});`
+            };
+            return examples[type] || '';
+        }
+        
+        function getCodingExamples(type) {
+            const examples = {
+                'toggle_case': {
+                    java: `// Java - Toggle Case
+public class ToggleCase {
+    public static String toggleCase(String input) {
+        if (input == null) return null;
+        
+        StringBuilder result = new StringBuilder();
+        for (char c : input.toCharArray()) {
+            if (Character.isUpperCase(c)) {
+                result.append(Character.toLowerCase(c));
+            } else if (Character.isLowerCase(c)) {
+                result.append(Character.toUpperCase(c));
+            } else {
+                result.append(c);
+            }
+        }
+        return result.toString();
+    }
+    
+    // Test
+    public static void main(String[] args) {
+        System.out.println(toggleCase("aBccD!2")); // "AbCCd!2"
+        System.out.println(toggleCase(""));         // ""
+        System.out.println(toggleCase("123"));      // "123"
+    }
+}`,
+                    javascript: `// JavaScript - Toggle Case
+function toggleCase(str) {
+    if (!str) return str;
+    
+    return str.split('').map(char => {
+        if (char === char.toUpperCase() && char !== char.toLowerCase()) {
+            return char.toLowerCase();
+        } else if (char === char.toLowerCase() && char !== char.toUpperCase()) {
+            return char.toUpperCase();
+        }
+        return char;
+    }).join('');
+}
+
+// Alternative using regex
+const toggleCaseAlt = (str) => 
+    str?.split('').map(c => 
+        c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase()
+    ).join('') ?? str;
+
+// Test
+console.log(toggleCase("aBccD!2")); // "AbCCd!2"
+console.log(toggleCase(""));         // ""`,
+                    python: `# Python - Toggle Case
+def toggle_case(s: str) -> str:
+    if not s:
+        return s
+    
+    return ''.join(
+        c.lower() if c.isupper() else c.upper() if c.islower() else c
+        for c in s
+    )
+
+# Alternative using swapcase (built-in)
+def toggle_case_builtin(s: str) -> str:
+    return s.swapcase() if s else s
+
+# Test
+print(toggle_case("aBccD!2"))  # "AbCCd!2"
+print(toggle_case(""))          # ""
+print(toggle_case("123"))       # "123"`,
+                    csharp: `// C# - Toggle Case
+public static string ToggleCase(string input)
+{
+    if (string.IsNullOrEmpty(input)) return input;
+    
+    var result = new StringBuilder();
+    foreach (char c in input)
+    {
+        if (char.IsUpper(c))
+            result.Append(char.ToLower(c));
+        else if (char.IsLower(c))
+            result.Append(char.ToUpper(c));
+        else
+            result.Append(c);
+    }
+    return result.ToString();
+}
+
+// Using LINQ
+public static string ToggleCaseLINQ(string input) =>
+    string.IsNullOrEmpty(input) ? input :
+    new string(input.Select(c => 
+        char.IsUpper(c) ? char.ToLower(c) : char.ToUpper(c)
+    ).ToArray());
+
+// Test
+Console.WriteLine(ToggleCase("aBccD!2")); // "AbCCd!2"`
+                },
+                'isogram': {
+                    java: `// Java - Isogram Check
+public class Isogram {
+    public static boolean isIsogram(String input) {
+        if (input == null || input.isEmpty()) return true;
+        
+        String normalized = input.toLowerCase()
+                                 .replaceAll("[^a-z]", "");
+        
+        Set<Character> seen = new HashSet<>();
+        for (char c : normalized.toCharArray()) {
+            if (!seen.add(c)) {
+                return false; // Character already exists
+            }
+        }
+        return true;
+    }
+    
+    // Test
+    public static void main(String[] args) {
+        System.out.println(isIsogram("Machine"));    // true
+        System.out.println(isIsogram("isIsogram")); // false
+        System.out.println(isIsogram("thumb-screw")); // true
+    }
+}`,
+                    javascript: `// JavaScript - Isogram Check
+function isIsogram(str) {
+    if (!str) return true;
+    
+    // Normalize: lowercase, remove non-letters
+    const normalized = str.toLowerCase().replace(/[^a-z]/g, '');
+    
+    // Check if all characters are unique
+    return new Set(normalized).size === normalized.length;
+}
+
+// Alternative approach
+const isIsogramAlt = (str) => {
+    const letters = (str || '').toLowerCase().match(/[a-z]/g) || [];
+    return letters.length === new Set(letters).size;
+};
+
+// Test
+console.log(isIsogram("Machine"));     // true
+console.log(isIsogram("isIsogram"));   // false
+console.log(isIsogram("thumb-screw")); // true
+console.log(isIsogram("123abc!"));     // true`,
+                    python: `# Python - Isogram Check
+def is_isogram(s: str) -> bool:
+    if not s:
+        return True
+    
+    # Keep only letters, lowercase
+    letters = [c.lower() for c in s if c.isalpha()]
+    
+    # Check uniqueness
+    return len(letters) == len(set(letters))
+
+# Alternative one-liner
+def is_isogram_v2(s: str) -> bool:
+    s = ''.join(c.lower() for c in (s or '') if c.isalpha())
+    return len(s) == len(set(s))
+
+# Test
+print(is_isogram("Machine"))      # True
+print(is_isogram("isIsogram"))    # False
+print(is_isogram("thumb-screw"))  # True`,
+                    csharp: `// C# - Isogram Check
+public static bool IsIsogram(string input)
+{
+    if (string.IsNullOrEmpty(input)) return true;
+    
+    var letters = input.ToLower()
+                       .Where(char.IsLetter)
+                       .ToList();
+    
+    return letters.Count == letters.Distinct().Count();
+}
+
+// Using HashSet for efficiency
+public static bool IsIsogramHashSet(string input)
+{
+    if (string.IsNullOrEmpty(input)) return true;
+    
+    var seen = new HashSet<char>();
+    foreach (char c in input.ToLower())
+    {
+        if (char.IsLetter(c) && !seen.Add(c))
+            return false;
+    }
+    return true;
+}
+
+// Test
+Console.WriteLine(IsIsogram("Machine"));     // True
+Console.WriteLine(IsIsogram("isIsogram"));   // False`
+                },
+                'vowel_counter': {
+                    java: `// Java - Vowel Counter
+public class VowelCounter {
+    public static int countVowels(String input) {
+        if (input == null || input.isEmpty()) return 0;
+        
+        String vowels = "aeiouAEIOU";
+        int count = 0;
+        
+        for (char c : input.toCharArray()) {
+            if (vowels.indexOf(c) != -1) {
+                count++;
+            }
+        }
+        return count;
+    }
+    
+    // Using streams
+    public static long countVowelsStream(String input) {
+        if (input == null) return 0;
+        return input.chars()
+                    .filter(c -> "aeiouAEIOU".indexOf(c) != -1)
+                    .count();
+    }
+    
+    // Test
+    public static void main(String[] args) {
+        System.out.println(countVowels("Automation")); // 5
+        System.out.println(countVowels("SDET"));       // 1
+        System.out.println(countVowels("BCDFG"));      // 0
+    }
+}`,
+                    javascript: `// JavaScript - Vowel Counter
+function countVowels(str) {
+    if (!str) return 0;
+    
+    const vowels = 'aeiouAEIOU';
+    return [...str].filter(char => vowels.includes(char)).length;
+}
+
+// Using regex
+const countVowelsRegex = (str) => 
+    (str?.match(/[aeiou]/gi) || []).length;
+
+// With vowel list return
+function countVowelsDetailed(str) {
+    if (!str) return { count: 0, vowels: [] };
+    
+    const found = [...str].filter(c => 'aeiouAEIOU'.includes(c));
+    return { count: found.length, vowels: found };
+}
+
+// Test
+console.log(countVowels("Automation")); // 5
+console.log(countVowels("SDET"));       // 1
+console.log(countVowelsDetailed("Hello")); // { count: 2, vowels: ['e', 'o'] }`,
+                    python: `# Python - Vowel Counter
+def count_vowels(s: str) -> int:
+    if not s:
+        return 0
+    
+    vowels = set('aeiouAEIOU')
+    return sum(1 for c in s if c in vowels)
+
+# Alternative using filter
+def count_vowels_v2(s: str) -> int:
+    vowels = 'aeiouAEIOU'
+    return len([c for c in (s or '') if c in vowels])
+
+# With vowel list
+def count_vowels_detailed(s: str) -> dict:
+    vowels = set('aeiouAEIOU')
+    found = [c for c in (s or '') if c in vowels]
+    return {'count': len(found), 'vowels': found}
+
+# Test
+print(count_vowels("Automation"))  # 5
+print(count_vowels("SDET"))        # 1
+print(count_vowels("BCDFG"))       # 0`,
+                    csharp: `// C# - Vowel Counter
+public static int CountVowels(string input)
+{
+    if (string.IsNullOrEmpty(input)) return 0;
+    
+    var vowels = new HashSet<char>("aeiouAEIOU");
+    return input.Count(c => vowels.Contains(c));
+}
+
+// With detailed return
+public static (int Count, List<char> Vowels) CountVowelsDetailed(string input)
+{
+    if (string.IsNullOrEmpty(input)) 
+        return (0, new List<char>());
+    
+    var vowels = new HashSet<char>("aeiouAEIOU");
+    var found = input.Where(c => vowels.Contains(c)).ToList();
+    return (found.Count, found);
+}
+
+// Test
+Console.WriteLine(CountVowels("Automation")); // 5
+Console.WriteLine(CountVowels("SDET"));       // 1
+Console.WriteLine(CountVowels("BCDFG"));      // 0`
+                }
+            };
+            return examples[type] || { java: '', javascript: '', python: '', csharp: '' };
+        }
+        
+        function getWebExamples() {
+            return {
+                xpath: `<!-- XPath Locator Strategies for Amazon Navigation -->
+
+<!-- Option 1: Using visible text and hierarchy -->
+//nav[@id='nav-main']//a[contains(@class, 'nav-a') and not(ancestor::*[contains(@style,'display:none')])]
+
+<!-- Option 2: Department links specifically -->
+//div[@id='nav-flyout-shopAll']//a[contains(@class, 'hmenu-item') and not(contains(@class, 'hidden'))]
+
+<!-- Option 3: Main navigation visible items -->
+//div[@id='nav-xshop']//a[not(ancestor::*[@aria-hidden='true'])]
+
+<!-- Option 4: Using normalize-space for clean text -->
+//nav//a[normalize-space(text()) != '' and not(contains(@style, 'display: none'))]
+
+<!-- Option 5: Specific section between markers -->
+//div[preceding-sibling::*[contains(text(), 'Shop by Department')] and following-sibling::*[contains(text(), 'Programs')]]//a`,
+                
+                css: `/* CSS Selector Strategies for Amazon Navigation */
+
+/* Option 1: Main navigation links */
+#nav-main a.nav-a:not([aria-hidden="true"])
+
+/* Option 2: Visible menu items */
+#nav-xshop a:not(.hidden):not([style*="display: none"])
+
+/* Option 3: Department navigation */
+.nav-flyout-content a.hmenu-item:not(.hmenu-hidden)
+
+/* Option 4: All Shop links that are visible */
+nav a[href*="/s?"]:not([hidden])
+
+/* Option 5: Using visibility classes */
+#nav-main .nav-progressive-content a:not(.aok-hidden)`,
+                
+                selenium: `// Selenium/WebDriver Code Examples
+
+// Java - Get visible navigation items
+List<WebElement> getVisibleNavItems(WebDriver driver) {
+    WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+    
+    // Wait for nav to be present
+    wait.until(ExpectedConditions.presenceOfElementLocated(
+        By.cssSelector("#nav-main")));
+    
+    // Find all links and filter visible ones
+    List<WebElement> allLinks = driver.findElements(
+        By.cssSelector("#nav-main a.nav-a"));
+    
+    return allLinks.stream()
+        .filter(WebElement::isDisplayed)
+        .filter(el -> !el.getText().isEmpty())
+        .collect(Collectors.toList());
+}
+
+// JavaScript - Playwright/WebDriverIO
+async function getVisibleNavItems(page) {
+    await page.waitForSelector('#nav-main');
+    
+    const items = await page.$$eval(
+        '#nav-main a.nav-a',
+        links => links
+            .filter(a => a.offsetParent !== null) // Check visibility
+            .filter(a => a.textContent.trim() !== '')
+            .map(a => ({
+                text: a.textContent.trim(),
+                href: a.href
+            }))
+    );
+    
+    return items;
+}
+
+// Python - Selenium
+def get_visible_nav_items(driver):
+    wait = WebDriverWait(driver, 10)
+    wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#nav-main")))
+    
+    all_links = driver.find_elements(By.CSS_SELECTOR, "#nav-main a.nav-a")
+    
+    return [
+        link for link in all_links
+        if link.is_displayed() and link.text.strip()
+    ]`
+            };
+        }
+        
+        function toggleSection(header) {
+            const section = header.closest('.section');
+            section.classList.toggle('collapsed');
+        }
+        
+        function toggleExample(btn) {
+            btn.classList.toggle('open');
+            const content = btn.nextElementSibling;
+            content.classList.toggle('open');
+        }
+        
+        function switchExampleTab(tab, lang) {
+            const container = tab.closest('.example-content');
+            container.querySelectorAll('.example-tab').forEach(t => t.classList.remove('active'));
+            container.querySelectorAll('.example-code').forEach(c => c.classList.remove('active'));
+            tab.classList.add('active');
+            container.querySelector(`.example-code[data-lang="${lang}"]`).classList.add('active');
+        }
+        
+        function scrollToSection(sectionId) {
+            document.querySelectorAll('.section-nav-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(sectionId).scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        
+        function generateAIPrompt() {
+            saveCurrentCandidateData();
+            const candidate = candidates.find(c => c.id === activeCandidateId);
+            if (!candidate) return;
+            
+            const d = candidate.data;
+            
+            // Get recommendation text
+            const recMap = {
+                'strong_hire': 'Strong Hire',
+                'hire': 'Hire', 
+                'leaning_no': 'Hire with Growth',
+                'no_hire': 'No Hire'
+            };
+            const myRecommendation = recMap[d.recommendation] || 'Not selected';
+            
+            let prompt = `Analyze this ${d.role || 'technical'} interview and give me a SHORT evaluation summary.
+
+## RULES:
+- Skipped questions = I chose not to ask (don't penalize)
+- The INTRO question may contain details relevant to other sections - extract and credit them
+- Adjust expectations for seniority level: ${d.seniority || 'not specified'}
+- My gut feeling: ${myRecommendation}
+- **CHECK ANSWERS:** For coding exercises, SQL queries, and technical questions - verify if correct, partially correct, or wrong. Flag specific mistakes.
+- **IMPORTANT:** Factor the answer correctness into Technical Fit and Recommendation. Wrong answers = concern, correct answers = strength.
+
+## OUTPUT FORMAT (Teams-compatible markdown, NO emojis, keep it brief):
+
+## Interview Evaluation: [Candidate Name] - [Role] ([Seniority])
+
+**Date:** [Interview Date]
+**Interviewer:** [Interviewer Name]
+
+---
+
+### Answer Check
+- [List any exercises/queries with status (Correct/Partial/Wrong) and brief reason. Say "All correct" if no issues]
+
+---
+
+### Strengths
+- [bullet point 1]
+- [bullet point 2]
+- [etc.]
+
+---
+
+### Concerns
+- [bullet point 1]
+- [bullet point 2]
+- [etc.]
+
+---
+
+### Technical Fit: [Good/Partial/Poor]
+[One sentence explanation]
+
+---
+
+### Culture Fit: [Good/Partial/Poor]
+[One sentence explanation]
+
+---
+
+### Recommendation: [Strong Hire / Hire / Hire with Growth / No Hire]
+[One sentence justification]
+
+---
+
+# INTERVIEW DATA
+
+## CANDIDATE INFORMATION
+- **Name:** ${d.candidateName || 'Not provided'}
+- **Role:** ${d.role || 'SDET'}
+- **Seniority Level:** ${d.seniority || 'Not specified'}
+- **Team:** ${d.team || 'Not provided'}
+- **Interview Date:** ${d.interviewDate || 'Not provided'}
+- **Interviewer:** ${d.interviewer || 'Not provided'}
+- **My Initial Recommendation:** ${myRecommendation}
+${d.additionalNotes ? `- **Additional Notes:** ${d.additionalNotes}` : ''}
+
+---
+
+## SECTION 0: INTRO & BACKGROUND (⚠️ May contain details relevant to other sections!)
+`;
+            
+            if (d.s0q1) prompt += `**Experience with automated testing & frameworks:**\n${d.s0q1}\n\n`;
+            if (d.s0q2) prompt += `**Most challenging automation problem solved:**\n${d.s0q2}\n\n`;
+            if (d.section0Notes) prompt += `**Interviewer Notes:** ${d.section0Notes}\n\n`;
+            
+            // Helper to add section content
+            function addSectionContent(sectionName, questions) {
+                let hasContent = false;
+                let content = `\n---\n\n## ${sectionName}\n`;
+                questions.forEach(q => {
+                    if (d[q.key]) {
+                        content += `**${q.label}:**\n${d[q.key]}\n\n`;
+                        hasContent = true;
+                    }
+                });
+                if (d[questions.notesKey]) {
+                    content += `**Interviewer Notes:** ${d[questions.notesKey]}\n\n`;
+                    hasContent = true;
+                }
+                return hasContent ? content : `\n---\n\n## ${sectionName}\n*[Section skipped or covered in intro]*\n`;
+            }
+            
+            // Section 1: Web
+            const s1Questions = [
+                { key: 's1q1', label: 'Framework Design' },
+                { key: 's1q2', label: 'Handling Flaky Tests' },
+                { key: 's1q3', label: 'Wait Strategies' },
+                { key: 's1q4', label: 'Test Runner Role' },
+                { key: 's1q5', label: 'Cross-Browser Testing' },
+                { key: 's1q6', label: 'Test Data Management' }
+            ];
+            s1Questions.notesKey = 'section1Notes';
+            prompt += addSectionContent('SECTION 1: WEB AUTOMATION', s1Questions);
+            
+            // Section 2: Mobile
+            const s2Questions = [
+                { key: 's2q1', label: 'Appium Basics' },
+                { key: 's2q2', label: 'Desired Capabilities' },
+                { key: 's2q3', label: 'Gestures & Hybrid Apps' },
+                { key: 's2q4', label: 'Stability Across Devices' },
+                { key: 's2q5', label: 'Data & Environment Setup' }
+            ];
+            s2Questions.notesKey = 'section2Notes';
+            prompt += addSectionContent('SECTION 2: MOBILE AUTOMATION', s2Questions);
+            
+            // Section 3: API
+            const s3Questions = [
+                { key: 's3q1', label: 'Beyond Status Codes' },
+                { key: 's3q2', label: 'Tooling Preference' },
+                { key: 's3q3', label: 'CI/CD Integration' },
+                { key: 's3q4', label: 'Authentication Handling' },
+                { key: 's3q5', label: 'API Mocking' }
+            ];
+            s3Questions.notesKey = 'section3Notes';
+            prompt += addSectionContent('SECTION 3: API TESTING', s3Questions);
+            
+            // Section 4: CI/CD
+            const s4Questions = [
+                { key: 's4q1', label: 'Automated Tests Setup' },
+                { key: 's4q2', label: 'Fast Feedback' },
+                { key: 's4q3', label: 'Environments & Data' },
+                { key: 's4q4', label: 'Parallel Execution' },
+                { key: 's4q5', label: 'Integrating Multiple Test Types' }
+            ];
+            s4Questions.notesKey = 'section4Notes';
+            prompt += addSectionContent('SECTION 4: CI/CD & DEVOPS', s4Questions);
+            
+            // Section 5: AI
+            const s5Questions = [
+                { key: 's5q1', label: 'AI Tools in Automation' },
+                { key: 's5q2', label: 'Low-Code/No-Code Perspective' },
+                { key: 's5q3', label: 'Predictive Analytics' }
+            ];
+            s5Questions.notesKey = 'section5Notes';
+            prompt += addSectionContent('SECTION 5: AI & LOW-CODE', s5Questions);
+            
+            // Section 6: SQL
+            const s6Questions = [
+                { key: 's6q1', label: 'Users With No Orders Query' },
+                { key: 's6q2', label: 'Total Amount Per User Query' },
+                { key: 's6q3', label: 'Update Orders Query' },
+                { key: 's6q4', label: 'Query Optimization' }
+            ];
+            s6Questions.notesKey = 'section6Notes';
+            prompt += addSectionContent('SECTION 6: SQL', s6Questions);
+            
+            // Section 7: Performance
+            const s7Questions = [
+                { key: 's7q1', label: 'Tools Experience' },
+                { key: 's7q2', label: 'Metrics Interpretation' }
+            ];
+            s7Questions.notesKey = 'section7Notes';
+            prompt += addSectionContent('SECTION 7: PERFORMANCE TESTING', s7Questions);
+            
+            // Section 8: Exercises
+            prompt += `\n---\n\n## SECTION 8: CODING EXERCISES\n`;
+            let hasExercises = false;
+            
+            if (d.ex1q1 || d.ex1q2 || d.ex1q3) {
+                prompt += `### API CRUD Exercises\n`;
+                if (d.ex1q1) { prompt += `**GET All Posts:**\n${d.ex1q1}\n\n`; hasExercises = true; }
+                if (d.ex1q2) { prompt += `**GET by ID & Negative Test:**\n${d.ex1q2}\n\n`; hasExercises = true; }
+                if (d.ex1q3) { prompt += `**POST New Entry:**\n${d.ex1q3}\n\n`; hasExercises = true; }
+                if (d.ex1Notes) { prompt += `**API Exercise Notes:**\n${d.ex1Notes}\n\n`; }
+            }
+            
+            if (d.ex2q1 || d.ex2q2 || d.ex2q3) {
+                prompt += `### Coding Exercises\n`;
+                if (d.ex2q1) { prompt += `**Toggle Case:**\n${d.ex2q1}\n\n`; hasExercises = true; }
+                if (d.ex2q2) { prompt += `**Isogram Check:**\n${d.ex2q2}\n\n`; hasExercises = true; }
+                if (d.ex2q3) { prompt += `**Vowel Counter:**\n${d.ex2q3}\n\n`; hasExercises = true; }
+                if (d.ex2Notes) { prompt += `**Coding Exercise Notes:**\n${d.ex2Notes}\n\n`; }
+            }
+            
+            if (d.ex3q1) {
+                prompt += `### Web Automation Exercise\n`;
+                prompt += `**Amazon Navigation Locators:**\n${d.ex3q1}\n\n`;
+                hasExercises = true;
+                if (d.ex3Notes) { prompt += `**Web Exercise Notes:**\n${d.ex3Notes}\n\n`; }
+            }
+            
+            if (d.ex4q1 || d.ex4q2 || d.ex4q3 || d.ex4q4 || d.ex4q5) {
+                prompt += `### SQL Exercises\n`;
+                if (d.ex4q1) { prompt += `**Users With No Orders:**\n${d.ex4q1}\n\n`; hasExercises = true; }
+                if (d.ex4q2) { prompt += `**Total Amount Per User:**\n${d.ex4q2}\n\n`; hasExercises = true; }
+                if (d.ex4q3) { prompt += `**Users With Multiple Orders:**\n${d.ex4q3}\n\n`; hasExercises = true; }
+                if (d.ex4q4) { prompt += `**Avg Amount Per Status:**\n${d.ex4q4}\n\n`; hasExercises = true; }
+                if (d.ex4q5) { prompt += `**User With Highest Total:**\n${d.ex4q5}\n\n`; hasExercises = true; }
+                if (d.ex4Notes) { prompt += `**SQL Exercise Notes:**\n${d.ex4Notes}\n\n`; }
+            }
+            
+            if (!hasExercises) {
+                prompt += `*[No coding exercises were administered]*\n`;
+            }
+            
+            if (d.section8Notes) prompt += `**Exercise Notes:** ${d.section8Notes}\n\n`;
+            
+            // Add custom questions
+            const customQs = candidate.customQuestions || {};
+            const customKeys = Object.keys(customQs);
+            if (customKeys.length > 0) {
+                prompt += `\n---\n\n## CUSTOM QUESTIONS\n`;
+                customKeys.forEach(key => {
+                    const q = customQs[key];
+                    const answerKey = q.answerName || `custom_ans_${key}`;
+                    if (d[answerKey]) {
+                        prompt += `**${q.text}:**\n${d[answerKey]}\n\n`;
+                    }
+                });
+            }
+            
+            prompt += `\n---\n\nKeep it SHORT. No tables, no lengthy explanations. Just the 5 sections with brief answers.`;
+            
+            document.getElementById('promptText').textContent = prompt;
+            document.getElementById('promptOutput').classList.add('visible');
+        }
+        
+        function copyPrompt() {
+            const text = document.getElementById('promptText').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.querySelector('#promptOutput .copy-btn');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '✅ Copied!';
+                setTimeout(() => { btn.innerHTML = originalText; }, 2000);
+            });
+        }
+        
+        function copySQLScenario() {
+            const sqlText = `📋 SQL Exercise
+
+You have two tables:
+
+**Users Table**
+| id | name            | email               |
+|----|-----------------|---------------------|
+| 1  | Alice Johnson   | alice@example.com   |
+| 2  | Bob Smith       | bob@example.com     |
+| 3  | Charlie Brown   | charlie@example.com |
+| 4  | Diana Prince    | diana@example.com   |
+| 5  | Ethan Hunt      | ethan@example.com   |
+| 6  | David Martin    | david@example.com   |
+| 7  | Marlene Jackson | marlene@example.com |
+
+**Orders Table**
+| id | user_id | amount | status    |
+|----|---------|--------|-----------|
+| 1  | 1       | 50.75  | Completed |
+| 2  | 2       | 9.99   | Pending   |
+| 3  | 1       | 50.00  | Shipped   |
+| 4  | 3       | 0.50   | Completed |
+| 5  | 4       | 5.25   | Cancelled |
+| 6  | 2       | 0.00   | Completed |
+| 7  | 5       | 20.00  | Shipped   |
+
+**Write SQL queries for the following:**
+1. Find all users who have not placed any orders.
+2. Find the total amount of all orders for each user, showing the user's name and the total.
+3. Find users who have placed more than one order.
+4. Find the average order amount per status (Completed, Pending, Shipped, Cancelled).
+5. Find the user with the highest total order amount.`;
+
+            navigator.clipboard.writeText(sqlText).then(() => {
+                const btn = event.target;
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '✅ Copied!';
+                setTimeout(() => { btn.innerHTML = originalText; }, 2000);
+            });
+        }
+        
+        function saveToLocalStorage() {
+            saveCurrentCandidateData();
+            localStorage.setItem('interviewData', JSON.stringify(candidates));
+            alert('Progress saved to browser storage!');
+        }
+        
+        function exportToJSON() {
+            saveCurrentCandidateData();
+            const dataStr = JSON.stringify(candidates, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `interview-data-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        function importFromJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (Array.isArray(imported) && imported.length > 0) {
+                        if (confirm(`Found ${imported.length} candidate(s) in the file. This will replace your current data. Continue?`)) {
+                            candidates = imported;
+                            activeCandidateId = candidates[0].id;
+                            renderTabs();
+                            renderCandidateForm();
+                            localStorage.setItem('interviewData', JSON.stringify(candidates));
+                            alert('Import successful!');
+                        }
+                    } else {
+                        alert('Invalid file format. Expected an array of candidates.');
+                    }
+                } catch (err) {
+                    alert('Failed to parse JSON file: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+            
+            // Reset input so the same file can be imported again
+            event.target.value = '';
+        }
+        
+        // Load saved data on page load
+        window.addEventListener('load', () => {
+            const saved = localStorage.getItem('interviewData');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if (parsed && parsed.length > 0) {
+                        if (confirm('Found saved interview data. Would you like to restore it?')) {
+                            candidates = parsed;
+                            activeCandidateId = candidates[0].id;
+                            renderTabs();
+                            renderCandidateForm();
+                        }
+                    }
+                } catch (e) {
+                    console.error('Failed to parse saved data:', e);
+                }
+            }
+        });
+        
+        // Auto-save periodically
+        setInterval(() => {
+            saveCurrentCandidateData();
+            localStorage.setItem('interviewData', JSON.stringify(candidates));
+        }, 30000); // Every 30 seconds
+        
+        // Back to Top functionality
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        
+        window.addEventListener('scroll', () => {
+            const backToTop = document.getElementById('backToTop');
+            if (window.scrollY > 300) {
+                backToTop.classList.add('visible');
+            } else {
+                backToTop.classList.remove('visible');
+            }
+        });
+        
+        // ========== QUESTION EDITING FUNCTIONS ==========
+        
+        // Store for custom questions per candidate
+        function getCustomQuestions() {
+            const candidate = candidates.find(c => c.id === activeCandidateId);
+            if (!candidate.customQuestions) candidate.customQuestions = {};
+            return candidate.customQuestions;
+        }
+        
+        function openEditQuestionModal(questionId, answerName) {
+            const card = document.querySelector(`[data-question-id="${questionId}"]`);
+            const questionText = card.querySelector('.question-text-content').textContent;
+            const labelEl = card.querySelector('.question-label');
+            let type = 'core';
+            if (labelEl.classList.contains('optional')) type = 'optional';
+            if (labelEl.textContent.includes('Exercise')) type = 'exercise';
+            
+            document.getElementById('modalTitle').textContent = 'Edit Question';
+            document.getElementById('editQuestionId').value = questionId;
+            document.getElementById('editAnswerName').value = answerName;
+            document.getElementById('editMode').value = 'edit';
+            document.getElementById('editQuestionType').value = type;
+            document.getElementById('editQuestionText').value = questionText;
+            
+            document.getElementById('questionModal').classList.add('active');
+        }
+        
+        function openAddQuestionModal(sectionId) {
+            document.getElementById('modalTitle').textContent = 'Add Custom Question';
+            document.getElementById('editQuestionId').value = '';
+            document.getElementById('editSectionId').value = sectionId;
+            document.getElementById('editMode').value = 'add';
+            document.getElementById('editQuestionType').value = 'core';
+            document.getElementById('editQuestionText').value = '';
+            
+            document.getElementById('questionModal').classList.add('active');
+        }
+        
+        function closeQuestionModal() {
+            document.getElementById('questionModal').classList.remove('active');
+        }
+        
+        function saveQuestion() {
+            const mode = document.getElementById('editMode').value;
+            const questionText = document.getElementById('editQuestionText').value.trim();
+            const questionType = document.getElementById('editQuestionType').value;
+            
+            if (!questionText) {
+                alert('Please enter a question.');
+                return;
+            }
+            
+            if (mode === 'edit') {
+                const questionId = document.getElementById('editQuestionId').value;
+                const card = document.querySelector(`[data-question-id="${questionId}"]`);
+                if (card) {
+                    card.querySelector('.question-text-content').textContent = questionText;
+                    const labelEl = card.querySelector('.question-label');
+                    const typeLabels = { core: 'Core Question', optional: 'Optional Deep-Dive', exercise: 'Exercise' };
+                    const isCustom = labelEl.innerHTML.includes('Custom');
+                    labelEl.className = 'question-label' + (questionType === 'optional' ? ' optional' : '');
+                    labelEl.innerHTML = typeLabels[questionType] + (isCustom ? '<span class="custom-badge">Custom</span>' : '');
+                    
+                    // Store in custom questions if modified
+                    const customQs = getCustomQuestions();
+                    customQs[questionId] = { text: questionText, type: questionType, modified: true };
+                }
+            } else if (mode === 'add') {
+                const sectionId = document.getElementById('editSectionId').value;
+                const newId = 'custom_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+                const answerName = 'custom_ans_' + newId;
+                
+                const typeLabels = { core: 'Core Question', optional: 'Optional Deep-Dive', exercise: 'Exercise' };
+                const isOptional = questionType === 'optional';
+                
+                const newQuestionHTML = `
+                <div class="question-card" data-question-id="${newId}">
+                    <div class="question-header">
+                        <input type="checkbox" class="question-checkbox" name="${newId}_asked" id="${newId}_asked">
+                        <div class="question-text">
+                            <div class="question-label ${isOptional ? 'optional' : ''}">${typeLabels[questionType]}<span class="custom-badge">Custom</span></div>
+                            <p class="question-text-content">${questionText}</p>
+                        </div>
+                        <div class="question-actions">
+                            <button type="button" class="edit-question-btn" onclick="openEditQuestionModal('${newId}', '${answerName}')" title="Edit Question">✏️</button>
+                            <button type="button" class="delete-question-btn" onclick="deleteQuestion('${newId}')" title="Delete Question">🗑️</button>
+                        </div>
+                    </div>
+                    <div class="answer-area">
+                        <textarea name="${answerName}" placeholder="Record candidate's answer here..."></textarea>
+                    </div>
+                </div>
+                `;
+                
+                const sectionContent = document.querySelector(`#${sectionId} .section-content`);
+                const addBtn = sectionContent.querySelector('.add-question-btn');
+                if (addBtn) {
+                    addBtn.insertAdjacentHTML('beforebegin', newQuestionHTML);
+                } else {
+                    const notesSection = sectionContent.querySelector('.section-notes');
+                    if (notesSection) {
+                        notesSection.insertAdjacentHTML('beforebegin', newQuestionHTML);
+                    }
+                }
+                
+                // Store in custom questions
+                const customQs = getCustomQuestions();
+                customQs[newId] = { text: questionText, type: questionType, answerName: answerName, sectionId: sectionId };
+            }
+            
+            closeQuestionModal();
+        }
+        
+        function deleteQuestion(questionId) {
+            if (confirm('Are you sure you want to delete this custom question?')) {
+                const card = document.querySelector(`[data-question-id="${questionId}"]`);
+                if (card) {
+                    card.remove();
+                }
+                // Remove from custom questions
+                const customQs = getCustomQuestions();
+                delete customQs[questionId];
+            }
+        }
+    </script>
+</body>
+</html>
