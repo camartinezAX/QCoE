@@ -1294,7 +1294,6 @@
     function selectionToolbar(filtered) {
         if (filtered.length === 0) return '';
         const count = selectedPipelines.size;
-        const disabledAttr = count > 0 ? '' : 'disabled style="opacity:0.45; pointer-events:none;"';
         return `<div class="selection-bar">
             <div class="selection-bar-left">
                 <button class="sel-link" onclick="selectAllPipelines()" title="Select All">Select All</button>
@@ -1302,8 +1301,8 @@
                 <span class="sel-count" id="selCount">${count > 0 ? count + ' selected' : ''}</span>
             </div>
             <div class="selection-bar-right" id="selActions">
-                <button class="btn btn-secondary" onclick="generateSelectedPrompts()" style="padding:8px 12px;" ${disabledAttr}>&#128196; Generate Prompt</button>
-                <button class="btn-delete" onclick="showDeleteConfirm()" ${disabledAttr}>&#128465; Delete Selected</button>
+                <button class="btn btn-secondary" onclick="generateSelectedPrompts()" style="padding:8px 12px;">&#128196; Generate Prompt</button>
+                <button class="btn-delete" onclick="showDeleteConfirm()">&#128465; Delete Selected</button>
             </div>
         </div>`;
     }
@@ -1565,8 +1564,9 @@
         return prompt;
     }
 
-    function generateSelectedPrompts() {
+    function generateSelectedPrompts(opts = {}) {
         if (selectedPipelines.size === 0) { showToast('Select at least one pipeline first.'); return; }
+        const includeCommitPush = opts.includeCommitPush !== undefined ? !!opts.includeCommitPush : true;
         const selected = Array.from(selectedPipelines)
             .map(fn => pipelines.find(pp => pp.filename === fn))
             .filter(Boolean);
@@ -1577,7 +1577,9 @@
             .map(p => buildPromptForPipeline(p));
 
         let combined = prompts.join('\n\n---\n\n');
-        combined += `\n\nAfter making these changes, commit and push to main.`;
+        if (includeCommitPush) {
+            combined += `\n\nAfter making these changes, commit and push to main.`;
+        }
 
         document.getElementById('outputBox').textContent = combined;
         document.getElementById('outputModal').classList.add('show');
@@ -2651,12 +2653,8 @@
         buildTree();
         showFolderPipelines(selectedFolder);
         updateSaveStatus();
-
-        // Immediately show the Cursor prompt after saving.
-        let prompt = buildPromptForPipeline(base);
-        if (commitPush) prompt += `\n\nAfter making these changes, commit and push to main.`;
-        document.getElementById('outputBox').textContent = prompt;
-        document.getElementById('outputModal').classList.add('show');
+        // Immediately show the Cursor prompt after saving (single, shared prompt path).
+        generateSelectedPrompts({ includeCommitPush: commitPush });
     }
 
     // ══════════════════════════════════════════
