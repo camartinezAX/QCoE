@@ -1529,6 +1529,11 @@
             if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
             else prompt += `\n\nKeep the schedule block commented out.`;
 
+            if (p.scheduleEnabled && (p.repeatUnit || 'weeks') === 'weeks' && parseInt(p.repeatEvery || '1', 10) > 1) {
+                const n = parseInt(p.repeatEvery || '1', 10);
+                prompt += `\n\nAlso implement an every-${n}-weeks schedule gate. GitHub Actions cron can't express true ${n}-week intervals, so schedule it weekly with the cron above and add a small \"gate\" job that checks the ISO week number (UTC) and only runs the reusable workflow job when (week % ${n} == 0).`;
+            }
+
             prompt += `\n\nUse the existing caller workflow file Mobile_Android_UAT_Smoke-BrowserStack.yml as the exact format reference. Include:\n` +
                 `- name: and run-name fields matching the pipeline name\n` +
                 `- workflow_dispatch inputs for all required variables (including ${appField}, ${deviceNameField}, ${deviceOsField}) with correct defaults\n` +
@@ -1555,6 +1560,11 @@
 
         if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
         else prompt += `\n\nKeep the schedule block commented out.`;
+
+        if (p.scheduleEnabled && (p.repeatUnit || 'weeks') === 'weeks' && parseInt(p.repeatEvery || '1', 10) > 1) {
+            const n = parseInt(p.repeatEvery || '1', 10);
+            prompt += `\n\nAlso implement an every-${n}-weeks schedule gate. GitHub Actions cron can't express true ${n}-week intervals, so schedule it weekly with the cron above and add a small \"gate\" job that checks the ISO week number (UTC) and only runs the reusable workflow job when (week % ${n} == 0).`;
+        }
 
         prompt += `\n\nUse the existing caller workflow file Web_AxosBank_UAT-OLB_HealthCheck-Testim.yml as the exact format reference. Include:\n` +
             `- A header comment showing the folder path (e.g. Web > Axos Bank > UAT > ...)\n` +
@@ -1939,7 +1949,7 @@
                     </label>
                     <div id="scheduleConfig" style="${p.scheduleEnabled ? 'display:flex;' : 'display:none;'} margin-top:14px; flex-direction:column; gap:16px;">
 
-                        <div class="form-group">
+                        <div class="form-group" id="weeklyPresetsBlock">
                             <label class="form-label" style="margin-bottom:6px;">Quick Presets</label>
                             <div class="sched-presets">
                                 <span class="preset-chip active" onclick="applyPreset('weekdays')">Weekdays</span>
@@ -1950,7 +1960,7 @@
                             </div>
                         </div>
 
-                        <div class="form-group">
+                        <div class="form-group" id="weeklyDaysBlock">
                             <label class="form-label" style="margin-bottom:6px;">Days of the Week</label>
                             <div class="day-picker" id="dayPicker">
                                 <div class="day-pill active" data-day="1" onclick="toggleDay(this)">Mon</div>
@@ -2026,6 +2036,28 @@
                                     <input type="radio" name="schedFreqRadio" value="custom" onchange="onFreqChange()" style="accent-color:var(--axos-orange); width:16px; height:16px;">
                                     <div><div style="font-weight:700; font-size:13px;">Custom cron</div><div style="font-size:10px; color:var(--text-muted); margin-top:2px;">Raw cron expression</div></div>
                                 </label>
+                            </div>
+                            <div id="repeatBlock" style="margin-top:10px; padding:14px; background:var(--bg-tertiary); border:1px solid var(--border-color); border-radius:10px;">
+                                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                                    <span style="font-size:13px; font-weight:600;">Repeat every</span>
+                                    <input type="number" id="fRepeatEvery" min="1" max="12" value="${p.repeatEvery || 1}" onchange="updateSchedPreview()" oninput="updateSchedPreview()" style="width:65px; text-align:center;" ${isView ? 'disabled' : ''}>
+                                    <select id="fRepeatUnit" onchange="onRepeatUnitChange()" style="width:120px;" ${isView ? 'disabled' : ''}>
+                                        <option value="weeks" ${(p.repeatUnit || 'weeks') === 'weeks' ? 'selected' : ''}>week(s)</option>
+                                        <option value="months" ${p.repeatUnit === 'months' ? 'selected' : ''}>month(s)</option>
+                                    </select>
+                                    <span style="font-size:10px; color:var(--text-muted);" id="repeatHint">Weeks run on the selected day(s) above.</span>
+                                </div>
+                                <div id="repeatMonthlyRow" style="display:${(p.repeatUnit === 'months') ? 'flex' : 'none'}; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap;">
+                                    <span style="font-size:13px; font-weight:600;">Day of month</span>
+                                    <select id="fRepeatDom" onchange="updateSchedPreview()" style="width:110px;" ${isView ? 'disabled' : ''}>
+                                        ${Array.from({length:28}, (_,i) => {
+                                            const d = i + 1;
+                                            const sel = (p.repeatDom ? parseInt(p.repeatDom, 10) : 1) === d ? 'selected' : '';
+                                            return '<option value=\"' + d + '\" ' + sel + '>' + d + '</option>';
+                                        }).join('')}
+                                    </select>
+                                    <span style="font-size:10px; color:var(--text-muted);">Monthly schedules use day-of-month in cron (UTC).</span>
+                                </div>
                             </div>
                             <div id="intervalBlock" style="display:none; margin-top:10px; padding:14px; background:var(--bg-tertiary); border:1px solid var(--border-color); border-radius:10px;">
                                 <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
@@ -2141,23 +2173,41 @@
         if (!cronStr) return;
         const parts = cronStr.trim().split(/\s+/);
         if (parts.length !== 5) return;
-        const [minPart, hourPart, , , dowPart] = parts;
+        const [minPart, hourPart, domPart, monPart, dowPart] = parts;
 
-        // Parse days of week
-        let days = [];
-        if (dowPart === '*') { days = [0,1,2,3,4,5,6]; }
-        else {
-            for (const seg of dowPart.split(',')) {
-                if (seg.includes('-')) {
-                    const [a, b] = seg.split('-').map(Number);
-                    for (let i = a; i <= b; i++) days.push(i);
-                } else days.push(parseInt(seg));
+        // Monthly detection (day-of-month + month step, dow is '*')
+        const isMonthly = dowPart === '*' && /^\d+$/.test(domPart) && (monPart === '*' || monPart.startsWith('*/'));
+        if (isMonthly) {
+            const unitEl = document.getElementById('fRepeatUnit');
+            const everyEl = document.getElementById('fRepeatEvery');
+            const domEl = document.getElementById('fRepeatDom');
+            if (unitEl) unitEl.value = 'months';
+            if (everyEl) everyEl.value = monPart.startsWith('*/') ? monPart.replace('*/', '') : '1';
+            if (domEl) domEl.value = domPart;
+            onRepeatUnitChange();
+        } else {
+            const unitEl = document.getElementById('fRepeatUnit');
+            const everyEl = document.getElementById('fRepeatEvery');
+            if (unitEl) unitEl.value = 'weeks';
+            if (everyEl) everyEl.value = '1';
+            onRepeatUnitChange();
+
+            // Parse days of week
+            let days = [];
+            if (dowPart === '*') { days = [0,1,2,3,4,5,6]; }
+            else {
+                for (const seg of dowPart.split(',')) {
+                    if (seg.includes('-')) {
+                        const [a, b] = seg.split('-').map(Number);
+                        for (let i = a; i <= b; i++) days.push(i);
+                    } else days.push(parseInt(seg));
+                }
             }
+            document.querySelectorAll('#dayPicker .day-pill').forEach(pill => {
+                pill.classList.toggle('active', days.includes(parseInt(pill.dataset.day)));
+            });
+            syncPresetFromDays();
         }
-        document.querySelectorAll('#dayPicker .day-pill').forEach(pill => {
-            pill.classList.toggle('active', days.includes(parseInt(pill.dataset.day)));
-        });
-        syncPresetFromDays();
 
         const isMinInterval = minPart.startsWith('*/');
         const isHourInterval = hourPart.startsWith('*/');
@@ -2276,6 +2326,26 @@
         updateSchedPreview();
     }
 
+    function onRepeatUnitChange() {
+        const unit = document.getElementById('fRepeatUnit')?.value || 'weeks';
+        const monthlyRow = document.getElementById('repeatMonthlyRow');
+        const hint = document.getElementById('repeatHint');
+        const presets = document.getElementById('weeklyPresetsBlock');
+        const days = document.getElementById('weeklyDaysBlock');
+        const showMonthly = unit === 'months';
+
+        if (monthlyRow) monthlyRow.style.display = showMonthly ? 'flex' : 'none';
+        if (presets) presets.style.display = showMonthly ? 'none' : 'block';
+        if (days) days.style.display = showMonthly ? 'none' : 'block';
+
+        if (hint) {
+            hint.textContent = showMonthly
+                ? 'Months run on a specific day-of-month.'
+                : 'Weeks run on the selected day(s) above.';
+        }
+        updateSchedPreview();
+    }
+
     function getFreqValue() {
         const checked = document.querySelector('input[name="schedFreqRadio"]:checked');
         return checked ? checked.value : 'once';
@@ -2286,6 +2356,7 @@
         const twiceBlock = document.getElementById('schedTwiceBlock');
         const intervalBlock = document.getElementById('intervalBlock');
         const customBlock = document.getElementById('customCronBlock');
+        const repeatBlock = document.getElementById('repeatBlock');
         const timeRow = document.getElementById('timePickerRow');
 
         const timeGroup = document.getElementById('timePickerGroup');
@@ -2294,11 +2365,13 @@
         if (intervalBlock) intervalBlock.style.display = freq === 'interval' ? 'block' : 'none';
         if (customBlock) customBlock.style.display = freq === 'custom' ? 'block' : 'none';
         if (timeGroup) timeGroup.style.display = showTime ? 'block' : 'none';
+        if (repeatBlock) repeatBlock.style.display = (freq === 'once' || freq === 'twice') ? 'block' : 'none';
 
         document.querySelectorAll('.freq-card').forEach(card => {
             const radio = card.querySelector('input[type=radio]');
             card.classList.toggle('selected', radio && radio.checked);
         });
+        onRepeatUnitChange();
         updateSchedPreview();
     }
 
@@ -2331,6 +2404,25 @@
             return;
         }
 
+        const repeatUnit = document.getElementById('fRepeatUnit')?.value || 'weeks';
+        const repeatEvery = Math.max(1, parseInt(document.getElementById('fRepeatEvery')?.value || 1));
+
+        const h1 = parseInt(document.getElementById('fSchedHour')?.value || 6);
+        const m1 = parseInt(document.getElementById('fSchedMin')?.value || 0);
+        const ap1 = document.getElementById('fSchedAmPm')?.value || 'AM';
+        const pst1 = pstTo24(h1, ap1);
+        const utc1h = (pst1 + 8) % 24;
+
+        if (repeatUnit === 'months') {
+            const dom = Math.min(28, Math.max(1, parseInt(document.getElementById('fRepeatDom')?.value || 1)));
+            const monField = repeatEvery === 1 ? '*' : `*/${Math.min(repeatEvery, 12)}`;
+            const cron = `${m1} ${utc1h} ${dom} ${monField} *`;
+            cronInput.value = cron;
+            if (ht) ht.textContent = `Every ${repeatEvery === 1 ? 'month' : (repeatEvery + ' months')} on day ${dom} at ${fmtTime(h1, m1, ap1)} PST`;
+            if (ct) ct.textContent = 'cron: ' + cron;
+            return;
+        }
+
         const days = getSelectedDays();
         if (days.length === 0) {
             if (ht) ht.textContent = 'No days selected';
@@ -2338,12 +2430,6 @@
             cronInput.value = '';
             return;
         }
-
-        const h1 = parseInt(document.getElementById('fSchedHour')?.value || 6);
-        const m1 = parseInt(document.getElementById('fSchedMin')?.value || 0);
-        const ap1 = document.getElementById('fSchedAmPm')?.value || 'AM';
-        const pst1 = pstTo24(h1, ap1);
-        const utc1h = (pst1 + 8) % 24;
 
         const sorted = [...days].sort((a,b) => a - b);
         const dayStr = sorted.length === 7 ? '*' : sorted.join(',');
@@ -2412,8 +2498,14 @@
         }
 
         cronInput.value = cronLines.join('\n');
-        if (ht) ht.textContent = dayDesc + ' at ' + timeDesc;
-        if (ct) ct.textContent = cronLines.map(c => 'cron: ' + c).join('  |  ');
+        if (ht) {
+            if (repeatEvery > 1) ht.textContent = `Every ${repeatEvery} weeks on ${dayDesc} at ${timeDesc}`;
+            else ht.textContent = dayDesc + ' at ' + timeDesc;
+        }
+        if (ct) {
+            const base = cronLines.map(c => 'cron: ' + c).join('  |  ');
+            ct.textContent = repeatEvery > 1 ? `${base}  (every ${repeatEvery} weeks)` : base;
+        }
     }
 
     function onPlatformChange() {
@@ -2630,6 +2722,9 @@
         const scheduleCron = v('fScheduleCron');
         base.scheduleEnabled = scheduleEnabled && !!scheduleCron;
         base.schedule = base.scheduleEnabled ? scheduleCron : '';
+        base.repeatUnit = v('fRepeatUnit') || 'weeks';
+        base.repeatEvery = v('fRepeatEvery') || '1';
+        base.repeatDom = v('fRepeatDom') || '';
 
         if (deleteOld && editingPipeline && editingPipeline !== filename) {
             base.renamedFrom = editingPipeline;
