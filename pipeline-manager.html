@@ -912,10 +912,24 @@
         { id: '12', name: 'Registration' }
     ];
 
-    // Outsystems: supplement the standard feature list with app-specific items.
-    // IDs here should NOT collide with the standard FEATURES ids (00–12).
+    // Outsystems features (from the canonical QCoE list).
+    // Display as plain names (no numeric prefix).
     const OUTSYSTEMS_FEATURES = [
-        { id: '13', name: 'EWM' }
+        'VM',
+        'EWM',
+        'EHP',
+        'OSG',
+        'PDS',
+        'GRC',
+        'CRV',
+        'FBO',
+        'UCAT',
+        'BSAQC',
+        'Meritocracy',
+        'Vision Canvas',
+        'Axos Clearing',
+        'Wires Manual',
+        'Commission Plans'
     ];
 
     const TEST_TYPES = ['Regression', 'Sanity', 'Smoke', 'Health Check'];
@@ -967,50 +981,23 @@
         return String(brand || '').trim().toLowerCase() === 'outsystems';
     }
 
-    function extractFeatureKeyFromDetail(featureDetail) {
-        const m = String(featureDetail || '').match(/\bOLB_([^_]+)/);
-        return m ? m[1] : '';
-    }
+    function renderWebFeatureOptions(brand, selectedFeature) {
+        const b = (brand || '').toLowerCase();
+        const selected = selectedFeature || '';
+        const isOutsystems = b === 'outsystems';
+        const list = isOutsystems ? OUTSYSTEMS_FEATURES : FEATURES.map(f => f.name);
 
-    function getWebFeatureListForBrand(brand) {
-        // Most brands use the shared feature list.
-        if (!isOutsystemsBrand(brand)) return FEATURES;
-
-        // Outsystems should still be able to pick any of the standard features,
-        // plus Outsystems-specific ones (like EWM), plus any new ones discovered via Sync.
-        const extrasByName = new Map();
-
-        for (const f of OUTSYSTEMS_FEATURES) {
-            extrasByName.set(f.name, { id: f.id, name: f.name });
+        let html = '';
+        if (isOutsystems) {
+            html = list.map(name => `<option value="${name}" ${selected === name ? 'selected' : ''}>${name}</option>`).join('');
+        } else {
+            html = FEATURES.map(f => `<option value="${f.name}" ${selected === f.name ? 'selected' : ''}>${f.id} ${f.name}</option>`).join('');
         }
 
-        // Pull any real-world features already in the synced pipelines (keeps the UI "latest").
-        for (const p of (Array.isArray(pipelines) ? pipelines : [])) {
-            if (!p || !isOutsystemsBrand(p.brand)) continue;
-            const candidates = [];
-            if (p.feature) candidates.push(p.feature);
-            const k = extractFeatureKeyFromDetail(p.featureDetail);
-            if (k) candidates.push(k);
-
-            for (const name of candidates) {
-                const n = String(name || '').trim();
-                if (!n) continue;
-                if (!extrasByName.has(n) && !FEATURES.some(ff => ff.name === n)) {
-                    extrasByName.set(n, { id: '', name: n });
-                }
-            }
+        if (selected && !list.includes(selected)) {
+            html += `<option value="${selected}" selected>${selected}</option>`;
         }
-
-        const extras = Array.from(extrasByName.values()).sort((a, b) => a.name.localeCompare(b.name));
-        return [...FEATURES, ...extras];
-    }
-
-    function renderWebFeatureOptions(brand, selectedValue) {
-        const list = getWebFeatureListForBrand(brand);
-        return list.map(f => {
-            const label = f.id ? `${f.id} ${f.name}` : `${f.name}`;
-            return `<option value="${f.name}" ${selectedValue === f.name ? 'selected' : ''}>${label}</option>`;
-        }).join('');
+        return html;
     }
 
     let pipelines = [];
@@ -2449,19 +2436,17 @@
         }
     }
 
-    function onBrandChange(forceFeatureValue = '') {
+    function onBrandChange(initialSelectedFeature) {
         if (isMobileForm()) return;
         const brand = document.getElementById('fBrand')?.value || '';
         const featureSelect = document.getElementById('fFeature');
         if (!featureSelect) return;
 
-        const desired = forceFeatureValue || featureSelect.value || '';
-        featureSelect.innerHTML = `<option value="">Select...</option>${renderWebFeatureOptions(brand, desired)}`;
+        const selected = typeof initialSelectedFeature === 'string'
+            ? initialSelectedFeature
+            : (featureSelect.value || '');
 
-        // If the saved feature isn't in the list (e.g. brand changed), keep it empty.
-        if (desired && Array.from(featureSelect.options).some(o => o.value === desired)) {
-            featureSelect.value = desired;
-        }
+        featureSelect.innerHTML = '<option value="">Select...</option>' + renderWebFeatureOptions(brand, selected);
     }
 
     function onEnvChange() {
@@ -3225,7 +3210,7 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         }
         if (!brand) brand = parts[1] || '';
         const isOutsystems = isOutsystemsBrand(brand);
-        const featureListForParse = isOutsystems ? [...FEATURES, ...OUTSYSTEMS_FEATURES] : FEATURES;
+        const featureNamesForParse = isOutsystems ? OUTSYSTEMS_FEATURES : FEATURES.map(f => f.name);
 
         const envFeaturePart = parts.slice(2).join('_');
         const envMatch = envFeaturePart.match(/^(DEV|QA|STG|UAT|PROD)-(.+)$/);
@@ -3248,8 +3233,8 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
 
             if (!foundExplicitType) {
                 featureDetail = rest;
-                for (const f of featureListForParse) {
-                    const fKey = f.name.replace(/\s+/g, '');
+                for (const fName of featureNamesForParse) {
+                    const fKey = fName.replace(/\s+/g, '');
                     if (rest.includes(fKey)) {
                         for (const t of TEST_TYPES) {
                             if (t.replace(/\s+/g, '') === fKey) {
@@ -3264,28 +3249,15 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         }
 
         let feature = '';
-        for (const f of featureListForParse) {
-            const fKey = f.name.replace(/\s+/g, '');
-            if (featureDetail.includes(fKey)) { feature = f.name; break; }
+        for (const fName of featureNamesForParse) {
+            const fKey = fName.replace(/\s+/g, '');
+            if (featureDetail.includes(fKey)) { feature = fName; break; }
         }
 
         if (!feature) {
             const tKey = testType.replace(/\s+/g, '');
-            for (const f of featureListForParse) {
-                if (f.name.replace(/\s+/g, '') === tKey) { feature = f.name; break; }
-            }
-        }
-
-        // Outsystems (and any future feature not in the curated list): fall back to parsing the first token after OLB_.
-        if (!feature) {
-            const key = extractFeatureKeyFromDetail(featureDetail);
-            if (key) {
-                if (isOutsystems) {
-                    feature = key;
-                } else {
-                    const match = FEATURES.find(f => f.name.replace(/\s+/g, '') === key);
-                    if (match) feature = match.name;
-                }
+            for (const fName of featureNamesForParse) {
+                if (fName.replace(/\s+/g, '') === tKey) { feature = fName; break; }
             }
         }
 
