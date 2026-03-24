@@ -30,6 +30,8 @@
             --warning-bg: rgba(245, 158, 11, 0.1);
             --error: #ef4444;
             --error-bg: rgba(239, 68, 68, 0.1);
+            --danger: #ef4444;
+            --danger-bg: rgba(239, 68, 68, 0.1);
             --info: #3b82f6;
             --info-bg: rgba(59, 130, 246, 0.1);
         }
@@ -114,6 +116,18 @@
         .save-change-type.modified { background: rgba(59,130,246,0.15); color: var(--info); }
         .save-change-type.removed { background: var(--error-bg); color: var(--error); }
         .save-change-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+        .save-change-view { margin-left: auto; }
+
+        .diff-table { width:100%; border-collapse: collapse; }
+        .diff-table th, .diff-table td { border-bottom: 1px solid rgba(255,255,255,0.08); padding: 10px 8px; vertical-align: top; }
+        .diff-table th { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; text-align: left; }
+        .diff-k { width: 190px; font-weight: 700; color: var(--text-primary); font-size: 12px; }
+        .diff-from { width: 50%; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; font-size: 12px; white-space: pre-wrap; word-break: break-word; }
+        .diff-to { width: 50%; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 12px; white-space: pre-wrap; word-break: break-word; }
+        .diff-pill { display:inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; border: 1px solid rgba(255,255,255,0.08); }
+        .diff-pill.added { background: rgba(34,197,94,0.15); color: var(--success); border-color: rgba(34,197,94,0.25); }
+        .diff-pill.modified { background: rgba(59,130,246,0.15); color: var(--info); border-color: rgba(59,130,246,0.25); }
+        .diff-pill.removed { background: rgba(239,68,68,0.15); color: var(--error); border-color: rgba(239,68,68,0.25); }
 
         .tree-container { flex: 1; overflow-y: auto; padding: 8px 0; }
 
@@ -648,7 +662,7 @@
                             <li>Go to <a href="https://github.com/settings/tokens?type=beta" target="_blank" style="color:var(--info);">github.com/settings/tokens</a></li>
                             <li>Click <strong>"Generate new token"</strong> (Fine-grained)</li>
                             <li>Set expiration, select <strong>axos-financial</strong> as resource owner</li>
-                            <li>Under "Repository access" pick <strong>"Only select repositories"</strong> &rarr; <strong>Axos.QE.TestIM</strong></li>
+                            <li>Under "Repository access" pick <strong>"Only select repositories"</strong> &rarr; select <strong>Axos.QE.TestIM</strong> (and <strong>Axos.QE.Mobile</strong> if you want Mobile pipelines too)</li>
                             <li>Under "Permissions" &rarr; "Repository permissions":
                                 <br>&nbsp;&nbsp;&bull; <strong>Actions</strong>: Read-only
                                 <br>&nbsp;&nbsp;&bull; <strong>Checks</strong>: Read-only
@@ -870,6 +884,28 @@
         </div>
     </div>
 
+    <!-- Diff / Preview Modal -->
+    <div class="modal-overlay" id="diffModal">
+        <div class="modal" style="max-width:860px;">
+            <div class="modal-header" style="border-left:4px solid var(--info);">
+                <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+                    <span id="diffModalTypePill" class="diff-pill modified">modified</span>
+                    <div class="modal-title" id="diffModalTitle" style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Change Preview</div>
+                </div>
+                <button class="modal-close" onclick="closeModal('diffModal')">x</button>
+            </div>
+            <div class="modal-body" style="padding-top:14px;">
+                <div style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">
+                    Values are shown as <span style="font-family:'JetBrains Mono', monospace;">from → to</span>. Sensitive fields (like BrowserStack keys) are masked.
+                </div>
+                <div id="diffModalBody"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('diffModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast -->
     <div class="toast" id="toast"><span id="toastMsg"></span></div>
 
@@ -1002,6 +1038,7 @@
 
     let pipelines = [];
     let savedSnapshot = [];
+    let pendingSaveChanges = [];
     let currentView = 'tree';
     let selectedFolder = null;
     let editingPipeline = null;
@@ -1063,6 +1100,7 @@
         const changes = getChanges();
         if (changes.length === 0) { showToast('Nothing to save.'); return; }
 
+        pendingSaveChanges = changes;
         document.getElementById('saveModalSummary').textContent = `${changes.length} change${changes.length > 1 ? 's' : ''} detected`;
 
         let html = '';
@@ -1071,11 +1109,206 @@
             html += `<div class="save-change-item">
                 <input type="checkbox" checked data-save-idx="${i}" data-save-type="${c.type}" data-save-filename="${c.pipeline.filename}">
                 <span class="save-change-type ${c.type}">${c.type}</span>
-                <span class="save-change-name">${c.pipeline.name}</span>
+                <span class="save-change-name" onclick="viewSaveChange(${i}); event.stopPropagation();" style="cursor:pointer;" title="View changes">${c.pipeline.name}</span>
+                <button class="sel-link save-change-view" onclick="viewSaveChange(${i}); event.stopPropagation();">View</button>
             </div>`;
         }
         document.getElementById('saveChangesList').innerHTML = html;
         document.getElementById('saveModal').classList.add('show');
+    }
+
+    function escapeHtml(s) {
+        return String(s ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function isSensitiveKey(key) {
+        const k = String(key || '').toLowerCase();
+        return k.includes('accesskey') || k.includes('access_key') || k.includes('token') || k.includes('secret');
+    }
+
+    function maskSecretValue(v) {
+        const s = String(v ?? '');
+        if (!s) return '';
+        const tail = s.length <= 4 ? s : s.slice(-4);
+        return '****' + tail;
+    }
+
+    function formatDiffValue(key, value) {
+        if (value === null || value === undefined) return '';
+        if (typeof value === 'boolean') return value ? 'true' : 'false';
+        if (typeof value === 'number') return String(value);
+        if (Array.isArray(value)) return value.join(', ');
+        if (typeof value === 'object') return JSON.stringify(value);
+        const str = String(value);
+        if (isSensitiveKey(key)) return maskSecretValue(str);
+        return str;
+    }
+
+    function diffLabelForKey(key) {
+        const labels = {
+            filename: 'Workflow file',
+            name: 'Pipeline name',
+            repo: 'Repo',
+            platform: 'Platform',
+            brand: 'Brand',
+            env: 'Environment',
+            feature: 'Feature',
+            featureDetail: 'Custom suffix',
+            testType: 'Test type',
+
+            // Testim
+            testSuite: 'Test suite',
+            baseUrl: 'Base URL',
+            branch: 'Testim branch',
+            grid: 'Grid',
+            parallel: 'Parallel',
+            retries: 'Retries',
+            timeoutMin: 'Per-test timeout (min)',
+            browserTimeout: 'Browser wait (min)',
+            runnerLabel: 'Runner label',
+            jobTimeout: 'Pipeline timeout (min)',
+
+            // BrowserStack
+            mobilePlatform: 'Mobile platform',
+            grep: 'Grep filter',
+            suite: 'Suite folder',
+            spec: 'Spec file',
+            parallels: 'Parallels',
+            parallelSplit: 'Parallel split',
+            tunnel: 'BrowserStack tunnel',
+            appId: 'App ID',
+            deviceName: 'Device name',
+            deviceOS: 'Device OS version',
+            bsUsername: 'BrowserStack username',
+            bsAccessKey: 'BrowserStack access key',
+
+            // Schedule
+            scheduleEnabled: 'Schedule enabled',
+            schedule: 'Schedule cron (UTC)',
+            repeatUnit: 'Repeat unit',
+            repeatEvery: 'Repeat every',
+            repeatDom: 'Day of month'
+        };
+        return labels[key] || key;
+    }
+
+    function stableStringify(v) {
+        try { return JSON.stringify(v); } catch { return String(v); }
+    }
+
+    function buildDiffRows(prev, next) {
+        const ignore = new Set([
+            // internal/derived fields can be noisy; keep the important ones instead
+            'lastSyncAt',
+            'lastRun',
+            'lastRunId'
+        ]);
+
+        const order = [
+            'platform', 'mobilePlatform', 'brand', 'env', 'feature', 'featureDetail', 'testType',
+            'testSuite', 'baseUrl', 'branch', 'grid', 'parallel', 'parallels', 'retries', 'timeoutMin', 'browserTimeout',
+            'grep', 'suite', 'spec', 'parallelSplit', 'tunnel', 'appId', 'deviceName', 'deviceOS', 'bsUsername', 'bsAccessKey',
+            'runnerLabel', 'jobTimeout',
+            'scheduleEnabled', 'schedule', 'repeatUnit', 'repeatEvery', 'repeatDom',
+            'repo', 'filename', 'name'
+        ];
+        const orderIndex = new Map(order.map((k, i) => [k, i]));
+
+        const keys = Array.from(new Set([
+            ...Object.keys(prev || {}),
+            ...Object.keys(next || {})
+        ])).filter(k => !ignore.has(k));
+
+        keys.sort((a, b) => {
+            const ai = orderIndex.has(a) ? orderIndex.get(a) : 9999;
+            const bi = orderIndex.has(b) ? orderIndex.get(b) : 9999;
+            if (ai !== bi) return ai - bi;
+            return a.localeCompare(b);
+        });
+
+        const rows = [];
+        for (const k of keys) {
+            const a = prev ? prev[k] : undefined;
+            const b = next ? next[k] : undefined;
+            if (stableStringify(a) === stableStringify(b)) continue;
+            rows.push({
+                key: k,
+                label: diffLabelForKey(k),
+                from: formatDiffValue(k, a),
+                to: formatDiffValue(k, b)
+            });
+        }
+        return rows;
+    }
+
+    function viewSaveChange(idx) {
+        const c = pendingSaveChanges[idx];
+        if (!c) return;
+
+        const filename = c.pipeline?.filename;
+        const prev = savedSnapshot.find(p => p.filename === filename) || (c.type === 'removed' ? c.pipeline : null);
+        const next = pipelines.find(p => p.filename === filename) || (c.type !== 'removed' ? c.pipeline : null);
+
+        const pill = document.getElementById('diffModalTypePill');
+        pill.className = `diff-pill ${c.type}`;
+        pill.textContent = c.type;
+
+        document.getElementById('diffModalTitle').textContent = c.pipeline?.name || filename || 'Change Preview';
+
+        if (c.type === 'added') {
+            const rows = buildDiffRows({}, next || {});
+            document.getElementById('diffModalBody').innerHTML = `
+                <table class="diff-table">
+                    <thead><tr><th class="diff-k">Field</th><th class="diff-to">Value</th></tr></thead>
+                    <tbody>
+                        ${rows.map(r => `
+                            <tr>
+                                <td class="diff-k">${escapeHtml(r.label)}</td>
+                                <td class="diff-to">${escapeHtml(r.to || '—')}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        } else if (c.type === 'removed') {
+            const rows = buildDiffRows(prev || {}, {});
+            document.getElementById('diffModalBody').innerHTML = `
+                <table class="diff-table">
+                    <thead><tr><th class="diff-k">Field</th><th class="diff-from">Value</th></tr></thead>
+                    <tbody>
+                        ${rows.map(r => `
+                            <tr>
+                                <td class="diff-k">${escapeHtml(r.label)}</td>
+                                <td class="diff-from">${escapeHtml(r.from || '—')}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        } else {
+            const rows = buildDiffRows(prev || {}, next || {});
+            document.getElementById('diffModalBody').innerHTML = `
+                <table class="diff-table">
+                    <thead><tr><th class="diff-k">Field</th><th class="diff-from">From</th><th class="diff-to">To</th></tr></thead>
+                    <tbody>
+                        ${rows.length ? rows.map(r => `
+                            <tr>
+                                <td class="diff-k">${escapeHtml(r.label)}</td>
+                                <td class="diff-from">${escapeHtml(r.from || '—')}</td>
+                                <td class="diff-to">${escapeHtml(r.to || '—')}</td>
+                            </tr>
+                        `).join('') : `<tr><td class="diff-k">No differences</td><td class="diff-from">—</td><td class="diff-to">—</td></tr>`}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        document.getElementById('diffModal').classList.add('show');
     }
 
     function toggleAllSaveChecks(state) {
@@ -3016,7 +3249,7 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
 
     async function fetchWorkflowEntry(r, fileName, pat) {
         const resp = await fetch(`https://api.github.com/repos/${r.owner}/${r.repo}/contents/.github/workflows/${encodeURIComponent(fileName)}`, {
-            headers: { Authorization: `token ${pat}`, Accept: 'application/vnd.github.v3+json' }
+            headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/vnd.github.v3+json' }
         });
         if (!resp.ok) throw new Error(`fetch ${fileName} failed (${resp.status})`);
         const j = await resp.json();
@@ -3050,7 +3283,7 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
             for (const r of repos) {
                 statusText.innerHTML += `<br>  ${r.repo}...`;
                 const resp = await fetch(`https://api.github.com/repos/${r.owner}/${r.repo}/contents/.github/workflows`, {
-                    headers: { Authorization: `token ${pat}`, Accept: 'application/vnd.github.v3+json' }
+                    headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/vnd.github.v3+json' }
                 });
                 if (!resp.ok) {
                     statusText.innerHTML += ` <span style="color:var(--danger);">failed (${resp.status})</span>`;
@@ -3378,11 +3611,12 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         setTimeout(() => t.classList.remove('show'), 3000);
     }
 
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal('outputModal'); closeModal('syncModal'); closeModal('deleteModal'); closeModal('saveModal'); closeModal('emailModal'); } });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal('outputModal'); closeModal('syncModal'); closeModal('deleteModal'); closeModal('saveModal'); closeModal('diffModal'); closeModal('emailModal'); } });
     document.getElementById('outputModal').addEventListener('click', e => { if (e.target.id === 'outputModal') closeModal('outputModal'); });
     document.getElementById('syncModal').addEventListener('click', e => { if (e.target.id === 'syncModal') closeModal('syncModal'); });
     document.getElementById('deleteModal').addEventListener('click', e => { if (e.target.id === 'deleteModal') closeModal('deleteModal'); });
     document.getElementById('saveModal').addEventListener('click', e => { if (e.target.id === 'saveModal') closeModal('saveModal'); });
+    document.getElementById('diffModal').addEventListener('click', e => { if (e.target.id === 'diffModal') closeModal('diffModal'); });
 
     // Watch form changes for status updates
     document.addEventListener('input', e => { if (e.target.closest('.section')) updateFormStatus(); });
@@ -3403,20 +3637,46 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
     // ══════════════════════════════════════════
     //  RESULTS ENGINE
     // ══════════════════════════════════════════
-    function getGhOwner() { return 'axos-financial'; }
-    function getGhRepo() {
-        const hasMobile = pipelines.some(p => p.platform === '01 Mobile');
-        const hasWeb = pipelines.some(p => p.platform === '02 Web' || p.platform === '03 API');
-        if (hasMobile && !hasWeb) return 'Axos.QE.Mobile';
-        return 'Axos.QE.TestIM';
-    }
     const GH_OWNER = 'axos-financial';
-    const GH_REPO = 'Axos.QE.TestIM';
     const PAT_KEY = 'axos_gh_pat';
     let allRuns = [];
+    let resultsPipelines = [];
+    let missingWorkflows = [];
     let pieChartInstance = null;
     let lineChartInstance = null;
     let selectedRuns = new Set();
+
+    function getGhOwner() { return GH_OWNER; }
+    function getGhAuthHeader(pat) {
+        const t = String(pat || '').trim();
+        if (!t) return '';
+        // Fine-grained tokens start with "github_pat_". Classic PATs typically use "ghp_".
+        // GitHub REST API supports both schemes; use Bearer for fine-grained.
+        return (t.startsWith('github_pat_') ? 'Bearer ' : 'token ') + t;
+    }
+
+    function getPipelineRepo(p) {
+        if (!p) return 'Axos.QE.TestIM';
+        if (p.repo) return p.repo;
+        return isMobilePipeline(p) ? 'Axos.QE.Mobile' : 'Axos.QE.TestIM';
+    }
+
+    function getResultsPipelineConfigs() {
+        const out = [];
+        const seen = new Set();
+        for (const p of (pipelines || [])) {
+            if (!p || !p.filename || !p.name) continue;
+            const filename = String(p.filename);
+            if (!filename.endsWith('.yml')) continue;
+            if (filename.startsWith('_')) continue;
+            const repo = getPipelineRepo(p);
+            const key = `${repo}::${filename}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            out.push({ ...p, repo });
+        }
+        return out;
+    }
 
     (function loadPat() {
         const stored = localStorage.getItem(PAT_KEY);
@@ -3430,10 +3690,26 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         const pat = document.getElementById('ghPat').value.trim();
         if (!pat) throw new Error('No PAT');
         const resp = await fetch(`https://api.github.com${path}`, {
-            headers: { Authorization: `token ${pat}`, Accept: 'application/vnd.github+json' }
+            headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/vnd.github+json' }
         });
         if (!resp.ok) throw new Error(`GitHub API ${resp.status}: ${resp.statusText}`);
         return resp.json();
+    }
+
+    async function listAllWorkflows(owner, repo) {
+        const perPage = 100;
+        let page = 1;
+        let all = [];
+        while (true) {
+            const data = await ghFetch(`/repos/${owner}/${repo}/actions/workflows?per_page=${perPage}&page=${page}`);
+            const items = data.workflows || [];
+            all = all.concat(items);
+            const total = Number.isFinite(data.total_count) ? data.total_count : all.length;
+            if (!items.length || all.length >= total) break;
+            page++;
+            if (page > 25) break; // safety guard
+        }
+        return all;
     }
 
     async function fetchAllResults() {
@@ -3447,39 +3723,86 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
 
         try {
             const perPage = Math.max(1, Math.min(100, parseInt(document.getElementById('ghRunCount').value) || 3));
-            const workflowsData = await ghFetch(`/repos/${getGhOwner()}/${getGhRepo()}/actions/workflows`);
-            const workflows = workflowsData.workflows.filter(w => !w.name.startsWith('_'));
-
-            status.innerHTML = `<span style="color:var(--axos-orange); font-weight:600;">Found ${workflows.length} workflows</span> &mdash; fetching runs...`;
+            resultsPipelines = getResultsPipelineConfigs();
+            missingWorkflows = [];
             allRuns = [];
 
-            for (const wf of workflows) {
+            if (!resultsPipelines.length) {
+                status.textContent = 'No pipelines configured yet (go to Pipelines tab and add/import pipelines).';
+                status.className = 'pat-status';
+                showToast('No pipelines configured to fetch.');
+                return;
+            }
+
+            const owner = getGhOwner();
+            const repos = [...new Set(resultsPipelines.map(p => p.repo))];
+            status.innerHTML = `<span style="color:var(--axos-orange); font-weight:600;">Fetching workflows</span> from ${repos.join(', ')}...`;
+
+            let totalMatched = 0;
+            const repoErrors = [];
+
+            for (const repo of repos) {
+                let workflows = [];
                 try {
-                    const runsData = await ghFetch(`/repos/${getGhOwner()}/${getGhRepo()}/actions/workflows/${wf.id}/runs?per_page=${perPage}&status=completed`);
-                    for (const r of (runsData.workflow_runs || [])) {
-                        const duration = r.updated_at && r.run_started_at
-                            ? Math.round((new Date(r.updated_at) - new Date(r.run_started_at)) / 1000)
-                            : 0;
-                        allRuns.push({
-                            id: r.id,
-                            workflowName: wf.name,
-                            workflowFile: wf.path?.split('/').pop() || '',
-                            runNumber: r.run_number,
-                            conclusion: r.conclusion || 'unknown',
-                            status: r.status,
-                            duration,
-                            event: r.event,
-                            actor: r.actor?.login || '',
-                            createdAt: r.created_at,
-                            url: r.html_url,
-                            branch: r.head_branch
-                        });
+                    workflows = await listAllWorkflows(owner, repo);
+                } catch (e) {
+                    repoErrors.push(`${repo}: ${e.message}`);
+                    // Mark all pipelines in this repo as missing so the UI explains why they have 0 runs.
+                    for (const p of resultsPipelines.filter(p => p.repo === repo)) {
+                        missingWorkflows.push({ repo, filename: p.filename, name: p.name, reason: 'repo_error' });
                     }
-                } catch (e) { /* skip workflow if error */ }
+                    continue;
+                }
+
+                const byFile = new Map();
+                for (const wf of workflows) {
+                    if (wf?.name?.startsWith('_')) continue;
+                    const file = wf?.path?.split('/')?.pop();
+                    if (file) byFile.set(file, wf);
+                }
+
+                const repoPipes = resultsPipelines.filter(p => p.repo === repo);
+                for (const p of repoPipes) {
+                    const wf = byFile.get(p.filename);
+                    if (!wf) {
+                        missingWorkflows.push({ repo, filename: p.filename, name: p.name });
+                        continue;
+                    }
+                    totalMatched++;
+                    try {
+                        // Fetch most recent runs of any status (completed + queued/in_progress).
+                        const runsData = await ghFetch(`/repos/${owner}/${repo}/actions/workflows/${wf.id}/runs?per_page=${perPage}`);
+                        for (const r of (runsData.workflow_runs || [])) {
+                            const duration = r.updated_at && r.run_started_at
+                                ? Math.round((new Date(r.updated_at) - new Date(r.run_started_at)) / 1000)
+                                : 0;
+                            allRuns.push({
+                                id: r.id,
+                                repo,
+                                workflowName: p.name,
+                                workflowFile: p.filename,
+                                runNumber: r.run_number,
+                                conclusion: r.conclusion || 'unknown',
+                                status: r.status,
+                                duration,
+                                event: r.event,
+                                actor: r.actor?.login || '',
+                                createdAt: r.created_at,
+                                url: r.html_url,
+                                branch: r.head_branch
+                            });
+                        }
+                    } catch (e) {
+                        // If runs can't be fetched for this workflow, keep going, but surface it in the UI.
+                        missingWorkflows.push({ repo, filename: p.filename, name: p.name, reason: 'runs_error' });
+                    }
+                }
             }
 
             allRuns.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-            status.innerHTML = `<span style="color:var(--success); font-weight:600;">&#10003; Loaded ${allRuns.length} runs</span> from ${workflows.length} workflows.`;
+            const miss = missingWorkflows.length ? ` &mdash; <span style="color:var(--danger); font-weight:700;">${missingWorkflows.length} issue(s)</span>` : '';
+            const repoErr = repoErrors.length ? `<br><span style="color:var(--danger);">Repo errors:</span> ${repoErrors.map(escapeHtml).join(' | ')}` : '';
+            status.innerHTML = `<span style="color:var(--success); font-weight:600;">&#10003; Loaded ${allRuns.length} run(s)</span> across ${resultsPipelines.length} pipeline(s) (${totalMatched} matched in GitHub)${miss}.${repoErr}`;
             status.className = 'pat-status ok';
             renderResults();
             document.getElementById('emailNoData').style.display = 'none';
@@ -3494,7 +3817,7 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
     }
 
     function renderResults() {
-        if (!allRuns.length) return;
+        if (!resultsPipelines.length && !allRuns.length) return;
         const metricsArea = document.getElementById('metricsArea');
         metricsArea.style.display = 'block';
         metricsArea.style.animation = 'fadeSlideUp 0.5s ease-out both';
@@ -3515,7 +3838,7 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         const passRate = total ? ((passed / total) * 100).toFixed(1) : 0;
         const durations = runs.filter(r => r.duration > 0).map(r => r.duration);
         const avgDur = durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0;
-        const uniquePipelines = new Set(runs.map(r => r.workflowName)).size;
+        const uniquePipelines = resultsFilterPipeline ? 1 : (resultsPipelines.length || new Set(runs.map(r => r.workflowName)).size);
         const prClass = parseFloat(passRate) >= 90 ? 'v-green' : parseFloat(passRate) >= 70 ? 'v-orange' : 'v-red';
 
         document.getElementById('metricsGrid').innerHTML = `
@@ -3820,32 +4143,46 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
     function renderResultsTree() {
         const tree = document.getElementById('resultsTree');
         if (!tree) return;
-        const wfNames = [...new Set(allRuns.map(r => r.workflowName))].sort();
+        const list = (resultsPipelines || []).slice();
+        list.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+        const missingMap = new Map((missingWorkflows || []).map(m => [`${m.repo}::${m.filename}`, m.reason || 'missing']));
 
         const grouped = {};
-        for (const name of wfNames) {
-            const parsed = parseFilename(name + '.yml');
-            const key = parsed ? `${parsed.platform}||${parsed.brand}||${parsed.env}` : 'other';
+        for (const p of list) {
+            const key = (p.platform && p.brand && p.env) ? `${p.platform}||${p.brand}||${p.env}` : 'other';
             if (!grouped[key]) grouped[key] = [];
-            grouped[key].push(name);
+            grouped[key].push(p);
         }
 
-        let html = `<div class="rf-node active" onclick="setResultsFilter(null, this)">All Pipelines <span class="rf-count">${wfNames.length}</span></div>`;
-        for (const [key, names] of Object.entries(grouped)) {
-            if (key === 'other') {
-                for (const n of names) {
-                    html += `<div class="rf-node rf-indent" onclick="setResultsFilter('${n}', this)">${n.replace(/-Testim$/, '')} <span class="rf-count">${allRuns.filter(r => r.workflowName === n).length}</span></div>`;
-                }
-            } else {
+        const keys = Object.keys(grouped).sort((a, b) => {
+            if (a === 'other') return 1;
+            if (b === 'other') return -1;
+            return a.localeCompare(b);
+        });
+
+        let html = `<div class="rf-node active" onclick="setResultsFilter(null, this)">All Pipelines <span class="rf-count">${list.length}</span></div>`;
+        for (const key of keys) {
+            const items = grouped[key] || [];
+            if (key !== 'other') {
                 const [plat, brand, env] = key.split('||');
                 const label = [plat, brand, env].filter(Boolean).join(' > ');
                 html += `<div style="padding:8px 10px 4px; font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); font-weight:700;">${label}</div>`;
-                for (const n of names) {
-                    const short = n.replace(/^Web_AxosBank_\w+-OLB_/, '').replace(/-Testim$/, '');
-                    html += `<div class="rf-node rf-indent" onclick="setResultsFilter('${n}', this)">${short} <span class="rf-count">${allRuns.filter(r => r.workflowName === n).length}</span></div>`;
-                }
+            }
+            for (const p of items) {
+                const missKey = `${p.repo}::${p.filename}`;
+                const missReason = missingMap.get(missKey) || '';
+                const isMissing = !!missReason;
+                const display = String(p.name || '').replace(/-Testim$/, '');
+                const short = display.replace(/^Web_AxosBank_\w+-OLB_/, '');
+                const runCount = allRuns.filter(r => r.workflowName === p.name && r.repo === p.repo).length;
+                const jsName = String(p.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                html += `<div class="rf-node rf-indent" onclick="setResultsFilter('${jsName}', this)" style="${isMissing ? 'color:var(--danger);' : ''}">
+                    ${escapeHtml(short)}${isMissing ? ` <span style="font-size:10px; font-weight:800;">&#9888; ${missReason === 'repo_error' ? 'repo error' : missReason === 'runs_error' ? 'runs error' : 'issue'}</span>` : ''}
+                    <span class="rf-count">${runCount}</span>
+                </div>`;
             }
         }
+
         tree.innerHTML = html;
     }
 
@@ -3884,8 +4221,27 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         }
 
         tbody.innerHTML = runs.map(r => {
-            const badge = r.conclusion === 'success' ? 'badge-pass' : r.conclusion === 'failure' ? 'badge-fail' : r.conclusion === 'cancelled' ? 'badge-cancel' : 'badge-running';
-            const label = r.conclusion === 'success' ? 'Passed' : r.conclusion === 'failure' ? 'Failed' : r.conclusion.charAt(0).toUpperCase() + r.conclusion.slice(1);
+            const isActive = r.status && r.status !== 'completed';
+            const statusLabel =
+                r.status === 'in_progress' ? 'Running' :
+                r.status === 'queued' ? 'Queued' :
+                r.status === 'waiting' ? 'Waiting' :
+                r.status === 'requested' ? 'Requested' :
+                r.status === 'pending' ? 'Pending' :
+                r.status ? r.status.charAt(0).toUpperCase() + r.status.slice(1).replace(/_/g, ' ') :
+                'Unknown';
+
+            const badge = isActive
+                ? 'badge-running'
+                : (r.conclusion === 'success' ? 'badge-pass' :
+                   r.conclusion === 'failure' ? 'badge-fail' :
+                   r.conclusion === 'cancelled' ? 'badge-cancel' : 'badge-running');
+
+            const label = isActive
+                ? statusLabel
+                : (r.conclusion === 'success' ? 'Passed' :
+                   r.conclusion === 'failure' ? 'Failed' :
+                   r.conclusion ? (r.conclusion.charAt(0).toUpperCase() + r.conclusion.slice(1)) : 'Unknown');
             const date = new Date(r.createdAt);
             const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
             const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
