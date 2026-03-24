@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quality Engineering Strategic Vision 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --orange:#FAA74A;--orange-dark:#e8922a;--navy:#1E3860;
+  --bg-deep:#f8fafc;--bg-dark:#ffffff;--bg-card:rgba(0,0,0,0.03);
+  --glass-bg:rgba(30,56,96,0.04);--glass-border:rgba(30,56,96,0.1);
+  --glow:rgba(250,167,74,0.2);
+  --text-primary:#0f172a;--text-secondary:#475569;--text-dim:#94a3b8;
+  --gradient-orange:linear-gradient(135deg,#FAA74A,#f97316);
+  --font-h:'Space Grotesk',system-ui,sans-serif;
+  --font-b:'Inter',system-ui,sans-serif;
+  --ease:cubic-bezier(.4,0,.2,1);
+  --green:#16a34a;--blue:#2563eb;--purple:#7c3aed;--red:#dc2626;--cyan:#0891b2;
+  --topbar-bg:rgba(248,250,252,0.88);--topbar-border:rgba(30,56,96,0.06);
+  --particle-primary:30,56,96;--particle-secondary:180,190,210;--particle-alpha:.12;
+}
+[data-theme="dark"]{
+  --bg-deep:#060e1a;--bg-dark:#0a1628;--bg-card:rgba(30,56,96,0.14);
+  --glass-bg:rgba(30,56,96,0.12);--glass-border:rgba(250,167,74,0.12);
+  --glow:rgba(250,167,74,0.25);
+  --text-primary:#e4e9f0;--text-secondary:#8a9ab4;--text-dim:#5a6a84;
+  --green:#4ade80;--blue:#60a5fa;--purple:#a78bfa;--red:#f87171;--cyan:#22d3ee;
+  --topbar-bg:rgba(6,14,26,0.85);--topbar-border:rgba(250,167,74,0.08);
+  --particle-primary:250,167,74;--particle-secondary:200,210,225;--particle-alpha:.25;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg-deep);color:var(--text-primary);font-family:var(--font-b);transition:background .4s var(--ease),color .4s var(--ease)}
+::selection{background:rgba(250,167,74,0.3);color:#fff}
+canvas#particles{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.aurora{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;overflow:hidden}
+.aurora::before{content:'';position:absolute;top:-40%;left:-20%;width:140%;height:180%;background:radial-gradient(ellipse at 30% 40%,rgba(250,167,74,0.03) 0%,transparent 55%),radial-gradient(ellipse at 70% 60%,rgba(30,56,96,0.06) 0%,transparent 50%);animation:auroraMove 25s ease-in-out infinite alternate}
+[data-theme="dark"] .aurora::before{background:radial-gradient(ellipse at 30% 40%,rgba(250,167,74,0.04) 0%,transparent 55%),radial-gradient(ellipse at 70% 60%,rgba(30,56,96,0.1) 0%,transparent 50%)}
+@keyframes auroraMove{0%{transform:translate(0,0) rotate(0deg) scale(1)}50%{transform:translate(-3%,2%) rotate(1.5deg) scale(1.02)}100%{transform:translate(2%,-1%) rotate(-1deg) scale(0.98)}}
+
+/* ═══════════════ VIEWS ═══════════════ */
+.app-view{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1;overflow-y:auto;overflow-x:hidden;transition:opacity .5s var(--ease),transform .5s var(--ease),filter .4s var(--ease);scrollbar-width:thin;scrollbar-color:var(--navy) transparent}
+.app-view::-webkit-scrollbar{width:6px}
+.app-view::-webkit-scrollbar-track{background:transparent}
+.app-view::-webkit-scrollbar-thumb{background:var(--navy);border-radius:3px}
+.app-view.hidden{opacity:0;pointer-events:none;transform:scale(.96);filter:blur(6px)}
+
+/* ═══════════════ HUB ═══════════════ */
+.hub-header{text-align:center;padding:clamp(2rem,5vh,3.5rem) 2rem 1.5rem;position:relative}
+.hub-badge{display:inline-flex;align-items:center;gap:.5rem;padding:.45rem 1.1rem;border-radius:50px;background:rgba(250,167,74,0.08);border:1px solid rgba(250,167,74,0.15);color:var(--orange);font-size:.72rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:1rem;animation:fadeUp .6s var(--ease) .1s both}
+.hub-badge .pulse-dot{width:6px;height:6px;border-radius:50%;background:var(--orange);animation:pulseDot 2s ease infinite}
+@keyframes pulseDot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+.hub-title{font-family:var(--font-h);font-size:clamp(2.4rem,5.5vw,4.5rem);font-weight:800;line-height:1.05;letter-spacing:-2.5px;margin-bottom:1rem;animation:fadeUp .6s var(--ease) .2s both}
+.hub-sub{font-size:clamp(.95rem,1.5vw,1.15rem);color:var(--text-secondary);max-width:600px;margin:0 auto 1rem;font-weight:300;line-height:1.6;animation:fadeUp .6s var(--ease) .3s both}
+.gradient-text{background:linear-gradient(135deg,#e8922a,#d97706,#e8922a);background-size:300% 300%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:gradShift 6s ease infinite}
+[data-theme="dark"] .gradient-text{background:linear-gradient(135deg,#FAA74A,#f97316,#FAA74A);background-size:300% 300%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+.theme-toggle{width:38px;height:38px;border-radius:10px;border:1px solid var(--glass-border);background:var(--glass-bg);color:var(--text-dim);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s var(--ease)}
+.theme-toggle:hover{background:rgba(250,167,74,0.1);color:var(--orange);border-color:var(--orange)}
+@keyframes gradShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(25px)}to{opacity:1;transform:translateY(0)}}
+
+.hub-voice-row{display:flex;gap:.75rem;justify-content:center;align-items:center;animation:fadeUp .6s var(--ease) .4s both;margin-bottom:.5rem}
+
+/* ═══════════════ TILES GRID ═══════════════ */
+.tiles-wrap{max-width:1100px;margin:0 auto;padding:0 2rem 4rem}
+.tiles-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem}
+
+.tile{background:var(--bg-dark);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--glass-border);border-radius:18px;padding:1.75rem 1.75rem 1.5rem;cursor:pointer;transition:all .35s var(--ease);position:relative;overflow:hidden;opacity:0;animation:tileIn .5s var(--ease) forwards;box-shadow:0 1px 4px rgba(0,0,0,0.06);min-height:170px;display:flex;flex-direction:column;justify-content:center}
+.tile:hover{border-color:rgba(250,167,74,0.3);box-shadow:0 6px 20px rgba(0,0,0,0.1);transform:translateY(-5px)}
+[data-theme="dark"] .tile{background:var(--glass-bg);box-shadow:inset 0 1px 0 rgba(250,167,74,0.05)}
+[data-theme="dark"] .tile:hover{box-shadow:0 0 50px rgba(250,167,74,0.1),inset 0 1px 0 rgba(250,167,74,0.05)}
+.tile::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--gradient-orange);transform:scaleX(0);transform-origin:left;transition:transform .4s var(--ease)}
+.tile:hover::before{transform:scaleX(1)}
+.tile:active{transform:translateY(-1px) scale(.98)}
+
+@keyframes tileIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+.tile-num{font-family:var(--font-h);font-size:.65rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--text-dim);margin-bottom:.75rem}
+.tile-icon{font-size:2.2rem;margin-bottom:.75rem;display:block}
+.tile-title{font-family:var(--font-h);font-size:1.05rem;font-weight:700;line-height:1.3;margin-bottom:.4rem;color:var(--text-primary)}
+.tile-presenter{font-size:.72rem;color:var(--text-dim);font-weight:500;letter-spacing:.3px}
+
+.tile:nth-child(1){animation-delay:.15s}
+.tile:nth-child(2){animation-delay:.2s}
+.tile:nth-child(3){animation-delay:.25s}
+.tile:nth-child(4){animation-delay:.3s}
+.tile:nth-child(5){animation-delay:.35s}
+.tile:nth-child(6){animation-delay:.4s}
+.tile:nth-child(7){animation-delay:.45s}
+.tile:nth-child(8){animation-delay:.5s}
+.tile:nth-child(9){animation-delay:.55s}
+.tile:nth-child(10){animation-delay:.6s}
+.tile:nth-child(11){animation-delay:.65s}
+.tile:nth-child(12){animation-delay:.7s}
+.tile:nth-child(13){animation-delay:.75s}
+
+/* ═══════════════ SECTION VIEW ═══════════════ */
+.section-topbar{position:sticky;top:0;z-index:30;padding:.75rem 2rem;display:flex;align-items:center;justify-content:space-between;background:var(--topbar-bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--topbar-border)}
+.back-btn{display:inline-flex;align-items:center;gap:.5rem;padding:.5rem 1rem;border-radius:10px;background:rgba(250,167,74,0.08);border:1px solid rgba(250,167,74,0.15);color:var(--orange);font-size:.8rem;font-weight:600;cursor:pointer;transition:all .3s var(--ease);font-family:var(--font-b)}
+.back-btn:hover{background:rgba(250,167,74,0.15);border-color:var(--orange);transform:translateX(-2px)}
+.topbar-title{font-family:var(--font-h);font-size:.8rem;font-weight:600;color:var(--text-secondary);letter-spacing:.3px}
+.topbar-right{display:flex;align-items:center;gap:.75rem}
+
+.section-page{display:none;padding:2.5rem 2rem 4rem;max-width:1100px;margin:0 auto;animation:fadeUp .5s var(--ease)}
+.section-page.active{display:block}
+
+/* ═══════════════ CONTENT TYPOGRAPHY ═══════════════ */
+.slide-number{font-family:var(--font-h);font-size:.7rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--orange);margin-bottom:.75rem}
+.slide-number::before{content:'';display:inline-block;width:24px;height:1px;background:var(--orange);margin-right:8px;vertical-align:middle}
+.slide-title{font-family:var(--font-h);font-size:clamp(2rem,4.5vw,3.2rem);font-weight:700;letter-spacing:-1.5px;line-height:1.12;margin-bottom:.75rem}
+.slide-subtitle{font-size:clamp(.95rem,1.5vw,1.15rem);color:var(--text-secondary);line-height:1.7;max-width:750px;margin-bottom:2rem;font-weight:300}
+
+.presenter-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 14px;border-radius:50px;background:rgba(250,167,74,0.1);border:1px solid rgba(250,167,74,0.2);font-size:.7rem;font-weight:600;color:var(--orange);letter-spacing:.5px;margin-bottom:1.25rem}
+.presenter-badge .badge-dot{width:5px;height:5px;border-radius:50%;background:var(--orange);animation:pulseDot 2s ease infinite}
+
+/* ═══════════════ CONTENT ELEMENTS ═══════════════ */
+.content-grid{display:grid;gap:1.25rem}
+.grid-2{grid-template-columns:1fr 1fr}
+.grid-3{grid-template-columns:1fr 1fr 1fr}
+.grid-4{grid-template-columns:1fr 1fr 1fr 1fr}
+
+.glass-card{background:var(--bg-dark);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--glass-border);border-radius:16px;padding:1.5rem;transition:all .35s var(--ease);position:relative;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+.glass-card:hover{border-color:rgba(250,167,74,0.25);box-shadow:0 4px 16px rgba(0,0,0,0.08);transform:translateY(-3px)}
+[data-theme="dark"] .glass-card{background:var(--glass-bg);box-shadow:inset 0 1px 0 rgba(250,167,74,0.05)}
+[data-theme="dark"] .glass-card:hover{box-shadow:0 0 40px rgba(250,167,74,0.06)}
+.glass-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--gradient-orange);transform:scaleX(0);transform-origin:left;transition:transform .4s var(--ease)}
+.glass-card:hover::before{transform:scaleX(1)}
+
+.card-icon{width:44px;height:44px;border-radius:12px;background:rgba(250,167,74,0.1);display:flex;align-items:center;justify-content:center;font-size:1.2rem;margin-bottom:.75rem;flex-shrink:0}
+.card-icon.green{background:rgba(74,222,128,0.1)}
+.card-icon.blue{background:rgba(96,165,250,0.1)}
+.card-icon.purple{background:rgba(167,139,250,0.1)}
+.card-icon.red{background:rgba(248,113,113,0.1)}
+.card-icon.cyan{background:rgba(34,211,238,0.1)}
+.card-title{font-family:var(--font-h);font-size:.95rem;font-weight:600;margin-bottom:.4rem;line-height:1.3}
+.card-desc{font-size:.82rem;color:var(--text-secondary);line-height:1.55}
+
+.bullet-list{list-style:none;padding:0;margin:0}
+.bullet-list li{font-size:.88rem;color:var(--text-secondary);padding:.4rem 0;padding-left:1.4rem;position:relative;line-height:1.55}
+.bullet-list li::before{content:'';position:absolute;left:0;top:.65rem;width:6px;height:6px;border-radius:50%;background:var(--orange);opacity:.5}
+.bullet-list li strong{color:var(--text-primary)}
+
+.status-tag{display:inline-block;padding:2px 10px;border-radius:4px;font-size:.6rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.tag-done{background:rgba(74,222,128,0.12);color:var(--green)}
+.tag-progress{background:rgba(96,165,250,0.12);color:var(--blue)}
+.tag-planned{background:rgba(167,139,250,0.12);color:var(--purple)}
+.tag-tbd{background:rgba(248,113,113,0.12);color:var(--red)}
+
+.timeline-h{display:flex;align-items:center;gap:0;margin:2rem 0 1rem;position:relative}
+.tl-node{display:flex;flex-direction:column;align-items:center;flex:1;position:relative;z-index:2}
+.tl-dot-h{width:14px;height:14px;border-radius:50%;border:2px solid var(--orange);background:var(--bg-dark);margin-bottom:.5rem;transition:all .4s var(--ease)}
+.tl-node.done .tl-dot-h{background:var(--orange);box-shadow:0 0 16px rgba(250,167,74,0.4)}
+.tl-label{font-size:.65rem;color:var(--text-dim);text-align:center;font-weight:600;letter-spacing:.3px;line-height:1.3;max-width:100px}
+.tl-node:hover .tl-dot-h{border-color:var(--orange);box-shadow:0 0 12px rgba(250,167,74,0.3)}
+.tl-connector{flex:1;height:2px;background:linear-gradient(90deg,rgba(250,167,74,0.15),rgba(250,167,74,0.3),rgba(250,167,74,0.15));position:relative;min-width:20px;align-self:flex-start;margin-top:6px}
+.tl-connector .flow-dot{position:absolute;width:4px;height:4px;border-radius:50%;background:var(--orange);top:-1px;box-shadow:0 0 8px rgba(250,167,74,0.6);animation:flowLR 2.5s linear infinite}
+@keyframes flowLR{0%{left:-4px;opacity:0}10%{opacity:1}90%{opacity:1}100%{left:calc(100% + 4px);opacity:0}}
+
+.flow-row{display:flex;align-items:center;justify-content:center;gap:0;margin:1.5rem 0;flex-wrap:nowrap}
+.flow-node{display:flex;flex-direction:column;align-items:center;gap:.35rem;flex-shrink:0}
+.flow-icon{width:52px;height:52px;border-radius:14px;background:rgba(250,167,74,0.08);border:1px solid rgba(250,167,74,0.18);display:flex;align-items:center;justify-content:center;font-size:1.2rem;transition:all .5s var(--ease)}
+.flow-icon.glow{background:rgba(250,167,74,0.14);border-color:rgba(250,167,74,0.35);animation:nodeGlow 3s ease-in-out infinite}
+.flow-label{font-size:.55rem;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:.7px;text-align:center;max-width:70px}
+.flow-arrow{flex:0 0 auto;width:36px;height:2px;background:linear-gradient(90deg,rgba(250,167,74,0.1),rgba(250,167,74,0.25),rgba(250,167,74,0.1));position:relative}
+.flow-arrow .fa-dot{position:absolute;width:4px;height:4px;border-radius:50%;background:var(--orange);top:-1px;box-shadow:0 0 6px rgba(250,167,74,0.5);animation:flowLR 2s linear infinite}
+@keyframes nodeGlow{0%,100%{box-shadow:0 0 10px rgba(250,167,74,0.08)}50%{box-shadow:0 0 24px rgba(250,167,74,0.2)}}
+
+.metric-bars{display:flex;align-items:flex-end;justify-content:center;gap:1rem;height:140px;margin:1.5rem 0}
+.m-col{display:flex;flex-direction:column;align-items:center;gap:.4rem}
+.m-bar-wrap{width:36px;height:120px;background:rgba(250,167,74,0.04);border-radius:6px 6px 0 0;display:flex;align-items:flex-end}
+.m-bar{width:100%;border-radius:6px 6px 0 0;background:var(--gradient-orange);transition:height 1.5s var(--ease);height:0}
+.m-bar-label{font-size:.5rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.3px;text-align:center;white-space:nowrap}
+.m-bar-val{font-family:var(--font-h);font-size:.65rem;font-weight:700;color:var(--orange)}
+
+.orb{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none;z-index:-1}
+.orb-orange{background:rgba(250,167,74,0.06)}
+.orb-navy{background:rgba(30,56,96,0.15)}
+
+/* ═══════════════ VOICE CONTROLS ═══════════════ */
+.voice-btn{width:44px;height:44px;border-radius:12px;border:1px solid rgba(250,167,74,0.15);color:var(--orange);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s var(--ease);background:rgba(250,167,74,0.08);position:relative}
+.voice-btn:hover{background:rgba(250,167,74,0.15);border-color:var(--orange)}
+.voice-icon-char{font-style:normal;line-height:1;z-index:1}
+.voice-btn.speaking{background:rgba(250,167,74,0.2);border-color:var(--orange);animation:voicePulse 1.5s ease infinite}
+@keyframes voicePulse{0%,100%{box-shadow:0 0 0 0 rgba(250,167,74,0.3)}50%{box-shadow:0 0 0 8px rgba(250,167,74,0)}}
+.voice-waves{position:absolute;bottom:-2px;left:50%;transform:translateX(-50%);display:flex;gap:2px;align-items:flex-end;height:8px}
+.voice-wave{width:2px;background:var(--orange);border-radius:1px;animation:waveAnim .6s ease-in-out infinite alternate}
+.voice-wave:nth-child(1){height:3px;animation-delay:0s}
+.voice-wave:nth-child(2){height:6px;animation-delay:.15s}
+.voice-wave:nth-child(3){height:4px;animation-delay:.3s}
+.voice-wave:nth-child(4){height:7px;animation-delay:.1s}
+.voice-wave:nth-child(5){height:3px;animation-delay:.25s}
+@keyframes waveAnim{0%{height:2px}100%{height:8px}}
+
+.voice-settings-btn{width:34px;height:34px;border-radius:8px;border:1px solid rgba(250,167,74,0.1);color:var(--text-dim);font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s var(--ease);background:rgba(250,167,74,0.04)}
+.voice-settings-btn:hover{background:rgba(250,167,74,0.12);border-color:var(--orange);color:var(--orange)}
+
+/* ═══════════════ VOICE SETTINGS PANEL ═══════════════ */
+.voice-panel-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.3);z-index:200;opacity:0;visibility:hidden;transition:all .35s var(--ease)}
+[data-theme="dark"] .voice-panel-overlay{background:rgba(6,14,26,0.6)}
+.voice-panel-overlay.open{opacity:1;visibility:visible}
+.voice-panel{position:fixed;right:-420px;top:0;width:400px;max-width:90vw;height:100%;background:var(--bg-dark);border-left:1px solid var(--glass-border);z-index:201;transition:right .4s var(--ease);display:flex;flex-direction:column;box-shadow:-20px 0 60px rgba(0,0,0,0.15)}
+[data-theme="dark"] .voice-panel{box-shadow:-20px 0 60px rgba(0,0,0,0.4)}
+.voice-panel.open{right:0}
+.voice-panel-header{padding:1.5rem 1.5rem 1rem;border-bottom:1px solid var(--glass-border);flex-shrink:0;position:relative}
+.voice-panel-header h3{font-family:var(--font-h);font-size:1.1rem;font-weight:700;margin-bottom:.2rem;color:var(--text-primary)}
+.voice-panel-header p{font-size:.75rem;color:var(--text-dim)}
+.voice-panel-close{position:absolute;top:1.25rem;right:1.25rem;width:32px;height:32px;border-radius:8px;border:1px solid rgba(250,167,74,0.1);background:transparent;color:var(--text-dim);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s var(--ease)}
+.voice-panel-close:hover{background:rgba(250,167,74,0.1);color:var(--orange);border-color:var(--orange)}
+.voice-controls{padding:1rem 1.5rem;border-bottom:1px solid var(--glass-border);flex-shrink:0}
+.voice-control-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem}
+.voice-control-row:last-child{margin-bottom:0}
+.voice-control-label{font-size:.7rem;color:var(--text-secondary);font-weight:500;text-transform:uppercase;letter-spacing:.5px}
+.voice-control-value{font-family:var(--font-h);font-size:.7rem;color:var(--orange);font-weight:600;min-width:30px;text-align:right}
+.voice-slider{-webkit-appearance:none;appearance:none;width:140px;height:4px;border-radius:2px;background:rgba(250,167,74,0.12);outline:none;cursor:pointer}
+.voice-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:50%;background:var(--orange);cursor:pointer;box-shadow:0 0 8px rgba(250,167,74,0.3)}
+.voice-list-container{flex:1;overflow-y:auto;padding:.5rem 0;scrollbar-width:thin;scrollbar-color:var(--navy) transparent}
+.voice-list-container::-webkit-scrollbar{width:5px}
+.voice-list-container::-webkit-scrollbar-track{background:transparent}
+.voice-list-container::-webkit-scrollbar-thumb{background:var(--navy);border-radius:3px}
+.voice-group-label{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);padding:.6rem 1.5rem .3rem;position:sticky;top:0;background:var(--bg-dark);z-index:1;transition:background .4s var(--ease)}
+.voice-option{display:flex;align-items:center;gap:.75rem;padding:.55rem 1.5rem;cursor:pointer;transition:all .2s var(--ease);border-left:3px solid transparent}
+.voice-option:hover{background:rgba(250,167,74,0.04);border-left-color:rgba(250,167,74,0.2)}
+.voice-option.selected{background:rgba(250,167,74,0.08);border-left-color:var(--orange)}
+.voice-option-info{flex:1;min-width:0}
+.voice-option-name{font-size:.8rem;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.voice-option-lang{font-size:.6rem;color:var(--text-dim);margin-top:1px}
+.voice-option-badge{font-size:.5rem;font-weight:700;text-transform:uppercase;letter-spacing:.3px;padding:2px 6px;border-radius:3px;flex-shrink:0}
+.badge-recommended{background:rgba(250,167,74,0.12);color:var(--orange)}
+.badge-google{background:rgba(96,165,250,0.12);color:var(--blue)}
+.badge-system{background:rgba(167,139,250,0.08);color:var(--purple)}
+.voice-preview-btn{width:28px;height:28px;border-radius:6px;border:1px solid rgba(250,167,74,0.12);background:transparent;color:var(--text-dim);font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s var(--ease);flex-shrink:0}
+.voice-preview-btn:hover{background:rgba(250,167,74,0.1);color:var(--orange);border-color:var(--orange)}
+
+/* ═══════════════ RESPONSIVE ═══════════════ */
+@media(max-width:900px){
+  .tiles-grid{grid-template-columns:repeat(2,1fr)}
+  .tile{min-height:150px}
+  .grid-2,.grid-3,.grid-4{grid-template-columns:1fr 1fr}
+  .flow-row{flex-wrap:wrap;gap:.5rem}
+}
+@media(max-width:640px){
+  .tiles-grid{grid-template-columns:1fr 1fr}
+  .tile{min-height:140px}
+  .grid-2,.grid-3,.grid-4{grid-template-columns:1fr}
+  .hub-title{letter-spacing:-1.5px}
+  .timeline-h{flex-wrap:wrap;gap:.5rem}
+  .section-topbar{padding:.6rem 1rem}
+  .metric-bars{gap:.5rem}
+  .flow-row{flex-wrap:wrap}
+  .slide-title{font-size:1.6rem}
+  .section-page{padding:1.5rem 1rem 3rem}
+}
+@media(max-width:420px){
+  .tiles-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="aurora"></div>
+<canvas id="particles"></canvas>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- HUB VIEW                                           -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="app-view" id="hubView">
+  <div class="hub-header">
+    <h1 class="hub-title">
+      <span class="gradient-text">Quality Engineering</span><br><span>Strategic Vision</span>
+    </h1>
+    <p class="hub-sub">AI-first automation, scalable tooling, security compliance, and a customer-centric quality organization.</p>
+    <div class="hub-voice-row">
+      <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle Light/Dark Mode">&#9788;</button>
+      <button class="voice-settings-btn" onclick="openVoicePanel()" title="Voice Settings">&#9881;</button>
+      <button class="voice-btn" id="voiceBtn" onclick="toggleVoice()" title="Toggle AI Narration">
+        <span class="voice-icon-char">&#128264;</span>
+        <div class="voice-waves" id="voiceWaves" style="display:none">
+          <div class="voice-wave"></div><div class="voice-wave"></div><div class="voice-wave"></div><div class="voice-wave"></div><div class="voice-wave"></div>
+        </div>
+      </button>
+    </div>
+  </div>
+
+  <div class="tiles-wrap">
+    <div class="tiles-grid">
+      <div class="tile" onclick="openSection(1)"><div class="tile-num">01</div><div class="tile-icon">&#9889;</div><div class="tile-title">Where Industry Is Going</div><div class="tile-presenter">Testing Landscape</div></div>
+      <div class="tile" onclick="openSection(2)"><div class="tile-num">02</div><div class="tile-icon">&#128295;</div><div class="tile-title">Modernizing Automation & Tooling</div><div class="tile-presenter">Rahul</div></div>
+      <div class="tile" onclick="openSection(3)"><div class="tile-num">03</div><div class="tile-icon">&#128640;</div><div class="tile-title">CI Quality Gates & Release Confidence</div><div class="tile-presenter">Rahul</div></div>
+      <div class="tile" onclick="openSection(4)"><div class="tile-num">04</div><div class="tile-icon">&#129302;</div><div class="tile-title">Functional Testing Transformation</div><div class="tile-presenter">Carlos</div></div>
+      <div class="tile" onclick="openSection(5)"><div class="tile-num">05</div><div class="tile-icon">&#128274;</div><div class="tile-title">Security & Compliance Automation</div><div class="tile-presenter">Marco</div></div>
+      <div class="tile" onclick="openSection(6)"><div class="tile-num">06</div><div class="tile-icon">&#9201;</div><div class="tile-title">Environment Stability & Observability</div><div class="tile-presenter">Marco</div></div>
+      <div class="tile" onclick="openSection(7)"><div class="tile-num">07</div><div class="tile-icon">&#127942;</div><div class="tile-title">Test Data Strategy & Enablement</div><div class="tile-presenter">Manasa</div></div>
+      <div class="tile" onclick="openSection(8)"><div class="tile-num">08</div><div class="tile-icon">&#9889;</div><div class="tile-title">Operational Excellence via AI</div><div class="tile-presenter">Carlos & Rahul</div></div>
+      <div class="tile" onclick="openSection(9)"><div class="tile-num">09</div><div class="tile-icon">&#127891;</div><div class="tile-title">Training & Certification</div><div class="tile-presenter">Rahul</div></div>
+      <div class="tile" onclick="openSection(10)"><div class="tile-num">10</div><div class="tile-icon">&#128101;</div><div class="tile-title">People & Team Growth</div><div class="tile-presenter">Team</div></div>
+      <div class="tile" onclick="openSection(11)"><div class="tile-num">11</div><div class="tile-icon">&#128202;</div><div class="tile-title">Automation Strategy</div><div class="tile-presenter">Rahul</div></div>
+      <div class="tile" onclick="openSection(12)"><div class="tile-num">12</div><div class="tile-icon">&#128172;</div><div class="tile-title">Customer-Centric Organization</div><div class="tile-presenter">Rahul</div></div>
+      <div class="tile" onclick="openSection(13)"><div class="tile-num">13</div><div class="tile-icon">&#128202;</div><div class="tile-title">Performance Testing</div><div class="tile-presenter">Rahul</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- SECTION VIEW                                       -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="app-view hidden" id="sectionView">
+  <div class="section-topbar">
+    <button class="back-btn" onclick="backToHub()">&#8592; Back to Hub</button>
+    <span class="topbar-title" id="topbarTitle"></span>
+    <div class="topbar-right">
+      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Light/Dark Mode" id="themeToggle2">&#9788;</button>
+      <button class="voice-settings-btn" onclick="openVoicePanel()" title="Voice Settings">&#9881;</button>
+      <button class="voice-btn" id="voiceBtn2" onclick="toggleVoice()" title="Toggle AI Narration">
+        <span class="voice-icon-char">&#128264;</span>
+        <div class="voice-waves" id="voiceWaves2" style="display:none">
+          <div class="voice-wave"></div><div class="voice-wave"></div><div class="voice-wave"></div><div class="voice-wave"></div><div class="voice-wave"></div>
+        </div>
+      </button>
+    </div>
+  </div>
+
+  <!-- Section 1 -->
+  <div class="section-page" data-section="1">
+    <div class="slide-number">Section 01</div>
+    <h2 class="slide-title">Where the Industry Is Going<br>for <span class="gradient-text">Testing</span></h2>
+    <p class="slide-subtitle">AI-first QE organization &mdash; scalable automation that runs via pipelines on any environment.</p>
+    <div class="content-grid grid-3">
+      <div class="glass-card"><div class="card-icon">&#9889;</div><div class="card-title">AI-First QE Org</div><ul class="bullet-list"><li>AI embedded in planning, execution &amp; monitoring</li><li>AI accelerators for script creation and test generation</li></ul></div>
+      <div class="glass-card"><div class="card-icon green">&#9881;</div><div class="card-title">Pipeline-Driven Automation</div><ul class="bullet-list"><li>Scalable automation with ability to run via pipelines</li><li>Currently running on QA and UAT environments</li></ul></div>
+      <div class="glass-card"><div class="card-icon blue">&#128640;</div><div class="card-title">Shift-Left & Quality Gates</div><ul class="bullet-list"><li>Quality gates at every stage of the release pipeline</li><li>Nothing ships without validation</li></ul></div>
+    </div>
+  </div>
+
+  <!-- Section 2 -->
+  <div class="section-page" data-section="2">
+    <div class="slide-number">Section 02</div>
+    <div class="presenter-badge"><span class="badge-dot"></span> Presenter: Rahul</div>
+    <h2 class="slide-title">Modernizing Automation &<br><span class="gradient-text">Tooling Strategy</span></h2>
+    <p class="slide-subtitle">TestIM exit, Playwright adoption, AI-accelerated script creation.</p>
+    <div class="timeline-h">
+      <div class="tl-node done"><div class="tl-dot-h"></div><div class="tl-label">Today<br><span style="color:var(--orange);font-size:.55rem">~35 TestIM parallels</span></div></div>
+      <div class="tl-connector"><div class="flow-dot" style="animation-delay:0s"></div></div>
+      <div class="tl-node"><div class="tl-dot-h"></div><div class="tl-label">POC Phase<br><span style="color:var(--blue);font-size:.55rem">Convert TestIM &#8594; Playwright</span></div></div>
+      <div class="tl-connector"><div class="flow-dot" style="animation-delay:.5s"></div></div>
+      <div class="tl-node"><div class="tl-dot-h"></div><div class="tl-label">Sep 2026<br><span style="color:var(--orange);font-size:.55rem">Deprecate TestIM parallels</span></div></div>
+      <div class="tl-connector"><div class="flow-dot" style="animation-delay:1s"></div></div>
+      <div class="tl-node"><div class="tl-dot-h"></div><div class="tl-label">TBD<br><span style="color:var(--red);font-size:.55rem">Full TestIM exit</span></div></div>
+    </div>
+    <div class="content-grid grid-2" style="margin-top:1.5rem">
+      <div class="glass-card"><div class="card-icon">&#128295;</div><div class="card-title">Why Playwright</div><ul class="bullet-list"><li>Move away from TestIM, embrace Playwright</li><li>Keep up with the speed of development</li><li>Leverage AI accelerators for script creation</li><li>Modern, cross-browser E2E with native CI/CD support</li></ul></div>
+      <div class="glass-card"><div class="card-icon red">&#128683;</div><div class="card-title">TestIM Exit Plan</div><ul class="bullet-list"><li>Currently running ~35 TestIM parallels</li><li>Sep 2026: Deprecate additional TestIM parallels</li><li>POC underway to convert TestIM to Playwright</li><li>TBD: Full TestIM exit &amp; migration of existing tests</li></ul></div>
+    </div>
+  </div>
+
+  <!-- Section 3 -->
+  <div class="section-page" data-section="3">
+    <div class="slide-number">Section 03</div>
+    <div class="presenter-badge"><span class="badge-dot"></span> Presenter: Rahul</div>
+    <h2 class="slide-title">CI Quality Gates &<br><span class="gradient-text">Release Confidence</span></h2>
+    <p class="slide-subtitle">Built scalable automation that runs on QA or UAT. Plugging quality gates directly into OS release pipelines.</p>
+    <div class="content-grid grid-2">
+      <div class="glass-card"><div class="card-icon green">&#9989;</div><div class="card-title">Current State</div><ul class="bullet-list"><li><strong>OLB 1.0:</strong> runs on QA, UAT Main &amp; Staging</li><li><strong>Enrollment:</strong> runs on QA and UAT</li><li>Scalable automation built to run on any environment</li></ul></div>
+      <div class="glass-card"><div class="card-icon blue">&#128640;</div><div class="card-title">Next Steps</div><ul class="bullet-list"><li>Migrate automation pipelines from ADO &#8594; GitHub</li><li>Plug automation pipelines / quality gates into OS release pipelines</li><li>Release confidence scoring per deployment</li></ul></div>
+    </div>
+    <div class="flow-row" style="margin-top:1.5rem">
+      <div class="flow-node"><div class="flow-icon">&#128187;</div><div class="flow-label">Code Push</div></div>
+      <div class="flow-arrow"><div class="fa-dot"></div></div>
+      <div class="flow-node"><div class="flow-icon">&#9881;</div><div class="flow-label">Build</div></div>
+      <div class="flow-arrow"><div class="fa-dot" style="animation-delay:.3s"></div></div>
+      <div class="flow-node"><div class="flow-icon glow">&#128270;</div><div class="flow-label">Quality Gate</div></div>
+      <div class="flow-arrow"><div class="fa-dot" style="animation-delay:.6s"></div></div>
+      <div class="flow-node"><div class="flow-icon">&#128202;</div><div class="flow-label">Test Suite</div></div>
+      <div class="flow-arrow"><div class="fa-dot" style="animation-delay:.9s"></div></div>
+      <div class="flow-node"><div class="flow-icon">&#9989;</div><div class="flow-label">Release</div></div>
+    </div>
+  </div>
+
+  <!-- Section 4 -->
+  <div class="section-page" data-section="4">
+    <div class="slide-number">Section 04</div>
+    <div class="presenter-badge"><span class="badge-dot"></span> Presenter: Carlos</div>
+    <h2 class="slide-title">Functional Testing<br><span class="gradient-text">Transformation</span></h2>
+    <p class="slide-subtitle">Evolving TestGennie into an AI agent and developing a Playwright script generator in Cursor to accelerate test creation.</p>
+    <div class="content-grid grid-2">
+      <div class="glass-card"><div class="card-icon purple">&#129302;</div><div class="card-title">TestGennie &#8594; AI Agent</div>
+        <ul class="bullet-list" style="margin-bottom:.75rem">
+          <li>Currently used to generate test cases</li>
+          <li>Working with Damon's team to convert to a full agent</li>
+          <li>Goal: auto-generate test cases, QEs review &amp; approve</li>
+        </ul>
+        <span class="status-tag tag-progress" style="margin-top:.25rem">In Progress</span>
+        <div class="flow-row" style="margin:.75rem 0 0;justify-content:flex-start"><div class="flow-node"><div class="flow-icon" style="width:38px;height:38px;font-size:.9rem">&#128203;</div><div class="flow-label">PBI</div></div><div class="flow-arrow" style="width:24px"><div class="fa-dot"></div></div><div class="flow-node"><div class="flow-icon glow" style="width:38px;height:38px;font-size:.9rem">&#129302;</div><div class="flow-label">Agent</div></div><div class="flow-arrow" style="width:24px"><div class="fa-dot" style="animation-delay:.4s"></div></div><div class="flow-node"><div class="flow-icon" style="width:38px;height:38px;font-size:.9rem">&#9989;</div><div class="flow-label">Test Cases</div></div><div class="flow-arrow" style="width:24px"><div class="fa-dot" style="animation-delay:.8s"></div></div><div class="flow-node"><div class="flow-icon" style="width:38px;height:38px;font-size:.9rem">&#128100;</div><div class="flow-label">QE Review</div></div></div>
+      </div>
+      <div class="glass-card"><div class="card-icon cyan">&#128187;</div><div class="card-title">Playwright Script Generator</div>
+        <ul class="bullet-list" style="margin-bottom:.75rem">
+          <li>Building a Playwright script generator in Cursor</li>
+          <li>AI agent to speed up functional test creation</li>
+          <li>Goal: auto-generate Playwright scripts from test cases</li>
+        </ul>
+        <span class="status-tag tag-progress" style="margin-top:.25rem">In Development</span>
+        <div class="flow-row" style="margin:.75rem 0 0;justify-content:flex-start"><div class="flow-node"><div class="flow-icon" style="width:38px;height:38px;font-size:.9rem">&#128221;</div><div class="flow-label">Test Case</div></div><div class="flow-arrow" style="width:24px"><div class="fa-dot"></div></div><div class="flow-node"><div class="flow-icon glow" style="width:38px;height:38px;font-size:.9rem">&#9889;</div><div class="flow-label">Cursor AI</div></div><div class="flow-arrow" style="width:24px"><div class="fa-dot" style="animation-delay:.4s"></div></div><div class="flow-node"><div class="flow-icon" style="width:38px;height:38px;font-size:.9rem">&#128196;</div><div class="flow-label">PW Script</div></div><div class="flow-arrow" style="width:24px"><div class="fa-dot" style="animation-delay:.8s"></div></div><div class="flow-node"><div class="flow-icon" style="width:38px;height:38px;font-size:.9rem">&#9654;</div><div class="flow-label">Pipeline</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 5 -->
+  <div class="section-page" data-section="5">
+    <div class="slide-number">Section 05</div>
+    <div class="presenter-badge"><span class="badge-dot"></span> Presenter: Marco</div>
+    <h2 class="slide-title">Security & Compliance<br><span class="gradient-text">Automation</span></h2>
+    <p class="slide-subtitle">Burp Suite now handled by QCOE as of March 2, 2026. Exploring automation options with PortSwigger.</p>
+    <div class="content-grid grid-3">
+      <div class="glass-card"><div class="card-icon red">&#128274;</div><div class="card-title">Burp Suite Ownership</div><ul class="bullet-list"><li>Handled by QCOE since March 2nd, 2026</li><li>Centralized for consistent security coverage</li></ul><span class="status-tag tag-progress" style="margin-top:.5rem">Active</span></div>
+      <div class="glass-card"><div class="card-icon">&#129309;</div><div class="card-title">PortSwigger Partnership</div><ul class="bullet-list"><li>Met with PortSwigger to explore automation options</li><li>Automate scan analysis workflows</li></ul><span class="status-tag tag-progress" style="margin-top:.5rem">In Progress</span></div>
+      <div class="glass-card"><div class="card-icon cyan">&#128276;</div><div class="card-title">Notifications</div><ul class="bullet-list"><li>Auto-notify relevant teams on scan findings</li><li>Streamline remediation workflows</li></ul><span class="status-tag tag-planned" style="margin-top:.5rem">Planned</span></div>
+    </div>
+  </div>
+
+  <!-- Section 6 -->
+  <div class="section-page" data-section="6">
+    <div class="slide-number">Section 06</div>
+    <div class="presenter-badge"><span class="badge-dot"></span> Presenter: Marco</div>
+    <h2 class="slide-title">Environment Stability &<br><span class="gradient-text">Observability</span></h2>
+    <p class="slide-subtitle">~166 hours downtime (Jan&ndash;Mar 2026). Stabilizing environments and expanding staging automation.</p>
+    <div class="content-grid grid-2">
+      <div class="glass-card"><div class="card-icon red">&#9201;</div><div class="card-title">QA + UAT Downtime</div><div class="card-desc" style="margin-bottom:.75rem"><strong style="color:var(--orange)">~166 hrs</strong> tracked Jan&ndash;Mar 2026</div>
+        <div class="metric-bars"><div class="m-col"><div class="m-bar-wrap"><div class="m-bar" data-h="65%"></div></div><div class="m-bar-val">~60h</div><div class="m-bar-label">Jan</div></div><div class="m-col"><div class="m-bar-wrap"><div class="m-bar" data-h="55%"></div></div><div class="m-bar-val">~52h</div><div class="m-bar-label">Feb</div></div><div class="m-col"><div class="m-bar-wrap"><div class="m-bar" data-h="50%"></div></div><div class="m-bar-val">~54h</div><div class="m-bar-label">Mar</div></div></div>
+      </div>
+      <div class="glass-card"><div class="card-icon green">&#127919;</div><div class="card-title">Goals</div><ul class="bullet-list"><li>Make staging environment run automation for OLB, Core Services &amp; Enrollment</li><li>Reduce QA / UAT downtime significantly</li><li>Better understanding of OS environments</li><li>Understand deployment principles across environments</li></ul></div>
+    </div>
+  </div>
+
+  <!-- Section 7 -->
+  <div class="section-page" data-section="7">
+    <div class="slide-number">Section 07</div>
+    <div class="presenter-badge"><span class="badge-dot"></span> Presenter: Manasa</div>
+    <h2 class="slide-title">Test Data Strategy &<br><span class="gradient-text">Enablement</span></h2>
+    <p class="slide-subtitle">Establish golden data sets, automated test data pipelines, and clean separation between dev and QE data.</p>
+    <div class="content-grid grid-2">
+      <div class="glass-card"><div class="card-icon">&#127942;</div><div class="card-title">Golden Data Sets</div><ul class="bullet-list"><li>Establish reliable, consistent data sets across environments</li><li>Ensure repeatable test execution</li></ul><span class="status-tag tag-planned" style="margin-top:.75rem">Planned</span></div>
+      <div class="glass-card"><div class="card-icon green">&#128256;</div><div class="card-title">Dev / QE Data Separation</div><ul class="bullet-list"><li>Separate test data for dev teams and QEs</li><li>Prevent data conflicts and ensure test integrity</li></ul><span class="status-tag tag-planned" style="margin-top:.75rem">Planned</span></div>
+    </div>
+    <div class="glass-card" style="margin-top:1.25rem">
+      <div class="card-title" style="margin-bottom:.75rem">&#9881; Automated Test Data Pipelines</div>
+      <div class="content-grid grid-3">
+        <div style="text-align:center;padding:.75rem"><div style="font-size:1.5rem;margin-bottom:.35rem">&#127974;</div><div style="font-family:var(--font-h);font-size:.85rem;font-weight:600;margin-bottom:.2rem">Internal Bank</div><span class="status-tag tag-done">Already Exists</span></div>
+        <div style="text-align:center;padding:.75rem"><div style="font-size:1.5rem;margin-bottom:.35rem">&#128200;</div><div style="font-family:var(--font-h);font-size:.85rem;font-weight:600;margin-bottom:.2rem">Invest</div><div style="font-size:.7rem;color:var(--text-dim);margin-bottom:.3rem">RIA, MP, IBD, Crypto</div><span class="status-tag tag-planned">Needed</span></div>
+        <div style="text-align:center;padding:.75rem"><div style="font-size:1.5rem;margin-bottom:.35rem">&#128176;</div><div style="font-family:var(--font-h);font-size:.85rem;font-weight:600;margin-bottom:.2rem">Borrow</div><span class="status-tag tag-planned">Needed</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 8 -->
+  <div class="section-page" data-section="8">
+    <div class="slide-number">Section 08</div>
+    <div class="presenter-badge"><span class="badge-dot"></span> Presenters: Carlos & Rahul</div>
+    <h2 class="slide-title">Operational Excellence via<br><span class="gradient-text">AI & Centralization</span></h2>
+    <p class="slide-subtitle">Central Hub on GitHub Pages &mdash; command center for automation, reporting, and operations. Continuously improved via feedback.</p>
+    <div class="content-grid grid-2">
+      <div class="glass-card"><div class="card-icon green">&#9889;</div><div class="card-title">Active & Evolving</div><div class="card-desc" style="margin-bottom:.6rem">Live tools, refined through team feedback.</div><ul class="bullet-list">
+        <li><strong>Bi-Weekly Email Builder</strong> &mdash; form generates end-of-sprint updates in QCOE email style</li>
+        <li><strong>Daily Task & Hours Reminder</strong> &mdash; Teams reminders for QEs who haven't completed ADO tasks or hours</li>
+        <li><strong>Pipeline Metrics Reporter</strong> &mdash; GitHub + ADO pipeline metrics and email-ready stats</li>
+        <li><strong>ServiceNow Metrics Reporter</strong> &mdash; dashboard tracking, metrics, and email-ready stats</li>
+        <li><strong>CIF Sync Hub</strong> &mdash; sync user details across prod and lower environments (JHA refresh)</li>
+        <li><strong>ADO Team Tracker</strong> &mdash; task trackers and project end-date forecasting</li>
+      </ul></div>
+      <div class="glass-card"><div class="card-icon purple">&#128203;</div><div class="card-title">In Scope</div><div class="card-desc" style="margin-bottom:.6rem">Planned capabilities to be built.</div><ul class="bullet-list">
+        <li><strong>Change Impact Analyzer</strong> &mdash; AI summarizes project changes, shares expected impact</li>
+        <li><strong>App Review Monitor</strong> &mdash; AI reads app reviews, flags negative trends, raises ADO spikes</li>
+        <li><strong>New Hire ServiceNow Tickets</strong> &mdash; auto-generate onboarding tickets for new members</li>
+        <li><strong>New Hire QE Orientation</strong> &mdash; demo guidelines covering tools, org vision, workflows</li>
+        <li><strong>GitHub Deployment Process</strong> &mdash; understanding build &amp; deployment workflow</li>
+        <li><strong>Active Trac & Timesheets</strong> &mdash; weekly reviews; reduce 2hr/wk timesheet approval</li>
+      </ul></div>
+    </div>
+  </div>
+
+  <!-- Section 9 -->
+  <div class="section-page" data-section="9">
+    <div class="slide-number">Section 09</div>
+    <div class="presenter-badge"><span class="badge-dot"></span> Presenter: Rahul</div>
+    <h2 class="slide-title"><span class="gradient-text">Training</span> & Certification</h2>
+    <p class="slide-subtitle">Standardize GitHub workflows, build & deployment processes, and sponsor industry certifications.</p>
+    <div class="content-grid grid-4">
+      <div class="glass-card" style="text-align:center;padding:1.75rem 1rem"><div style="font-size:2rem;margin-bottom:.5rem">&#128295;</div><div class="card-title">GitHub Build & Deploy</div><ul class="bullet-list" style="text-align:left;font-size:.75rem"><li>Standardize build & deployment process</li></ul></div>
+      <div class="glass-card" style="text-align:center;padding:1.75rem 1rem"><div style="font-size:2rem;margin-bottom:.5rem">&#129309;</div><div class="card-title">GitHub Workflows</div><ul class="bullet-list" style="text-align:left;font-size:.75rem"><li>Improve understanding and adoption</li></ul></div>
+      <div class="glass-card" style="text-align:center;padding:1.75rem 1rem"><div style="font-size:2rem;margin-bottom:.5rem">&#127941;</div><div class="card-title">ISTQB Certification</div><ul class="bullet-list" style="text-align:left;font-size:.75rem"><li>QE certs sponsored by vendors</li></ul></div>
+      <div class="glass-card" style="text-align:center;padding:1.75rem 1rem"><div style="font-size:2rem;margin-bottom:.5rem">&#127919;</div><div class="card-title">Playwright Certified</div><ul class="bullet-list" style="text-align:left;font-size:.75rem"><li>Automation engineer credential</li></ul></div>
+    </div>
+  </div>
+
+  <!-- Section 10 -->
+  <div class="section-page" data-section="10">
+    <div class="slide-number">Section 10</div>
+    <h2 class="slide-title"><span class="gradient-text">People</span> & Team Growth</h2>
+    <p class="slide-subtitle">Release team in ABC to support evening &amp; weekend testing &mdash; releases, patches, network migrations.</p>
+    <div class="content-grid grid-2">
+      <div class="glass-card"><div class="card-icon blue">&#128101;</div><div class="card-title">Release Team in ABC</div><ul class="bullet-list"><li>Evening &amp; weekend testing support</li><li>Releases, patches, network migrations</li><li>Smoke testing and deployment verification</li><li>After-hours incident response</li></ul></div>
+      <div class="glass-card"><div class="card-icon">&#127775;</div><div class="card-title">Impact</div><ul class="bullet-list"><li>No delays on US business hours</li><li>24/7 quality coverage</li><li>Faster incident resolution</li><li>Reduced burnout on primary team</li></ul></div>
+    </div>
+  </div>
+
+  <!-- Section 11 -->
+  <div class="section-page" data-section="11">
+    <div class="slide-number">Section 11</div>
+    <div class="presenter-badge"><span class="badge-dot"></span> Presenter: Rahul</div>
+    <h2 class="slide-title"><span class="gradient-text">Automation</span> Strategy</h2>
+    <p class="slide-subtitle">Core Services automation expanding. Tracking direct impact on production bug reduction.</p>
+    <div class="content-grid grid-3">
+      <div class="glass-card"><div class="card-icon green">&#128202;</div><div class="card-title">Core Services Automation</div><ul class="bullet-list"><li>Expanding API coverage for regression detection</li><li>Direct correlation to prod bug reduction</li></ul><span class="status-tag tag-progress" style="margin-top:.5rem">In Progress</span></div>
+      <div class="glass-card"><div class="card-icon red">&#128029;</div><div class="card-title">Prod Bug Reduction</div><ul class="bullet-list"><li>Measuring automation impact on production defects</li><li>Monthly tracking and trend analysis</li></ul><span class="status-tag tag-progress" style="margin-top:.5rem">Tracking</span></div>
+      <div class="glass-card"><div class="card-icon blue">&#128209;</div><div class="card-title">State of Automation</div><ul class="bullet-list"><li>Pre-Read: State of Automation &mdash; Feb 2026</li><li>Metrics, trends, improvement areas</li></ul><span class="status-tag tag-progress" style="margin-top:.5rem">Pre-Read Available</span></div>
+    </div>
+  </div>
+
+  <!-- Section 12 -->
+  <div class="section-page" data-section="12">
+    <div class="slide-number">Section 12</div>
+    <div class="presenter-badge"><span class="badge-dot"></span> Presenter: Rahul</div>
+    <h2 class="slide-title">More Customer-Centric<br><span class="gradient-text">Organization</span></h2>
+    <p class="slide-subtitle">Shifting from reactive to proactive. Creating bugs for BUs, operationalizing app reviews, Voice of Customer.</p>
+    <div class="content-grid grid-2">
+      <div class="glass-card"><div class="card-icon">&#128029;</div><div class="card-title">Proactive Bug Creation</div><ul class="bullet-list"><li>Creating bugs for BUs from production trends</li><li>Not waiting for reports &mdash; proactive identification</li></ul></div>
+      <div class="glass-card"><div class="card-icon cyan">&#128241;</div><div class="card-title">App Review Monitoring</div><ul class="bullet-list"><li>Operationalized app reviews for mobile</li><li>AI flags negative trends, raises ADO spikes</li></ul></div>
+      <div class="glass-card"><div class="card-icon green">&#128260;</div><div class="card-title">Prod Bugs &#8594; Regression</div><ul class="bullet-list"><li>Automating production bugs into regression suite</li><li>Every known issue continuously validated</li></ul></div>
+      <div class="glass-card"><div class="card-icon purple">&#128172;</div><div class="card-title">Voice of Customer</div><ul class="bullet-list"><li>Customer insights drive testing priorities</li><li>Direct feedback loop to quality processes</li></ul></div>
+    </div>
+  </div>
+
+  <!-- Section 13 -->
+  <div class="section-page" data-section="13" style="text-align:center">
+    <div class="slide-number">Section 13</div>
+    <div class="presenter-badge"><span class="badge-dot"></span> Presenter: Rahul</div>
+    <h2 class="slide-title"><span class="gradient-text">Performance Testing</span></h2>
+    <p class="slide-subtitle" style="margin-left:auto;margin-right:auto">Performance testing for each project. Scripts running in pipelines. Quality gate enforced.</p>
+    <div class="content-grid grid-3" style="text-align:left">
+      <div class="glass-card" style="text-align:center;padding:1.75rem 1.25rem"><div style="font-size:2rem;margin-bottom:.75rem">&#128202;</div><div class="card-title">Per-Project Testing</div><ul class="bullet-list" style="text-align:left;font-size:.78rem"><li>Performance testing for each project</li><li>Embedded in every project lifecycle</li></ul></div>
+      <div class="glass-card" style="text-align:center;padding:1.75rem 1.25rem"><div style="font-size:2rem;margin-bottom:.75rem">&#9881;</div><div class="card-title">Pipeline Integration</div><ul class="bullet-list" style="text-align:left;font-size:.78rem"><li>Performance scripts running in pipeline</li><li>Automated reporting per execution</li></ul></div>
+      <div class="glass-card" style="text-align:center;padding:1.75rem 1.25rem"><div style="font-size:2rem;margin-bottom:.75rem">&#128683;</div><div class="card-title">Quality Gate</div><ul class="bullet-list" style="text-align:left;font-size:.78rem"><li>SLAs enforced as quality gates</li><li>Release blocked if SLAs not met</li></ul></div>
+    </div>
+    <div class="flow-row" style="margin-top:2rem">
+      <div class="flow-node"><div class="flow-icon">&#128187;</div><div class="flow-label">Code Change</div></div>
+      <div class="flow-arrow"><div class="fa-dot"></div></div>
+      <div class="flow-node"><div class="flow-icon">&#9881;</div><div class="flow-label">Pipeline</div></div>
+      <div class="flow-arrow"><div class="fa-dot" style="animation-delay:.3s"></div></div>
+      <div class="flow-node"><div class="flow-icon glow">&#128202;</div><div class="flow-label">Perf Test</div></div>
+      <div class="flow-arrow"><div class="fa-dot" style="animation-delay:.6s"></div></div>
+      <div class="flow-node"><div class="flow-icon">&#128203;</div><div class="flow-label">SLA Check</div></div>
+      <div class="flow-arrow"><div class="fa-dot" style="animation-delay:.9s"></div></div>
+      <div class="flow-node"><div class="flow-icon">&#9989;</div><div class="flow-label">Release</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Voice Settings Panel -->
+<div class="voice-panel-overlay" id="voicePanelOverlay" onclick="closeVoicePanel()"></div>
+<div class="voice-panel" id="voicePanel">
+  <div class="voice-panel-header">
+    <h3>Voice Settings</h3>
+    <p>Select a voice and adjust speed & pitch</p>
+    <button class="voice-panel-close" onclick="closeVoicePanel()">&#10005;</button>
+  </div>
+  <div class="voice-controls">
+    <div class="voice-control-row"><span class="voice-control-label">Speed</span><input type="range" class="voice-slider" id="voiceSpeed" min="0.5" max="1.5" step="0.05" value="0.95"><span class="voice-control-value" id="voiceSpeedVal">0.95</span></div>
+    <div class="voice-control-row"><span class="voice-control-label">Pitch</span><input type="range" class="voice-slider" id="voicePitch" min="0.5" max="1.5" step="0.05" value="1.02"><span class="voice-control-value" id="voicePitchVal">1.02</span></div>
+  </div>
+  <div class="voice-list-container" id="voiceList"></div>
+</div>
+
+<script>
+/* ============================================ PARTICLES ============================================ */
+(function(){
+  const canvas=document.getElementById('particles'),ctx=canvas.getContext('2d');
+  let w,h,particles=[];
+  const COUNT=window.innerWidth<768?30:60,DIST=140;
+  window._particlePrimary='30,56,96';window._particleSecondary='180,190,210';window._particleAlpha=.12;
+  function resize(){w=canvas.width=window.innerWidth;h=canvas.height=window.innerHeight}
+  window.addEventListener('resize',resize);resize();
+  class P{
+    constructor(){this.reset()}
+    reset(){this.x=Math.random()*w;this.y=Math.random()*h;this.vx=(Math.random()-.5)*.35;this.vy=(Math.random()-.5)*.35;this.r=Math.random()*1.5+.5;this.isPrimary=Math.random()>.7;this.baseAlpha=Math.random()*.25+.08}
+    update(){this.x+=this.vx;this.y+=this.vy;if(this.x<0||this.x>w)this.vx*=-1;if(this.y<0||this.y>h)this.vy*=-1}
+    draw(){const c=this.isPrimary?window._particlePrimary:window._particleSecondary;const a=this.baseAlpha*((window._particleAlpha||.12)/.12);ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);ctx.fillStyle=`rgba(${c},${a})`;ctx.fill()}
+  }
+  for(let i=0;i<COUNT;i++)particles.push(new P());
+  function animate(){
+    ctx.clearRect(0,0,w,h);
+    for(let i=0;i<particles.length;i++){
+      particles[i].update();particles[i].draw();
+      for(let j=i+1;j<particles.length;j++){const dx=particles[i].x-particles[j].x,dy=particles[i].y-particles[j].y,dist=Math.sqrt(dx*dx+dy*dy);if(dist<DIST){const a=(1-dist/DIST)*.06;ctx.beginPath();ctx.moveTo(particles[i].x,particles[i].y);ctx.lineTo(particles[j].x,particles[j].y);ctx.strokeStyle=`rgba(${window._particlePrimary},${a})`;ctx.lineWidth=.5;ctx.stroke()}}
+    }
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+
+/* ============================================ NAVIGATION ============================================ */
+const hubView=document.getElementById('hubView');
+const sectionView=document.getElementById('sectionView');
+const sectionPages=document.querySelectorAll('.section-page');
+const topbarTitle=document.getElementById('topbarTitle');
+let currentSection=null;
+
+const sectionTitles=[
+  '','Industry Trends','Modernizing Automation','CI Quality Gates','Functional Testing',
+  'Security & Compliance','Environment Stability','Test Data Strategy','Operational Excellence',
+  'Training & Certification','People & Team Growth','Automation Strategy','Customer-Centric Org','Performance Testing'
+];
+
+function openSection(num){
+  currentSection=num;
+  sectionPages.forEach(p=>p.classList.remove('active'));
+  const page=document.querySelector(`.section-page[data-section="${num}"]`);
+  if(page)page.classList.add('active');
+  topbarTitle.textContent='Section '+String(num).padStart(2,'0')+' — '+sectionTitles[num];
+  hubView.classList.add('hidden');
+  sectionView.classList.remove('hidden');
+  sectionView.scrollTop=0;
+
+  setTimeout(()=>{
+    page.querySelectorAll('.m-bar').forEach(bar=>{
+      bar.style.height='0';
+      const h=bar.dataset.h;
+      if(h)setTimeout(()=>{bar.style.height=h},300);
+    });
+  },100);
+
+  if(voiceEnabled)narrateSlide(num);
+}
+
+function backToHub(){
+  synth.cancel();
+  sectionView.classList.add('hidden');
+  hubView.classList.remove('hidden');
+  hubView.scrollTop=0;
+  currentSection=null;
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    if(document.getElementById('voicePanel').classList.contains('open')){closeVoicePanel();return}
+    if(currentSection!==null){backToHub();return}
+  }
+  if(document.getElementById('voicePanel').classList.contains('open'))return;
+  if(e.key.toLowerCase()==='v')toggleVoice();
+});
+
+/* ============================================ VOICE ============================================ */
+let voiceEnabled=false;
+let currentUtterance=null;
+let selectedVoiceName=localStorage.getItem('qcoe-voice')||null;
+let voiceRate=parseFloat(localStorage.getItem('qcoe-voice-rate'))||0.95;
+let voicePitch=parseFloat(localStorage.getItem('qcoe-voice-pitch'))||1.02;
+const synth=window.speechSynthesis;
+
+const narrationScripts={
+  0:"Welcome to the Quality Engineering Strategic Vision for 2026. Select any section tile to explore our direction across automation, tooling, security, and customer-centric quality.",
+  1:"We're building an AI-first QE organization. Scalable automation that runs via pipelines on any environment, currently on QA and UAT. AI is embedded in planning, execution, and monitoring, with quality gates at every stage of the release pipeline.",
+  2:"We're moving away from TestIM and embracing Playwright to keep up with the speed of development. We leverage AI accelerators for script creation. We currently have about 35 TestIM parallels. By September 2026, we deprecate them. A POC is underway to convert TestIM to Playwright, with a full exit timeline to be determined.",
+  3:"We built scalable automation that runs on QA or UAT environments. OLB 1.0 is currently enabled on QA, UAT Main, and Staging. Enrollment runs on QA and UAT. Next, we migrate automation pipelines from ADO to GitHub and plug quality gates directly into OS release pipelines.",
+  4:"TestGennie is currently used to generate test cases. We're working with Damon's team to convert it into a full AI agent, so it can automatically generate test cases and QEs can review them. We're also building a Playwright script generator in Cursor to speed up functional test creation automatically.",
+  5:"Burp Suite is now handled by QCOE as of March 2nd, 2026. We've met with PortSwigger to look at automation options. The plan is to automate scan analysis and set up notifications to the relevant teams when issues are found.",
+  6:"We're tracking environment downtime across QA and UAT Main. About 166 hours from January to March 2026. The goals are to make the staging environment run automation for OLB, Core Services, and Enrollment, reduce QA and UAT downtime, and better understand OS environments and deployment principles.",
+  7:"The strategy is to establish golden data sets and build automated test data pipelines. Internal Bank already has one. We need pipelines for Invest, including RIA, MP, IBD, and Crypto, as well as Borrow. We're also separating test data between development teams and QEs to prevent conflicts.",
+  8:"The Central Hub on GitHub Pages is our command center for automation, reporting, and operations. Active tools include the Bi-Weekly Email Builder, Daily Task and Hours Reminder, Pipeline Metrics Reporter, ServiceNow Metrics, CIF Sync Hub, and ADO Team Tracker. In scope we have the Change Impact Analyzer, App Review Monitor, New Hire ServiceNow tickets, QE Orientation, GitHub deployment docs, and Active Trac and Timesheet optimization.",
+  9:"Training focuses on standardizing the GitHub build and deployment process, improving adoption of GitHub-based workflows, and certifications. ISTQB certification for QEs is sponsored by vendors, and Playwright certification is available for automation engineers.",
+  10:"We're building a release team in ABC to support evening and weekend testing. That includes releases, patches, and network migrations. This gives us 24/7 quality coverage with less burnout on the primary team.",
+  11:"Core Services automation is expanding with direct impact on production bug reduction. We're tracking metrics monthly. The State of Automation pre-read from February 2026 covers trends and improvement areas.",
+  12:"We're shifting from reactive to proactive. Creating bugs for business units from production trends, operationalizing app reviews for mobile, automating production bugs into the regression suite, and driving testing priorities through Voice of Customer insights.",
+  13:"Performance testing is embedded in every project. Performance scripts run in the pipeline. SLAs are enforced as quality gates. If they're not met, the release is blocked."
+};
+
+const recommendedVoices=['Ava (Premium)','Zoe (Premium)','Evan (Premium)','Tom (Premium)','Ava (Enhanced)','Zoe (Enhanced)','Evan (Enhanced)','Tom (Enhanced)','Samantha (Enhanced)','Daniel (Enhanced)','Karen (Enhanced)'];
+
+function getSelectedVoice(){
+  const voices=synth.getVoices();
+  if(selectedVoiceName){const v=voices.find(v=>v.name===selectedVoiceName);if(v)return v}
+  const ranked=[...recommendedVoices,'Ava','Samantha','Daniel','Karen','Google UK English Female','Google UK English Male','Google US English','Microsoft Aria','Microsoft Jenny','Microsoft Guy','Alex'];
+  for(const name of ranked){const v=voices.find(voice=>voice.name===name||voice.name.includes(name));if(v)return v}
+  const en=voices.filter(v=>v.lang.startsWith('en'));
+  const p=en.find(v=>/premium|enhanced|natural|neural/i.test(v.name));
+  return p||en[0]||voices[0];
+}
+
+function narrateSlide(index){
+  synth.cancel();
+  if(!voiceEnabled||!narrationScripts[index])return;
+  const u=new SpeechSynthesisUtterance(narrationScripts[index]);
+  u.rate=voiceRate;u.pitch=voicePitch;u.volume=0.95;
+  const voice=getSelectedVoice();if(voice)u.voice=voice;
+  u.onstart=()=>{document.querySelectorAll('.voice-btn').forEach(b=>b.classList.add('speaking'));document.querySelectorAll('.voice-waves').forEach(w=>w.style.display='flex')};
+  const done=()=>{document.querySelectorAll('.voice-btn').forEach(b=>b.classList.remove('speaking'));document.querySelectorAll('.voice-waves').forEach(w=>w.style.display='none')};
+  u.onend=done;u.onerror=done;
+  currentUtterance=u;synth.speak(u);
+  startChromeFix();
+}
+
+function toggleVoice(){
+  voiceEnabled=!voiceEnabled;
+  if(voiceEnabled){
+    document.querySelectorAll('.voice-icon-char').forEach(s=>s.textContent='\u{1F50A}');
+    document.querySelectorAll('.voice-waves').forEach(w=>w.style.display='flex');
+    narrateSlide(currentSection!==null?currentSection:0);
+  }else{
+    synth.cancel();
+    document.querySelectorAll('.voice-btn').forEach(b=>b.classList.remove('speaking'));
+    document.querySelectorAll('.voice-icon-char').forEach(s=>s.textContent='\u{1F508}');
+    document.querySelectorAll('.voice-waves').forEach(w=>w.style.display='none');
+  }
+}
+
+let chromeSpeechFix;
+function startChromeFix(){clearInterval(chromeSpeechFix);chromeSpeechFix=setInterval(()=>{if(synth.speaking&&!synth.paused)synth.resume()},10000)}
+
+/* ============================================ VOICE PANEL ============================================ */
+function openVoicePanel(){document.getElementById('voicePanelOverlay').classList.add('open');document.getElementById('voicePanel').classList.add('open');buildVoiceList();document.getElementById('voiceSpeed').value=voiceRate;document.getElementById('voiceSpeedVal').textContent=voiceRate.toFixed(2);document.getElementById('voicePitch').value=voicePitch;document.getElementById('voicePitchVal').textContent=voicePitch.toFixed(2)}
+function closeVoicePanel(){document.getElementById('voicePanelOverlay').classList.remove('open');document.getElementById('voicePanel').classList.remove('open');synth.cancel()}
+document.getElementById('voiceSpeed').addEventListener('input',function(){voiceRate=parseFloat(this.value);document.getElementById('voiceSpeedVal').textContent=voiceRate.toFixed(2);localStorage.setItem('qcoe-voice-rate',voiceRate)});
+document.getElementById('voicePitch').addEventListener('input',function(){voicePitch=parseFloat(this.value);document.getElementById('voicePitchVal').textContent=voicePitch.toFixed(2);localStorage.setItem('qcoe-voice-pitch',voicePitch)});
+
+function buildVoiceList(){
+  const container=document.getElementById('voiceList'),voices=synth.getVoices();
+  if(!voices.length){container.innerHTML='<p style="padding:1.5rem;color:var(--text-dim);font-size:.8rem">Loading voices...</p>';return}
+  const current=getSelectedVoice(),enV=voices.filter(v=>v.lang.startsWith('en')),otherV=voices.filter(v=>!v.lang.startsWith('en'));
+  const goog=enV.filter(v=>v.name.toLowerCase().includes('google'));
+  const prem=enV.filter(v=>/premium|enhanced|natural|neural/i.test(v.name)&&!v.name.toLowerCase().includes('google'));
+  const std=enV.filter(v=>!v.name.toLowerCase().includes('google')&&!/premium|enhanced|natural|neural/i.test(v.name));
+  const novelty=['Albert','Bad News','Bahh','Bells','Boing','Bubbles','Cellos','Good News','Jester','Organ','Trinoids','Whisper','Zarvox','Deranged','Hysterical','Wobble','Superstar','Princess','Ralph','Junior','Fred'];
+  let html='';
+  const grp=(label,list,badge,cls)=>{if(!list.length)return;html+='<div class="voice-group-label">'+label+' ('+list.length+')</div>';list.forEach(v=>{const sel=current&&current.name===v.name?'selected':'';html+='<div class="voice-option '+sel+'" data-voice-name="'+v.name.replace(/"/g,'&quot;')+'" onclick="selectVoice(this)"><div class="voice-option-info"><div class="voice-option-name">'+v.name+'</div><div class="voice-option-lang">'+v.lang+'</div></div>';if(badge)html+='<span class="voice-option-badge '+cls+'">'+badge+'</span>';html+='<button class="voice-preview-btn" onclick="event.stopPropagation();previewVoice(\''+v.name.replace(/'/g,"\\'")+'\')">&#9654;</button></div>'})};
+  grp('Premium / Enhanced',prem,'Best','badge-recommended');
+  grp('Google Voices',goog,'Google','badge-google');
+  grp('English Voices',std.filter(v=>!novelty.some(r=>v.name.includes(r))),'System','badge-system');
+  grp('Novelty / Fun',std.filter(v=>novelty.some(r=>v.name.includes(r))),'Fun','badge-system');
+  grp('Other Languages',otherV,'','');
+  container.innerHTML=html;
+}
+function selectVoice(el){selectedVoiceName=el.dataset.voiceName;localStorage.setItem('qcoe-voice',selectedVoiceName);document.querySelectorAll('.voice-option').forEach(o=>o.classList.remove('selected'));el.classList.add('selected');previewVoice(selectedVoiceName)}
+function previewVoice(name){synth.cancel();const v=synth.getVoices().find(v=>v.name===name);if(!v)return;const u=new SpeechSynthesisUtterance('AI-First Quality Engineering. This is how I sound.');u.voice=v;u.rate=voiceRate;u.pitch=voicePitch;u.volume=0.95;synth.speak(u)}
+if(synth.onvoiceschanged!==undefined)synth.onvoiceschanged=()=>{const v=getSelectedVoice();if(v)console.log('%c Voice: '+v.name,'color:#FAA74A;font-weight:bold')};
+synth.getVoices();
+
+/* ============================================ THEME ============================================ */
+function toggleTheme(){
+  const html=document.documentElement;
+  const current=html.getAttribute('data-theme')||'light';
+  const next=current==='light'?'dark':'light';
+  html.setAttribute('data-theme',next);
+  localStorage.setItem('qcoe-vision-theme',next);
+  updateThemeIcon(next);
+  updateParticleColors(next);
+}
+function initTheme(){
+  const saved=localStorage.getItem('qcoe-vision-theme');
+  const theme=saved||'light';
+  document.documentElement.setAttribute('data-theme',theme);
+  updateThemeIcon(theme);
+}
+function updateThemeIcon(theme){
+  document.querySelectorAll('.theme-toggle').forEach(btn=>{
+    btn.innerHTML=theme==='dark'?'&#9790;':'&#9788;';
+    btn.title=theme==='dark'?'Switch to Light Mode':'Switch to Dark Mode';
+  });
+}
+function updateParticleColors(theme){
+  const style=getComputedStyle(document.documentElement);
+  window._particlePrimary=style.getPropertyValue('--particle-primary').trim();
+  window._particleSecondary=style.getPropertyValue('--particle-secondary').trim();
+  window._particleAlpha=parseFloat(style.getPropertyValue('--particle-alpha'))||.12;
+}
+initTheme();
+updateParticleColors(document.documentElement.getAttribute('data-theme')||'light');
+</script>
+</body>
+</html>
