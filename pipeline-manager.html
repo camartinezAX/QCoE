@@ -1815,16 +1815,16 @@
             if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
             else prompt += `\n\nKeep the schedule block commented out.`;
 
-            if (p.scheduleEnabled && (p.repeatUnit || 'weeks') === 'weeks' && parseInt(p.repeatEvery || '1', 10) > 1) {
-                const n = parseInt(p.repeatEvery || '1', 10);
-                prompt += `\n\nAlso implement an every-${n}-weeks schedule gate. GitHub Actions cron can't express true ${n}-week intervals, so schedule it weekly with the cron above and add a small \"gate\" job that checks the ISO week number (UTC) and only runs the reusable workflow job when (week % ${n} == 0).`;
-            }
-
             prompt += `\n\nUse the existing caller workflow file Mobile_Android_UAT_Smoke-BrowserStack.yml as the exact format reference. Include:\n` +
                 `- name: and run-name fields matching the pipeline name\n` +
                 `- workflow_dispatch inputs for all required variables (including ${appField}, ${deviceNameField}, ${deviceOsField}) with correct defaults\n` +
                 `- permissions block (contents: read, checks: write, actions: write)\n` +
                 `- jobs section calling _mobile-template.yml passing inputs with fallback defaults`;
+
+            if (p.scheduleEnabled && (p.repeatUnit || 'weeks') === 'weeks' && parseInt(p.repeatEvery || '1', 10) > 1) {
+                const n = parseInt(p.repeatEvery || '1', 10);
+                prompt += `\n- Add WEEK_MODULO: ${n} to the with: block so the template skips runs on off-weeks (do NOT add a separate gate job)`;
+            }
 
             if (p.renamedFrom) prompt += `\n\nAlso delete the old workflow file: .github/workflows/${p.renamedFrom}`;
             return prompt;
@@ -1847,17 +1847,17 @@
         if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
         else prompt += `\n\nKeep the schedule block commented out.`;
 
-        if (p.scheduleEnabled && (p.repeatUnit || 'weeks') === 'weeks' && parseInt(p.repeatEvery || '1', 10) > 1) {
-            const n = parseInt(p.repeatEvery || '1', 10);
-            prompt += `\n\nAlso implement an every-${n}-weeks schedule gate. GitHub Actions cron can't express true ${n}-week intervals, so schedule it weekly with the cron above and add a small \"gate\" job that checks the ISO week number (UTC) and only runs the reusable workflow job when (week % ${n} == 0).`;
-        }
-
         prompt += `\n\nUse the existing caller workflow file Web_AxosBank_UAT-OLB_HealthCheck-Testim.yml as the exact format reference. Include:\n` +
             `- A header comment showing the folder path (e.g. Web > Axos Bank > UAT > ...)\n` +
             `- name: and run-name fields matching the pipeline name\n` +
             `- workflow_dispatch inputs for ALL variables: TEST_SUITE, BASE_URL, BRANCH, GRID (choice: Testim-Grid, CHROME_DRIVER), PARALLEL, RETRIES, TIMEOUTMIN, BROWSER_TIMEOUT, JOB_TIMEOUT, and RUNNER_LABEL\n` +
             `- permissions block (contents: read, checks: write, actions: write)\n` +
             `- jobs section calling _testim-template.yml passing all inputs with fallback defaults using the \${{ inputs.VAR || 'default' }} pattern`;
+
+        if (p.scheduleEnabled && (p.repeatUnit || 'weeks') === 'weeks' && parseInt(p.repeatEvery || '1', 10) > 1) {
+            const n = parseInt(p.repeatEvery || '1', 10);
+            prompt += `\n- Add WEEK_MODULO: ${n} to the with: block so the template skips runs on off-weeks (do NOT add a separate gate job)`;
+        }
 
         if (p.renamedFrom) prompt += `\n\nAlso delete the old workflow file: .github/workflows/${p.renamedFrom}`;
         return prompt;
