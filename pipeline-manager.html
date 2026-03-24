@@ -532,6 +532,37 @@
         .email-opts { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
         .email-opts label { font-size:12px; display:flex; align-items:center; gap:6px; cursor:pointer; color:var(--text-secondary); }
         .email-btns { display:flex; gap:10px; margin-top:14px; }
+
+        .pipe-picker { margin-top:16px; }
+        .pipe-picker-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+        .pipe-picker-header h4 { font-size:13px; font-weight:700; color:var(--text-primary); margin:0; }
+        .pipe-picker-actions { display:flex; gap:8px; align-items:center; }
+        .pipe-picker-actions button { font-size:11px; padding:4px 10px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; transition:all 0.2s; }
+        .pipe-picker-actions button:hover { border-color:var(--axos-orange); color:var(--axos-orange); }
+        .pipe-picker-toolbar { display:flex; gap:8px; margin-bottom:8px; }
+        .pipe-picker-toolbar input { flex:1; font-size:12px; padding:7px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-tertiary); color:var(--text-primary); }
+        .pipe-picker-tabs { display:flex; gap:4px; margin-bottom:8px; flex-wrap:wrap; }
+        .pipe-picker-tab { font-size:11px; padding:5px 12px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-tertiary); color:var(--text-muted); cursor:pointer; transition:all 0.15s; }
+        .pipe-picker-tab.active { background:var(--axos-orange); color:#fff; border-color:var(--axos-orange); }
+        .pipe-picker-tab:hover:not(.active) { border-color:var(--axos-orange); color:var(--axos-orange); }
+        .pipe-picker-list { max-height:360px; overflow-y:auto; border:1px solid var(--border-color); border-radius:10px; background:rgba(10,14,26,0.3); }
+        .pipe-picker-item { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.04); transition:background 0.15s; cursor:pointer; }
+        .pipe-picker-item:last-child { border-bottom:none; }
+        .pipe-picker-item:hover { background:rgba(250,167,74,0.04); }
+        .pipe-picker-item.checked { background:rgba(250,167,74,0.06); }
+        .pipe-picker-item input[type=checkbox] { accent-color:var(--axos-orange); flex-shrink:0; width:16px; height:16px; }
+        .pipe-picker-info { flex:1; min-width:0; }
+        .pipe-picker-name { font-size:13px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .pipe-picker-meta { font-size:11px; color:var(--text-muted); margin-top:2px; display:flex; gap:12px; }
+        .pipe-picker-stats { display:flex; gap:6px; flex-shrink:0; align-items:center; }
+        .pipe-mini-badge { font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; }
+        .pipe-mini-pass { background:rgba(16,185,129,0.12); color:#10b981; }
+        .pipe-mini-fail { background:rgba(239,68,68,0.12); color:#ef4444; }
+        .pipe-mini-cancel { background:rgba(107,114,128,0.12); color:#9ca3af; }
+        .pipe-mini-rate { font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px; }
+        .pipe-picker-legend { display:flex; gap:12px; align-items:center; font-size:10px; color:var(--text-muted); padding:6px 0; }
+        .pipe-picker-legend span { display:flex; align-items:center; gap:4px; }
+        .pipe-picker-selected { font-size:12px; color:var(--text-muted); margin-top:8px; }
     </style>
 </head>
 <body>
@@ -736,6 +767,29 @@
                         <label><input type="checkbox" id="emailIncFailed" style="accent-color:var(--axos-orange);"> Failed Only</label>
                         <label><input type="checkbox" id="emailIncLinks" checked style="accent-color:var(--axos-orange);"> Build Links</label>
                     </div>
+                    <div class="pipe-picker" id="emailPipePicker">
+                        <div class="pipe-picker-header">
+                            <h4>Select Pipelines to Include</h4>
+                            <div class="pipe-picker-actions">
+                                <button onclick="emailPickAll(true)">Select All</button>
+                                <button onclick="emailPickAll(false)">Deselect All</button>
+                            </div>
+                        </div>
+                        <div class="pipe-picker-tabs" id="emailPickerTabs"></div>
+                        <div class="pipe-picker-toolbar">
+                            <input type="text" id="emailPipeSearch" placeholder="Search pipelines..." oninput="filterEmailPipeList()">
+                        </div>
+                        <div class="pipe-picker-legend">
+                            <span><span class="pipe-mini-badge pipe-mini-pass">P</span> Passed</span>
+                            <span><span class="pipe-mini-badge pipe-mini-fail">F</span> Failed</span>
+                            <span><span class="pipe-mini-badge pipe-mini-cancel">C</span> Cancelled / Timed&nbsp;Out</span>
+                        </div>
+                        <div class="pipe-picker-list" id="emailPipeList">
+                            <div style="padding:20px; text-align:center; color:var(--text-muted); font-size:13px;">Fetch results first to see pipelines here.</div>
+                        </div>
+                        <div class="pipe-picker-selected" id="emailPipeSelected">0 of 0 pipelines selected</div>
+                    </div>
+
                     <div class="email-btns">
                         <button class="btn btn-orange" onclick="generateEmailReport()">Generate Email</button>
                         <button class="btn btn-secondary" onclick="copyEmailHtml()" id="copyEmailBtn" style="display:none;">Copy HTML to Clipboard</button>
@@ -2790,15 +2844,17 @@
         if (platform === '01 Mobile') {
             const brand = document.getElementById('fBrand')?.value;
             const feature = document.getElementById('fFeature')?.value;
-            if (!brand || !feature || !testType) {
-                document.getElementById('namePreview').innerHTML = '<span class="dim">Select mobile platform, suite, and test type...</span>';
+            if (!brand || !feature || !testType || !env) {
+                document.getElementById('namePreview').innerHTML = '<span class="dim">Select mobile platform, environment, suite, and test type...</span>';
                 updateFormStatus();
                 return;
             }
             const suffix = document.getElementById('fCustomSuffix')?.value?.trim();
-            let name = `Mobile_${brand}_${feature}`;
+            const envVal = document.getElementById('fEnv')?.value;
+            let name = `Mobile_${brand}_${envVal}_${feature}`;
             if (suffix) name += `_${suffix}`;
-            name += `_${testType}-BrowserStack`;
+            if (feature !== testType) name += `_${testType}`;
+            name += `-BrowserStack`;
 
             const previewEl = document.getElementById('namePreview');
             const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && p.filename !== editingPipeline);
@@ -3112,6 +3168,7 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
 
     function parseCallerWorkflowYaml(yamlText) {
         const inputs = {};
+        const withValues = {};
         let scheduleCron = '';
 
         let inWorkflowDispatch = false;
@@ -3123,6 +3180,9 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
 
         let inSchedule = false;
         let scheduleIndent = null;
+
+        let inWith = false;
+        let withIndent = null;
 
         const lines = String(yamlText || '').split(/\r?\n/);
         for (const raw of lines) {
@@ -3198,7 +3258,30 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
                 const mCron = line.match(/^\s*-\s*cron\s*:\s*(.+)\s*$/);
                 if (mCron) scheduleCron = stripYamlScalarQuotes(mCron[1]);
             }
+
+            if (/^\s*with\s*:\s*$/.test(line)) {
+                inWith = true;
+                withIndent = indent;
+                continue;
+            }
+
+            if (inWith && withIndent !== null && indent <= withIndent && !/^\s*with\s*:\s*$/.test(line)) {
+                inWith = false;
+                withIndent = null;
+            }
+
+            if (inWith) {
+                const mWith = line.match(/^\s*([A-Z0-9_]+)\s*:\s*(.+)\s*$/);
+                if (mWith) {
+                    let val = stripYamlScalarQuotes(mWith[2]);
+                    const exprMatch = val.match(/\$\{\{\s*inputs\.(\w+)\s*\|\|\s*(.+?)\s*\}\}/);
+                    if (exprMatch) val = stripYamlScalarQuotes(exprMatch[2]);
+                    if (val && !val.startsWith('${{')) withValues[mWith[1]] = val;
+                }
+            }
         }
+
+        const merged = { ...withValues, ...inputs };
 
         const entry = {};
         const testimMap = {
@@ -3215,7 +3298,7 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         };
 
         for (const [k, outKey] of Object.entries(testimMap)) {
-            if (inputs[k]) entry[outKey] = inputs[k];
+            if (merged[k]) entry[outKey] = merged[k];
         }
 
         const mobileMap = {
@@ -3234,13 +3317,12 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         };
 
         for (const [k, outKey] of Object.entries(mobileMap)) {
-            if (inputs[k]) entry[outKey] = inputs[k];
+            if (merged[k]) entry[outKey] = merged[k];
         }
 
-        // Mobile app/device overrides (optional)
-        entry.appId = inputs.IOS_APP || inputs.ANDROID_APP || '';
-        entry.deviceName = inputs.IOS_DEVICE_NAME || inputs.ANDROID_DEVICE_NAME || '';
-        entry.deviceOS = inputs.IOS_DEVICE_OS || inputs.ANDROID_DEVICE_OS || '';
+        entry.appId = merged.IOS_APP || merged.ANDROID_APP || '';
+        entry.deviceName = merged.IOS_DEVICE_NAME || merged.ANDROID_DEVICE_NAME || '';
+        entry.deviceOS = merged.IOS_DEVICE_OS || merged.ANDROID_DEVICE_OS || '';
 
         entry.schedule = scheduleCron;
         entry.scheduleEnabled = !!scheduleCron;
@@ -3431,6 +3513,8 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         pipelines.length = 0;
         savedSnapshot = [];
         selectedPipelines.clear();
+        emailSelectedPipelines.clear();
+        emailPickerInitialized = false;
         buildTree();
         showFolderPipelines(null);
         updateSaveStatus();
@@ -3513,6 +3597,9 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
             if (featureParts.length > 0 && envs.includes(featureParts[0])) {
                 env = featureParts[0];
                 feature = featureParts.slice(1).join('_') || '';
+            }
+            if (!feature && MOBILE_SUITES.some(s => s.name === testType)) {
+                feature = testType;
             }
             return {
                 filename, name, platform: '01 Mobile', brand: subPlatform, env,
@@ -3631,7 +3718,10 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
         document.getElementById('panel' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
         if (tab === 'results' && allRuns.length) renderResults();
-        if (tab === 'email') document.getElementById(allRuns.length ? 'emailReady' : 'emailNoData').style.display = 'block';
+        if (tab === 'email') {
+            document.getElementById(allRuns.length ? 'emailReady' : 'emailNoData').style.display = 'block';
+            if (allRuns.length) populateEmailPipePicker();
+        }
     }
 
     // ══════════════════════════════════════════
@@ -3807,6 +3897,7 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
             renderResults();
             document.getElementById('emailNoData').style.display = 'none';
             document.getElementById('emailReady').style.display = 'block';
+            populateEmailPipePicker();
         } catch (e) {
             status.textContent = 'Error: ' + e.message;
             status.className = 'pat-status';
@@ -4280,11 +4371,139 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
     //  EMAIL REPORT
     // ══════════════════════════════════════════
     let generatedEmailHtml = '';
+    const emailSelectedPipelines = new Set();
+    let emailPickerInitialized = false;
+    let emailPickerTab = 'all';
+
+    function populateEmailPipePicker() {
+        const pipeNames = [...new Set(allRuns.map(r => r.workflowName))].sort();
+        if (!pipeNames.length) return;
+
+        if (!emailPickerInitialized) {
+            emailSelectedPipelines.clear();
+            pipeNames.forEach(n => emailSelectedPipelines.add(n));
+            emailPickerInitialized = true;
+        }
+
+        buildEmailPickerTabs();
+        renderEmailPipeList();
+    }
+
+    function buildEmailPickerTabs() {
+        const folders = new Set();
+        folders.add('all');
+        allRuns.forEach(r => {
+            const n = r.workflowName;
+            if (n.startsWith('Mobile_Android')) folders.add('Mobile > Android');
+            else if (n.startsWith('Mobile_iOS')) folders.add('Mobile > iOS');
+            else if (n.startsWith('Web_')) folders.add('Web');
+            else if (n.startsWith('API_')) folders.add('API');
+            else folders.add('Other');
+        });
+        const tabsEl = document.getElementById('emailPickerTabs');
+        tabsEl.innerHTML = [...folders].map(f => {
+            const label = f === 'all' ? 'All Pipelines' : f;
+            return `<div class="pipe-picker-tab ${emailPickerTab === f ? 'active' : ''}" onclick="setEmailPickerTab('${f}', this)">${label}</div>`;
+        }).join('');
+    }
+
+    function setEmailPickerTab(tab, el) {
+        emailPickerTab = tab;
+        document.querySelectorAll('.pipe-picker-tab').forEach(t => t.classList.remove('active'));
+        if (el) el.classList.add('active');
+        renderEmailPipeList();
+    }
+
+    function getEmailFilteredPipes() {
+        let pipeNames = [...new Set(allRuns.map(r => r.workflowName))].sort();
+        if (emailPickerTab !== 'all') {
+            pipeNames = pipeNames.filter(n => {
+                if (emailPickerTab === 'Mobile > Android') return n.startsWith('Mobile_Android');
+                if (emailPickerTab === 'Mobile > iOS') return n.startsWith('Mobile_iOS');
+                if (emailPickerTab === 'Web') return n.startsWith('Web_');
+                if (emailPickerTab === 'API') return n.startsWith('API_');
+                return !n.startsWith('Mobile_') && !n.startsWith('Web_') && !n.startsWith('API_');
+            });
+        }
+        const search = (document.getElementById('emailPipeSearch')?.value || '').toLowerCase();
+        if (search) pipeNames = pipeNames.filter(n => n.toLowerCase().includes(search));
+        return pipeNames;
+    }
+
+    function filterEmailPipeList() { renderEmailPipeList(); }
+
+    function renderEmailPipeList() {
+        const pipeNames = getEmailFilteredPipes();
+        const list = document.getElementById('emailPipeList');
+
+        if (!pipeNames.length) {
+            list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">No pipelines match the current filter.</div>';
+            updateEmailPipeCount();
+            return;
+        }
+
+        list.innerHTML = pipeNames.map(name => {
+            const pRuns = allRuns.filter(r => r.workflowName === name);
+            const passed = pRuns.filter(r => r.conclusion === 'success').length;
+            const failed = pRuns.filter(r => r.conclusion === 'failure').length;
+            const cancelled = pRuns.filter(r => ['cancelled','timed_out','stale'].includes(r.conclusion)).length;
+            const actionable = pRuns.length - cancelled;
+            const rate = actionable ? ((passed / actionable) * 100).toFixed(0) : '--';
+            const rateColor = rate === '--' ? '#6b7280' : parseFloat(rate) >= 90 ? '#10b981' : parseFloat(rate) >= 70 ? '#f59e0b' : '#ef4444';
+
+            const latest = pRuns[0];
+            const latestDate = latest ? new Date(latest.createdAt).toLocaleDateString('en-US', { month:'short', day:'numeric' }) : '';
+            const shortName = name.replace(/-Testim$/, '').replace(/-BrowserStack$/, '');
+            const checked = emailSelectedPipelines.has(name);
+
+            return `<label class="pipe-picker-item ${checked ? 'checked' : ''}" onclick="event.stopPropagation()">
+                <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleEmailPipe('${name.replace(/'/g,"\\'")}', this)" style="accent-color:var(--axos-orange);">
+                <div class="pipe-picker-info">
+                    <div class="pipe-picker-name" title="${name}">${shortName}</div>
+                    <div class="pipe-picker-meta">
+                        <span>${pRuns.length} runs</span>
+                        <span>Latest: ${latestDate}</span>
+                    </div>
+                </div>
+                <div class="pipe-picker-stats">
+                    ${passed ? `<span class="pipe-mini-badge pipe-mini-pass">${passed}P</span>` : ''}
+                    ${failed ? `<span class="pipe-mini-badge pipe-mini-fail">${failed}F</span>` : ''}
+                    ${cancelled ? `<span class="pipe-mini-badge pipe-mini-cancel">${cancelled}C</span>` : ''}
+                    <span class="pipe-mini-rate" style="color:${rateColor}; background:${rateColor}15;">${rate}%</span>
+                </div>
+            </label>`;
+        }).join('');
+
+        updateEmailPipeCount();
+    }
+
+    function toggleEmailPipe(name, cb) {
+        if (cb.checked) emailSelectedPipelines.add(name);
+        else emailSelectedPipelines.delete(name);
+        cb.closest('.pipe-picker-item').classList.toggle('checked', cb.checked);
+        updateEmailPipeCount();
+    }
+
+    function emailPickAll(select) {
+        const visible = getEmailFilteredPipes();
+        if (select) visible.forEach(n => emailSelectedPipelines.add(n));
+        else visible.forEach(n => emailSelectedPipelines.delete(n));
+        document.querySelectorAll('#emailPipeList input[type=checkbox]').forEach(cb => {
+            cb.checked = select;
+            cb.closest('.pipe-picker-item').classList.toggle('checked', select);
+        });
+        updateEmailPipeCount();
+    }
+
+    function updateEmailPipeCount() {
+        const total = [...new Set(allRuns.map(r => r.workflowName))].length;
+        const sel = emailSelectedPipelines.size;
+        document.getElementById('emailPipeSelected').textContent = `${sel} of ${total} pipeline${total !== 1 ? 's' : ''} selected`;
+    }
 
     function generateEmailReport() {
-        const runs = selectedRuns.size > 0
-            ? allRuns.filter(r => selectedRuns.has(r.id))
-            : allRuns;
+        const selectedPipeNames = emailSelectedPipelines.size > 0 ? emailSelectedPipelines : new Set(allRuns.map(r => r.workflowName));
+        const runs = allRuns.filter(r => selectedPipeNames.has(r.workflowName));
 
         const title = document.getElementById('emailTitle').value || 'Pipeline Status Report';
         const subtitle = document.getElementById('emailSubtitle').value || '';
@@ -4296,77 +4515,174 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         const total = runs.length;
         const passed = runs.filter(r => r.conclusion === 'success').length;
         const failed = runs.filter(r => r.conclusion === 'failure').length;
-        const passRate = total ? ((passed / total) * 100).toFixed(1) : 0;
-        const durations = runs.filter(r => r.duration > 0).map(r => r.duration);
+        const cancelled = runs.filter(r => r.conclusion === 'cancelled').length;
+        const timedOut = runs.filter(r => r.conclusion === 'timed_out').length;
+        const stale = runs.filter(r => r.conclusion === 'stale').length;
+        const skipped = cancelled + timedOut + stale;
+        const actionableRuns = runs.filter(r => !['cancelled','timed_out','stale'].includes(r.conclusion));
+        const actionableTotal = actionableRuns.length;
+        const passRate = actionableTotal ? ((passed / actionableTotal) * 100).toFixed(1) : '0.0';
+        const durations = actionableRuns.filter(r => r.duration > 0).map(r => r.duration);
         const avgDur = durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0;
 
-        const displayRuns = incFailed ? runs.filter(r => r.conclusion === 'failure') : runs;
-        const uniquePipelines = [...new Set(displayRuns.map(r => r.workflowName))].sort();
-
+        const uniquePipelines = [...new Set(runs.map(r => r.workflowName))].sort();
         const now = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        const prColor = parseFloat(passRate) >= 90 ? '#10b981' : parseFloat(passRate) >= 70 ? '#f59e0b' : '#ef4444';
+        const prWidth = Math.min(Math.max(parseInt(passRate), 3), 100);
 
         let html = `<!DOCTYPE html><html><head><meta charset="utf-8">
 <!--[if gte mso 9]><xml><o:OfficeDocumentSettings><o:AllowPNG/><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
-<style>body{margin:0;padding:0;font-family:Segoe UI,Tahoma,Geneva,Verdana,sans-serif;background:#f4f5f7;-webkit-text-size-adjust:100%}table{border-collapse:collapse;mso-table-lspace:0;mso-table-rspace:0}.container{max-width:680px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;border:1px solid #e1e4e8}</style></head><body style="margin:0;padding:20px;background:#f4f5f7;">
-<table class="container" width="680" cellpadding="0" cellspacing="0" style="max-width:680px;margin:0 auto;background:#fff;border-radius:8px;border:1px solid #e1e4e8;">
-<tr><td style="background:linear-gradient(135deg,#1E3860,#2a4a7a);padding:28px 32px;">
-<table width="100%"><tr><td><div style="font-size:22px;font-weight:700;color:#fff;">${title}</div>
-${subtitle ? '<div style="font-size:14px;color:rgba(255,255,255,0.8);margin-top:4px;">' + subtitle + '</div>' : ''}
-<div style="font-size:12px;color:rgba(255,255,255,0.6);margin-top:8px;">${now}</div></td>
-<td style="text-align:right;vertical-align:top;"><div style="font-size:11px;font-weight:700;color:#FAA74A;letter-spacing:0.5px;">AXOS BANK<br>QCOE</div></td></tr></table></td></tr>`;
+<style>body{margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background-color:#f5f5f5;-webkit-text-size-adjust:100%}table{border-collapse:collapse;mso-table-lspace:0;mso-table-rspace:0}</style></head>
+<body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background-color:#f5f5f5;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f5f5f5;padding:20px 0;"><tr><td align="center">
+<table width="700" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border-radius:8px;">
+
+<tr><td style="background-color:#1E3860;padding:40px 30px;text-align:center;">
+<h1 style="margin:0;font-size:32px;font-weight:bold;color:#ffffff;font-family:Arial,sans-serif;">${title}</h1>
+${subtitle ? '<p style="margin:12px 0 0 0;font-size:16px;color:rgba(255,255,255,0.85);font-family:Arial,sans-serif;">' + subtitle + '</p>' : ''}
+<table width="100%" cellpadding="10" cellspacing="0" border="0" style="margin-top:20px;"><tr><td align="center">
+<table cellpadding="0" cellspacing="5" border="0" align="center"><tr>
+<td style="padding:8px 16px;background-color:#2A4A7A;border-radius:20px;font-size:13px;font-weight:bold;color:#ffffff;font-family:Arial,sans-serif;">${now}</td>
+<td style="padding:8px 16px;background-color:#2A4A7A;border-radius:20px;font-size:13px;font-weight:bold;color:#ffffff;font-family:Arial,sans-serif;">${uniquePipelines.length} Pipelines</td>
+<td style="padding:8px 16px;background-color:#2A4A7A;border-radius:20px;font-size:13px;font-weight:bold;color:#FAA74A;font-family:Arial,sans-serif;">AXOS BANK QCOE</td>
+</tr></table></td></tr></table>
+</td></tr>
+
+<tr><td style="padding:40px 30px;">`;
 
         if (incSummary) {
-            const prColor = parseFloat(passRate) >= 90 ? '#10b981' : parseFloat(passRate) >= 70 ? '#f59e0b' : '#ef4444';
-            html += `<tr><td style="padding:24px 32px;">
-<div style="font-size:15px;font-weight:700;color:#1E3860;margin-bottom:16px;">Summary</div>
-<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td width="25%" style="padding:12px;text-align:center;background:#f8f9fa;border-radius:8px;"><div style="font-size:24px;font-weight:800;color:#1E3860;">${total}</div><div style="font-size:11px;color:#6b7280;">Total Runs</div></td>
-<td width="4"></td>
-<td width="25%" style="padding:12px;text-align:center;background:#f8f9fa;border-radius:8px;"><div style="font-size:24px;font-weight:800;color:${prColor};">${passRate}%</div><div style="font-size:11px;color:#6b7280;">Pass Rate</div></td>
-<td width="4"></td>
-<td width="25%" style="padding:12px;text-align:center;background:#f8f9fa;border-radius:8px;"><div style="font-size:24px;font-weight:800;color:#10b981;">${passed}</div><div style="font-size:11px;color:#6b7280;">Passed</div></td>
-<td width="4"></td>
-<td width="25%" style="padding:12px;text-align:center;background:#f8f9fa;border-radius:8px;"><div style="font-size:24px;font-weight:800;color:#ef4444;">${failed}</div><div style="font-size:11px;color:#6b7280;">Failed</div></td>
+            html += `<h2 style="margin:0 0 20px 0;font-size:22px;font-weight:bold;color:#1a202c;font-family:Arial,sans-serif;">&#128202; Execution Summary</h2>
+<table width="100%" cellpadding="0" cellspacing="12" border="0"><tr>
+<td width="24%" style="background-color:#f1f5f9;padding:20px;border-radius:8px;border-left:4px solid #1E3860;text-align:center;vertical-align:top;">
+<p style="margin:0 0 8px 0;font-weight:bold;color:#475569;font-size:12px;font-family:Arial,sans-serif;text-transform:uppercase;">Total Runs</p>
+<p style="margin:0;font-size:32px;font-weight:bold;color:#1E3860;font-family:Arial,sans-serif;">${total}</p>
+</td>
+<td width="24%" style="background-color:#f1f5f9;padding:20px;border-radius:8px;border-left:4px solid ${prColor};text-align:center;vertical-align:top;">
+<p style="margin:0 0 8px 0;font-weight:bold;color:#475569;font-size:12px;font-family:Arial,sans-serif;text-transform:uppercase;">Pass Rate</p>
+<p style="margin:0;font-size:32px;font-weight:bold;color:${prColor};font-family:Arial,sans-serif;">${passRate}%</p>
+</td>
+<td width="24%" style="background-color:#f1f5f9;padding:20px;border-radius:8px;border-left:4px solid #10b981;text-align:center;vertical-align:top;">
+<p style="margin:0 0 8px 0;font-weight:bold;color:#475569;font-size:12px;font-family:Arial,sans-serif;text-transform:uppercase;">Passed</p>
+<p style="margin:0;font-size:32px;font-weight:bold;color:#10b981;font-family:Arial,sans-serif;">${passed}</p>
+</td>
+<td width="24%" style="background-color:#f1f5f9;padding:20px;border-radius:8px;border-left:4px solid #ef4444;text-align:center;vertical-align:top;">
+<p style="margin:0 0 8px 0;font-weight:bold;color:#475569;font-size:12px;font-family:Arial,sans-serif;text-transform:uppercase;">Failed</p>
+<p style="margin:0;font-size:32px;font-weight:bold;color:#ef4444;font-family:Arial,sans-serif;">${failed}</p>
+</td>
 </tr></table>
-<div style="margin-top:12px;background:#f8f9fa;border-radius:8px;padding:10px 14px;font-size:12px;color:#6b7280;">Avg Duration: <strong style="color:#1E3860;">${fmtDuration(avgDur)}</strong> &nbsp;|&nbsp; Pipelines: <strong style="color:#1E3860;">${uniquePipelines.length}</strong></div>
-</td></tr>`;
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;">
+<tr><td style="padding:16px 20px;background-color:#ffffff;border:1px solid #e2e8f0;border-radius:8px;">
+<p style="margin:0 0 10px 0;font-size:13px;font-weight:bold;color:#475569;font-family:Arial,sans-serif;">Pass Rate Distribution</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+<td style="background-color:#e2e8f0;border-radius:8px;height:28px;">
+<table width="${prWidth}%" cellpadding="0" cellspacing="0" border="0" style="background-color:${prColor};border-radius:8px;height:28px;"><tr>
+<td align="center" style="color:#ffffff;font-weight:bold;font-size:13px;font-family:Arial,sans-serif;">${passRate}%</td>
+</tr></table></td></tr></table>
+<table width="100%" cellpadding="8" cellspacing="0" border="0" style="margin-top:12px;background-color:#f8fafc;border-radius:6px;"><tr>
+<td align="center" style="border-right:1px solid #e2e8f0;">
+<p style="margin:0 0 3px 0;font-size:10px;color:#64748b;font-family:Arial,sans-serif;text-transform:uppercase;">Avg Duration</p>
+<p style="margin:0;font-size:16px;font-weight:bold;color:#1E3860;font-family:Arial,sans-serif;">${fmtDuration(avgDur)}</p>
+</td>
+<td align="center" style="border-right:1px solid #e2e8f0;">
+<p style="margin:0 0 3px 0;font-size:10px;color:#64748b;font-family:Arial,sans-serif;text-transform:uppercase;">Cancelled / Skipped</p>
+<p style="margin:0;font-size:16px;font-weight:bold;color:#6b7280;font-family:Arial,sans-serif;">${skipped}</p>
+</td>
+<td align="center">
+<p style="margin:0 0 3px 0;font-size:10px;color:#64748b;font-family:Arial,sans-serif;text-transform:uppercase;">Actionable Runs</p>
+<p style="margin:0;font-size:16px;font-weight:bold;color:#1E3860;font-family:Arial,sans-serif;">${actionableTotal}</p>
+</td>
+</tr></table>
+</td></tr></table>`;
         }
 
-        if (incTable && displayRuns.length) {
-            html += `<tr><td style="padding:0 32px 24px;">
-<div style="font-size:15px;font-weight:700;color:#1E3860;margin-bottom:12px;">${incFailed ? 'Failed Runs' : 'Pipeline Results'}</div>
-<table width="100%" cellpadding="0" cellspacing="0" style="font-size:12px;border:1px solid #e1e4e8;border-radius:8px;">
-<tr style="background:#f8f9fa;"><th style="padding:10px 12px;text-align:left;color:#6b7280;font-weight:600;border-bottom:1px solid #e1e4e8;">Pipeline</th>
-<th style="padding:10px 12px;text-align:center;color:#6b7280;font-weight:600;border-bottom:1px solid #e1e4e8;">Run</th>
-<th style="padding:10px 12px;text-align:center;color:#6b7280;font-weight:600;border-bottom:1px solid #e1e4e8;">Status</th>
-<th style="padding:10px 12px;text-align:center;color:#6b7280;font-weight:600;border-bottom:1px solid #e1e4e8;">Duration</th>
-${incLinks ? '<th style="padding:10px 12px;text-align:center;color:#6b7280;font-weight:600;border-bottom:1px solid #e1e4e8;">Link</th>' : ''}</tr>`;
+        if (incTable) {
+            const displayRuns = incFailed ? runs.filter(r => r.conclusion === 'failure') : runs;
+            const displayPipes = [...new Set(displayRuns.map(r => r.workflowName))].sort();
 
-            const latestPerPipeline = {};
-            for (const r of displayRuns) {
-                if (!latestPerPipeline[r.workflowName] || new Date(r.createdAt) > new Date(latestPerPipeline[r.workflowName].createdAt)) {
-                    latestPerPipeline[r.workflowName] = r;
-                }
-            }
+            html += `<h2 style="margin:30px 0 20px 0;font-size:22px;font-weight:bold;color:#1a202c;font-family:Arial,sans-serif;">&#128640; ${incFailed ? 'Failed Pipelines' : 'Pipeline Results'}</h2>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e2e8f0;border-radius:8px;">
+<tr style="background-color:#1E3860;">
+<th style="padding:14px;text-align:left;color:#ffffff;font-weight:bold;font-size:13px;font-family:Arial,sans-serif;border:none;">Pipeline</th>
+<th style="padding:14px;text-align:center;color:#ffffff;font-weight:bold;font-size:13px;font-family:Arial,sans-serif;border:none;">Passed</th>
+<th style="padding:14px;text-align:center;color:#ffffff;font-weight:bold;font-size:13px;font-family:Arial,sans-serif;border:none;">Failed</th>
+<th style="padding:14px;text-align:center;color:#ffffff;font-weight:bold;font-size:13px;font-family:Arial,sans-serif;border:none;">Skipped</th>
+<th style="padding:14px;text-align:center;color:#ffffff;font-weight:bold;font-size:13px;font-family:Arial,sans-serif;border:none;">Rate</th>
+<th style="padding:14px;text-align:center;color:#ffffff;font-weight:bold;font-size:13px;font-family:Arial,sans-serif;border:none;">Avg Dur</th>
+${incLinks ? '<th style="padding:14px;text-align:center;color:#ffffff;font-weight:bold;font-size:13px;font-family:Arial,sans-serif;border:none;">Latest</th>' : ''}
+</tr>`;
 
-            for (const name of uniquePipelines) {
-                const r = latestPerPipeline[name];
-                if (!r) continue;
-                const statusColor = r.conclusion === 'success' ? '#10b981' : r.conclusion === 'failure' ? '#ef4444' : '#6b7280';
-                const statusBg = r.conclusion === 'success' ? '#ecfdf5' : r.conclusion === 'failure' ? '#fef2f2' : '#f9fafb';
-                const statusLabel = r.conclusion === 'success' ? 'PASSED' : r.conclusion === 'failure' ? 'FAILED' : r.conclusion.toUpperCase();
-                html += `<tr><td style="padding:10px 12px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#1E3860;">${name.replace(/-Testim$/, '')}</td>
-<td style="padding:10px 12px;border-bottom:1px solid #f0f0f0;text-align:center;font-family:monospace;">#${r.runNumber}</td>
-<td style="padding:10px 12px;border-bottom:1px solid #f0f0f0;text-align:center;"><span style="background:${statusBg};color:${statusColor};padding:3px 10px;border-radius:12px;font-weight:700;font-size:11px;">${statusLabel}</span></td>
-<td style="padding:10px 12px;border-bottom:1px solid #f0f0f0;text-align:center;font-family:monospace;">${fmtDuration(r.duration)}</td>
-${incLinks ? '<td style="padding:10px 12px;border-bottom:1px solid #f0f0f0;text-align:center;"><a href="' + r.url + '" style="color:#3b82f6;">View</a></td>' : ''}</tr>`;
-            }
-            html += '</table></td></tr>';
+            displayPipes.forEach((name, idx) => {
+                const pRuns = displayRuns.filter(r => r.workflowName === name);
+                const pPassed = pRuns.filter(r => r.conclusion === 'success').length;
+                const pFailed = pRuns.filter(r => r.conclusion === 'failure').length;
+                const pSkipped = pRuns.filter(r => ['cancelled','timed_out','stale'].includes(r.conclusion)).length;
+                const pActionable = pRuns.filter(r => !['cancelled','timed_out','stale'].includes(r.conclusion));
+                const pRate = pActionable.length ? ((pPassed / pActionable.length) * 100).toFixed(0) : '--';
+                const pDurs = pActionable.filter(r => r.duration > 0).map(r => r.duration);
+                const pAvg = pDurs.length ? Math.round(pDurs.reduce((a,b) => a+b, 0) / pDurs.length) : 0;
+                const pRateColor = pRate === '--' ? '#6b7280' : parseFloat(pRate) >= 90 ? '#10b981' : parseFloat(pRate) >= 70 ? '#f59e0b' : '#ef4444';
+                const pRateBg = pRate === '--' ? '#f9fafb' : parseFloat(pRate) >= 90 ? '#ecfdf5' : parseFloat(pRate) >= 70 ? '#fefce8' : '#fef2f2';
+
+                const latest = pRuns.reduce((a,b) => new Date(a.createdAt) > new Date(b.createdAt) ? a : b, pRuns[0]);
+                const shortName = name.replace(/-Testim$/, '').replace(/-BrowserStack$/, '');
+                const bg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
+
+                html += `<tr style="background-color:${bg};">
+<td style="padding:12px 14px;color:#1a202c;font-family:Arial,sans-serif;border-bottom:1px solid #e2e8f0;"><strong>${shortName}</strong></td>
+<td style="padding:12px 14px;text-align:center;color:#10b981;font-weight:bold;font-family:Arial,sans-serif;border-bottom:1px solid #e2e8f0;">${pPassed}</td>
+<td style="padding:12px 14px;text-align:center;color:${pFailed ? '#ef4444' : '#64748b'};font-weight:bold;font-family:Arial,sans-serif;border-bottom:1px solid #e2e8f0;">${pFailed}</td>
+<td style="padding:12px 14px;text-align:center;color:${pSkipped ? '#f59e0b' : '#64748b'};font-family:Arial,sans-serif;border-bottom:1px solid #e2e8f0;">${pSkipped}</td>
+<td style="padding:12px 14px;text-align:center;border-bottom:1px solid #e2e8f0;">
+<span style="display:inline-block;padding:6px 12px;background-color:${pRateBg};color:${pRateColor};border-radius:15px;font-size:12px;font-weight:bold;font-family:Arial,sans-serif;">${pRate}%</span></td>
+<td style="padding:12px 14px;text-align:center;color:#334155;font-family:Arial,sans-serif;border-bottom:1px solid #e2e8f0;">${fmtDuration(pAvg)}</td>
+${incLinks ? '<td style="padding:12px 14px;text-align:center;border-bottom:1px solid #e2e8f0;"><a href="' + latest.url + '" style="color:#3b82f6;text-decoration:none;font-size:12px;">View #' + latest.runNumber + '</a></td>' : ''}
+</tr>`;
+            });
+            html += '</table>';
+            html += `<p style="margin:8px 0 0 0;font-size:12px;color:#64748b;font-family:Arial,sans-serif;font-style:italic;">* Pass Rate excludes cancelled/timed-out runs. Avg Duration based on completed runs only.</p>`;
         }
 
-        html += `<tr><td style="padding:20px 32px;background:#f8f9fa;text-align:center;font-size:11px;color:#9ca3af;">
-Generated by <strong style="color:#1E3860;">Axos QCoE Pipeline Manager</strong> &nbsp;|&nbsp; ${now}
-</td></tr></table></body></html>`;
+        if (failed > 0 || cancelled > 0 || timedOut > 0) {
+            if (failed > 0) {
+                html += `<table width="100%" cellpadding="20" cellspacing="0" border="0" style="background-color:#fef2f2;border-radius:8px;border-left:6px solid #ef4444;margin:20px 0 15px 0;">
+<tr><td>
+<h3 style="margin:0 0 10px 0;font-size:16px;font-weight:bold;color:#991b1b;font-family:Arial,sans-serif;">&#10060; Failed Pipelines</h3>`;
+                const failedPipes = uniquePipelines.filter(n => runs.filter(r => r.workflowName === n && r.conclusion === 'failure').length > 0);
+                failedPipes.forEach(name => {
+                    const fCount = runs.filter(r => r.workflowName === name && r.conclusion === 'failure').length;
+                    const shortN = name.replace(/-Testim$/, '').replace(/-BrowserStack$/, '');
+                    html += `<p style="margin:0 0 4px 0;color:#991b1b;font-family:Arial,sans-serif;font-size:14px;line-height:1.6;"><strong>${shortN}</strong> &mdash; ${fCount} failed run${fCount > 1 ? 's' : ''}</p>`;
+                });
+                html += '</td></tr></table>';
+            }
+
+            if (cancelled > 0 || timedOut > 0) {
+                html += `<table width="100%" cellpadding="20" cellspacing="0" border="0" style="background-color:#fef3c7;border-radius:8px;border-left:6px solid #f59e0b;margin-bottom:15px;">
+<tr><td>
+<h3 style="margin:0 0 10px 0;font-size:16px;font-weight:bold;color:#92400e;font-family:Arial,sans-serif;">&#9888;&#65039; Infrastructure Issues</h3>`;
+                if (cancelled > 0) html += `<p style="margin:0 0 4px 0;color:#78350f;font-family:Arial,sans-serif;font-size:14px;line-height:1.6;"><strong>${cancelled}</strong> run${cancelled > 1 ? 's' : ''} cancelled (runner offline or manual cancellation)</p>`;
+                if (timedOut > 0) html += `<p style="margin:0 0 4px 0;color:#78350f;font-family:Arial,sans-serif;font-size:14px;line-height:1.6;"><strong>${timedOut}</strong> run${timedOut > 1 ? 's' : ''} timed out during execution</p>`;
+                html += '</td></tr></table>';
+            }
+        }
+
+        if (passed > 0 && passed === actionableTotal) {
+            html += `<table width="100%" cellpadding="20" cellspacing="0" border="0" style="background-color:#10b981;border-radius:8px;margin:20px 0 15px 0;">
+<tr><td>
+<h3 style="margin:0 0 8px 0;font-size:18px;font-weight:bold;color:#ffffff;font-family:Arial,sans-serif;">&#9989; All Pipelines Passing</h3>
+<p style="margin:0;color:#ffffff;font-family:Arial,sans-serif;font-size:14px;line-height:1.6;">All ${passed} actionable runs completed successfully with a <strong>100% pass rate</strong>.</p>
+</td></tr></table>`;
+        }
+
+        html += `</td></tr>
+
+<tr><td style="padding:20px 30px;background-color:#f8fafc;border-radius:0 0 8px 8px;text-align:center;">
+<p style="margin:0;font-size:13px;color:#64748b;font-family:Arial,sans-serif;line-height:1.6;">
+Generated by <strong style="color:#1E3860;">Axos QCoE Pipeline Manager</strong><br>
+${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
+</p></td></tr>
+</table></td></tr></table></body></html>`;
 
         generatedEmailHtml = html;
         document.getElementById('copyEmailBtn').style.display = 'inline-flex';
