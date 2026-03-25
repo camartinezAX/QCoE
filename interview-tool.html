@@ -1085,6 +1085,350 @@
             transform: translateY(-3px);
             box-shadow: 0 6px 20px rgba(250, 167, 74, 0.5);
         }
+
+        /* AI Assistant (non-blocking, draggable) */
+        .ai-fab {
+            position: fixed;
+            bottom: 30px;
+            right: 92px; /* avoid overlap with back-to-top */
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--axos-orange), var(--axos-orange-dark));
+            color: var(--bg-primary);
+            border: none;
+            box-shadow: 0 4px 18px rgba(250,167,74,0.35);
+            font-size: 24px;
+            z-index: 998;
+            transition: all .25s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .ai-fab:hover {
+            transform: scale(1.08) rotate(-4deg);
+            box-shadow: 0 6px 24px rgba(250,167,74,0.45);
+        }
+
+        .ai-drawer {
+            position: fixed;
+            right: 24px;
+            top: 24px;
+            width: 380px;
+            height: calc(100vh - 120px); /* reach near top, leave bottom space */
+            max-width: calc(100vw - 32px);
+            max-height: calc(100vh - 120px);
+            background: rgba(17, 24, 39, 0.96);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(250, 167, 74, 0.18);
+            box-shadow: 0 18px 60px rgba(0,0,0,0.55);
+            z-index: 998;
+            display: flex;
+            flex-direction: column;
+            border-radius: 16px;
+            opacity: 0;
+            transform: translateY(14px);
+            pointer-events: none;
+            transition: opacity .18s ease, transform .22s cubic-bezier(.4,0,.2,1);
+        }
+
+        .ai-drawer.open {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        .ai-header {
+            padding: 16px 16px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+            background: linear-gradient(135deg, rgba(30, 56, 96, 0.9), rgba(21, 40, 68, 0.9));
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-top-left-radius: 16px;
+            border-top-right-radius: 16px;
+            cursor: move;
+            user-select: none;
+            touch-action: none;
+        }
+
+        .ai-title {
+            font-size: 14px;
+            font-weight: 800;
+            flex: 1;
+            letter-spacing: 0.2px;
+        }
+
+        .ai-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            border: none;
+            background: rgba(255,255,255,0.12);
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+        .ai-close:hover {
+            background: rgba(255,255,255,0.18);
+        }
+
+        .ai-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .ai-message {
+            max-width: 92%;
+            padding: 12px 14px;
+            border-radius: 14px;
+            font-size: 13px;
+            line-height: 1.5;
+            animation: aiMsgIn .18s ease;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        .ai-message.user {
+            background: linear-gradient(135deg, rgba(250,167,74,0.95), rgba(232,146,42,0.95));
+            color: #0b1220;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+            font-weight: 650;
+        }
+
+        .ai-message.ai {
+            background: rgba(148, 163, 184, 0.12);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            color: var(--text-primary);
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+            position: relative;
+        }
+
+        .ai-message.system {
+            background: rgba(59, 130, 246, 0.10);
+            border: 1px solid rgba(59, 130, 246, 0.18);
+            color: #c7d2fe;
+            align-self: center;
+            text-align: center;
+            font-size: 12px;
+            font-style: italic;
+            max-width: 100%;
+        }
+
+        .ai-msg-copy {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            padding: 6px 10px;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            background: rgba(15, 23, 42, 0.45);
+            color: #e2e8f0;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .15s ease;
+        }
+
+        .ai-msg-copy:hover {
+            background: rgba(15, 23, 42, 0.65);
+            border-color: rgba(250, 167, 74, 0.28);
+        }
+
+        .ai-message-text {
+            padding-right: 62px; /* room for copy button */
+        }
+
+        /* Evaluation-style rendering inside AI messages */
+        .ai-eval {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .ai-eval-title {
+            font-size: 15px;
+            font-weight: 900;
+            color: #f8fafc;
+            letter-spacing: 0.2px;
+        }
+
+        .ai-eval-meta {
+            display: grid;
+            gap: 4px;
+            font-size: 13px;
+            color: rgba(226, 232, 240, 0.92);
+        }
+
+        .ai-eval-hr {
+            border: none;
+            border-top: 1px solid rgba(148, 163, 184, 0.22);
+            margin: 2px 0;
+        }
+
+        .ai-eval-section-title {
+            font-size: 13px;
+            font-weight: 900;
+            color: rgba(248, 250, 252, 0.95);
+            text-transform: none;
+            letter-spacing: 0.2px;
+        }
+
+        .ai-eval-list {
+            margin: 0;
+            padding-left: 18px;
+            display: grid;
+            gap: 6px;
+            color: rgba(226, 232, 240, 0.95);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .ai-eval-list li {
+            margin: 0;
+        }
+
+        .ai-eval-kv-title {
+            font-size: 13px;
+            font-weight: 900;
+            color: rgba(248, 250, 252, 0.95);
+        }
+
+        .ai-eval-kv-detail {
+            font-size: 13px;
+            color: rgba(226, 232, 240, 0.95);
+            line-height: 1.55;
+        }
+
+        .ai-input-area {
+            padding: 14px;
+            border-top: 1px solid rgba(148, 163, 184, 0.18);
+            background: rgba(10, 14, 26, 0.65);
+            border-bottom-left-radius: 16px;
+            border-bottom-right-radius: 16px;
+        }
+
+        .ai-resize-handle {
+            height: 14px;
+            margin: -4px 0 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: ns-resize;
+            user-select: none;
+            touch-action: none;
+        }
+
+        .ai-resize-handle::before {
+            content: '';
+            width: 56px;
+            height: 4px;
+            border-radius: 999px;
+            background: rgba(148, 163, 184, 0.55);
+            box-shadow: 0 -7px 0 rgba(148, 163, 184, 0.55), 0 7px 0 rgba(148, 163, 184, 0.55);
+        }
+
+        .ai-input-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .ai-input {
+            flex: 1;
+            padding: 12px 14px;
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            border-radius: 12px;
+            font-size: 13px;
+            background: rgba(17, 24, 39, 0.72);
+            color: var(--text-primary);
+            resize: none;
+            height: 110px;
+            min-height: 110px;
+            max-height: 360px;
+            font-family: inherit;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            overflow: auto;
+        }
+
+        .ai-input:focus {
+            outline: none;
+            border-color: rgba(250, 167, 74, 0.6);
+            box-shadow: 0 0 0 3px rgba(250, 167, 74, 0.14);
+        }
+
+        .ai-send {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, var(--axos-orange), var(--axos-orange-dark));
+            color: var(--bg-primary);
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all .2s;
+            cursor: pointer;
+        }
+
+        .ai-send:hover:not(:disabled) {
+            transform: scale(1.05);
+        }
+
+        .ai-send:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .ai-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .ai-action-btn {
+            padding: 8px 14px;
+            border: 1px solid rgba(148, 163, 184, 0.20);
+            background: rgba(17, 24, 39, 0.6);
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .15s;
+            color: #e2e8f0;
+        }
+
+        .ai-action-btn:hover {
+            background: rgba(30, 56, 96, 0.65);
+            border-color: rgba(250, 167, 74, 0.25);
+        }
+
+        @keyframes aiMsgIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media print {
+            .ai-fab, .ai-drawer {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1126,6 +1470,43 @@
     
     <!-- Back to Top Button -->
     <button class="back-to-top" id="backToTop" onclick="scrollToTop()">↑</button>
+    <button class="back-to-top" id="backToBottom" onclick="scrollToBottom()" aria-label="Scroll to bottom" title="Bottom" style="bottom: 90px;">↓</button>
+
+    <!-- AI Assistant -->
+    <button class="ai-fab" onclick="toggleAI()" aria-label="Open AI Assistant" title="AI Interview Assistant">
+        🤖
+    </button>
+
+    <div class="ai-drawer" id="aiDrawer" aria-hidden="true">
+        <div class="ai-header" id="aiHeader">
+            <div class="ai-title">AI Interview Assistant</div>
+            <button class="ai-close" onclick="toggleAI()" aria-label="Close AI">×</button>
+        </div>
+
+        <div class="ai-messages" id="aiMessages">
+            <div class="ai-message system">
+                AI Assistant ready. Click "Generate Evaluation" to produce the interview write-up from the current candidate data, or ask a specific question.
+            </div>
+        </div>
+
+        <div class="ai-input-area">
+            <div class="ai-resize-handle" id="aiResizeHandle" title="Drag up/down to resize input"></div>
+            <div class="ai-input-row">
+                <textarea
+                    class="ai-input"
+                    id="aiInput"
+                    placeholder="Example: Generate evaluation"
+                    rows="3"
+                ></textarea>
+                <button class="ai-send" onclick="sendAIMessage()" aria-label="Send message">➤</button>
+            </div>
+            <div class="ai-actions">
+                <button class="ai-action-btn" onclick="generateEvaluation()">Generate Evaluation</button>
+                <button class="ai-action-btn" onclick="copyLastAIResponse(this)">Copy Last Output</button>
+                <button class="ai-action-btn" onclick="clearChat()">Clear Chat</button>
+            </div>
+        </div>
+    </div>
     
     <div class="container">
         <header class="header">
@@ -2496,22 +2877,19 @@ def get_visible_nav_items(driver):
             document.getElementById(sectionId).scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
         
-        function generateAIPrompt() {
-            saveCurrentCandidateData();
-            const candidate = candidates.find(c => c.id === activeCandidateId);
-            if (!candidate) return;
-            
-            const d = candidate.data;
-            
+        function buildAIPromptText(candidate) {
+            if (!candidate) return '';
+            const d = candidate.data || {};
+
             // Get recommendation text
             const recMap = {
                 'strong_hire': 'Strong Hire',
-                'hire': 'Hire', 
+                'hire': 'Hire',
                 'leaning_no': 'Hire with Growth',
                 'no_hire': 'No Hire'
             };
             const myRecommendation = recMap[d.recommendation] || 'Not selected';
-            
+
             let prompt = `Analyze this ${d.role || 'technical'} interview and give me a SHORT evaluation summary.
 
 ## RULES:
@@ -2733,7 +3111,16 @@ ${d.additionalNotes ? `- **Additional Notes:** ${d.additionalNotes}` : ''}
             }
             
             prompt += `\n---\n\nKeep it SHORT. No tables, no lengthy explanations. Just the 5 sections with brief answers.`;
-            
+
+            return prompt;
+        }
+
+        function generateAIPrompt() {
+            saveCurrentCandidateData();
+            const candidate = candidates.find(c => c.id === activeCandidateId);
+            if (!candidate) return;
+
+            const prompt = buildAIPromptText(candidate);
             document.getElementById('promptText').textContent = prompt;
             document.getElementById('promptOutput').classList.add('visible');
         }
@@ -2747,6 +3134,1053 @@ ${d.additionalNotes ? `- **Additional Notes:** ${d.additionalNotes}` : ''}
                 setTimeout(() => { btn.innerHTML = originalText; }, 2000);
             });
         }
+
+        // ======================
+        // AI Assistant (Embedded)
+        // ======================
+
+        // Embedded Azure API Key (XOR encoded)
+        // IMPORTANT: Keep this EXACTLY in sync with `Reports/QE_Teams_OnePager_FullSize.html`
+        const EMBEDDED_AZURE_API_KEY_XOR_BASE64 = 'VSxZJRgPCy0DUC8QMxIkA24rPUc+LCQ0N0wWIWoGEDIBKyggNwsMMnsXMAUmUQ0AE0w1HGc8ND5LUCE3IDs2Fm8HIyw4WhRAIDkuMWwuKjMxDAk5';
+        const EMBEDDED_AI_DEFAULTS = {
+            provider: 'azure',
+            model: 'gpt-4o',
+            azureEndpoint: 'https://axosopenai.openai.azure.com',
+            azureDeployment: 'gpt-4o'
+        };
+
+        function xorBase64Decode(b64, key) {
+            if (!b64) return '';
+            const k = key || 'axos-metrics';
+            const bin = atob(b64);
+            let out = '';
+            for (let i = 0; i < bin.length; i++) {
+                out += String.fromCharCode(bin.charCodeAt(i) ^ k.charCodeAt(i % k.length));
+            }
+            return out;
+        }
+
+        function getEmbeddedAzureApiKey() {
+            return xorBase64Decode(EMBEDDED_AZURE_API_KEY_XOR_BASE64, 'axos-metrics');
+        }
+
+        // Uses the SAME persisted settings as other Axos HTML tools (localStorage: rg_settings).
+        function getAISettings() {
+            let raw = {};
+            try { raw = JSON.parse(localStorage.getItem('rg_settings') || '{}'); } catch { raw = {}; }
+
+            let provider = raw.provider || EMBEDDED_AI_DEFAULTS.provider;
+            let apiKey = raw.apiKey || '';
+
+            const embedded = getEmbeddedAzureApiKey();
+            if (!apiKey && embedded) {
+                apiKey = embedded;
+                provider = 'azure';
+            }
+
+            return {
+                provider,
+                apiKey,
+                model: raw.model || EMBEDDED_AI_DEFAULTS.model,
+                azureEndpoint: raw.azureEndpoint || EMBEDDED_AI_DEFAULTS.azureEndpoint,
+                azureDeployment: raw.azureDeployment || EMBEDDED_AI_DEFAULTS.azureDeployment
+            };
+        }
+
+        let aiOpen = false;
+        let aiChatHistory = [];
+
+        function toggleAI() {
+            const drawer = document.getElementById('aiDrawer');
+            if (!drawer) return;
+
+            aiOpen = !aiOpen;
+            drawer.classList.toggle('open', aiOpen);
+            drawer.setAttribute('aria-hidden', aiOpen ? 'false' : 'true');
+
+            if (aiOpen) {
+                document.getElementById('aiInput')?.focus();
+            }
+        }
+
+        function addAIMessage(content, type) {
+            const messages = document.getElementById('aiMessages');
+            if (!messages) return;
+
+            const msg = document.createElement('div');
+            msg.className = `ai-message ${type}`;
+
+            if (type === 'ai') {
+                const raw = String(content || '');
+                msg.dataset.raw = raw;
+                const payload = buildClipboardPayload(raw);
+                msg.dataset.clipboardPlain = payload.plain || raw;
+                msg.dataset.clipboardHtml = payload.html || '';
+                const copyBtn = document.createElement('button');
+                copyBtn.type = 'button';
+                copyBtn.className = 'ai-msg-copy';
+                copyBtn.textContent = 'Copy';
+                copyBtn.addEventListener('click', () => copyAIMessageFromMessage(msg, copyBtn));
+
+                const textEl = document.createElement('div');
+                textEl.className = 'ai-message-text';
+                renderAIContent(textEl, content);
+
+                msg.appendChild(copyBtn);
+                msg.appendChild(textEl);
+            } else {
+                msg.textContent = content;
+            }
+
+            messages.appendChild(msg);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        function escapeHtml(s) {
+            return String(s ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function buildClipboardPayload(rawText) {
+            const t = String(rawText || '').trim();
+            if (!t) return { plain: '', html: '' };
+
+            if (isEvaluationPlainText(t)) {
+                const parsed = parseEvaluationPlainText(t);
+                if (parsed) {
+                    return {
+                        plain: evaluationToClipboardPlain(parsed),
+                        html: evaluationToClipboardHtml(parsed)
+                    };
+                }
+            }
+
+            return { plain: t, html: '' };
+        }
+
+        function evaluationToClipboardPlain(p) {
+            const SEP = '────────────────────────────────────────';
+            const out = [];
+            out.push(p.title || 'Interview Evaluation');
+            if (p.dateLine) out.push(p.dateLine);
+            if (p.interviewerLine) out.push(p.interviewerLine);
+            out.push('');
+
+            out.push(SEP);
+            out.push('');
+            out.push('Answer Check');
+            for (const line of (p.answer || [])) out.push(`• ${line}`);
+            out.push('');
+
+            out.push(SEP);
+            out.push('');
+            out.push('Strengths');
+            for (const line of (p.strengths || [])) out.push(`• ${line}`);
+            out.push('');
+
+            out.push(SEP);
+            out.push('');
+            out.push('Concerns');
+            for (const line of (p.concerns || [])) out.push(`• ${line}`);
+            out.push('');
+
+            out.push(SEP);
+            out.push('');
+            if (p.technicalFitTitle) out.push(p.technicalFitTitle);
+            if (p.technicalFitDetail) out.push(p.technicalFitDetail);
+            out.push('');
+
+            out.push(SEP);
+            out.push('');
+            if (p.cultureFitTitle) out.push(p.cultureFitTitle);
+            if (p.cultureFitDetail) out.push(p.cultureFitDetail);
+            out.push('');
+
+            out.push(SEP);
+            out.push('');
+            if (p.recommendationTitle) out.push(p.recommendationTitle);
+            if (p.recommendationDetail) out.push(p.recommendationDetail);
+
+            return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+        }
+
+        function evaluationToClipboardHtml(p) {
+            const parts = [];
+            parts.push(`<div><strong>${escapeHtml(p.title || 'Interview Evaluation')}</strong></div>`);
+            if (p.dateLine) parts.push(`<div>${escapeHtml(p.dateLine)}</div>`);
+            if (p.interviewerLine) parts.push(`<div>${escapeHtml(p.interviewerLine)}</div>`);
+
+            parts.push('<div><br></div>');
+            parts.push('<hr>');
+
+            parts.push(`<div><strong>Answer Check</strong></div>`);
+            parts.push('<ul>');
+            for (const line of (p.answer || [])) parts.push(`<li>${escapeHtml(line)}</li>`);
+            parts.push('</ul>');
+
+            parts.push('<div><br></div>');
+            parts.push('<hr>');
+
+            parts.push(`<div><strong>Strengths</strong></div>`);
+            parts.push('<ul>');
+            for (const line of (p.strengths || [])) parts.push(`<li>${escapeHtml(line)}</li>`);
+            parts.push('</ul>');
+
+            parts.push('<div><br></div>');
+            parts.push('<hr>');
+
+            parts.push(`<div><strong>Concerns</strong></div>`);
+            parts.push('<ul>');
+            for (const line of (p.concerns || [])) parts.push(`<li>${escapeHtml(line)}</li>`);
+            parts.push('</ul>');
+
+            parts.push('<div><br></div>');
+            parts.push('<hr>');
+
+            if (p.technicalFitTitle) parts.push(`<div><strong>${escapeHtml(p.technicalFitTitle)}</strong></div>`);
+            if (p.technicalFitDetail) parts.push(`<div>${escapeHtml(p.technicalFitDetail)}</div>`);
+
+            parts.push('<div><br></div>');
+            parts.push('<hr>');
+
+            if (p.cultureFitTitle) parts.push(`<div><strong>${escapeHtml(p.cultureFitTitle)}</strong></div>`);
+            if (p.cultureFitDetail) parts.push(`<div>${escapeHtml(p.cultureFitDetail)}</div>`);
+
+            parts.push('<div><br></div>');
+            parts.push('<hr>');
+
+            if (p.recommendationTitle) parts.push(`<div><strong>${escapeHtml(p.recommendationTitle)}</strong></div>`);
+            if (p.recommendationDetail) parts.push(`<div>${escapeHtml(p.recommendationDetail)}</div>`);
+
+            return parts.join('');
+        }
+
+        function renderAIContent(containerEl, plainText) {
+            const t = String(plainText || '').trim();
+            containerEl.textContent = '';
+
+            if (isEvaluationPlainText(t)) {
+                const parsed = parseEvaluationPlainText(t);
+                if (parsed) {
+                    containerEl.appendChild(renderEvaluationElement(parsed));
+                    return;
+                }
+            }
+
+            containerEl.textContent = String(plainText || '');
+        }
+
+        function isEvaluationPlainText(text) {
+            return /^\s*Interview Evaluation:\s*/i.test(String(text || ''));
+        }
+
+        function parseEvaluationPlainText(text) {
+            const raw = String(text || '').replace(/\r\n/g, '\n').trim();
+            if (!raw) return null;
+            const lines = raw.split('\n').map((l) => l.trimEnd());
+
+            const idxTitle = lines.findIndex((l) => /^Interview Evaluation:\s*/i.test(l));
+            if (idxTitle < 0) return null;
+
+            const title = lines[idxTitle].trim();
+            const dateLine = lines.find((l, i) => i > idxTitle && /^Date:\s*/i.test(l)) || '';
+            const interviewerLine = lines.find((l, i) => i > idxTitle && /^Interviewer:\s*/i.test(l)) || '';
+
+            const idxAnswer = lines.findIndex((l) => /^Answer Check$/i.test(l));
+            const idxStrengths = lines.findIndex((l) => /^Strengths$/i.test(l));
+            const idxConcerns = lines.findIndex((l) => /^Concerns$/i.test(l));
+            const idxTech = lines.findIndex((l) => /^Technical Fit:\s*/i.test(l));
+            const idxCulture = lines.findIndex((l) => /^Culture Fit:\s*/i.test(l));
+            const idxRec = lines.findIndex((l) => /^Recommendation:\s*/i.test(l));
+
+            function sliceSection(startIdx, endIdx) {
+                if (startIdx < 0) return [];
+                const from = startIdx + 1;
+                const to = endIdx > from ? endIdx : lines.length;
+                return lines.slice(from, to).map((x) => x.trim()).filter(Boolean);
+            }
+
+            const answer = sliceSection(idxAnswer, idxStrengths >= 0 ? idxStrengths : idxConcerns);
+            const strengths = sliceSection(idxStrengths, idxConcerns);
+            const concerns = sliceSection(idxConcerns, idxTech);
+
+            const technicalFitTitle = idxTech >= 0 ? lines[idxTech].trim() : '';
+            const technicalFitDetail = idxTech >= 0 ? (lines[idxTech + 1] || '').trim() : '';
+
+            const cultureFitTitle = idxCulture >= 0 ? lines[idxCulture].trim() : '';
+            const cultureFitDetail = idxCulture >= 0 ? (lines[idxCulture + 1] || '').trim() : '';
+
+            const recommendationTitle = idxRec >= 0 ? lines[idxRec].trim() : '';
+            const recommendationDetail = idxRec >= 0 ? (lines[idxRec + 1] || '').trim() : '';
+
+            return {
+                title,
+                dateLine,
+                interviewerLine,
+                answer,
+                strengths,
+                concerns,
+                technicalFitTitle,
+                technicalFitDetail,
+                cultureFitTitle,
+                cultureFitDetail,
+                recommendationTitle,
+                recommendationDetail
+            };
+        }
+
+        function renderEvaluationElement(parsed) {
+            const root = document.createElement('div');
+            root.className = 'ai-eval';
+
+            const title = document.createElement('div');
+            title.className = 'ai-eval-title';
+            title.textContent = parsed.title || 'Interview Evaluation';
+            root.appendChild(title);
+
+            const meta = document.createElement('div');
+            meta.className = 'ai-eval-meta';
+            if (parsed.dateLine) {
+                const d = document.createElement('div');
+                d.textContent = parsed.dateLine;
+                meta.appendChild(d);
+            }
+            if (parsed.interviewerLine) {
+                const i = document.createElement('div');
+                i.textContent = parsed.interviewerLine;
+                meta.appendChild(i);
+            }
+            if (meta.childNodes.length) root.appendChild(meta);
+
+            root.appendChild(makeDivider());
+
+            root.appendChild(makeSection('Answer Check', parsed.answer));
+            root.appendChild(makeDivider());
+            root.appendChild(makeSection('Strengths', parsed.strengths));
+            root.appendChild(makeDivider());
+            root.appendChild(makeSection('Concerns', parsed.concerns));
+            root.appendChild(makeDivider());
+
+            root.appendChild(makeKv(parsed.technicalFitTitle || 'Technical Fit', parsed.technicalFitDetail));
+            root.appendChild(makeDivider());
+            root.appendChild(makeKv(parsed.cultureFitTitle || 'Culture Fit', parsed.cultureFitDetail));
+            root.appendChild(makeDivider());
+            root.appendChild(makeKv(parsed.recommendationTitle || 'Recommendation', parsed.recommendationDetail));
+
+            return root;
+
+            function makeDivider() {
+                const hr = document.createElement('hr');
+                hr.className = 'ai-eval-hr';
+                return hr;
+            }
+
+            function makeSection(titleText, items) {
+                const wrap = document.createElement('div');
+                const h = document.createElement('div');
+                h.className = 'ai-eval-section-title';
+                h.textContent = titleText;
+                wrap.appendChild(h);
+
+                const list = document.createElement('ul');
+                list.className = 'ai-eval-list';
+                const arr = Array.isArray(items) ? items : [];
+                if (!arr.length) {
+                    const li = document.createElement('li');
+                    li.textContent = '—';
+                    list.appendChild(li);
+                } else {
+                    for (const it of arr) {
+                        const li = document.createElement('li');
+                        li.textContent = String(it);
+                        list.appendChild(li);
+                    }
+                }
+                wrap.appendChild(list);
+                return wrap;
+            }
+
+            function makeKv(titleLine, detailLine) {
+                const wrap = document.createElement('div');
+                const t = document.createElement('div');
+                t.className = 'ai-eval-kv-title';
+                t.textContent = String(titleLine || '').trim() || '—';
+                wrap.appendChild(t);
+
+                const d = document.createElement('div');
+                d.className = 'ai-eval-kv-detail';
+                d.textContent = String(detailLine || '').trim() || '—';
+                wrap.appendChild(d);
+                return wrap;
+            }
+        }
+
+        function removeLastSystemMessage() {
+            const messages = document.getElementById('aiMessages');
+            if (!messages) return;
+            const systemMsgs = messages.querySelectorAll('.ai-message.system');
+            if (systemMsgs.length > 1) {
+                systemMsgs[systemMsgs.length - 1].remove();
+            }
+        }
+
+        async function copyAIMessage(plainText, btnEl, htmlText) {
+            const plain = String(plainText || '');
+            const html = String(htmlText || '');
+            if (!plain && !html) return;
+
+            // Try to copy rich HTML first (works even on file:// via execCommand).
+            const copiedRich = html ? tryCopyHtmlWithExecCommand(html) : false;
+
+            try {
+                if (!copiedRich) {
+                    // Prefer rich clipboard API if available (secure contexts)
+                    if (navigator.clipboard?.write && window.ClipboardItem && html) {
+                        const item = new ClipboardItem({
+                            'text/plain': new Blob([plain || ''], { type: 'text/plain' }),
+                            'text/html': new Blob([html], { type: 'text/html' })
+                        });
+                        await navigator.clipboard.write([item]);
+                    } else if (navigator.clipboard?.writeText) {
+                        await navigator.clipboard.writeText(plain);
+                    } else {
+                        const ta = document.createElement('textarea');
+                        ta.value = plain;
+                        ta.style.position = 'fixed';
+                        ta.style.left = '-9999px';
+                        document.body.appendChild(ta);
+                        ta.focus();
+                        ta.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(ta);
+                    }
+                }
+
+                if (btnEl) {
+                    const prev = btnEl.textContent;
+                    btnEl.textContent = 'Copied';
+                    setTimeout(() => { btnEl.textContent = prev; }, 1200);
+                }
+            } catch {
+                // Final fallback to plain
+                try { await navigator.clipboard?.writeText?.(plain); } catch {}
+                if (btnEl) {
+                    const prev = btnEl.textContent;
+                    btnEl.textContent = 'Failed';
+                    setTimeout(() => { btnEl.textContent = prev; }, 1400);
+                }
+            }
+        }
+
+        function tryCopyHtmlWithExecCommand(html) {
+            try {
+                const container = document.createElement('div');
+                container.setAttribute('contenteditable', 'true');
+                container.style.position = 'fixed';
+                container.style.left = '-9999px';
+                container.style.top = '0';
+                container.style.opacity = '0';
+                container.style.pointerEvents = 'none';
+                container.innerHTML = html;
+                document.body.appendChild(container);
+
+                const selection = window.getSelection();
+                const prevRanges = [];
+                if (selection && selection.rangeCount) {
+                    for (let i = 0; i < selection.rangeCount; i++) prevRanges.push(selection.getRangeAt(i));
+                }
+
+                const range = document.createRange();
+                range.selectNodeContents(container);
+                selection?.removeAllRanges?.();
+                selection?.addRange?.(range);
+
+                const ok = document.execCommand('copy');
+                document.body.removeChild(container);
+
+                // Restore prior selection (best effort)
+                selection?.removeAllRanges?.();
+                for (const r of prevRanges) selection?.addRange?.(r);
+
+                return !!ok;
+            } catch {
+                return false;
+            }
+        }
+
+        function tryCopyElementWithExecCommand(element) {
+            try {
+                if (!element) return false;
+                const selection = window.getSelection();
+                const prevRanges = [];
+                if (selection && selection.rangeCount) {
+                    for (let i = 0; i < selection.rangeCount; i++) prevRanges.push(selection.getRangeAt(i));
+                }
+                const range = document.createRange();
+                range.selectNodeContents(element);
+                selection?.removeAllRanges?.();
+                selection?.addRange?.(range);
+                const ok = document.execCommand('copy');
+                selection?.removeAllRanges?.();
+                for (const r of prevRanges) selection?.addRange?.(r);
+                return !!ok;
+            } catch {
+                return false;
+            }
+        }
+
+        async function copyAIMessageFromMessage(messageEl, btnEl) {
+            const el = messageEl?.querySelector?.('.ai-message-text');
+            const raw = String(messageEl?.dataset?.raw || '');
+            const plain = String(messageEl?.dataset?.clipboardPlain || raw || '');
+            const html = String(messageEl?.dataset?.clipboardHtml || '');
+
+            // Best-effort: copy the rendered DOM exactly as shown in chat.
+            const ok = tryCopyElementWithExecCommand(el);
+            if (ok) {
+                if (btnEl) {
+                    const prev = btnEl.textContent;
+                    btnEl.textContent = 'Copied';
+                    setTimeout(() => { btnEl.textContent = prev; }, 1200);
+                }
+                return;
+            }
+
+            // Fallback: html/plain payload copy
+            await copyAIMessage(plain, btnEl, html);
+        }
+
+        function setAISending(isSending) {
+            const sendBtn = document.querySelector('.ai-send');
+            if (sendBtn) sendBtn.disabled = !!isSending;
+            document.querySelectorAll('.ai-action-btn').forEach((b) => { b.disabled = !!isSending; });
+        }
+
+        async function sendAIMessage(forcedText) {
+            const input = document.getElementById('aiInput');
+            const message = String(forcedText ?? input?.value ?? '').trim();
+            if (!message) return;
+
+            addAIMessage(message, 'user');
+            if (input && forcedText == null) input.value = '';
+
+            setAISending(true);
+            try {
+                addAIMessage('Processing...', 'system');
+                const response = await handleAIRequest(message);
+                removeLastSystemMessage();
+                addAIMessage(response, 'ai');
+            } catch (error) {
+                removeLastSystemMessage();
+                addAIMessage(`Error: ${error?.message || String(error)}`, 'system');
+            } finally {
+                setAISending(false);
+            }
+        }
+
+        function generateEvaluation() {
+            sendAIMessage('Generate evaluation from the current candidate data.');
+        }
+
+        function copyLastAIResponse(btnEl) {
+            const msgs = Array.from(document.querySelectorAll('#aiMessages .ai-message.ai'));
+            const lastMsg = msgs.length ? msgs[msgs.length - 1] : null;
+            const lastPlain = lastMsg ? String(lastMsg.dataset.clipboardPlain || lastMsg.dataset.raw || '').trim() : '';
+            const lastHtml = lastMsg ? String(lastMsg.dataset.clipboardHtml || '').trim() : '';
+            if (!lastPlain) {
+                if (btnEl) {
+                    const prev = btnEl.textContent;
+                    btnEl.textContent = 'Nothing to copy';
+                    setTimeout(() => { btnEl.textContent = prev; }, 1200);
+                }
+                return;
+            }
+            // Best-effort: copy rendered DOM of the last message for Teams.
+            if (lastMsg) {
+                copyAIMessageFromMessage(lastMsg, btnEl);
+                return;
+            }
+            copyAIMessage(lastPlain, btnEl, lastHtml);
+        }
+
+        function clearChat() {
+            aiChatHistory = [];
+            const messages = document.getElementById('aiMessages');
+            if (messages) {
+                messages.innerHTML = '<div class="ai-message system">Chat cleared. AI Assistant ready.</div>';
+            }
+        }
+
+        async function handleAIRequest(userText) {
+            saveCurrentCandidateData();
+            const candidate = candidates.find(c => c.id === activeCandidateId);
+            if (!candidate) throw new Error('No active candidate found.');
+
+            const dataSnapshot = buildCandidateDataSnapshot(candidate);
+            const dataJson = JSON.stringify(dataSnapshot, null, 2);
+
+            const systemPrompt = `You draft interview evaluations for QE candidates.
+
+Return ONLY a JSON object (no markdown fences, no extra text) matching this schema:
+{
+  "candidateName": "string",
+  "role": "string",
+  "seniority": "string",
+  "date": "YYYY-MM-DD",
+  "interviewer": "string",
+  "answerCheck": [
+    { "area": "Toggle Case Exercise|Web Automation Exercise|API Testing|Performance Testing", "level": "Correct|Partial|Wrong|Basic|Not Assessed", "detail": "string" }
+  ],
+  "strengths": ["string", "... (5-8 items)"],
+  "concerns": ["string", "... (5-8 items)"],
+  "technicalFit": { "level": "Good|Partial|Poor", "detail": "one sentence" },
+  "cultureFit": { "level": "Good|Partial|Poor", "detail": "one sentence" },
+  "recommendation": { "level": "Strong Hire|Hire|Hire with Growth|No Hire", "detail": "one sentence" }
+}
+
+Rules:
+- Use INTERVIEW DATA JSON as the only source of truth.
+- Fill EXACTLY these 4 answerCheck areas in this order (even if Not Assessed):
+  Toggle Case Exercise, Web Automation Exercise, API Testing, Performance Testing
+- Keep phrasing specific and grounded (avoid generic filler).
+- Write in the same style as:
+  "Toggle Case Exercise: Partial - understood the concept, struggled with uppercase/lowercase validation logic, did not complete"
+  "Understands layered framework architecture (core/main/business)"`;
+
+            aiChatHistory.push({ role: 'user', content: userText });
+
+            const messages = [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: `INTERVIEW DATA JSON:\n\n${dataJson}` },
+                ...aiChatHistory.slice(-8)
+            ];
+
+            let data;
+            try {
+                data = await callAI(messages);
+            } catch (err) {
+                const msg = String(err?.message || err || '');
+                if (/API\s+401\b|401/.test(msg)) {
+                    return 'I can’t authenticate to Cloud AI with the current settings. This tool reads `rg_settings` from localStorage. Please confirm your AI settings are valid, then try again.';
+                }
+                return `Cloud AI error: ${msg.substring(0, 200)}`;
+            }
+
+            const content = data?.choices?.[0]?.message?.content ?? '';
+            aiChatHistory.push({ role: 'assistant', content });
+            const evaluationText = buildEvaluationTextFromAI(content, dataSnapshot);
+            return normalizeEvaluationOutput(evaluationText || String(content || '')) || 'Done.';
+        }
+
+        function extractJSONMaybe(text) {
+            if (!text) return null;
+            const fenced = String(text).match(/```json\s*([\s\S]*?)```/i) || String(text).match(/```\s*([\s\S]*?)```/i);
+            const raw = fenced ? fenced[1] : String(text);
+            const firstBrace = raw.indexOf('{');
+            const lastBrace = raw.lastIndexOf('}');
+            if (firstBrace >= 0 && lastBrace > firstBrace) return raw.slice(firstBrace, lastBrace + 1);
+            return null;
+        }
+
+        function buildEvaluationTextFromAI(aiContent, dataSnapshot) {
+            const raw = String(aiContent || '').trim();
+            if (!raw) return '';
+            const jsonStr = extractJSONMaybe(raw) ?? raw;
+
+            let obj = null;
+            try { obj = JSON.parse(jsonStr); } catch { obj = null; }
+            if (!obj || typeof obj !== 'object') return '';
+
+            const snap = dataSnapshot?.candidate || {};
+            const candidateName = String(obj.candidateName || snap.name || '').trim();
+            const role = String(obj.role || snap.role || '').trim();
+            const seniority = String(obj.seniority || snap.seniority || '').trim();
+            const date = String(obj.date || snap.interviewDate || '').trim();
+            const interviewer = String(obj.interviewer || snap.interviewer || '').trim();
+
+            const technicalFit = obj.technicalFit && typeof obj.technicalFit === 'object' ? obj.technicalFit : {};
+            const cultureFit = obj.cultureFit && typeof obj.cultureFit === 'object' ? obj.cultureFit : {};
+            const recommendation = obj.recommendation && typeof obj.recommendation === 'object' ? obj.recommendation : {};
+
+            const strengths = Array.isArray(obj.strengths) ? obj.strengths : [];
+            const concerns = Array.isArray(obj.concerns) ? obj.concerns : [];
+
+            // Enforce the 4 answer-check lines in order
+            const desiredOrder = ['Toggle Case Exercise', 'Web Automation Exercise', 'API Testing', 'Performance Testing'];
+            const answerCheck = Array.isArray(obj.answerCheck) ? obj.answerCheck : [];
+            const byArea = new Map(answerCheck.map((x) => [String(x?.area || '').trim(), x]));
+            const answerLines = desiredOrder.map((area) => {
+                const item = byArea.get(area) || {};
+                const level = String(item.level || 'Not Assessed').trim();
+                const detail = String(item.detail || 'not assessed').trim();
+                return `${area}: ${level} - ${detail}`;
+            });
+
+            const strengthLines = strengths.map((s) => String(s || '').trim()).filter(Boolean);
+            const concernLines = concerns.map((s) => String(s || '').trim()).filter(Boolean);
+
+            const techLevel = String(technicalFit.level || 'Partial').trim();
+            const techDetail = String(technicalFit.detail || '').trim();
+            const cultureLevel = String(cultureFit.level || 'Good').trim();
+            const cultureDetail = String(cultureFit.detail || '').trim();
+            const recLevel = String(recommendation.level || 'Hire with Growth').trim();
+            const recDetail = String(recommendation.detail || '').trim();
+
+            const lines = [];
+            lines.push(`Interview Evaluation: ${candidateName || 'Candidate'} - ${role || 'QE'} (${seniority || 'N/A'})`);
+            lines.push(`Date: ${date || 'N/A'}`);
+            lines.push(`Interviewer: ${interviewer || 'N/A'}`);
+            lines.push('Answer Check');
+            for (const l of answerLines) lines.push(l);
+            lines.push('Strengths');
+            if (strengthLines.length) for (const l of strengthLines) lines.push(l);
+            else lines.push('—');
+            lines.push('Concerns');
+            if (concernLines.length) for (const l of concernLines) lines.push(l);
+            else lines.push('—');
+            lines.push(`Technical Fit: ${techLevel || 'Partial'}`);
+            lines.push(techDetail || '—');
+            lines.push(`Culture Fit: ${cultureLevel || 'Good'}`);
+            lines.push(cultureDetail || '—');
+            lines.push(`Recommendation: ${recLevel || 'Hire with Growth'}`);
+            lines.push(recDetail || '—');
+            return lines.join('\n');
+        }
+
+        function normalizeEvaluationOutput(text) {
+            let t = String(text || '');
+            if (!t.trim()) return '';
+
+            // Strip markdown-ish tokens + normalize whitespace
+            t = t.replace(/\r\n/g, '\n');
+            t = t.replace(/[ \t]+\n/g, '\n');
+            // no blank lines in final output
+            t = t.replace(/\n{2,}/g, '\n');
+
+            // Remove common markdown headers
+            t = t.replace(/^\s*#{1,6}\s+/gm, '');
+
+            // Remove bullet prefixes
+            t = t.replace(/^\s*[-*•]\s+/gm, '');
+
+            // Remove Teams/markdown hard line breaks (double spaces at EOL)
+            t = t.replace(/[ \t]{2,}\n/g, '\n');
+
+            // Normalize section title variants
+            const titleMap = [
+                [/^\s*Answer\s*Check\s*:?\s*$/im, 'Answer Check'],
+                [/^\s*Strengths\s*:?\s*$/im, 'Strengths'],
+                [/^\s*Concerns\s*:?\s*$/im, 'Concerns'],
+                [/^\s*Technical\s*Fit\s*:?\s*/im, 'Technical Fit: '],
+                [/^\s*Culture\s*Fit\s*:?\s*/im, 'Culture Fit: '],
+                [/^\s*Recommendation\s*:?\s*/im, 'Recommendation: ']
+            ];
+            for (const [re, repl] of titleMap) t = t.replace(re, repl);
+
+            // Nudge known label back to your preferred wording
+            t = t.replace(/^Amazon Navigation Locators:/gmi, 'Web Automation Exercise:');
+
+            return t.trim();
+        }
+
+        function buildCandidateDataSnapshot(candidate) {
+            const d = candidate?.data || {};
+            const customQs = candidate?.customQuestions || {};
+
+            // Keep this strictly "data", no formatting instructions.
+            const sections = {
+                intro: {
+                    experienceFrameworks: d.s0q1 || '',
+                    hardestProblem: d.s0q2 || '',
+                    notes: d.section0Notes || ''
+                },
+                webAutomation: {
+                    frameworkDesign: d.s1q1 || '',
+                    flakyTests: d.s1q2 || '',
+                    waits: d.s1q3 || '',
+                    runnerRole: d.s1q4 || '',
+                    crossBrowser: d.s1q5 || '',
+                    testData: d.s1q6 || '',
+                    notes: d.section1Notes || ''
+                },
+                mobileAutomation: {
+                    appium: d.s2q1 || '',
+                    capabilities: d.s2q2 || '',
+                    gesturesHybrid: d.s2q3 || '',
+                    stability: d.s2q4 || '',
+                    dataEnv: d.s2q5 || '',
+                    notes: d.section2Notes || ''
+                },
+                apiTesting: {
+                    beyondStatus: d.s3q1 || '',
+                    tooling: d.s3q2 || '',
+                    cicd: d.s3q3 || '',
+                    auth: d.s3q4 || '',
+                    mocking: d.s3q5 || '',
+                    notes: d.section3Notes || ''
+                },
+                cicd: {
+                    setup: d.s4q1 || '',
+                    fastFeedback: d.s4q2 || '',
+                    envData: d.s4q3 || '',
+                    parallel: d.s4q4 || '',
+                    integrating: d.s4q5 || '',
+                    notes: d.section4Notes || ''
+                },
+                aiLowCode: {
+                    aiTools: d.s5q1 || '',
+                    lowCode: d.s5q2 || '',
+                    predictive: d.s5q3 || '',
+                    notes: d.section5Notes || ''
+                },
+                sql: {
+                    joins: d.s6q1 || '',
+                    whereHaving: d.s6q2 || '',
+                    indexes: d.s6q3 || '',
+                    duplicates: d.s6q4 || '',
+                    notes: d.section6Notes || ''
+                },
+                performance: {
+                    tools: d.s7q1 || '',
+                    metrics: d.s7q2 || '',
+                    notes: d.section7Notes || ''
+                },
+                exercises: {
+                    apiCrud: {
+                        getAll: d.ex1q1 || '',
+                        getById: d.ex1q2 || '',
+                        post: d.ex1q3 || '',
+                        notes: d.ex1Notes || ''
+                    },
+                    coding: {
+                        toggleCase: d.ex2q1 || '',
+                        isogram: d.ex2q2 || '',
+                        vowelCounter: d.ex2q3 || '',
+                        notes: d.ex2Notes || ''
+                    },
+                    webAutomation: {
+                        amazon: d.ex3q1 || '',
+                        notes: d.ex3Notes || ''
+                    },
+                    sql: {
+                        noOrders: d.ex4q1 || '',
+                        totalAmount: d.ex4q2 || '',
+                        multipleOrders: d.ex4q3 || '',
+                        avgByStatus: d.ex4q4 || '',
+                        highestTotal: d.ex4q5 || '',
+                        notes: d.ex4Notes || ''
+                    },
+                    notes: d.section8Notes || ''
+                },
+                customQuestions: Object.keys(customQs).map((key) => {
+                    const q = customQs[key] || {};
+                    const answerKey = q.answerName || `custom_ans_${key}`;
+                    return {
+                        id: key,
+                        text: q.text || '',
+                        type: q.type || '',
+                        answer: d[answerKey] || ''
+                    };
+                })
+            };
+
+            return {
+                candidate: {
+                    name: d.candidateName || '',
+                    role: d.role || '',
+                    seniority: d.seniority || '',
+                    team: d.team || '',
+                    interviewDate: d.interviewDate || '',
+                    interviewer: d.interviewer || '',
+                    recommendation: d.recommendation || '',
+                    additionalNotes: d.additionalNotes || ''
+                },
+                sections
+            };
+        }
+
+        async function callAI(messages) {
+            const s = getAISettings();
+            if (!s.apiKey) throw new Error('API key not configured.');
+
+            let url, headers, body;
+            if (s.provider === 'azure') {
+                const ep = String(s.azureEndpoint || '').replace(/\/+$/, '');
+                const dep = s.azureDeployment || 'gpt-4o';
+                url = `${ep}/openai/deployments/${dep}/chat/completions?api-version=2024-08-01-preview`;
+                headers = { 'Content-Type': 'application/json', 'api-key': s.apiKey };
+                body = { messages, temperature: 0.1, top_p: 0.2 };
+            } else {
+                url = 'https://api.openai.com/v1/chat/completions';
+                headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${s.apiKey}` };
+                body = { model: s.model || 'gpt-4o-mini', messages, temperature: 0.1, top_p: 0.2 };
+            }
+
+            const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+            if (!res.ok) {
+                const et = await res.text();
+                throw new Error(`API ${res.status}: ${et.substring(0, 200)}`);
+            }
+            return await res.json();
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const drawer = document.getElementById('aiDrawer');
+            const header = document.getElementById('aiHeader');
+            const aiInput = document.getElementById('aiInput');
+            const aiHandle = document.getElementById('aiResizeHandle');
+
+            if (aiInput) {
+                aiInput.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        const start = this.selectionStart;
+                        const end = this.selectionEnd;
+                        this.value = this.value.substring(0, start) + '\n' + this.value.substring(end);
+                        this.selectionStart = this.selectionEnd = start + 1;
+                    }
+                });
+            }
+
+            // Restore last panel position (if any)
+            (function restorePosition() {
+                if (!drawer) return;
+                let raw = null;
+                // v2 key to avoid older saved small-position layouts
+                try { raw = JSON.parse(localStorage.getItem('aiDrawerPosV2') || 'null'); } catch { raw = null; }
+                if (!raw || typeof raw !== 'object') return;
+                if (Number.isFinite(raw.left) && Number.isFinite(raw.top)) {
+                    const top = Math.max(24, Number(raw.top));
+                    drawer.style.left = `${Number(raw.left)}px`;
+                    drawer.style.top = `${top}px`;
+                    drawer.style.right = 'auto';
+                    drawer.style.bottom = 'auto';
+                }
+            })();
+
+            // Drag the panel by header (non-blocking, move out of the way)
+            (function initDrawerDrag() {
+                if (!drawer || !header) return;
+                let dragging = false;
+                let startX = 0;
+                let startY = 0;
+                let startLeft = 0;
+                let startTop = 0;
+
+                function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+
+                function onMove(evt) {
+                    if (!dragging) return;
+                    const x = evt.touches ? evt.touches[0].clientX : evt.clientX;
+                    const y = evt.touches ? evt.touches[0].clientY : evt.clientY;
+                    const dx = x - startX;
+                    const dy = y - startY;
+
+                    const rect = drawer.getBoundingClientRect();
+                    const w = rect.width;
+                    const h = rect.height;
+                    const nextLeft = clamp(startLeft + dx, 8, window.innerWidth - w - 8);
+                    const nextTop = clamp(startTop + dy, 8, window.innerHeight - h - 8);
+
+                    drawer.style.left = `${nextLeft}px`;
+                    drawer.style.top = `${nextTop}px`;
+                    drawer.style.right = 'auto';
+                    drawer.style.bottom = 'auto';
+
+                    evt.preventDefault?.();
+                }
+
+                function onUp() {
+                    if (!dragging) return;
+                    dragging = false;
+                    document.body.style.cursor = '';
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                    document.removeEventListener('touchmove', onMove);
+                    document.removeEventListener('touchend', onUp);
+
+                    // persist
+                    const rect = drawer.getBoundingClientRect();
+                    localStorage.setItem('aiDrawerPosV2', JSON.stringify({ left: Math.round(rect.left), top: Math.round(rect.top) }));
+                }
+
+                function onDown(evt) {
+                    dragging = true;
+                    const rect = drawer.getBoundingClientRect();
+                    const x = evt.touches ? evt.touches[0].clientX : evt.clientX;
+                    const y = evt.touches ? evt.touches[0].clientY : evt.clientY;
+                    startX = x;
+                    startY = y;
+                    startLeft = rect.left;
+                    startTop = rect.top;
+                    document.body.style.cursor = 'move';
+                    document.addEventListener('mousemove', onMove);
+                    document.addEventListener('mouseup', onUp);
+                    document.addEventListener('touchmove', onMove, { passive: false });
+                    document.addEventListener('touchend', onUp);
+                    evt.preventDefault?.();
+                }
+
+                header.addEventListener('mousedown', onDown);
+                header.addEventListener('touchstart', onDown, { passive: false });
+            })();
+
+            // Top resize handle for the input textarea
+            (function initTopResizer() {
+                if (!aiHandle || !aiInput) return;
+                const minH = 110;
+                const maxH = 360;
+                let resizing = false;
+                let startY = 0;
+                let startH = 0;
+
+                function getY(evt) {
+                    return evt.touches ? evt.touches[0].clientY : evt.clientY;
+                }
+
+                function onMove(evt) {
+                    if (!resizing) return;
+                    const y = getY(evt);
+                    const delta = startY - y; // drag up => increase height
+                    const next = Math.max(minH, Math.min(maxH, startH + delta));
+                    aiInput.style.height = `${next}px`;
+                    evt.preventDefault?.();
+                }
+
+                function onUp() {
+                    resizing = false;
+                    document.body.style.cursor = '';
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                    document.removeEventListener('touchmove', onMove);
+                    document.removeEventListener('touchend', onUp);
+                }
+
+                function onDown(evt) {
+                    resizing = true;
+                    startY = getY(evt);
+                    startH = aiInput.getBoundingClientRect().height;
+                    document.body.style.cursor = 'ns-resize';
+                    document.addEventListener('mousemove', onMove);
+                    document.addEventListener('mouseup', onUp);
+                    document.addEventListener('touchmove', onMove, { passive: false });
+                    document.addEventListener('touchend', onUp);
+                    evt.preventDefault?.();
+                }
+
+                aiHandle.addEventListener('mousedown', onDown);
+                aiHandle.addEventListener('touchstart', onDown, { passive: false });
+            })();
+
+            // Escape closes the panel
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && aiOpen) toggleAI();
+            });
+        });
         
         function copySQLScenario() {
             const sqlText = `📋 SQL Exercise
@@ -2873,12 +4307,25 @@ You have two tables:
         
         window.addEventListener('scroll', () => {
             const backToTop = document.getElementById('backToTop');
+            const backToBottom = document.getElementById('backToBottom');
             if (window.scrollY > 300) {
                 backToTop.classList.add('visible');
             } else {
                 backToTop.classList.remove('visible');
             }
+
+            // Show "down" when not near bottom
+            const nearBottom = (window.innerHeight + window.scrollY) >= (document.documentElement.scrollHeight - 300);
+            if (!nearBottom) {
+                backToBottom?.classList.add('visible');
+            } else {
+                backToBottom?.classList.remove('visible');
+            }
         });
+
+        function scrollToBottom() {
+            window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+        }
         
         // ========== QUESTION EDITING FUNCTIONS ==========
         
