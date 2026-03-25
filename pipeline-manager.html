@@ -1495,7 +1495,11 @@
                                 </div>
                                 <div class="tree-children${envPipelines.length ? ' open' : ''}" id="children-${envKey}">`;
 
-                            for (const feat of FEATURES) {
+                            const featureList = isOutsystemsBrand(brandName)
+                                ? OUTSYSTEMS_FEATURES.map(name => ({ id: '', name }))
+                                : FEATURES;
+
+                            for (const feat of featureList) {
                                 const featPipelines = envPipelines.filter(p => p.feature === feat.name);
                                 if (featPipelines.length === 0) continue;
                                 const featKey = `${envKey}__${feat.name}`;
@@ -1503,13 +1507,13 @@
                                     <div class="tree-row${selectedFolder === featKey ? ' selected' : ''}" onclick="selectFolder('${featKey}')" style="padding-left:72px;">
                                         <span class="tree-arrow hidden">&#9654;</span>
                                         <span class="tree-icon">&#128196;</span>
-                                        <span class="tree-label">${feat.id} ${feat.name}</span>
+                                        <span class="tree-label">${feat.id ? feat.id + ' ' : ''}${feat.name}</span>
                                         <span class="tree-count">${featPipelines.length}</span>
                                     </div>
                                 </div>`;
                             }
 
-                            const noFeatPipelines = envPipelines.filter(p => !FEATURES.some(f => f.name === p.feature));
+                            const noFeatPipelines = envPipelines.filter(p => !featureList.some(f => f.name === p.feature));
                             for (const pp of noFeatPipelines) { html += pipelineTreeNode(pp, 72); }
 
                             html += `</div></div>`;
@@ -1640,9 +1644,20 @@
         if (folderKey) {
             const parts = folderKey.split('__');
             if (parts[0]) { filtered = filtered.filter(p => p.platform === parts[0]); breadcrumbParts.push(parts[0]); }
-            if (parts[1]) { filtered = filtered.filter(p => p.brand === parts[1]); breadcrumbParts.push(parts[1]); }
-            if (parts[2]) { filtered = filtered.filter(p => p.env === parts[2]); breadcrumbParts.push(parts[2]); }
-            if (parts[3]) { filtered = filtered.filter(p => p.feature === parts[3]); breadcrumbParts.push(parts[3]); }
+
+            const isMobileFolder = parts[0] === '01 Mobile';
+            if (isMobileFolder) {
+                if (parts[1]) { filtered = filtered.filter(p => p.brand === parts[1]); breadcrumbParts.push(parts[1]); }
+                if (parts[2]) {
+                    const suite = parts[2];
+                    filtered = filtered.filter(p => p.feature === suite || (p.feature && p.feature.startsWith(suite + '_')));
+                    breadcrumbParts.push(suite);
+                }
+            } else {
+                if (parts[1]) { filtered = filtered.filter(p => p.brand === parts[1]); breadcrumbParts.push(parts[1]); }
+                if (parts[2]) { filtered = filtered.filter(p => p.env === parts[2]); breadcrumbParts.push(parts[2]); }
+                if (parts[3]) { filtered = filtered.filter(p => p.feature === parts[3]); breadcrumbParts.push(parts[3]); }
+            }
         }
 
         let html = `<div class="breadcrumb">${breadcrumbParts.map((b, i) => i < breadcrumbParts.length - 1 ? `<span onclick="selectFolder('${breadcrumbParts.slice(1, i+1).join('__') || null}')">${b}</span><span class="sep">/</span>` : `<span style="color:var(--text-primary);font-weight:600;">${b}</span>`).join('')}</div>`;
@@ -3033,7 +3048,11 @@
         selectedPipelines = new Set([filename]);
 
         // Jump to the saved pipeline’s folder so you can immediately Generate Prompt.
-        selectedFolder = [base.platform, base.brand, base.env, base.feature].filter(Boolean).join('__') || null;
+        if (isMobilePipeline(base)) {
+            selectedFolder = [base.platform, base.brand, base.feature].filter(Boolean).join('__') || null;
+        } else {
+            selectedFolder = [base.platform, base.brand, base.env, base.feature].filter(Boolean).join('__') || null;
+        }
         buildTree();
         showFolderPipelines(selectedFolder);
         updateSaveStatus();
