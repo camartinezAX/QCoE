@@ -525,6 +525,8 @@
         .rf-node:hover { background:rgba(250,167,74,0.06); transform:translateX(2px); }
         .rf-node.active { background:linear-gradient(135deg, rgba(250,167,74,0.12), rgba(250,167,74,0.06)); color:var(--axos-orange); border-left:3px solid var(--axos-orange); }
         .rf-indent { padding-left:18px; }
+        .rf-node input[type=checkbox] { accent-color:var(--axos-orange); width:14px; height:14px; flex:0 0 auto; }
+        .rf-label { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .rf-count { font-size:10px; color:var(--text-muted); background:rgba(255,255,255,0.04); padding:2px 8px; border-radius:10px; margin-left:auto; font-weight:700; }
 
         .email-section { margin-top:24px; background:var(--bg-card); border:1px solid var(--border-color); border-radius:12px; padding:20px; }
@@ -3753,6 +3755,7 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
     let pieChartInstance = null;
     let lineChartInstance = null;
     let selectedRuns = new Set();
+    let resultsSelectedPipelines = new Set(); // multi-select; empty means "All Pipelines"
 
     function getGhOwner() { return GH_OWNER; }
     function getGhAuthHeader(pat) {
@@ -3834,6 +3837,7 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
             resultsPipelines = getResultsPipelineConfigs();
             missingWorkflows = [];
             allRuns = [];
+            resultsSelectedPipelines.clear();
 
             if (!resultsPipelines.length) {
                 status.textContent = 'No pipelines configured yet (go to Pipelines tab and add/import pipelines).';
@@ -3932,8 +3936,6 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         metricsArea.style.animation = 'fadeSlideUp 0.5s ease-out both';
         document.getElementById('resultsEmpty').style.display = 'none';
         document.getElementById('resultsTableWrap').style.display = 'block';
-        renderMetrics();
-        renderCharts();
         renderResultsTree();
         filterResults();
     }
@@ -3947,7 +3949,9 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         const passRate = total ? ((passed / total) * 100).toFixed(1) : 0;
         const durations = runs.filter(r => r.duration > 0).map(r => r.duration);
         const avgDur = durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0;
-        const uniquePipelines = resultsFilterPipeline ? 1 : (resultsPipelines.length || new Set(runs.map(r => r.workflowName)).size);
+        const uniquePipelines = resultsSelectedPipelines.size
+            ? resultsSelectedPipelines.size
+            : (resultsPipelines.length || new Set(runs.map(r => r.workflowName)).size);
         const prClass = parseFloat(passRate) >= 90 ? 'v-green' : parseFloat(passRate) >= 70 ? 'v-orange' : 'v-red';
 
         document.getElementById('metricsGrid').innerHTML = `
@@ -4269,7 +4273,8 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
             return a.localeCompare(b);
         });
 
-        let html = `<div class="rf-node active" onclick="setResultsFilter(null, this)">All Pipelines <span class="rf-count">${list.length}</span></div>`;
+        const allActive = resultsSelectedPipelines.size === 0;
+        let html = `<div class="rf-node ${allActive ? 'active' : ''}" data-results-all="1" onclick="setResultsAllPipelines(this)">All Pipelines <span class="rf-count">${list.length}</span></div>`;
         for (const key of keys) {
             const items = grouped[key] || [];
             if (key !== 'other') {
@@ -4285,27 +4290,51 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
                 const short = display.replace(/^Web_AxosBank_\w+-OLB_/, '');
                 const runCount = allRuns.filter(r => r.workflowName === p.name && r.repo === p.repo).length;
                 const jsName = String(p.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-                html += `<div class="rf-node rf-indent" onclick="setResultsFilter('${jsName}', this)" style="${isMissing ? 'color:var(--danger);' : ''}">
-                    ${escapeHtml(short)}${isMissing ? ` <span style="font-size:10px; font-weight:800;">&#9888; ${missReason === 'repo_error' ? 'repo error' : missReason === 'runs_error' ? 'runs error' : 'issue'}</span>` : ''}
+                const checked = resultsSelectedPipelines.has(p.name);
+                html += `<label class="rf-node rf-indent ${checked ? 'active' : ''}" data-pipeline="${escapeHtml(p.name)}" style="${isMissing ? 'color:var(--danger);' : ''}">
+                    <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleResultsPipeline('${jsName}', this.checked)">
+                    <span class="rf-label" title="${escapeHtml(p.name)}">${escapeHtml(short)}${isMissing ? ` <span style="font-size:10px; font-weight:800;">&#9888; ${missReason === 'repo_error' ? 'repo error' : missReason === 'runs_error' ? 'runs error' : 'issue'}</span>` : ''}</span>
                     <span class="rf-count">${runCount}</span>
-                </div>`;
+                </label>`;
             }
         }
 
         tree.innerHTML = html;
     }
 
-    let resultsFilterPipeline = null;
-    function setResultsFilter(pipeline, el) {
-        resultsFilterPipeline = pipeline;
-        document.querySelectorAll('.rf-node').forEach(n => n.classList.remove('active'));
-        if (el) el.classList.add('active');
+    function setResultsAllPipelines(el) {
+        resultsSelectedPipelines.clear();
+        if (el) {
+            document.querySelectorAll('#resultsTree [data-results-all]').forEach(n => n.classList.add('active'));
+            document.querySelectorAll('#resultsTree [data-pipeline]').forEach(n => n.classList.remove('active'));
+            document.querySelectorAll('#resultsTree [data-pipeline] input[type=checkbox]').forEach(cb => { cb.checked = false; });
+        }
+        filterResults();
+    }
+
+    function toggleResultsPipeline(pipeline, checked) {
+        if (checked) resultsSelectedPipelines.add(pipeline);
+        else resultsSelectedPipelines.delete(pipeline);
+
+        // Update tree UI state without rerendering (preserves scroll position).
+        const tree = document.getElementById('resultsTree');
+        if (tree) {
+            const allNode = tree.querySelector('[data-results-all]');
+            if (allNode) allNode.classList.toggle('active', resultsSelectedPipelines.size === 0);
+            const nodes = tree.querySelectorAll('[data-pipeline]');
+            for (const n of nodes) {
+                if (n?.dataset?.pipeline === pipeline) {
+                    n.classList.toggle('active', !!checked);
+                    break;
+                }
+            }
+        }
         filterResults();
     }
 
     function getFilteredRuns() {
         let runs = [...allRuns];
-        if (resultsFilterPipeline) runs = runs.filter(r => r.workflowName === resultsFilterPipeline);
+        if (resultsSelectedPipelines.size) runs = runs.filter(r => resultsSelectedPipelines.has(r.workflowName));
         const search = document.getElementById('resultsSearch')?.value?.toLowerCase() || '';
         if (search) runs = runs.filter(r => r.workflowName.toLowerCase().includes(search));
         const statusFilter = document.getElementById('resultsStatusFilter')?.value || 'all';
@@ -4317,9 +4346,13 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         const runs = getFilteredRuns();
         renderMetrics();
         renderCharts();
-        const title = resultsFilterPipeline
-            ? resultsFilterPipeline.replace(/-Testim$/, '')
-            : 'All Pipeline Runs';
+        let title = 'All Pipeline Runs';
+        if (resultsSelectedPipelines.size === 1) {
+            const only = [...resultsSelectedPipelines][0];
+            title = String(only || '').replace(/-Testim$/, '');
+        } else if (resultsSelectedPipelines.size > 1) {
+            title = `${resultsSelectedPipelines.size} Selected Pipelines`;
+        }
         document.getElementById('resultsTableTitle').textContent = title;
         document.getElementById('resultsTableCount').textContent = `${runs.length} runs`;
 
@@ -4723,6 +4756,109 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
             showToast('Email HTML copied!');
         });
     }
+
+    // ══════════════════════════════════════════
+    //  SELFTEST (results multi-select)
+    // ══════════════════════════════════════════
+    (function maybeRunResultsSelfTest() {
+        try {
+            const params = new URLSearchParams(location.search || '');
+            if (!params.has('selftest')) return;
+
+            // Keep the test deterministic (no Chart.js / animations).
+            window.renderCharts = function () {};
+            window.animateCounters = function () {};
+
+            // Seed minimal deterministic data.
+            const repo = 'Axos.QE.TestIM';
+            resultsPipelines = [
+                { name: 'Pipe A', filename: 'pipe-a.yml', repo },
+                { name: 'Pipe B', filename: 'pipe-b.yml', repo },
+                { name: 'Pipe C', filename: 'pipe-c.yml', repo }
+            ];
+
+            const now = Date.now();
+            function mkRun(id, workflowName, conclusion) {
+                return {
+                    id,
+                    repo,
+                    workflowName,
+                    workflowFile: workflowName.toLowerCase().replace(/\s+/g, '-') + '.yml',
+                    runNumber: id,
+                    conclusion,
+                    status: 'completed',
+                    duration: 60,
+                    event: 'schedule',
+                    actor: 'selftest',
+                    createdAt: new Date(now - id * 60000).toISOString(),
+                    url: 'https://example.invalid',
+                    branch: 'main'
+                };
+            }
+
+            allRuns = [
+                mkRun(1, 'Pipe A', 'success'),
+                mkRun(2, 'Pipe A', 'success'),
+                mkRun(3, 'Pipe B', 'success'),
+                mkRun(4, 'Pipe B', 'failure'),
+                mkRun(5, 'Pipe C', 'failure'),
+                mkRun(6, 'Pipe C', 'cancelled')
+            ];
+            missingWorkflows = [];
+            selectedRuns.clear();
+            resultsSelectedPipelines.clear();
+
+            // Render initial (All Pipelines).
+            renderResults();
+
+            function assert(cond, msg) { if (!cond) throw new Error(msg); }
+            function countText() { return (document.getElementById('resultsTableCount')?.textContent || '').trim(); }
+            function titleText() { return (document.getElementById('resultsTableTitle')?.textContent || '').trim(); }
+            function passRateText() { return (document.querySelector('.metric-card.m-green .metric-value')?.textContent || '').trim(); }
+
+            assert(titleText() === 'All Pipeline Runs', `expected All title, got "${titleText()}"`);
+            assert(countText().startsWith('6 '), `expected 6 runs, got "${countText()}"`);
+
+            // Select Pipe A + Pipe B (4 runs, 3/4 pass => 75.0%).
+            function setChecked(name, checked) {
+                const nodes = document.querySelectorAll('#resultsTree [data-pipeline]');
+                for (const n of nodes) {
+                    if (n?.dataset?.pipeline === name) {
+                        const cb = n.querySelector('input[type=checkbox]');
+                        if (!cb) throw new Error(`missing checkbox for "${name}"`);
+                        cb.checked = checked;
+                        cb.dispatchEvent(new Event('change', { bubbles: true }));
+                        return;
+                    }
+                }
+                throw new Error(`missing pipeline node "${name}"`);
+            }
+
+            setChecked('Pipe A', true);
+            setChecked('Pipe B', true);
+
+            assert(titleText() === '2 Selected Pipelines', `expected multi title, got "${titleText()}"`);
+            assert(countText().startsWith('4 '), `expected 4 runs, got "${countText()}"`);
+            assert(passRateText() === '75.0%', `expected 75.0% pass rate, got "${passRateText()}"`);
+
+            // Reset back to All.
+            setResultsAllPipelines(null);
+            assert(titleText() === 'All Pipeline Runs', `expected reset title, got "${titleText()}"`);
+            assert(countText().startsWith('6 '), `expected reset 6 runs, got "${countText()}"`);
+
+            const ok = document.createElement('div');
+            ok.id = 'selftestBanner';
+            ok.textContent = 'SELFTEST:PASS';
+            ok.style.cssText = 'position:fixed;bottom:10px;right:10px;z-index:999999;background:#10b981;color:#fff;padding:8px 12px;border-radius:10px;font:700 12px/1.2 system-ui;';
+            document.body.appendChild(ok);
+        } catch (e) {
+            const fail = document.createElement('div');
+            fail.id = 'selftestBanner';
+            fail.textContent = 'SELFTEST:FAIL - ' + (e?.message || String(e));
+            fail.style.cssText = 'position:fixed;bottom:10px;right:10px;z-index:999999;background:#ef4444;color:#fff;padding:8px 12px;border-radius:10px;font:700 12px/1.2 system-ui;max-width:60vw;';
+            document.body.appendChild(fail);
+        }
+    })();
 
     // ══════════════════════════════════════════
     //  INIT
