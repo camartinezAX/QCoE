@@ -160,6 +160,7 @@
         .tree-pipeline.type-sanity .tree-icon { color: #10b981; }
         .tree-pipeline.type-smoke .tree-icon { color: #f59e0b; }
         .tree-pipeline.type-health .tree-icon { color: #3b82f6; }
+        .tree-pipeline.type-orchestrator .tree-icon { color: #a78bfa; }
 
         /* Main */
         .main { flex: 1; padding: 30px 40px 120px; max-width: 900px; min-width: 0; }
@@ -198,6 +199,7 @@
         .badge-sanity { background: var(--success-bg); color: var(--success); }
         .badge-smoke { background: var(--warning-bg); color: var(--warning); }
         .badge-health { background: var(--info-bg); color: var(--info); }
+        .badge-orchestrator { background: rgba(167, 139, 250, 0.12); color: #a78bfa; }
 
         /* Create Form */
         .section {
@@ -1045,10 +1047,11 @@
         'Vision Canvas',
         'Axos Clearing',
         'Wires Manual',
-        'Commission Plans'
+        'Commission Plans',
+        'Orchestrators'
     ];
 
-    const TEST_TYPES = ['Regression', 'Sanity', 'Smoke', 'Health Check'];
+    const TEST_TYPES = ['Regression', 'Sanity', 'Smoke', 'Health Check', 'Orchestrator'];
 
     const BRAND_KEY_MAP = {
         'Admin Portal': 'AdminPortal',
@@ -1091,10 +1094,89 @@
     const MOBILE_TEST_TYPES = ['Smoke', 'Sanity', 'Regression'];
 
     function isMobilePipeline(p) { return p && p.platform === '01 Mobile'; }
+    function isOrchestratorPipeline(p) {
+        const fn = String(p?.filename || '');
+        const name = String(p?.name || fn.replace(/\.yml$/i, ''));
+        return (p && p.testType === 'Orchestrator') || fn.includes('Orchestrator') || name.includes('Orchestrator');
+    }
     function isMobileForm() { return document.getElementById('fPlatform')?.value === '01 Mobile'; }
 
     function isOutsystemsBrand(brand) {
         return String(brand || '').trim().toLowerCase() === 'outsystems';
+    }
+
+    function orchestratorTargetsToRefs(targets) {
+        const arr = Array.isArray(targets) ? targets : [];
+        return arr.map(t => {
+            const owner = String(t?.owner || 'axos-financial').trim() || 'axos-financial';
+            const repo = String(t?.repo || 'Axos.QE.TestIM').trim() || 'Axos.QE.TestIM';
+            const wf = String(t?.workflow || '').trim();
+            const ref = String(t?.ref || '').trim();
+            const base = `${owner}/${repo}:${wf}`;
+            return ref ? `${base}@${ref}` : base;
+        }).filter(Boolean).join('\n');
+    }
+
+    function orchestratorRefsToTargets(refsText) {
+        const lines = String(refsText || '')
+            .split(/\r?\n/)
+            .map(l => l.trim())
+            .filter(l => l && !l.startsWith('#'));
+
+        const targets = [];
+        for (const line of lines) {
+            // Formats supported:
+            // - owner/repo:workflow.yml@ref
+            // - repo:workflow.yml@ref              (assumes owner=axos-financial)
+            // - workflow.yml@ref                   (assumes owner=axos-financial, repo=Axos.QE.TestIM)
+            const [left, refPart] = line.split('@');
+            const ref = (refPart || '').trim() || 'main';
+
+            const lr = left.split(':');
+            const repoPart = (lr[0] || '').trim();
+            const workflow = (lr[1] || '').trim() || (lr.length === 1 ? repoPart : '');
+
+            let owner = 'axos-financial';
+            let repo = 'Axos.QE.TestIM';
+
+            if (lr.length === 1) {
+                // workflow.yml
+                repo = 'Axos.QE.TestIM';
+            } else {
+                // repo part could be owner/repo OR just repo
+                if (repoPart.includes('/')) {
+                    const [o, r] = repoPart.split('/');
+                    if (o) owner = o.trim();
+                    if (r) repo = r.trim();
+                } else if (repoPart) {
+                    repo = repoPart;
+                }
+            }
+
+            if (!workflow.endsWith('.yml')) continue;
+            targets.push({
+                enabled: true,
+                name: '',
+                owner,
+                repo,
+                workflow,
+                ref,
+                inputs: {}
+            });
+        }
+        return targets;
+    }
+
+    function updateOrchestratorTargetsPreview() {
+        const refsEl = document.getElementById('fOrchTargetRefs');
+        const jsonEl = document.getElementById('fOrchTargets');
+        if (!refsEl || !jsonEl) return;
+        try {
+            const targets = orchestratorRefsToTargets(refsEl.value || '');
+            jsonEl.value = JSON.stringify(targets, null, 2);
+        } catch {
+            // keep whatever is in JSON if refs parse fails
+        }
     }
 
     function renderWebFeatureOptions(brand, selectedFeature) {
@@ -1590,7 +1672,12 @@
     }
 
     function pipelineTreeNode(p, indent) {
-        const typeClass = p.testType === 'Regression' ? 'type-regression' : p.testType === 'Sanity' ? 'type-sanity' : p.testType === 'Smoke' ? 'type-smoke' : 'type-health';
+        const typeClass =
+            p.testType === 'Regression' ? 'type-regression' :
+            p.testType === 'Sanity' ? 'type-sanity' :
+            p.testType === 'Smoke' ? 'type-smoke' :
+            p.testType === 'Orchestrator' ? 'type-orchestrator' :
+            'type-health';
         return `<div class="tree-node tree-pipeline ${typeClass}">
             <div class="tree-row" onclick="viewPipeline('${p.filename}')" style="padding-left:${indent}px;">
                 <span class="tree-arrow hidden">&#9654;</span>
@@ -1758,6 +1845,7 @@
         if (search) filtered = filtered.filter(p =>
             p.name.toLowerCase().includes(search) ||
             (p.testSuite || '').toLowerCase().includes(search) ||
+            (p.orchestratorSet || '').toLowerCase().includes(search) ||
             (p.feature || '').toLowerCase().includes(search) ||
             (p.brand || '').toLowerCase().includes(search)
         );
@@ -1778,8 +1866,15 @@
     }
 
     function pipelineCard(p) {
-        const badgeClass = p.testType === 'Regression' ? 'badge-regression' : p.testType === 'Sanity' ? 'badge-sanity' : p.testType === 'Smoke' ? 'badge-smoke' : 'badge-health';
-        const suiteOrFeature = (p.testSuite || p.feature || '');
+        const badgeClass =
+            p.testType === 'Regression' ? 'badge-regression' :
+            p.testType === 'Sanity' ? 'badge-sanity' :
+            p.testType === 'Smoke' ? 'badge-smoke' :
+            p.testType === 'Orchestrator' ? 'badge-orchestrator' :
+            'badge-health';
+        const suiteOrFeature = isOrchestratorPipeline(p)
+            ? (p.orchestratorSet || p.featureDetail || p.feature || '')
+            : (p.testSuite || p.feature || '');
         const ghRepo = isMobilePipeline(p) ? 'Axos.QE.Mobile' : 'Axos.QE.TestIM';
         return `<div class="pipeline-card" data-filename="${p.filename}" onclick="viewPipeline('${p.filename}')">
             <div class="pipeline-card-header">
@@ -1848,6 +1943,34 @@
         const isMobile = isMobilePipeline(p);
         const repoName = isMobile ? 'Axos.QE.Mobile' : 'Axos.QE.TestIM';
         const filePath = `.github/workflows/${p.filename || (p.name + '.yml')}`;
+
+        if (!isMobile && isOrchestratorPipeline(p)) {
+            const setName = (p.orchestratorSet || '').trim() || (p.featureDetail || '').split('Orchestrators_')[1]?.split('_')[0] || 'WFO';
+            const targets = Array.isArray(p.orchestratorTargets) ? p.orchestratorTargets : [];
+            const eventType = `orchestrator-${String(setName || 'wfo').toLowerCase()}`;
+            let prompt = `Create or update an orchestrator workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
+                `This is an ORCHESTRATOR workflow (not a Testim pipeline). It must:\n` +
+                `- trigger on workflow_dispatch and repository_dispatch\n` +
+                `- use a unique repository_dispatch event type: "${eventType}"\n` +
+                `- use secrets.GH_DISPATCH_TOKEN to dispatch workflows across repos\n` +
+                `- call the existing script .github/orchestrator/dispatch-workflows.ps1\n` +
+                `- use this targets file: .github/orchestrator/targets.json\n\n` +
+                `Workflow inputs:\n` +
+                `- SET_NAME (default: ${setName})\n` +
+                `- TARGET_ENVIRONMENT (default: Development)\n` +
+                `- DEPLOYMENT_TYPE (default: deploy-latest)\n` +
+                `- ARTIFACT_ID (default: empty)\n` +
+                `- VERBOSE_OUTPUT (choice true/false, default false)\n` +
+                `- DRY_RUN (choice true/false, default false)\n` +
+                `- FAIL_FAST (choice true/false, default false)\n\n` +
+                `Also create/update .github/orchestrator/targets.json so it contains the set "${setName}" with these targets:\n\n` +
+                `${JSON.stringify(targets, null, 2)}\n\n` +
+                `Each target element supports: enabled, name, owner, repo, workflow, ref, inputs.\n` +
+                `Note: for workflows in this repo, "workflow" should be the workflow filename (e.g. Web_AxosBank_UAT-OLB_HealthCheck-Testim.yml).`;
+
+            if (p.renamedFrom) prompt += `\n\nAlso delete the old workflow file: .github/workflows/${p.renamedFrom}`;
+            return prompt;
+        }
 
         if (isMobile) {
             const platform = (p.brand || '').toLowerCase();
@@ -1988,7 +2111,7 @@
 
         const p = prefill || {};
 
-        const projectLabel = isMobilePipeline(p) ? 'BrowserStack mobile pipeline' : 'Testim pipeline';
+        const projectLabel = isMobilePipeline(p) ? 'BrowserStack mobile pipeline' : (isOrchestratorPipeline(p) ? 'Orchestrator workflow' : 'Testim pipeline');
         let html = `<div class="main-header">
             <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
                 <div style="min-width:0;">
@@ -2187,14 +2310,14 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Feature <span class="req">*</span></label>
-                        <select id="fFeature" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
+                        <select id="fFeature" onchange="toggleOrchestratorSections(); updateNamePreview()" ${isView ? 'disabled' : ''}>
                             <option value="">Select...</option>
                             ${renderWebFeatureOptions(p.brand, p.feature)}
                         </select>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Test Type <span class="req">*</span></label>
-                        <select id="fTestType" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
+                        <select id="fTestType" onchange="toggleOrchestratorSections(); updateNamePreview()" ${isView ? 'disabled' : ''}>
                             <option value="">Select...</option>
                             ${TEST_TYPES.map(t => `<option value="${t}" ${p.testType === t ? 'selected' : ''}>${t}</option>`).join('')}
                         </select>
@@ -2203,7 +2326,7 @@
             </div>
         </div>`;
 
-        html += `<div class="section">
+        html += `<div class="section" id="testimConfigSection">
             <div class="section-header" onclick="toggleSection(this)">
                 <div class="section-title"><span class="section-icon">&#9881;</span> Testim Configuration <span class="section-badge" style="background:rgba(250,167,74,0.1);color:var(--axos-orange);">Required</span></div>
                 <div class="section-toggle">&#9660;</div>
@@ -2251,6 +2374,38 @@
                         ${['dsdl-timab21','dsdl-timab27','dsdl-timab31','QAAutomationTestIM'].map(r => `<option value="${r}" ${(p.runnerLabel || 'dsdl-timab31') === r ? 'selected' : ''}>${r}</option>`).join('')}
                     </select>
                     <span class="field-help">Linux self-hosted runner from the QAAutomationTestIM pool. QAAutomationTestIM auto-selects any available runner (requires admin setup).</span>
+                </div>
+            </div>
+        </div>`;
+
+        const orchRefsPrefill = orchestratorTargetsToRefs(p.orchestratorTargets || []);
+
+        html += `<div class="section" id="orchestratorConfigSection" style="display:none;">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title"><span class="section-icon">&#129517;</span> Orchestrator Targets <span class="section-badge" style="background:rgba(167,139,250,0.14);color:#a78bfa;">Orchestrator</span></div>
+                <div class="section-toggle">&#9660;</div>
+            </div>
+            <div class="section-content">
+                <div class="form-group">
+                    <label class="form-label">Team / Set Name <span class="req">*</span></label>
+                    <input type="text" id="fOrchSetName" placeholder="e.g. WFO" value="${(p.orchestratorSet || '').trim() || (p.featureDetail || '').split('Orchestrators_')[1]?.split('-')[0] || (p.featureDetail || '').split('Orchestrators_')[1]?.split('_')[0] || (p.customSuffix || '')}" ${isView ? 'disabled' : ''}>
+                    <span class="field-help">This should match the team name you put in Custom Suffix. Each team gets its own orchestrator set (so you can have multiple orchestrators).</span>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Targets <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(simple mode)</span></label>
+                    <textarea id="fOrchTargetRefs" rows="6" placeholder="axos-financial/Axos.QE.TestIM:Web_Outsystems_UAT-OLB_EWM_Creation_Regression-Testim.yml@main" oninput="updateOrchestratorTargetsPreview()" ${isView ? 'disabled' : ''}>${escapeHtml(orchRefsPrefill)}</textarea>
+                    <span class="field-help">One per line. Formats: <code>owner/repo:workflow.yml@ref</code> or <code>repo:workflow.yml@ref</code> or just <code>workflow.yml</code> (defaults to axos-financial/Axos.QE.TestIM @ main).</span>
+                </div>
+
+                <div class="form-group">
+                    <details>
+                      <summary style="cursor:pointer; color:var(--text-secondary); font-size:12px; font-weight:700;">Advanced: Targets JSON (auto-generated)</summary>
+                      <div style="margin-top:10px;">
+                        <textarea id="fOrchTargets" rows="10" ${isView ? 'disabled' : ''}>${escapeHtml(JSON.stringify(p.orchestratorTargets || [], null, 2))}</textarea>
+                        <span class="field-help">You usually don’t need to touch this. Pipeline Manager will generate it from the simple list above.</span>
+                      </div>
+                    </details>
                 </div>
             </div>
         </div>`;
@@ -2515,6 +2670,8 @@
         document.getElementById('mainContent').innerHTML = html;
         if (p.scheduleEnabled && p.schedule) initScheduleFromCron(p.schedule);
         onBrandChange(p.feature || '');
+        toggleOrchestratorSections();
+        updateOrchestratorTargetsPreview();
         updateNamePreview();
         updateFormStatus();
     }
@@ -3066,6 +3223,33 @@
         const bKey = BRAND_KEY_MAP[brand] || brand.replace(/\s+/g, '');
         const fKey = feature.replace(/\s+/g, '');
         const tKey = testType.replace(/\s+/g, '');
+        if (testType === 'Orchestrator') {
+            const previewEl = document.getElementById('namePreview');
+            if (feature !== 'Orchestrators') {
+                previewEl.innerHTML = '<span class="dim">For orchestrators, set Feature to <b>Orchestrators</b> and enter a team name in Custom Suffix (e.g. WFO).</span>';
+                previewEl.style.borderColor = '';
+                updateFormStatus();
+                return;
+            }
+            if (!suffix) {
+                previewEl.innerHTML = '<span class="dim">Enter a team name in <b>Custom Suffix</b> (example: WFO) to name this orchestrator.</span>';
+                previewEl.style.borderColor = '';
+                updateFormStatus();
+                return;
+            }
+            const name = `${pKey}_${bKey}_${env}-OLB_Orchestrators_${suffix}-Orchestrator`;
+            const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && p.filename !== editingPipeline);
+            if (duplicate) {
+                previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:'Plus Jakarta Sans',sans-serif;">&#9888; An orchestrator with this name already exists.</div>`;
+                previewEl.style.borderColor = 'var(--error)';
+            } else {
+                previewEl.textContent = name;
+                previewEl.style.borderColor = '';
+            }
+            updateFormStatus();
+            return;
+        }
+
         const featureStr = suffix ? `OLB_${fKey}_${suffix}` : `OLB_${fKey}`;
 
         const name = (fKey === tKey)
@@ -3082,6 +3266,25 @@
             previewEl.style.borderColor = '';
         }
         updateFormStatus();
+    }
+
+    function toggleOrchestratorSections() {
+        if (isMobileForm()) return;
+        const testType = document.getElementById('fTestType')?.value || '';
+        const feature = document.getElementById('fFeature')?.value || '';
+        const isOrch = testType === 'Orchestrator' || feature === 'Orchestrators';
+
+        const testim = document.getElementById('testimConfigSection');
+        const orch = document.getElementById('orchestratorConfigSection');
+        if (orch) orch.style.display = isOrch ? '' : 'none';
+        if (testim) testim.style.display = isOrch ? 'none' : '';
+
+        // Keep the set name in sync with Custom Suffix (team), since the suffix is part of the orchestrator name.
+        const suffix = (document.getElementById('fCustomSuffix')?.value || '').trim();
+        const setInput = document.getElementById('fOrchSetName');
+        if (isOrch && setInput) {
+            if (suffix && !String(setInput.value || '').trim()) setInput.value = suffix;
+        }
     }
 
     function updateFormStatus() {
@@ -3134,8 +3337,17 @@
         if (isMobileForm()) {
             fieldsOk = el('fPlatform')?.value && el('fBrand')?.value && el('fFeature')?.value && el('fTestType')?.value && el('fEnv')?.value;
         } else {
-            fieldsOk = el('fPlatform')?.value && el('fBrand')?.value && el('fEnv')?.value &&
-                   el('fFeature')?.value && el('fTestType')?.value && el('fTestSuite')?.value && el('fBaseUrl')?.value;
+            const isOrch = (el('fTestType')?.value || '') === 'Orchestrator';
+            if (isOrch) {
+                fieldsOk =
+                    el('fPlatform')?.value && el('fBrand')?.value && el('fEnv')?.value &&
+                    el('fFeature')?.value && el('fTestType')?.value &&
+                    (el('fFeature')?.value === 'Orchestrators') &&
+                    (el('fCustomSuffix')?.value || '').trim();
+            } else {
+                fieldsOk = el('fPlatform')?.value && el('fBrand')?.value && el('fEnv')?.value &&
+                       el('fFeature')?.value && el('fTestType')?.value && el('fTestSuite')?.value && el('fBaseUrl')?.value;
+            }
         }
         return fieldsOk && !isNameDuplicate();
     }
@@ -3177,16 +3389,48 @@
             base.bsAccessKey = v('fBsAccessKey');
             base.jobTimeout = n('fJobTimeout', 120);
         } else {
-            base.testSuite = v('fTestSuite');
-            base.baseUrl = v('fBaseUrl');
-            base.branch = v('fBranch') || 'UDB - API and Web';
-            base.grid = v('fGrid') || 'Testim-Grid';
-            base.parallel = v('fParallel') || '1';
-            base.retries = v('fRetries') || '1';
-            base.timeoutMin = v('fTimeoutMin') || '30';
-            base.browserTimeout = v('fBrowserTimeout') || '30';
-            base.runnerLabel = v('fRunnerLabel') || 'dsdl-timab31';
-            base.jobTimeout = n('fJobTimeout', 120);
+            const isOrch = (v('fTestType') === 'Orchestrator') || base.testType === 'Orchestrator';
+            if (isOrch) {
+                base.testSuite = '';
+                base.baseUrl = '';
+                base.branch = '';
+                base.grid = '';
+                base.parallel = '';
+                base.retries = '';
+                base.timeoutMin = '';
+                base.browserTimeout = '';
+                base.runnerLabel = '';
+                base.jobTimeout = n('fJobTimeout', 30);
+
+                base.orchestratorSet = (v('fOrchSetName') || v('fCustomSuffix')).trim();
+                const refs = (document.getElementById('fOrchTargetRefs')?.value || '').trim();
+                if (refs) {
+                    base.orchestratorTargets = orchestratorRefsToTargets(refs);
+                } else {
+                    const rawTargets = (document.getElementById('fOrchTargets')?.value || '').trim();
+                    if (rawTargets) {
+                        try {
+                            const arr = JSON.parse(rawTargets);
+                            base.orchestratorTargets = Array.isArray(arr) ? arr : [];
+                        } catch {
+                            base.orchestratorTargets = [];
+                        }
+                    } else {
+                        base.orchestratorTargets = base.orchestratorTargets || [];
+                    }
+                }
+            } else {
+                base.testSuite = v('fTestSuite');
+                base.baseUrl = v('fBaseUrl');
+                base.branch = v('fBranch') || 'UDB - API and Web';
+                base.grid = v('fGrid') || 'Testim-Grid';
+                base.parallel = v('fParallel') || '1';
+                base.retries = v('fRetries') || '1';
+                base.timeoutMin = v('fTimeoutMin') || '30';
+                base.browserTimeout = v('fBrowserTimeout') || '30';
+                base.runnerLabel = v('fRunnerLabel') || 'dsdl-timab31';
+                base.jobTimeout = n('fJobTimeout', 120);
+            }
         }
 
         const scheduleEnabled = !!document.getElementById('fScheduleEnabled')?.checked;
@@ -3278,6 +3522,31 @@ JOB_TIMEOUT: ${el('fJobTimeout')}`;
 - permissions block (contents: read, checks: write, actions: write)
 - The jobs section calling _mobile-template.yml passing all inputs with fallback defaults
 - BrowserStack creds are workflow_dispatch inputs with defaults so anyone can see and edit them`;
+
+        } else if ((document.getElementById('fTestType')?.value || '') === 'Orchestrator') {
+            const setName = (document.getElementById('fOrchSetName')?.value || el('fCustomSuffix') || '').trim();
+            const targets = document.getElementById('fOrchTargets')?.value || '[]';
+            prompt = `Create or update an orchestrator workflow file in the repo Axos.QE.TestIM at:
+.github/workflows/${name}.yml
+
+This workflow is an ORCHESTRATOR (not a Testim pipeline). It should:
+- trigger on workflow_dispatch and repository_dispatch
+- use a GitHub secret GH_DISPATCH_TOKEN to dispatch other workflows (cross-repo supported)
+- call the existing script: .github/orchestrator/dispatch-workflows.ps1
+- pass -SetName "${setName || 'WFO'}" and -ConfigPath ".github/orchestrator/targets.json"
+
+Workflow_dispatch inputs should include:
+- SET_NAME (default: ${setName || 'WFO'})
+- TARGET_ENVIRONMENT (default: Development)
+- DEPLOYMENT_TYPE (default: deploy-latest)
+- ARTIFACT_ID (default: empty)
+- VERBOSE_OUTPUT (choice: true/false, default: false)
+
+Also create/update the file .github/orchestrator/targets.json so it includes a set named "${setName || 'WFO'}" with these targets (array):
+
+${targets}
+
+Each target element supports: enabled, name, owner, repo, workflow, ref, inputs.`;
 
         } else {
             prompt = `Create a new Testim pipeline workflow file in the repo Axos.QE.TestIM at:
@@ -3487,6 +3756,17 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
             if (merged[k]) entry[outKey] = merged[k];
         }
 
+        const orchestratorMap = {
+            SET_NAME: 'orchestratorSet',
+            TARGET_ENVIRONMENT: 'targetEnvironment',
+            DEPLOYMENT_TYPE: 'deploymentType',
+            ARTIFACT_ID: 'artifactId',
+            VERBOSE_OUTPUT: 'verboseOutput'
+        };
+        for (const [k, outKey] of Object.entries(orchestratorMap)) {
+            if (merged[k] !== undefined && merged[k] !== null && String(merged[k]).trim() !== '') entry[outKey] = merged[k];
+        }
+
         const mobileMap = {
             TEST_ENV: 'env',
             GREP: 'grep',
@@ -3554,6 +3834,21 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
             { owner: 'axos-financial', repo: 'Axos.QE.Mobile' }
         ];
 
+        // Optional: load orchestrator sets so orchestrator workflows can show/edit their targets.
+        let orchestratorSets = null;
+        try {
+            const resp = await fetch(`https://api.github.com/repos/axos-financial/Axos.QE.TestIM/contents/.github/orchestrator/targets.json`, {
+                headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/vnd.github.v3+json' }
+            });
+            if (resp.ok) {
+                const j = await resp.json();
+                const b64 = (j.content || '').replace(/\n/g, '');
+                const jsonText = b64 ? atob(b64) : '';
+                const parsed = JSON.parse(jsonText);
+                orchestratorSets = parsed && parsed.sets && typeof parsed.sets === 'object' ? parsed.sets : null;
+            }
+        } catch { /* optional */ }
+
         const allFiles = [];
         try {
             for (const r of repos) {
@@ -3571,6 +3866,9 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
                     if (f.name.startsWith('_') || !f.name.endsWith('.yml')) continue;
                     try {
                         const entry = await fetchWorkflowEntry(r, f.name, pat);
+                        if (r.repo === 'Axos.QE.TestIM' && entry && entry.orchestratorSet && orchestratorSets) {
+                            entry.orchestratorTargets = orchestratorSets[entry.orchestratorSet] || [];
+                        }
                         allFiles.push(entry);
                     } catch (e) {
                         allFiles.push({ filename: f.name, repo: r.repo });
@@ -3659,6 +3957,12 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
                 if (entry.repeatUnit !== undefined) parsed.repeatUnit = entry.repeatUnit;
                 if (entry.repeatEvery !== undefined) parsed.repeatEvery = entry.repeatEvery;
                 if (entry.repeatDom !== undefined) parsed.repeatDom = entry.repeatDom;
+                if (entry.orchestratorSet !== undefined) parsed.orchestratorSet = entry.orchestratorSet;
+                if (entry.orchestratorTargets !== undefined) parsed.orchestratorTargets = entry.orchestratorTargets;
+                if (entry.targetEnvironment !== undefined) parsed.targetEnvironment = entry.targetEnvironment;
+                if (entry.deploymentType !== undefined) parsed.deploymentType = entry.deploymentType;
+                if (entry.artifactId !== undefined) parsed.artifactId = entry.artifactId;
+                if (entry.verboseOutput !== undefined) parsed.verboseOutput = entry.verboseOutput;
 
                 const idx = pipelines.findIndex(p => p.filename === entry.filename);
                 if (idx >= 0) { pipelines[idx] = parsed; updated++; }
@@ -3832,7 +4136,14 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
 
         if (envMatch) {
             env = envMatch[1];
-            const rest = envMatch[2].replace(/-Testim$/, '');
+            // Support orchestrators: ...-Orchestrator (non-Testim).
+            const isOrch = /-Orchestrator$/.test(envMatch[2]);
+            const rest = envMatch[2].replace(/-Testim$/, '').replace(/-Orchestrator$/, '');
+
+            if (isOrch) {
+                testType = 'Orchestrator';
+                featureDetail = rest;
+            } else {
 
             let foundExplicitType = false;
             for (const t of TEST_TYPES) {
@@ -3860,6 +4171,7 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
                     }
                 }
             }
+            }
         }
 
         let feature = '';
@@ -3877,9 +4189,25 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
 
         return {
             filename, name, platform, brand, env, feature, featureDetail, testType,
-            testSuite: '', baseUrl: ENV_URLS[env] || '', branch: 'UDB - API and Web',
-            grid: 'Testim-Grid', parallel: '5', retries: '1', timeoutMin: '30',
-            browserTimeout: '30', runnerLabel: 'dsdl-timab31', jobTimeout: 120,
+            testSuite: '',
+            baseUrl: testType === 'Orchestrator' ? '' : (ENV_URLS[env] || ''),
+            branch: testType === 'Orchestrator' ? '' : 'UDB - API and Web',
+            grid: testType === 'Orchestrator' ? '' : 'Testim-Grid',
+            parallel: testType === 'Orchestrator' ? '' : '5',
+            retries: testType === 'Orchestrator' ? '' : '1',
+            timeoutMin: testType === 'Orchestrator' ? '' : '30',
+            browserTimeout: testType === 'Orchestrator' ? '' : '30',
+            runnerLabel: testType === 'Orchestrator' ? '' : 'dsdl-timab31',
+            jobTimeout: testType === 'Orchestrator' ? 30 : 120,
+            orchestratorSet: testType === 'Orchestrator'
+                ? (() => {
+                    const m = String(featureDetail || '').match(/Orchestrators[_-]([^_]+)$/);
+                    if (m && m[1]) return m[1];
+                    const s = String(featureDetail || '').split('Orchestrators_')[1] || '';
+                    return (s.split('_')[0] || s.split('-')[0] || '').trim();
+                })()
+                : '',
+            orchestratorTargets: testType === 'Orchestrator' ? [] : undefined,
             schedule: '', scheduleEnabled: false
         };
     }
