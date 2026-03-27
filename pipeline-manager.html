@@ -4304,8 +4304,6 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
     const GH_OWNER = 'axos-financial';
     const PAT_KEY = 'axos_gh_pat';
     let allRuns = [];
-    let allRunsById = new Map();
-    let activeDurationIntervalId = null;
     let resultsPipelines = [];
     let missingWorkflows = [];
     let pieChartInstance = null;
@@ -4563,8 +4561,8 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
                         // Fetch most recent runs of any status (completed + queued/in_progress).
                         const runsData = await ghFetch(`/repos/${owner}/${repo}/actions/workflows/${wf.id}/runs?per_page=${perPage}`);
                         for (const r of (runsData.workflow_runs || [])) {
-                            const duration = (r.status === 'completed' && r.run_started_at && (r.completed_at || r.updated_at))
-                                ? Math.round((new Date(r.completed_at || r.updated_at) - new Date(r.run_started_at)) / 1000)
+                            const duration = r.updated_at && r.run_started_at
+                                ? Math.round((new Date(r.updated_at) - new Date(r.run_started_at)) / 1000)
                                 : 0;
                             allRuns.push({
                                 id: r.id,
@@ -4575,9 +4573,6 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
                                 conclusion: r.conclusion || 'unknown',
                                 status: r.status,
                                 duration,
-                                runStartedAt: r.run_started_at,
-                                completedAt: r.completed_at,
-                                updatedAt: r.updated_at,
                                 event: r.event,
                                 actor: r.actor?.login || '',
                                 createdAt: r.created_at,
@@ -4596,7 +4591,6 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
             // Classify "gate-skipped" schedule runs so we don't show them as Passed.
             status.innerHTML = `<span style="color:var(--axos-orange); font-weight:600;">Analyzing</span> scheduled runs (skip gate)...`;
             await enrichGateSkippedRuns(owner);
-            rebuildAllRunsIndex();
             const miss = missingWorkflows.length ? ` &mdash; <span style="color:var(--danger); font-weight:700;">${missingWorkflows.length} issue(s)</span>` : '';
             const repoErr = repoErrors.length ? `<br><span style="color:var(--danger);">Repo errors:</span> ${repoErrors.map(escapeHtml).join(' | ')}` : '';
             status.innerHTML = `<span style="color:var(--success); font-weight:600;">&#10003; Loaded ${allRuns.length} run(s)</span> across ${resultsPipelines.length} pipeline(s) (${totalMatched} matched in GitHub)${miss}.${repoErr}`;
@@ -4635,10 +4629,7 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         const total = runs.length;
         const actionable = outcomes.filter(o => o === 'success' || o === 'failure').length;
         const passRate = actionable ? ((passed / actionable) * 100).toFixed(1) : '0.0';
-        const durations = runs
-            .filter(r => getRunOutcome(r) !== 'skipped')
-            .map(getCompletedRunDurationSeconds)
-            .filter(d => d > 0);
+        const durations = runs.filter(r => r.duration > 0 && getRunOutcome(r) !== 'skipped').map(r => r.duration);
         const avgDur = durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0;
         const uniquePipelines = resultsSelectedPipelines.size
             ? resultsSelectedPipelines.size
@@ -5098,21 +5089,17 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
                     return ` <span class="info-tip" data-tip="${esc}" title="${esc}" aria-label="${esc}">&#9432;</span>`;
                 })()
                 : '';
-            const durSec = getRunDurationSeconds(r);
             return `<tr>
                 <td><input type="checkbox" class="run-check" value="${r.id}" onchange="toggleRunCheck(${r.id})" ${selectedRuns.has(r.id) ? 'checked' : ''} style="accent-color:var(--axos-orange);"></td>
                 <td class="run-name" title="${r.workflowName}">${r.workflowName.replace(/-Testim$/, '')}</td>
                 <td style="font-family:'JetBrains Mono',monospace; font-size:12px;">#${r.runNumber}</td>
                 <td><span class="${badge}">${label}</span>${skipInfo}</td>
-                <td data-duration-run-id="${r.id}" style="font-family:'JetBrains Mono',monospace; font-size:12px;">${fmtDuration(durSec)}</td>
+                <td style="font-family:'JetBrains Mono',monospace; font-size:12px;">${fmtDuration(r.duration)}</td>
                 <td style="font-size:12px;">${r.event === 'schedule' ? '&#128337; Schedule' : r.event === 'workflow_dispatch' ? '&#9654; Manual' : r.event}</td>
                 <td style="font-size:12px; color:var(--text-secondary);">${dateStr}<br><span style="color:var(--text-muted);">${timeStr}</span></td>
                 <td><a href="${r.url}" target="_blank">View</a></td>
             </tr>`;
         }).join('');
-
-        ensureActiveDurationTicker();
-        updateActiveDurationCells(); // immediate refresh (no 1s wait)
     }
 
     function toggleRunCheck(id) {
@@ -5131,60 +5118,6 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         const s = sec % 60;
         if (m === 0) return s + 's';
         return m + 'm ' + s + 's';
-    }
-
-    function rebuildAllRunsIndex() {
-        allRunsById = new Map((allRuns || []).map(r => [String(r.id), r]));
-    }
-
-    function parseIsoMs(iso) {
-        if (!iso) return 0;
-        const ms = Date.parse(String(iso));
-        return Number.isFinite(ms) ? ms : 0;
-    }
-
-    function getRunDurationSeconds(r, nowMs = Date.now()) {
-        const startMs = parseIsoMs(r?.runStartedAt);
-        if (!startMs) return 0;
-
-        const isActive = r?.status && r.status !== 'completed';
-        if (isActive) return Math.max(0, Math.floor((nowMs - startMs) / 1000));
-
-        const endMs = parseIsoMs(r?.completedAt || r?.updatedAt);
-        if (!endMs) return 0;
-        return Math.max(0, Math.round((endMs - startMs) / 1000));
-    }
-
-    function getCompletedRunDurationSeconds(r) {
-        if (!r || r.status !== 'completed') return 0;
-        return getRunDurationSeconds(r);
-    }
-
-    function updateActiveDurationCells() {
-        const resultsPanel = document.getElementById('panelResults');
-        if (!resultsPanel || !resultsPanel.classList.contains('active')) return;
-
-        const now = Date.now();
-        const tds = document.querySelectorAll('#runsTableBody td[data-duration-run-id]');
-        for (const td of tds) {
-            const run = allRunsById.get(String(td.dataset.durationRunId || ''));
-            if (!run || !run.status || run.status === 'completed') continue;
-            const next = fmtDuration(getRunDurationSeconds(run, now));
-            if (td.textContent !== next) td.textContent = next;
-        }
-    }
-
-    function ensureActiveDurationTicker() {
-        if (activeDurationIntervalId) return;
-        activeDurationIntervalId = window.setInterval(() => {
-            // If there are no active runs at all, stop ticking.
-            if (!allRuns.some(r => r?.status && r.status !== 'completed')) {
-                clearInterval(activeDurationIntervalId);
-                activeDurationIntervalId = null;
-                return;
-            }
-            updateActiveDurationCells();
-        }, 1000);
     }
 
     // ══════════════════════════════════════════
@@ -5342,7 +5275,7 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         const actionableRuns = runs.filter(r => !['cancelled','timed_out','stale'].includes(r.conclusion));
         const actionableTotal = actionableRuns.length;
         const passRate = actionableTotal ? ((passed / actionableTotal) * 100).toFixed(1) : '0.0';
-        const durations = actionableRuns.map(getCompletedRunDurationSeconds).filter(d => d > 0);
+        const durations = actionableRuns.filter(r => r.duration > 0).map(r => r.duration);
         const avgDur = durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0;
 
         const uniquePipelines = [...new Set(runs.map(r => r.workflowName))].sort();
@@ -5439,7 +5372,7 @@ ${incLinks ? '<th style="padding:14px;text-align:center;color:#ffffff;font-weigh
                 const pSkipped = pRuns.filter(r => ['cancelled','timed_out','stale'].includes(r.conclusion)).length;
                 const pActionable = pRuns.filter(r => !['cancelled','timed_out','stale'].includes(r.conclusion));
                 const pRate = pActionable.length ? ((pPassed / pActionable.length) * 100).toFixed(0) : '--';
-                const pDurs = pActionable.map(getCompletedRunDurationSeconds).filter(d => d > 0);
+                const pDurs = pActionable.filter(r => r.duration > 0).map(r => r.duration);
                 const pAvg = pDurs.length ? Math.round(pDurs.reduce((a,b) => a+b, 0) / pDurs.length) : 0;
                 const pRateColor = pRate === '--' ? '#6b7280' : parseFloat(pRate) >= 90 ? '#10b981' : parseFloat(pRate) >= 70 ? '#f59e0b' : '#ef4444';
                 const pRateBg = pRate === '--' ? '#f9fafb' : parseFloat(pRate) >= 90 ? '#ecfdf5' : parseFloat(pRate) >= 70 ? '#fefce8' : '#fef2f2';
