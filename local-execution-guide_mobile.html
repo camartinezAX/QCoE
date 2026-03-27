@@ -853,135 +853,135 @@
       <details class="expandable-section">
       <summary><span class="icon">&#9881;&#65039;</span> First-Time Setup</summary>
       <div class="expandable-body">
-      <div class="steps">
-        <div class="step">
-          <div class="step-num"></div>
-          <div class="step-body">
-            <h4>Clone &amp; install dependencies</h4>
-            <div class="code-block">
-              <div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">terminal</span></div>
-              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-              <pre><span class="prompt">$</span> git clone &lt;repo-url&gt; &amp;&amp; cd Axos.Auto_Mobile
-<span class="prompt">$</span> npm install</pre>
+      <details class="expandable-section" style="margin: 0 0 1rem;">
+        <summary><span class="icon">&#128241;</span> Before you run the prompt (device checklist)</summary>
+        <div class="expandable-body">
+          <p style="margin: 0.25rem 0 0.75rem; color: var(--text-muted);">
+            The prompt can fix tooling and configuration, but your phone must be in a test-ready state and physically connected.
+          </p>
+          <div class="grid-2" style="gap: 1rem;">
+            <div>
+              <p style="font-weight:700; color: var(--navy); margin: 0 0 0.5rem;">Android (physical device)</p>
+              <ul style="margin-left: 1.25rem; color: var(--text-muted); line-height: 2.0; margin: 0;">
+                <li>Enable <strong>Developer options</strong></li>
+                <li>Enable <strong>USB debugging</strong></li>
+                <li>Connect the phone via USB and tap <strong>Allow</strong> on the &ldquo;Allow USB debugging?&rdquo; prompt</li>
+                <li>Set USB mode to <strong>File Transfer (MTP)</strong> if your device asks (helps drivers/visibility)</li>
+                <li>If required for your network setup, enable <strong>USB tethering</strong> (optional; only if your org requires it)</li>
+                <li>(Optional) Open <strong>Vysor</strong> to confirm the device is visible and unlocked</li>
+              </ul>
+            </div>
+            <div>
+              <p style="font-weight:700; color: var(--navy); margin: 0 0 0.5rem;">iOS (macOS only)</p>
+              <ul style="margin-left: 1.25rem; color: var(--text-muted); line-height: 2.0; margin: 0;">
+                <li>Connect the iPhone via USB</li>
+                <li>Tap <strong>Trust This Computer</strong> on the device when prompted</li>
+                <li>Unlock the device and keep it awake during the first run</li>
+                <li>Ensure <strong>Xcode</strong> is installed and you can see the device in <strong>Xcode &gt; Settings &gt; Accounts</strong> (signed in)</li>
+              </ul>
+            </div>
+          </div>
+          <div class="alert alert-info" style="margin-top: 0.75rem;">
+            <span class="alert-icon">&#128736;&#65039;</span>
+            <div>
+              If your environment requires VPN, connect to your company VPN <strong>before</strong> running the prompt so app login and internal endpoints work.
             </div>
           </div>
         </div>
-        <div class="step">
-          <div class="step-num"></div>
-          <div class="step-body">
-            <h4>Set <code>ANDROID_HOME</code> <span class="platform-badge cross-platform">Android</span></h4>
-            <p>Appium needs this to find SDK tools. Skip if already set.</p>
-            <div class="os-tabs" id="prereqOsTabs">
-              <button class="active" onclick="switchOsTab('prereq','mac')">macOS</button>
-              <button onclick="switchOsTab('prereq','win')">Windows</button>
-            </div>
-            <div class="os-content active" id="prereq-mac">
-              <div class="code-block">
-                <div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">~/.zshrc</span></div>
-                <pre><span class="keyword">export</span> ANDROID_HOME=<span class="string">$HOME/Library/Android/sdk</span>
-<span class="keyword">export</span> PATH=<span class="string">$ANDROID_HOME/platform-tools:$PATH</span></pre>
-              </div>
-              <p style="color: var(--text-muted); font-size: 0.88rem;">Then run <code>source ~/.zshrc</code> or open a new terminal.</p>
-            </div>
-            <div class="os-content" id="prereq-win">
-              <div class="code-block">
-                <div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">PowerShell</span></div>
-                <pre><span class="comment"># Set ANDROID_HOME and ANDROID_SDK_ROOT permanently (typical path)</span>
-<span class="keyword">$sdk</span> = <span class="string">"$env:LOCALAPPDATA\Android\Sdk"</span>
-<span class="prompt">&gt;</span> setx ANDROID_HOME <span class="keyword">$sdk</span>
-<span class="prompt">&gt;</span> setx ANDROID_SDK_ROOT <span class="keyword">$sdk</span>
-<span class="prompt">&gt;</span> setx PATH <span class="string">"$env:PATH;$sdk\platform-tools"</span></pre>
-              </div>
-              <div class="alert alert-warning" style="margin-top: 0.5rem;">
-                <span class="alert-icon">&#9888;&#65039;</span>
-                <div><strong>CRITICAL:</strong> After running <code>setx</code> commands, you must <strong>fully restart Cursor</strong> (not just the terminal). Environment variables set with <code>setx</code> only take effect in new processes.</div>
-              </div>
-              <p style="color: var(--text-muted); font-size: 0.88rem;">Verify after restart with <code>adb --version</code> and <code>echo $env:ANDROID_HOME</code>.</p>
-            </div>
-          </div>
-        </div>
-        <div class="step">
-          <div class="step-num"></div>
-          <div class="step-body">
-            <h4>Install the Axos app on your device</h4>
-            <p>The app must be installed on the device <strong>before</strong> running tests (when using <code>USE_INSTALLED_APP=true</code>).</p>
-            <table class="ref-table" style="margin-top: 0.75rem; font-size: 0.88rem;">
-              <thead>
-                <tr><th>Platform</th><th>Where to download</th></tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><strong>Android</strong></td>
-                  <td>
-                    <strong>Firebase</strong> (internal builds &mdash; UAT, QA, STG)<br>
-                    <strong>Google Play Store</strong> (prod)
-                  </td>
-                </tr>
-                <tr>
-                  <td><strong>iOS</strong></td>
-                  <td>
-                    <strong>Firebase</strong> (internal builds &mdash; UAT, QA, STG)<br>
-                    <strong>Apple App Store</strong> (prod)
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-            <div class="alert alert-info" style="margin-top: 0.75rem;">
-              <span class="alert-icon">&#128161;</span>
-              <div>For <strong>prod</strong> testing, simply download the public app from the Play Store / App Store, set <code>TEST_ENV=prod</code> in <code>.env</code>, and you&rsquo;re good to go. For internal environments (UAT, QA), get the build from <strong>Firebase</strong>.</div>
-            </div>
-          </div>
-        </div>
-        <div class="step">
-          <div class="step-num"></div>
-          <div class="step-body">
-            <h4>Configure <code>.env</code></h4>
-            <p>Set these <strong>before</strong> running any tests:</p>
-            <div class="code-block">
-              <div class="code-header"><div class="dots"><span></span><span></span><span></span></div><span class="lang">.env</span></div>
-              <pre><span class="comment"># Which test environment to target:</span>
-TEST_ENV=<span class="tag">UAT</span>          <span class="comment"># Options: qa, UAT, stg, prod</span>
+      </details>
 
-USE_INSTALLED_APP=<span class="tag">true</span>   <span class="comment"># App is already installed on device</span></pre>
-            </div>
-            <div class="alert alert-info" style="margin-top: 0.5rem;">
-              <span class="alert-icon">&#128161;</span>
-              <div>The AI prompt below will configure the rest of <code>.env</code> for you automatically (UDID, platform, app paths, etc.).</div>
-            </div>
+      <div class="alert alert-info" style="margin: 0 0 1rem;">
+        <span class="alert-icon">&#128640;</span>
+        <div>
+          <strong>Use the setup prompt below.</strong> It handles first-time setup end-to-end (tools, env vars, device detection, and a sanity test) so you don&rsquo;t have to follow a long checklist.
+          <div style="margin-top:0.5rem; color: var(--text-muted); font-size: 0.9rem;">
+            Tip: open the repo root in Cursor before running the prompt.
           </div>
         </div>
+      </div>
+
+      <div class="grid-2" style="gap: 1rem; margin: 0 0 1rem;">
+        <details class="expandable-section" style="margin:0;">
+          <summary><span class="icon">&#9989;</span> What the prompt will do</summary>
+          <div class="expandable-body">
+            <ul style="margin-left: 1.25rem; color: var(--text-muted); line-height: 2.0; margin-bottom: 0;">
+              <li>Validate <strong>Node / npm / npx</strong> (and if missing, install Node without admin + add it to your user PATH permanently)</li>
+              <li>Install project dependencies (<code>npm install</code>) if needed</li>
+              <li>Locate and set <strong>ANDROID_HOME / ANDROID_SDK_ROOT / JAVA_HOME</strong> permanently (and fix PATH issues)</li>
+              <li>Detect your device (Android via <code>adb devices</code>, iOS via <code>xcrun</code> on macOS)</li>
+              <li>Update <code>.env</code> (<code>TEST_ENV</code>, <code>USE_INSTALLED_APP</code>, app paths, <code>RETRIES</code>, UDIDs)</li>
+              <li>Clean old UIAutomator2 packages to prevent signature conflicts</li>
+              <li>Run a <strong>sanity smoke test</strong> and only declare you &ldquo;READY&rdquo; when setup issues are resolved</li>
+            </ul>
+          </div>
+        </details>
+        <details class="expandable-section" style="margin:0;">
+          <summary><span class="icon">&#128274;</span> Guardrails (important)</summary>
+          <div class="expandable-body">
+            <ul style="margin-left: 1.25rem; color: var(--text-muted); line-height: 2.0; margin-bottom: 0;">
+              <li>Do <strong>not</strong> print or paste secrets from <code>.env</code> into chat</li>
+              <li>Do <strong>not</strong> commit <code>.env</code> changes (treat it as local-only)</li>
+              <li>Prefer changing only <code>.env</code> and <strong>user-level</strong> shell profiles / env vars</li>
+              <li>Avoid modifying repo config files unless absolutely required</li>
+              <li>If the sanity run fails due to app UI/locators, report it as a <strong>test failure</strong> (not a setup issue)</li>
+            </ul>
+          </div>
+        </details>
       </div>
 
       <div class="prompt-card" style="margin-top: 1.25rem;">
         <button class="prompt-copy" onclick="copyPrompt(this)">Copy Prompt</button>
         <div class="prompt-label">
           <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          SKIP ALL MANUAL SETUP &mdash; PASTE THIS INTO CURSOR
+          AUTO-SETUP + AUTO-HEAL &mdash; PASTE THIS INTO CURSOR
         </div>
-        <div class="prompt-text">I need to set up my machine for local mobile test execution. Please do the full first-time setup:
+        <div class="prompt-text">I need to set up my machine for local mobile test execution. Please do the full first-time setup end-to-end and only say "READY" after the sanity smoke test is running cleanly.
+
+Rules:
+- Never print secrets from my `.env`
+- Prefer changing only `.env` + user-level env vars/shell profiles (avoid repo config edits unless absolutely required)
+- If the sanity run fails due to app UI/locators (not tooling), report it as a test failure (not a setup issue)
+- If you cannot reach "READY", STOP with a final summary that includes: what you checked, what is working, what is missing, the exact next steps, and (if applicable) the ServiceNow section to use.
 
 1. Detect my OS (macOS or Windows)
-2. Check if `node_modules` exists — if not, run `npm install`
-3. Check if `ANDROID_HOME` is set — if not, search for my Android SDK path and set it permanently using `setx` (Windows) or shell profile (macOS). If the Android SDK is NOT installed anywhere on my machine, DO NOT attempt to install it — instead STOP and tell me: "Android SDK is not installed. Please open the local execution guide (docs/local-execution-guide.html), go to Prerequisites → First-Time Setup, and expand the section '🚨 JDK or Android SDK Not Installed? (ServiceNow Request)' for instructions on requesting it through IT."
-4. Check if `JAVA_HOME` is set — if not, search for my Java JDK installation. If a JDK is NOT installed anywhere on my machine, DO NOT attempt to install it — instead STOP and tell me the same message as step 3 (refer me to the ServiceNow request section in the guide).
-5. Check if `adb` is on PATH — if not, add platform-tools to PATH permanently
-6. Ask me: "Will you run Android tests, iOS tests, or both?"
-7. Ask me which test environment I want to target (qa, UAT, stg, prod) and set `TEST_ENV` in `.env` accordingly.
-8. Ask me: "Do you already have the app installed on your device, or do you want to provide an APK/IPA file?"
+2. Detect which shell I&rsquo;m using (PowerShell/CMD/Git Bash on Windows; zsh/bash on macOS). On Windows, make sure the setup works in the shell I&rsquo;ll actually run tests from (and fix Git Bash env export issues if applicable).
+3. Verify Node.js + npm + npx work (`node -v`, `npm -v`, `npx -v`).
+   - If missing: download and install the latest Node.js LTS without admin (user-local), then add it to my user PATH permanently so `node`, `npm`, and `npx` work from any terminal (PowerShell/CMD/Git Bash).
+   - If on Windows and corporate restrictions block `winget`: do a user-local portable install (for example under `%LOCALAPPDATA%\\nodejs`) and set User PATH accordingly (no duplicates).
+   - If on macOS and `brew` is blocked: use a user-local install (for example `nvm`) so `node` works in new shells, and update the correct shell profile (`~/.zshrc` / `~/.bashrc`).
+4. Check if `node_modules` exists &mdash; if not, run `npm install`
+5. Check if `ANDROID_HOME` / `ANDROID_SDK_ROOT` are set and valid. If not set, search for my Android SDK path and set it permanently using `setx` (Windows) or shell profile (macOS).
+   - If the Android SDK is not installed anywhere: attempt a user-local install (no admin) using official Android SDK Command-line Tools + platform-tools under my user profile, accept licenses non-interactively, and then set env vars permanently.
+   - If downloads/installation are blocked by corporate policy/proxy/firewall, STOP and tell me: "Android SDK is not installed. Please open the local execution guide (docs/local-execution-guide.html), go to Prerequisites → First-Time Setup, and expand the section '🚨 JDK or Android SDK Not Installed? (ServiceNow Request)' for instructions on requesting it through IT."
+6. Check if `JAVA_HOME` is set and valid. If not, search for my Java JDK installation and set it permanently.
+   - If a JDK is not installed anywhere: attempt a user-local install (no admin) using an official JDK distribution (zip/tar) under my user profile, then set `JAVA_HOME` permanently.
+   - If downloads/installation are blocked by corporate policy/proxy/firewall, STOP and tell me the same message as step 5 (refer me to the ServiceNow request section in the guide).
+7. Check if `adb` is on PATH &mdash; if not, add platform-tools to PATH permanently and verify `adb --version`
+8. Ask me: "Will you run Android tests, iOS tests, or both?"
+9. Ask me which test environment I want to target (qa, UAT, stg, prod) and set `TEST_ENV` in `.env` accordingly.
+10. Ask me: "Do you already have the app installed on your device, or do you want to provide an APK/IPA file?"
    - If the app is already installed: set `USE_INSTALLED_APP=true`
-   - If they want to provide a file: set `USE_INSTALLED_APP=false` and ask for the path, then set `ANDROID_APP` and/or `IOS_APP` in `.env`
-9. Ask me how many retries I want per failed test (default and recommended is `1`). Set `RETRIES` in `.env`.
-10. Run `adb devices` to detect my connected Android device
-11. Update `LOCAL_ANDROID_UDID` in `.env` with the detected UDID
-12. Uninstall old Appium UIAutomator2 packages to prevent signature conflicts:
+   - If I want to provide a file: set `USE_INSTALLED_APP=false` and ask for the path, then set `ANDROID_APP` and/or `IOS_APP` in `.env`
+11. Ask me how many retries I want per failed spec (default and recommended is `1`). Set `RETRIES` in `.env`.
+12. Run `adb devices` to detect my connected Android device (if I&rsquo;m running Android)
+13. Update `LOCAL_ANDROID_UDID` in `.env` with the detected UDID
+14. Uninstall old Appium UIAutomator2 packages to prevent signature conflicts:
     - `adb uninstall io.appium.uiautomator2.server`
     - `adb uninstall io.appium.uiautomator2.server.test`
-13. If on macOS and running iOS: detect the iOS device using `xcrun xctrace list devices` and update `LOCAL_IOS_UDID` and `LOCAL_IOS_PLATFORM_VERSION` in .env
-14. If on Windows:
+15. If on macOS and running iOS: detect the iOS device using `xcrun xctrace list devices` and update `LOCAL_IOS_UDID` and `LOCAL_IOS_PLATFORM_VERSION` in .env
+16. If on Windows:
     - Remind me to RESTART Cursor/terminal after setting env vars with `setx` (required for changes to take effect)
-    - Remind me to use `npx cross-env GREP=@Tag npm run test:android` instead of `GREP="..." npm run`
-15. Confirm everything is ready and show me the command to run my first test</div>
-        <p class="prompt-desc">One prompt does it all &mdash; detects your OS, sets env vars permanently, cleans old Appium packages, configures .env, detects your device, and gets you ready to run.</p>
+    - Remind me to use `npx cross-env GREP=@Tag npm run test:android` instead of `GREP="..." npm run` (or prefer `npm run test:android:sanity`)
+    - If I use Git Bash, ensure `~/.bashrc` and `~/.bash_profile` export `ANDROID_HOME`, `ANDROID_SDK_ROOT`, and `JAVA_HOME` and include Node + Android platform-tools on PATH
+17. Auto-heal sanity run:
+    - Run a smoke test using the login tag (Android/iOS as applicable):
+      - Windows example: `npx cross-env GREP=@Sanity_Login npm run test:android`
+      - macOS example: `GREP=@Sanity_Login npm run test:android`
+      - iOS (macOS): `GREP=@Sanity_Login npm run test:ios`
+    - If it fails due to tooling/setup (npx not found, env vars missing, adb not found, app path misconfigured, Appium startup), fix it and re-run until the smoke test starts cleanly
+    - If it fails due to app UI/locators (e.g., element not found), stop and summarize the failure as a test issue (not setup)
+18. Confirm everything is ready and show me the exact command to run my first tagged test (example `@Sanity_Login`) and where to find the report artifacts</div>
+        <p class="prompt-desc">Paste once, answer a few questions, and you&rsquo;ll end with a verified working command. The prompt installs deps, fixes env vars/PATH, detects devices, updates <code>.env</code>, and runs a sanity smoke test.</p>
       </div>
 
       <details class="expandable-section" style="margin-top: 1.25rem; border-left: 4px solid var(--danger);">
@@ -990,7 +990,7 @@ USE_INSTALLED_APP=<span class="tag">true</span>   <span class="comment"># App is
           <span class="section-tag" style="background: var(--danger);">Action Required</span>
         </summary>
         <div class="expandable-body" style="padding-left: 1rem;">
-          <p style="margin-top: 0.5rem; margin-bottom: 1rem;">If the AI prompt above detects that <strong>Java JDK</strong> or <strong>Android SDK</strong> are missing and installation fails (e.g., <code>winget</code> / <code>brew</code> blocked by corporate network), you need to <strong>request the software through IT</strong> via a single ServiceNow ticket.</p>
+          <p style="margin-top: 0.5rem; margin-bottom: 1rem;">If the AI prompt above detects that <strong>Java JDK</strong> or <strong>Android SDK</strong> are missing and you&rsquo;re on a managed corporate machine where self-install is blocked, request the software through IT via a single ServiceNow ticket.</p>
 
           <div class="alert alert-warning" style="margin-top: 0;">
             <span class="alert-icon">&#9888;&#65039;</span>

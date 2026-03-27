@@ -492,6 +492,7 @@
         .health-seg.pass { background:linear-gradient(90deg, #10b981, #34d399); }
         .health-seg.fail { background:linear-gradient(90deg, #ef4444, #f87171); }
         .health-seg.other { background:linear-gradient(90deg, #6b7280, #9ca3af); }
+        .health-seg.skip { background:linear-gradient(90deg, #3b82f6, #60a5fa); }
         .health-pct { font-size:11px; font-weight:700; color:var(--text-primary); min-width:44px; text-align:right; }
 
         .results-controls { display:flex; gap:10px; align-items:center; margin-bottom:18px; flex-wrap:wrap; }
@@ -514,6 +515,28 @@
         .badge-fail { background:linear-gradient(135deg, rgba(239,68,68,0.15), rgba(248,113,113,0.1)); color:#f87171; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:700; border:1px solid rgba(239,68,68,0.2); }
         .badge-cancel { background:rgba(107,114,128,0.12); color:#9ca3af; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:700; border:1px solid rgba(107,114,128,0.15); }
         .badge-running { background:linear-gradient(135deg, rgba(245,158,11,0.15), rgba(251,191,36,0.1)); color:#fbbf24; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:700; border:1px solid rgba(245,158,11,0.2); animation:glowPulse 2s infinite; }
+        .badge-skip { background:rgba(59,130,246,0.12); color:#60a5fa; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:700; border:1px solid rgba(59,130,246,0.18); }
+
+        .info-tip { margin-left:6px; color:var(--text-muted); font-weight:800; cursor:help; user-select:none; }
+        #pmTooltip {
+            position:fixed;
+            z-index:999999;
+            display:none;
+            max-width:min(520px, 70vw);
+            background:rgba(10,14,26,0.96);
+            border:1px solid rgba(255,255,255,0.12);
+            color:var(--text-primary);
+            padding:8px 10px;
+            border-radius:10px;
+            font-size:11px;
+            line-height:1.35;
+            box-shadow:0 10px 30px rgba(0,0,0,0.55);
+            pointer-events:none;
+            white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
+            backdrop-filter:blur(10px);
+        }
 
         .fetch-bar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
         .fetch-bar select, .fetch-bar button { padding:9px 16px; border-radius:8px; }
@@ -632,6 +655,7 @@
                     <option value="success">Passed Only</option>
                     <option value="failure">Failed Only</option>
                     <option value="cancelled">Cancelled Only</option>
+                    <option value="skipped">Skipped Only</option>
                 </select>
             </div>
             <div class="results-folder-tree" id="resultsTree"></div>
@@ -1100,6 +1124,8 @@
     let editingPipeline = null;
     let viewOnlyMode = false;
     const STORAGE_KEY = 'axos_pipeline_manager_data';
+    const TREE_STATE_KEY = 'axos_pipeline_manager_tree_state';
+    let treeOpenState = {};
 
     function initPipelines() {
         const key = STORAGE_KEY;
@@ -1108,11 +1134,20 @@
             try {
                 pipelines = JSON.parse(stored);
                 savedSnapshot = JSON.parse(stored);
+                // Load persisted tree open/close state (never auto-expand on first load).
+                try {
+                    const t = localStorage.getItem(TREE_STATE_KEY);
+                    treeOpenState = t ? (JSON.parse(t) || {}) : {};
+                } catch { treeOpenState = {}; }
                 return;
             } catch(e) { /* fall through to defaults */ }
         }
         pipelines = [];
         savedSnapshot = [];
+        try {
+            const t = localStorage.getItem(TREE_STATE_KEY);
+            treeOpenState = t ? (JSON.parse(t) || {}) : {};
+        } catch { treeOpenState = {}; }
     }
 
     function snapshotKey(p) { return JSON.stringify(p); }
@@ -1419,6 +1454,8 @@
         const container = document.getElementById('treeContainer');
         let html = '';
 
+        const isOpen = key => !!(treeOpenState && treeOpenState[key]);
+
         html += `<div class="tree-node">
             <div class="tree-row${!selectedFolder ? ' selected' : ''}" onclick="selectFolder(null)" style="padding-left:12px;">
                 <span class="tree-icon">*</span>
@@ -1431,31 +1468,33 @@
             const isMobile = platform === '01 Mobile';
             const platformPipelines = pipelines.filter(p => p.platform === platform);
             const platformKey = platform;
+            const platformOpen = isOpen(platformKey);
             const pIcon = platform.startsWith('01') ? '&#128241;' : platform.startsWith('02') ? '&#127760;' : '&#9889;';
             html += `<div class="tree-node">
                 <div class="tree-row" onclick="toggleTree(this, '${platformKey}')" style="padding-left:12px;">
-                    <span class="tree-arrow${platformPipelines.length ? ' expanded' : ''}" id="arrow-${platformKey}">&#9654;</span>
+                    <span class="tree-arrow${platformOpen ? ' expanded' : ''}" id="arrow-${platformKey}">&#9654;</span>
                     <span class="tree-icon">${pIcon}</span>
                     <span class="tree-label" style="font-weight:600;">${platform}</span>
                     ${platformPipelines.length ? `<span class="tree-count">${platformPipelines.length}</span>` : ''}
                 </div>
-                <div class="tree-children${platformPipelines.length ? ' open' : ''}" id="children-${platformKey}">`;
+                <div class="tree-children${platformOpen ? ' open' : ''}" id="children-${platformKey}">`;
 
             if (brands && Object.keys(brands).length) {
                 for (const brandName of Object.keys(brands)) {
                     const brandPipelines = platformPipelines.filter(p => p.brand === brandName);
                     const brandKey = `${platformKey}__${brandName}`;
+                    const brandOpen = isOpen(brandKey);
 
                     if (isMobile) {
                         const bIcon = brandName === 'Android' ? '&#129302;' : '&#127822;';
                         html += `<div class="tree-node">
                             <div class="tree-row" onclick="toggleTree(this, '${brandKey}')" style="padding-left:32px;">
-                                <span class="tree-arrow${brandPipelines.length ? ' expanded' : ''}" id="arrow-${brandKey}">&#9654;</span>
+                                <span class="tree-arrow${brandOpen ? ' expanded' : ''}" id="arrow-${brandKey}">&#9654;</span>
                                 <span class="tree-icon">${bIcon}</span>
                                 <span class="tree-label" style="font-weight:600;">${brandName}</span>
                                 ${brandPipelines.length ? `<span class="tree-count">${brandPipelines.length}</span>` : ''}
                             </div>
-                            <div class="tree-children${brandPipelines.length ? ' open' : ''}" id="children-${brandKey}">`;
+                            <div class="tree-children${brandOpen ? ' open' : ''}" id="children-${brandKey}">`;
 
                         for (const suite of MOBILE_SUITES) {
                             const suitePipelines = brandPipelines.filter(p => p.feature === suite.name || (p.feature && p.feature.startsWith(suite.name + '_')));
@@ -1478,24 +1517,25 @@
                     } else {
                         html += `<div class="tree-node">
                         <div class="tree-row" onclick="toggleTree(this, '${brandKey}')" style="padding-left:32px;">
-                            <span class="tree-arrow${brandPipelines.length ? ' expanded' : ''}" id="arrow-${brandKey}">&#9654;</span>
+                            <span class="tree-arrow${brandOpen ? ' expanded' : ''}" id="arrow-${brandKey}">&#9654;</span>
                             <span class="tree-icon">&#128193;</span>
                             <span class="tree-label">${brandName}</span>
                             ${brandPipelines.length ? `<span class="tree-count">${brandPipelines.length}</span>` : ''}
                         </div>
-                        <div class="tree-children${brandPipelines.length ? ' open' : ''}" id="children-${brandKey}">`;
+                        <div class="tree-children${brandOpen ? ' open' : ''}" id="children-${brandKey}">`;
 
                         for (const env of ENVIRONMENTS) {
                             const envPipelines = brandPipelines.filter(p => p.env === env);
                             const envKey = `${brandKey}__${env}`;
+                            const envOpen = isOpen(envKey);
                             html += `<div class="tree-node">
                                 <div class="tree-row" onclick="toggleTree(this, '${envKey}')" style="padding-left:52px;">
-                                    <span class="tree-arrow${envPipelines.length ? ' expanded' : ''}" id="arrow-${envKey}">&#9654;</span>
+                                    <span class="tree-arrow${envOpen ? ' expanded' : ''}" id="arrow-${envKey}">&#9654;</span>
                                     <span class="tree-icon">${env === 'PROD' ? '&#128308;' : env === 'UAT' ? '&#128994;' : env === 'QA' ? '&#128993;' : env === 'STG' ? '&#128309;' : '&#128310;'}</span>
                                     <span class="tree-label">${env}</span>
                                     ${envPipelines.length ? `<span class="tree-count">${envPipelines.length}</span>` : ''}
                                 </div>
-                                <div class="tree-children${envPipelines.length ? ' open' : ''}" id="children-${envKey}">`;
+                                <div class="tree-children${envOpen ? ' open' : ''}" id="children-${envKey}">`;
 
                             const featureList = isOutsystemsBrand(brandName)
                                 ? OUTSYSTEMS_FEATURES.map(name => ({ id: '', name }))
@@ -1564,8 +1604,14 @@
         const children = document.getElementById('children-' + key);
         const arrow = document.getElementById('arrow-' + key);
         if (!children) return;
-        children.classList.toggle('open');
-        arrow.classList.toggle('expanded');
+        const nowOpen = !children.classList.contains('open');
+        children.classList.toggle('open', nowOpen);
+        arrow.classList.toggle('expanded', nowOpen);
+        try {
+            treeOpenState = treeOpenState && typeof treeOpenState === 'object' ? treeOpenState : {};
+            treeOpenState[key] = nowOpen;
+            localStorage.setItem(TREE_STATE_KEY, JSON.stringify(treeOpenState));
+        } catch { /* ignore */ }
     }
 
     function selectFolder(key) {
@@ -2424,6 +2470,7 @@
                             <div>
                                 <div class="sched-summary-text" id="schedHumanText">Every weekday at 6:00 AM PST</div>
                                 <div class="sched-summary-sub" id="schedCronText">cron: 0 14 * * 1-5</div>
+                                <div class="sched-summary-sub" id="schedNextText" style="margin-top:2px; color:var(--text-secondary);"></div>
                             </div>
                         </div>
                         <input type="hidden" id="fScheduleCron" value="${p.schedule || '0 14 * * 1-5'}">
@@ -2492,7 +2539,8 @@
             const unitEl = document.getElementById('fRepeatUnit');
             const everyEl = document.getElementById('fRepeatEvery');
             if (unitEl) unitEl.value = 'weeks';
-            if (everyEl) everyEl.value = '1';
+            // Preserve whatever is already set (e.g., WEEK_MODULO from sync); only default to 1 if empty.
+            if (everyEl && !String(everyEl.value || '').trim()) everyEl.value = '1';
             onRepeatUnitChange();
 
             // Parse days of week
@@ -2687,23 +2735,108 @@
         return h12 + ':' + String(min).padStart(2, '0') + ' ' + ampm;
     }
 
+    function isoWeekUTC(d) {
+        // ISO week number based on UTC date (matches `date -u +%V` semantics used by the gate).
+        const date = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+        const day = date.getUTCDay() || 7; // Mon=1..Sun=7
+        date.setUTCDate(date.getUTCDate() + 4 - day);
+        const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+        const weekNo = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+        return weekNo;
+    }
+
+    function fmtPstDateTimeFromUtc(utcDate) {
+        // UI uses fixed PST offset (no DST) elsewhere; keep consistent.
+        const pst = new Date(utcDate.getTime() - 8 * 3600 * 1000);
+        const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        const monNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const dow = dayNames[pst.getUTCDay()];
+        const mon = monNames[pst.getUTCMonth()];
+        const dd = pst.getUTCDate();
+        const yyyy = pst.getUTCFullYear();
+        let hh = pst.getUTCHours();
+        const mm = String(pst.getUTCMinutes()).padStart(2, '0');
+        const ap = hh >= 12 ? 'PM' : 'AM';
+        hh = hh % 12 || 12;
+        return `${dow} ${mon} ${dd}, ${yyyy} ${hh}:${mm} ${ap} PST`;
+    }
+
+    function computeNextScheduledRunUtc({ nowUtc, repeatUnit, repeatEvery, selectedDays, timesPst, monthlyDom, monthlyStep }) {
+        const now = nowUtc instanceof Date ? nowUtc : new Date();
+        const unit = repeatUnit || 'weeks';
+        const every = Math.max(1, parseInt(repeatEvery || '1', 10) || 1);
+
+        const startPstMs = now.getTime() - 8 * 3600 * 1000;
+        const startDayPst = new Date(startPstMs);
+        startDayPst.setUTCHours(0, 0, 0, 0);
+
+        const scanDays = 370; // safety window
+        for (let dayOffset = 0; dayOffset <= scanDays; dayOffset++) {
+            const dayPst = new Date(startDayPst.getTime());
+            dayPst.setUTCDate(dayPst.getUTCDate() + dayOffset);
+
+            if (unit === 'months') {
+                const dom = Math.min(28, Math.max(1, parseInt(monthlyDom || '1', 10) || 1));
+                if (dayPst.getUTCDate() !== dom) continue;
+                const step = Math.max(1, parseInt(monthlyStep || every, 10) || 1);
+                const monthNum = dayPst.getUTCMonth() + 1; // 1..12
+                if (step > 1 && ((monthNum - 1) % step) !== 0) continue;
+            } else {
+                const dow = dayPst.getUTCDay();
+                if (!selectedDays || !selectedDays.includes(dow)) continue;
+            }
+
+            const times = Array.isArray(timesPst) && timesPst.length ? timesPst : [{ hour24: 6, minute: 0 }];
+            const sortedTimes = [...times].sort((a, b) => (a.hour24 * 60 + a.minute) - (b.hour24 * 60 + b.minute));
+            for (const t of sortedTimes) {
+                const candPst = new Date(dayPst.getTime());
+                candPst.setUTCHours(t.hour24, t.minute, 0, 0);
+                const candUtc = new Date(candPst.getTime() + 8 * 3600 * 1000);
+                if (candUtc.getTime() <= now.getTime() + 500) continue;
+
+                if (unit === 'weeks' && every > 1) {
+                    const wk = isoWeekUTC(candUtc);
+                    if ((wk % every) !== 0) continue;
+                }
+                return candUtc;
+            }
+        }
+        return null;
+    }
+
+    function getNowUtcForUi() {
+        try {
+            const params = new URLSearchParams(location.search || '');
+            const raw = params.get('nowUtc');
+            if (!raw) return new Date();
+            const d = new Date(raw);
+            if (!isNaN(d.getTime())) return d;
+            return new Date();
+        } catch {
+            return new Date();
+        }
+    }
+
     function updateSchedPreview() {
         const freq = getFreqValue();
         const ht = document.getElementById('schedHumanText');
         const ct = document.getElementById('schedCronText');
         const cronInput = document.getElementById('fScheduleCron');
+        const nt = document.getElementById('schedNextText');
 
         if (freq === 'custom') {
             const raw = (document.getElementById('fCustomCron')?.value || '').trim();
             if (!raw) {
                 if (ht) ht.textContent = 'Enter a cron expression';
                 if (ct) ct.textContent = '';
+                if (nt) nt.textContent = '';
                 cronInput.value = '';
                 return;
             }
             cronInput.value = raw;
             if (ht) ht.textContent = 'Custom schedule (UTC)';
             if (ct) ct.textContent = 'cron: ' + raw;
+            if (nt) nt.textContent = 'Next: (not computed for custom cron)';
             return;
         }
 
@@ -2723,6 +2856,18 @@
             cronInput.value = cron;
             if (ht) ht.textContent = `Every ${repeatEvery === 1 ? 'month' : (repeatEvery + ' months')} on day ${dom} at ${fmtTime(h1, m1, ap1)} PST`;
             if (ct) ct.textContent = 'cron: ' + cron;
+            if (nt) {
+                const next = computeNextScheduledRunUtc({
+                    nowUtc: getNowUtcForUi(),
+                    repeatUnit: 'months',
+                    repeatEvery,
+                    selectedDays: [],
+                    timesPst: [{ hour24: pst1, minute: m1 }],
+                    monthlyDom: dom,
+                    monthlyStep: repeatEvery
+                });
+                nt.textContent = next ? ('Next: ' + fmtPstDateTimeFromUtc(next)) : 'Next: --';
+            }
             return;
         }
 
@@ -2730,6 +2875,7 @@
         if (days.length === 0) {
             if (ht) ht.textContent = 'No days selected';
             if (ct) ct.textContent = '';
+            if (nt) nt.textContent = '';
             cronInput.value = '';
             return;
         }
@@ -2759,6 +2905,7 @@
                 if (ht) ht.textContent = `${dayDesc}, ${timeDesc}`;
                 if (ct) ct.textContent = 'cron: ' + cronLines[0];
                 cronInput.value = cronLines[0];
+                if (nt) nt.textContent = 'Next: (interval schedule)';
                 return;
             }
 
@@ -2784,6 +2931,7 @@
             if (ht) ht.textContent = `${dayDesc}, ${timeDesc}`;
             if (ct) ct.textContent = 'cron: ' + cronLines[0];
             cronInput.value = cronLines[0];
+            if (nt) nt.textContent = 'Next: (interval schedule)';
             return;
         }
 
@@ -2808,6 +2956,24 @@
         if (ct) {
             const base = cronLines.map(c => 'cron: ' + c).join('  |  ');
             ct.textContent = repeatEvery > 1 ? `${base}  (every ${repeatEvery} weeks)` : base;
+        }
+        if (nt) {
+            const times = [{ hour24: pst1, minute: m1 }];
+            if (freq === 'twice') {
+                const h2 = parseInt(document.getElementById('fSchedHour2')?.value || 6);
+                const m2 = parseInt(document.getElementById('fSchedMin2')?.value || 0);
+                const ap2 = document.getElementById('fSchedAmPm2')?.value || 'PM';
+                const pst2 = pstTo24(h2, ap2);
+                times.push({ hour24: pst2, minute: m2 });
+            }
+            const next = computeNextScheduledRunUtc({
+                nowUtc: getNowUtcForUi(),
+                repeatUnit: 'weeks',
+                repeatEvery,
+                selectedDays: sorted,
+                timesPst: times
+            });
+            nt.textContent = next ? ('Next: ' + fmtPstDateTimeFromUtc(next)) : 'Next: --';
         }
     }
 
@@ -3346,6 +3512,14 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
 
         entry.schedule = scheduleCron;
         entry.scheduleEnabled = !!scheduleCron;
+
+        // WEEK_MODULO drives the template "Schedule gate" (runs every N weeks).
+        const wmRaw = merged.WEEK_MODULO;
+        const wm = wmRaw !== undefined && wmRaw !== null ? parseInt(String(wmRaw), 10) : 0;
+        if (Number.isFinite(wm) && wm > 0) {
+            entry.repeatUnit = 'weeks';
+            entry.repeatEvery = String(wm);
+        }
         return entry;
     }
 
@@ -3482,6 +3656,9 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
                 if (entry.bsAccessKey !== undefined) parsed.bsAccessKey = entry.bsAccessKey;
                 if (entry.schedule) parsed.schedule = entry.schedule;
                 if (entry.scheduleEnabled !== undefined) parsed.scheduleEnabled = entry.scheduleEnabled;
+                if (entry.repeatUnit !== undefined) parsed.repeatUnit = entry.repeatUnit;
+                if (entry.repeatEvery !== undefined) parsed.repeatEvery = entry.repeatEvery;
+                if (entry.repeatDom !== undefined) parsed.repeatDom = entry.repeatDom;
 
                 const idx = pipelines.findIndex(p => p.filename === entry.filename);
                 if (idx >= 0) { pipelines[idx] = parsed; updated++; }
@@ -3530,8 +3707,10 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
     function clearCache() {
         if (!confirm('Clear all cached pipeline data? You will need to re-sync after this.')) return;
         localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(TREE_STATE_KEY);
         pipelines.length = 0;
         savedSnapshot = [];
+        treeOpenState = {};
         selectedPipelines.clear();
         emailSelectedPipelines.clear();
         emailPickerInitialized = false;
@@ -3718,6 +3897,53 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         setTimeout(() => t.classList.remove('show'), 3000);
     }
 
+    (function initHoverTooltip() {
+        const tip = document.createElement('div');
+        tip.id = 'pmTooltip';
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!document.getElementById('pmTooltip')) document.body.appendChild(tip);
+        });
+
+        let activeEl = null;
+        function hide() { tip.style.display = 'none'; activeEl = null; }
+        function show(text) {
+            const t = String(text || '').trim();
+            if (!t) { hide(); return; }
+            tip.textContent = t;
+            tip.style.display = 'block';
+        }
+        function move(x, y) {
+            if (tip.style.display !== 'block') return;
+            const pad = 12;
+            const rect = tip.getBoundingClientRect();
+            let left = x + pad;
+            let top = y + pad;
+            if (left + rect.width > window.innerWidth - 6) left = Math.max(6, x - rect.width - pad);
+            if (top + rect.height > window.innerHeight - 6) top = Math.max(6, y - rect.height - pad);
+            tip.style.left = left + 'px';
+            tip.style.top = top + 'px';
+        }
+
+        document.addEventListener('mouseover', (e) => {
+            const el = e.target?.closest?.('[data-tip]');
+            if (!el) return;
+            activeEl = el;
+            show(el.getAttribute('data-tip') || el.getAttribute('title') || '');
+            move(e.clientX, e.clientY);
+        });
+        document.addEventListener('mousemove', (e) => {
+            if (!activeEl) return;
+            move(e.clientX, e.clientY);
+        });
+        document.addEventListener('mouseout', (e) => {
+            const el = e.target?.closest?.('[data-tip]');
+            if (!el) return;
+            if (activeEl === el) hide();
+        });
+        window.addEventListener('scroll', hide, { passive: true });
+        window.addEventListener('blur', hide);
+    })();
+
     document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal('outputModal'); closeModal('syncModal'); closeModal('deleteModal'); closeModal('saveModal'); closeModal('diffModal'); closeModal('emailModal'); } });
     document.getElementById('outputModal').addEventListener('click', e => { if (e.target.id === 'outputModal') closeModal('outputModal'); });
     document.getElementById('syncModal').addEventListener('click', e => { if (e.target.id === 'syncModal') closeModal('syncModal'); });
@@ -3805,6 +4031,128 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         });
         if (!resp.ok) throw new Error(`GitHub API ${resp.status}: ${resp.statusText}`);
         return resp.json();
+    }
+
+    function getRunOutcome(r) {
+        if (r?.gateSkipped) return 'skipped';
+        return r?.conclusion || 'unknown';
+    }
+
+    function getPipelineRepeatWeeks(repo, workflowName) {
+        const p = (resultsPipelines || []).find(x => x && x.repo === repo && x.name === workflowName);
+        const n = p ? parseInt(String(p.repeatEvery || '1'), 10) : 1;
+        return Number.isFinite(n) && n > 1 ? n : 1;
+    }
+
+    function getPipelineScheduleCron(repo, workflowName) {
+        const p = (resultsPipelines || []).find(x => x && x.repo === repo && x.name === workflowName);
+        return (p && p.schedule) ? String(p.schedule) : '';
+    }
+
+    function describeCronDays(cronStr) {
+        const parts = String(cronStr || '').trim().split(/\s+/);
+        if (parts.length !== 5) return '';
+        const dowPart = parts[4];
+        if (!dowPart) return '';
+        const normalize = s => (s === '7' ? '0' : s);
+        const dayNamesPlural = ['Sundays','Mondays','Tuesdays','Wednesdays','Thursdays','Fridays','Saturdays'];
+        const uniq = new Set();
+
+        if (dowPart === '*') return 'Every day';
+        const segs = dowPart.split(',');
+        for (const segRaw of segs) {
+            const seg = normalize(segRaw.trim());
+            if (!seg) continue;
+            if (seg.includes('-')) {
+                const [aRaw, bRaw] = seg.split('-').map(x => normalize(String(x).trim()));
+                const a = parseInt(aRaw, 10), b = parseInt(bRaw, 10);
+                if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
+                for (let i = a; i <= b; i++) uniq.add(i);
+            } else {
+                const d = parseInt(seg, 10);
+                if (Number.isFinite(d)) uniq.add(d);
+            }
+        }
+        const days = [...uniq].filter(d => d >= 0 && d <= 6).sort((a, b) => a - b);
+        if (!days.length) return '';
+        const isWeekdays = days.length === 5 && [1,2,3,4,5].every(d => days.includes(d));
+        const isWeekends = days.length === 2 && days.includes(0) && days.includes(6);
+        if (isWeekdays) return 'Weekdays';
+        if (isWeekends) return 'Weekends';
+        if (days.length === 1) return dayNamesPlural[days[0]];
+        return days.map(d => dayNamesPlural[d]).join(', ');
+    }
+
+    function buildGateSkipReason(r) {
+        const n = getPipelineRepeatWeeks(r.repo, r.workflowName);
+        const dayDesc = describeCronDays(getPipelineScheduleCron(r.repo, r.workflowName));
+        const when = dayDesc ? ` (${dayDesc})` : '';
+        if (n > 1) return `Skipped — configured to run every ${n} weeks${when}.`;
+        return `Skipped by schedule gate${when}.`;
+    }
+
+    function isGateSkippedFromSteps(steps) {
+        if (!Array.isArray(steps) || !steps.length) return false;
+        const hasGate = steps.some(s => (s?.name || '') === 'Schedule gate');
+        if (!hasGate) return false;
+        const skippedCount = steps.filter(s => (s?.conclusion || s?.status) === 'skipped').length;
+        const ranTest = steps.some(s => {
+            const n = String(s?.name || '');
+            if (!n.startsWith('Execute test')) return false;
+            const c = s?.conclusion || s?.status || '';
+            return c && c !== 'skipped';
+        });
+        return !ranTest && skippedCount >= 3;
+    }
+
+    async function mapLimit(items, limit, fn) {
+        const arr = items || [];
+        const n = Math.max(1, limit || 4);
+        let idx = 0;
+        const workers = Array.from({ length: Math.min(n, arr.length) }, async () => {
+            while (true) {
+                const cur = idx++;
+                if (cur >= arr.length) return;
+                await fn(arr[cur], cur);
+            }
+        });
+        await Promise.all(workers);
+    }
+
+    async function enrichGateSkippedRuns(owner) {
+        // Call jobs API for recently loaded schedule-success runs and classify "gate-skipped".
+        // Keep a hard cap to avoid spamming the API when many pipelines are selected.
+        const suspects = (allRuns || [])
+            .filter(r =>
+                r &&
+                r.event === 'schedule' &&
+                r.status === 'completed' &&
+                r.conclusion === 'success' &&
+                !r.gateSkipped
+            )
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+            .slice(0, 60);
+
+        const seen = new Set();
+        const unique = suspects.filter(r => {
+            if (seen.has(r.id)) return false;
+            seen.add(r.id);
+            return true;
+        });
+
+        await mapLimit(unique, 6, async (r) => {
+            try {
+                const data = await ghFetch(`/repos/${owner}/${r.repo}/actions/runs/${r.id}/jobs?per_page=100`);
+                const jobs = data?.jobs || [];
+                const anyGateSkipped = jobs.some(j => isGateSkippedFromSteps(j?.steps || []));
+                if (anyGateSkipped) {
+                    r.gateSkipped = true;
+                    r.skipReason = String(buildGateSkipReason(r) || '').trim() || 'Skipped by schedule gate.';
+                }
+            } catch (e) {
+                // Ignore per-run enrichment failures; UI still works with base status.
+            }
+        });
     }
 
     async function listAllWorkflows(owner, repo) {
@@ -3912,6 +4260,9 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
             }
 
             allRuns.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            // Classify "gate-skipped" schedule runs so we don't show them as Passed.
+            status.innerHTML = `<span style="color:var(--axos-orange); font-weight:600;">Analyzing</span> scheduled runs (skip gate)...`;
+            await enrichGateSkippedRuns(owner);
             const miss = missingWorkflows.length ? ` &mdash; <span style="color:var(--danger); font-weight:700;">${missingWorkflows.length} issue(s)</span>` : '';
             const repoErr = repoErrors.length ? `<br><span style="color:var(--danger);">Repo errors:</span> ${repoErrors.map(escapeHtml).join(' | ')}` : '';
             status.innerHTML = `<span style="color:var(--success); font-weight:600;">&#10003; Loaded ${allRuns.length} run(s)</span> across ${resultsPipelines.length} pipeline(s) (${totalMatched} matched in GitHub)${miss}.${repoErr}`;
@@ -3942,12 +4293,15 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
 
     function renderMetrics() {
         const runs = getFilteredRuns();
-        const passed = runs.filter(r => r.conclusion === 'success').length;
-        const failed = runs.filter(r => r.conclusion === 'failure').length;
-        const cancelled = runs.filter(r => r.conclusion === 'cancelled').length;
+        const outcomes = runs.map(getRunOutcome);
+        const passed = outcomes.filter(o => o === 'success').length;
+        const failed = outcomes.filter(o => o === 'failure').length;
+        const cancelled = outcomes.filter(o => o === 'cancelled').length;
+        const skipped = outcomes.filter(o => o === 'skipped').length;
         const total = runs.length;
-        const passRate = total ? ((passed / total) * 100).toFixed(1) : 0;
-        const durations = runs.filter(r => r.duration > 0).map(r => r.duration);
+        const actionable = outcomes.filter(o => o === 'success' || o === 'failure').length;
+        const passRate = actionable ? ((passed / actionable) * 100).toFixed(1) : '0.0';
+        const durations = runs.filter(r => r.duration > 0 && getRunOutcome(r) !== 'skipped').map(r => r.duration);
         const avgDur = durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0;
         const uniquePipelines = resultsSelectedPipelines.size
             ? resultsSelectedPipelines.size
@@ -3966,14 +4320,14 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
                 <div class="metric-icon">&#127919;</div>
                 <div class="metric-label">Pass Rate</div>
                 <div class="metric-value ${prClass}" data-count="${passRate}">${passRate}%</div>
-                <div class="metric-sub">${passed} passed of ${total}</div>
+                <div class="metric-sub">${passed} passed of ${actionable || 0} actionable${skipped ? ` (${skipped} skipped)` : ''}</div>
                 <div class="metric-bar"><div class="metric-bar-fill" style="width:${passRate}%; background:linear-gradient(90deg,#10b981,#34d399);"></div></div>
             </div>
             <div class="metric-card m-red">
                 <div class="metric-icon">&#9888;&#65039;</div>
                 <div class="metric-label">Failures</div>
                 <div class="metric-value v-red" data-count="${failed}">${failed}</div>
-                <div class="metric-sub">${cancelled} cancelled</div>
+                <div class="metric-sub">${cancelled} cancelled${skipped ? `, ${skipped} skipped` : ''}</div>
                 <div class="metric-bar"><div class="metric-bar-fill" style="width:${total ? (failed/total*100) : 0}%; background:linear-gradient(90deg,#ef4444,#f87171);"></div></div>
             </div>
             <div class="metric-card m-orange">
@@ -4126,12 +4480,14 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
 
     function renderCharts() {
         const runs = getFilteredRuns();
-        const passed = runs.filter(r => r.conclusion === 'success').length;
-        const failed = runs.filter(r => r.conclusion === 'failure').length;
-        const cancelled = runs.filter(r => r.conclusion === 'cancelled').length;
-        const other = runs.length - passed - failed - cancelled + cancelled;
+        const outcomes = runs.map(getRunOutcome);
+        const passed = outcomes.filter(o => o === 'success').length;
+        const failed = outcomes.filter(o => o === 'failure').length;
+        const cancelled = outcomes.filter(o => o === 'cancelled').length;
+        const skipped = outcomes.filter(o => o === 'skipped').length;
         const total = runs.length;
-        const passRate = total ? ((passed / total) * 100).toFixed(1) : '0.0';
+        const actionable = outcomes.filter(o => o === 'success' || o === 'failure').length;
+        const passRate = actionable ? ((passed / actionable) * 100).toFixed(1) : '0.0';
 
         buildSpeedometer(passRate);
         buildFunnel(total, passed, failed, runs.length - passed - failed);
@@ -4142,10 +4498,10 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         pieChartInstance = new Chart(dCtx, {
             type: 'doughnut',
             data: {
-                labels: ['Passed', 'Failed', 'Cancelled', 'Other'],
+                labels: ['Passed', 'Failed', 'Skipped', 'Cancelled', 'Other'],
                 datasets: [{
-                    data: [passed, failed, cancelled, runs.length - passed - failed - cancelled],
-                    backgroundColor: ['#10b981', '#ef4444', '#6b7280', '#f59e0b'],
+                    data: [passed, failed, skipped, cancelled, runs.length - passed - failed - skipped - cancelled],
+                    backgroundColor: ['#10b981', '#ef4444', '#60a5fa', '#6b7280', '#f59e0b'],
                     borderWidth: 0, hoverOffset: 10, borderRadius: 4
                 }]
             },
@@ -4177,11 +4533,14 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         for (const r of runs) {
             const day = r.createdAt.slice(0, 10);
             if (!dayMap[day]) dayMap[day] = { pass: 0, total: 0 };
-            dayMap[day].total++;
-            if (r.conclusion === 'success') dayMap[day].pass++;
+            const o = getRunOutcome(r);
+            if (o === 'success' || o === 'failure') {
+                dayMap[day].total++;
+                if (o === 'success') dayMap[day].pass++;
+            }
         }
         const days = Object.keys(dayMap).sort();
-        const rates = days.map(d => ((dayMap[d].pass / dayMap[d].total) * 100).toFixed(1));
+        const rates = days.map(d => (dayMap[d].total ? ((dayMap[d].pass / dayMap[d].total) * 100).toFixed(1) : '0.0'));
         const counts = days.map(d => dayMap[d].total);
 
         if (lineChartInstance) lineChartInstance.destroy();
@@ -4232,21 +4591,26 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
             let html = '';
             wfNames.forEach((name, i) => {
                 const wfRuns = runs.filter(r => r.workflowName === name);
-                const p = wfRuns.filter(r => r.conclusion === 'success').length;
-                const f = wfRuns.filter(r => r.conclusion === 'failure').length;
-                const o = wfRuns.length - p - f;
+                const p = wfRuns.filter(r => getRunOutcome(r) === 'success').length;
+                const f = wfRuns.filter(r => getRunOutcome(r) === 'failure').length;
+                const s = wfRuns.filter(r => getRunOutcome(r) === 'skipped').length;
+                const o = wfRuns.length - p - f - s;
                 const t = wfRuns.length;
-                const pPct = (p / t * 100).toFixed(0);
-                const fPct = (f / t * 100).toFixed(0);
-                const oPct = (o / t * 100).toFixed(0);
+                const pW = (t ? (p / t * 100) : 0).toFixed(0);
+                const fW = (t ? (f / t * 100) : 0).toFixed(0);
+                const sW = (t ? (s / t * 100) : 0).toFixed(0);
+                const oW = (t ? (o / t * 100) : 0).toFixed(0);
+                const actionable = p + f;
+                const passPct = (actionable ? (p / actionable * 100) : 0).toFixed(0);
                 html += `<div class="health-row" style="animation-delay:${i * 0.08}s;">
                     <div class="health-label" title="${name}">${name.replace(/-Testim$/, '').replace(/^Web_AxosBank_\w+-OLB_/, '')}</div>
                     <div class="health-bar">
-                        <div class="health-seg pass" style="width:${pPct}%;" title="${p} passed"></div>
-                        <div class="health-seg fail" style="width:${fPct}%;" title="${f} failed"></div>
-                        <div class="health-seg other" style="width:${oPct}%;" title="${o} other"></div>
+                        <div class="health-seg pass" style="width:${pW}%;" title="${p} passed"></div>
+                        <div class="health-seg fail" style="width:${fW}%;" title="${f} failed"></div>
+                        ${s ? `<div class="health-seg skip" style="width:${sW}%;" title="${s} skipped"></div>` : ''}
+                        <div class="health-seg other" style="width:${oW}%;" title="${o} other"></div>
                     </div>
-                    <div class="health-pct">${pPct}%</div>
+                    <div class="health-pct">${passPct}%</div>
                 </div>`;
             });
             healthEl.innerHTML = html;
@@ -4338,7 +4702,7 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         const search = document.getElementById('resultsSearch')?.value?.toLowerCase() || '';
         if (search) runs = runs.filter(r => r.workflowName.toLowerCase().includes(search));
         const statusFilter = document.getElementById('resultsStatusFilter')?.value || 'all';
-        if (statusFilter !== 'all') runs = runs.filter(r => r.conclusion === statusFilter);
+        if (statusFilter !== 'all') runs = runs.filter(r => getRunOutcome(r) === statusFilter);
         return runs;
     }
 
@@ -4373,25 +4737,35 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
                 r.status ? r.status.charAt(0).toUpperCase() + r.status.slice(1).replace(/_/g, ' ') :
                 'Unknown';
 
+            const outcome = getRunOutcome(r);
             const badge = isActive
                 ? 'badge-running'
-                : (r.conclusion === 'success' ? 'badge-pass' :
-                   r.conclusion === 'failure' ? 'badge-fail' :
-                   r.conclusion === 'cancelled' ? 'badge-cancel' : 'badge-running');
+                : (outcome === 'success' ? 'badge-pass' :
+                   outcome === 'failure' ? 'badge-fail' :
+                   outcome === 'cancelled' ? 'badge-cancel' :
+                   outcome === 'skipped' ? 'badge-skip' : 'badge-running');
 
             const label = isActive
                 ? statusLabel
-                : (r.conclusion === 'success' ? 'Passed' :
-                   r.conclusion === 'failure' ? 'Failed' :
-                   r.conclusion ? (r.conclusion.charAt(0).toUpperCase() + r.conclusion.slice(1)) : 'Unknown');
+                : (outcome === 'success' ? 'Passed' :
+                   outcome === 'failure' ? 'Failed' :
+                   outcome === 'skipped' ? 'Skipped' :
+                   outcome ? (outcome.charAt(0).toUpperCase() + outcome.slice(1)) : 'Unknown');
             const date = new Date(r.createdAt);
             const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
             const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            const skipInfo = outcome === 'skipped'
+                ? (() => {
+                    const tipText = String(r.skipReason || 'Skipped by schedule gate.').trim() || 'Skipped by schedule gate.';
+                    const esc = escapeHtml(tipText);
+                    return ` <span class="info-tip" data-tip="${esc}" title="${esc}" aria-label="${esc}">&#9432;</span>`;
+                })()
+                : '';
             return `<tr>
                 <td><input type="checkbox" class="run-check" value="${r.id}" onchange="toggleRunCheck(${r.id})" ${selectedRuns.has(r.id) ? 'checked' : ''} style="accent-color:var(--axos-orange);"></td>
                 <td class="run-name" title="${r.workflowName}">${r.workflowName.replace(/-Testim$/, '')}</td>
                 <td style="font-family:'JetBrains Mono',monospace; font-size:12px;">#${r.runNumber}</td>
-                <td><span class="${badge}">${label}</span></td>
+                <td><span class="${badge}">${label}</span>${skipInfo}</td>
                 <td style="font-family:'JetBrains Mono',monospace; font-size:12px;">${fmtDuration(r.duration)}</td>
                 <td style="font-size:12px;">${r.event === 'schedule' ? '&#128337; Schedule' : r.event === 'workflow_dispatch' ? '&#9654; Manual' : r.event}</td>
                 <td style="font-size:12px; color:var(--text-secondary);">${dateStr}<br><span style="color:var(--text-muted);">${timeStr}</span></td>
@@ -4769,12 +5143,29 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
             window.renderCharts = function () {};
             window.animateCounters = function () {};
 
+            // Sync merge: make sure repeatEvery from WEEK_MODULO is not dropped.
+            pipelines = [];
+            savedSnapshot = [];
+            syncFileContent = JSON.stringify([{
+                filename: 'Web_Outsystems_UAT-OLB_EWM_Creation_Regression-Testim.yml',
+                repo: 'Axos.QE.TestIM',
+                schedule: '0 16 * * 4',
+                scheduleEnabled: true,
+                repeatUnit: 'weeks',
+                repeatEvery: '2',
+                name: 'Web_Outsystems_UAT-OLB_EWM_Creation_Regression-Testim'
+            }]);
+            processSyncInput();
+            const synced = pipelines.find(p => p.filename === 'Web_Outsystems_UAT-OLB_EWM_Creation_Regression-Testim.yml');
+            if (!synced) throw new Error('sync did not add pipeline');
+            if (String(synced.repeatEvery) !== '2') throw new Error(`sync repeatEvery expected 2, got "${synced.repeatEvery}"`);
+
             // Seed minimal deterministic data.
             const repo = 'Axos.QE.TestIM';
             resultsPipelines = [
                 { name: 'Pipe A', filename: 'pipe-a.yml', repo },
                 { name: 'Pipe B', filename: 'pipe-b.yml', repo },
-                { name: 'Pipe C', filename: 'pipe-c.yml', repo }
+                { name: 'Pipe C', filename: 'pipe-c.yml', repo, repeatEvery: '2', repeatUnit: 'weeks', schedule: '0 16 * * 4' }
             ];
 
             const now = Date.now();
@@ -4802,7 +5193,12 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
                 mkRun(3, 'Pipe B', 'success'),
                 mkRun(4, 'Pipe B', 'failure'),
                 mkRun(5, 'Pipe C', 'failure'),
-                mkRun(6, 'Pipe C', 'cancelled')
+                (() => {
+                    const r = mkRun(6, 'Pipe C', 'success');
+                    r.gateSkipped = true;
+                    r.skipReason = 'Skipped — configured to run every 2 weeks (Thursdays).';
+                    return r;
+                })()
             ];
             missingWorkflows = [];
             selectedRuns.clear();
@@ -4840,6 +5236,44 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
             assert(titleText() === '2 Selected Pipelines', `expected multi title, got "${titleText()}"`);
             assert(countText().startsWith('4 '), `expected 4 runs, got "${countText()}"`);
             assert(passRateText() === '75.0%', `expected 75.0% pass rate, got "${passRateText()}"`);
+
+            // Gate-skipped run should render as "Skipped" (not Passed).
+            setResultsAllPipelines(null);
+            setChecked('Pipe C', true);
+            const tableText = (document.getElementById('runsTableBody')?.textContent || '');
+            assert(tableText.includes('Skipped'), 'expected table to include "Skipped" for gate-skipped run');
+            const tipEl = document.querySelector('.info-tip[data-tip]');
+            assert(!!tipEl, 'expected skipped info tooltip element');
+            const tipTxt = String(tipEl.getAttribute('data-tip') || '');
+            assert(tipTxt.includes('every 2 weeks'), 'expected tooltip to mention every 2 weeks');
+            assert(tipTxt.includes('Thursday'), 'expected tooltip to mention Thursdays');
+
+            // Schedule UI: repeatEvery should be preserved and next run should respect week modulo.
+            window.getNowUtcForUi = () => new Date('2026-03-26T15:00:00Z'); // Thu 7:00 AM PST, ISO week 13 (odd)
+            showCreateForm({
+                platform: '02 Web',
+                brand: 'Axos Bank',
+                env: 'UAT',
+                filename: 'selftest.yml',
+                name: 'Selftest Pipeline',
+                scheduleEnabled: true,
+                schedule: '0 16 * * 4',
+                repeatUnit: 'weeks',
+                repeatEvery: '2'
+            }, true);
+            const rep = document.getElementById('fRepeatEvery')?.value;
+            const nextTxt = (document.getElementById('schedNextText')?.textContent || '').trim();
+            assert(String(rep) === '2', `expected Repeat every=2, got "${rep}"`);
+            assert(nextTxt === 'Next: Thu Apr 2, 2026 8:00 AM PST', `expected next run Apr 2 biweekly, got "${nextTxt}"`);
+
+            // Pure gate detection helper sanity.
+            const mockSteps = [
+                { name: 'Schedule gate', conclusion: 'success' },
+                { name: 'Checkout code', conclusion: 'skipped' },
+                { name: 'Setup Node.js', conclusion: 'skipped' },
+                { name: 'Execute test(s) - Testim Grid', conclusion: 'skipped' }
+            ];
+            assert(isGateSkippedFromSteps(mockSteps) === true, 'expected isGateSkippedFromSteps to detect skip');
 
             // Reset back to All.
             setResultsAllPipelines(null);
