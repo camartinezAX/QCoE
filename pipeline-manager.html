@@ -721,7 +721,7 @@
                             <li>Go to <a href="https://github.com/settings/tokens?type=beta" target="_blank" style="color:var(--info);">github.com/settings/tokens</a></li>
                             <li>Click <strong>"Generate new token"</strong> (Fine-grained)</li>
                             <li>Set expiration, select <strong>axos-financial</strong> as resource owner</li>
-                            <li>Under "Repository access" pick <strong>"Only select repositories"</strong> &rarr; select <strong>Axos.QE.TestIM</strong> (and <strong>Axos.QE.Mobile</strong> if you want Mobile pipelines too)</li>
+                            <li>Under "Repository access" pick <strong>"Only select repositories"</strong> &rarr; select every repo you plan to sync/fetch (see <strong>Sync</strong> &rarr; <strong>Manage</strong>)</li>
                             <li>Under "Permissions" &rarr; "Repository permissions":
                                 <br>&nbsp;&nbsp;&bull; <strong>Actions</strong>: Read-only
                                 <br>&nbsp;&nbsp;&bull; <strong>Checks</strong>: Read-only
@@ -880,6 +880,15 @@
                     </p>
                 </div>
 
+                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:12px; padding:12px 14px; border:1px solid var(--border-color); border-radius:12px; background:var(--bg-tertiary);">
+                    <div style="min-width:0;">
+                        <div style="font-size:12px; font-weight:800; color:var(--text-primary); letter-spacing:0.2px;">Repos to sync</div>
+                        <div id="syncReposDisplay" style="font-size:11px; color:var(--text-muted); margin-top:6px; word-break:break-word;"></div>
+                        <div style="font-size:10px; color:var(--text-muted); margin-top:6px;">Saved in your browser (localStorage). Each user can have their own list.</div>
+                    </div>
+                    <button class="btn btn-secondary" onclick="openReposModal()" style="padding:8px 10px; font-size:12px; white-space:nowrap;">Manage</button>
+                </div>
+
                 <div id="syncStatus" style="display:none; background:var(--bg-tertiary); border:1px solid var(--border-color); border-radius:10px; padding:14px 18px; margin-bottom:14px;">
                     <div id="syncStatusText" style="font-size:13px; color:var(--text-secondary);"></div>
                 </div>
@@ -905,6 +914,61 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeModal('syncModal')">Cancel</button>
                 <button class="btn btn-primary" id="syncAutoBtn" onclick="autoSyncFromGitHub()">Sync from GitHub</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Repo Manager Modal (per-browser settings) -->
+    <div class="modal-overlay" id="reposModal">
+        <div class="modal" style="max-width:680px;">
+            <div class="modal-header">
+                <div class="modal-title">Manage Repos to Sync</div>
+                <button class="modal-close" onclick="closeModal('reposModal')">x</button>
+            </div>
+            <div class="modal-body">
+                <div style="background:var(--info-bg); border:1px solid rgba(59,130,246,0.3); border-radius:12px; padding:14px 18px; margin-bottom:14px;">
+                    <p style="font-size:13px; color:var(--text-secondary); line-height:1.6; margin:0;">
+                        Enter one repo per line. Supported formats:
+                    </p>
+                    <div style="margin-top:10px; font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--text-primary); opacity:0.95;">
+                        axos-financial/Axos.QE.TestIM<br>
+                        https://github.com/axos-financial/Axos.QE.TestIM
+                    </div>
+                </div>
+                <textarea class="sync-textarea" id="reposInput" placeholder="owner/repo (one per line)"></textarea>
+                <div style="display:flex; gap:10px; margin-top:10px;">
+                    <button class="btn btn-secondary" onclick="resetReposToDefault()" style="flex:1;">Reset to Default</button>
+                    <button class="btn btn-primary" onclick="saveReposFromModal()" style="flex:1;">Save Repos</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('reposModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Repo Select Modal (new pipeline first step) -->
+    <div class="modal-overlay" id="repoSelectModal">
+        <div class="modal" style="max-width:560px;">
+            <div class="modal-header">
+                <div class="modal-title">Select Repository</div>
+                <button class="modal-close" onclick="closeModal('repoSelectModal')">x</button>
+            </div>
+            <div class="modal-body">
+                <div style="background:var(--info-bg); border:1px solid rgba(59,130,246,0.3); border-radius:12px; padding:14px 18px; margin-bottom:14px;">
+                    <p style="font-size:13px; color:var(--text-secondary); line-height:1.6; margin:0;">
+                        Pick which repo you want this pipeline to live in. Pipeline Manager will show the correct configuration section for that repo.
+                    </p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Repository <span class="req">*</span></label>
+                    <select id="repoSelect"></select>
+                    <span class="field-help">This list comes from <b>Sync</b> → <b>Manage</b> (saved in your browser).</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('repoSelectModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="confirmRepoSelection()">Continue</button>
             </div>
         </div>
     </div>
@@ -1094,6 +1158,13 @@
     const MOBILE_TEST_TYPES = ['Smoke', 'Sanity', 'Regression'];
 
     function isMobilePipeline(p) { return p && p.platform === '01 Mobile'; }
+    function isCryptoRepo(repo) { return String(repo || '').trim() === 'Axos.QE.Crypto.Web'; }
+    function isCryptoPipeline(p) {
+        if (!p) return false;
+        if (isCryptoRepo(p.repo)) return true;
+        const fn = String(p.filename || '');
+        return fn.includes('-Playwright') || fn.startsWith('crypto-web-') || fn.startsWith('crypto-web_');
+    }
     function isOrchestratorPipeline(p) {
         const fn = String(p?.filename || '');
         const name = String(p?.name || fn.replace(/\.yml$/i, ''));
@@ -1216,6 +1287,41 @@
             try {
                 pipelines = JSON.parse(stored);
                 savedSnapshot = JSON.parse(stored);
+                // Backfill repo for older cached entries (multi-repo support).
+                const backfillRepo = (p) => {
+                    if (!p || String(p.repo || '').trim()) return;
+                    const fn = String(p.filename || '');
+                    if (fn.includes('-Playwright') || fn.startsWith('crypto-web-') || fn.startsWith('crypto-web_')) p.repo = 'Axos.QE.Crypto.Web';
+                    else if (fn.startsWith('Mobile_')) p.repo = 'Axos.QE.Mobile';
+                    else p.repo = 'Axos.QE.TestIM';
+                };
+                // Backfill Crypto Web feature to the actual suite area (Login, Accounts, etc.)
+                // Older versions stored feature as "Crypto Web" which breaks the dropdown UX.
+                const backfillCryptoFeature = (p) => {
+                    if (!p) return;
+                    const repo = String(p.repo || '').trim();
+                    const fn = String(p.filename || '');
+                    const isCrypto = repo === 'Axos.QE.Crypto.Web' || fn.includes('-Playwright') || fn.startsWith('crypto-web-') || fn.startsWith('crypto-web_');
+                    if (!isCrypto) return;
+
+                    const cur = String(p.feature || '').trim();
+                    const isLegacy = !cur || cur.toLowerCase() === 'crypto web' || cur.toLowerCase() === 'cryptoweb';
+                    if (!isLegacy) return;
+
+                    try {
+                        const parsed = parseFilename(p.filename || '');
+                        if (parsed && parsed.feature) p.feature = parsed.feature;
+                        if (parsed && parsed.featureDetail) p.featureDetail = parsed.featureDetail;
+                    } catch { /* ignore */ }
+
+                    if ((!p.feature || String(p.feature || '').trim().toLowerCase() === 'crypto web') && p.cryptoScenario) {
+                        p.feature = String(p.cryptoScenario || '').trim();
+                    }
+                };
+                (pipelines || []).forEach(backfillRepo);
+                (savedSnapshot || []).forEach(backfillRepo);
+                (pipelines || []).forEach(backfillCryptoFeature);
+                (savedSnapshot || []).forEach(backfillCryptoFeature);
                 // Load persisted tree open/close state (never auto-expand on first load).
                 try {
                     const t = localStorage.getItem(TREE_STATE_KEY);
@@ -1875,7 +1981,8 @@
         const suiteOrFeature = isOrchestratorPipeline(p)
             ? (p.orchestratorSet || p.featureDetail || p.feature || '')
             : (p.testSuite || p.feature || '');
-        const ghRepo = isMobilePipeline(p) ? 'Axos.QE.Mobile' : 'Axos.QE.TestIM';
+        const ghRepo = p.repo || (isMobilePipeline(p) ? 'Axos.QE.Mobile' : 'Axos.QE.TestIM');
+        const repoPill = ghRepo ? `<span class="section-badge" style="background:rgba(255,255,255,0.06);color:var(--text-muted); font-weight:800; letter-spacing:0.2px;">${ghRepo}</span>` : '';
         return `<div class="pipeline-card" data-filename="${p.filename}" onclick="viewPipeline('${p.filename}')">
             <div class="pipeline-card-header">
                 <div class="pipeline-card-name">
@@ -1884,6 +1991,7 @@
                     ${p.name}
                 </div>
                 <div class="pipeline-card-actions">
+                    ${repoPill}
                     <a class="card-btn" href="${getGhWorkflowUrl(p.name, ghRepo)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Open in GitHub">
                         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:middle">
                             <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
@@ -1921,18 +2029,27 @@
     function confirmDelete() {
         const files = Array.from(selectedPipelines);
         const commitPush = document.getElementById('deleteCommitPush').checked;
-        const names = files.map(fn => {
-            const p = pipelines.find(pp => pp.filename === fn);
-            return p ? p.name : fn;
-        });
+        const items = files.map(fn => pipelines.find(pp => pp.filename === fn) || { filename: fn, name: fn });
+        const normRepo = (p) => String(
+            p.repo ||
+            (isCryptoPipeline(p) ? 'Axos.QE.Crypto.Web' : (isMobilePipeline(p) ? 'Axos.QE.Mobile' : 'Axos.QE.TestIM'))
+        ).trim();
+        const byRepo = new Map();
+        for (const it of items) {
+            const repo = normRepo(it);
+            if (!byRepo.has(repo)) byRepo.set(repo, []);
+            byRepo.get(repo).push(it.filename);
+        }
 
-        let prompt = `Delete the following ${files.length} Testim pipeline workflow file(s) from the repo Axos.QE.TestIM:\n\n`;
-        for (const fn of files) {
-            prompt += `.github/workflows/${fn}\n`;
+        let prompt = '';
+        for (const [repo, repoFiles] of byRepo.entries()) {
+            prompt += `Delete the following ${repoFiles.length} workflow file(s) from the repo ${repo}:\n\n`;
+            for (const fn of repoFiles) prompt += `.github/workflows/${fn}\n`;
+            prompt += `\n`;
         }
-        if (commitPush) {
-            prompt += `\nAfter deleting, commit and push the changes to main.`;
-        }
+
+        prompt = prompt.trimEnd();
+        if (commitPush) prompt += `\n\nAfter deleting, commit and push the changes to main.`;
 
         closeModal('deleteModal');
         document.getElementById('outputBox').textContent = prompt;
@@ -1941,7 +2058,10 @@
 
     function buildPromptForPipeline(p) {
         const isMobile = isMobilePipeline(p);
-        const repoName = isMobile ? 'Axos.QE.Mobile' : 'Axos.QE.TestIM';
+        const repoName = String(
+            p.repo ||
+            (isCryptoPipeline(p) ? 'Axos.QE.Crypto.Web' : (isMobile ? 'Axos.QE.Mobile' : 'Axos.QE.TestIM'))
+        ).trim();
         const filePath = `.github/workflows/${p.filename || (p.name + '.yml')}`;
 
         if (!isMobile && isOrchestratorPipeline(p)) {
@@ -2012,6 +2132,36 @@
                 prompt += `\n- Add WEEK_MODULO: ${n} to the with: block so the template skips runs on off-weeks (do NOT add a separate gate job)`;
             }
 
+            if (p.renamedFrom) prompt += `\n\nAlso delete the old workflow file: .github/workflows/${p.renamedFrom}`;
+            return prompt;
+        }
+
+        if (repoName === 'Axos.QE.Crypto.Web' || isCryptoPipeline(p)) {
+            let prompt = `Create or update a Playwright pipeline workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
+                `This workflow should be self-contained (Playwright + BrowserStack) and reflect these settings:\n\n` +
+                `RUN_TARGET: ${p.runTarget || 'browserstack'}\n` +
+                `TEST_ENV: ${p.env || 'UAT'}\n` +
+                `GREP: ${p.grep || ''}\n` +
+                `SUITE: ${p.suite || ''}\n` +
+                `SPEC: ${p.spec || ''}\n` +
+                `PARALLELS: ${p.parallel || '10'}\n` +
+                `RETRIES: ${p.retries || '1'}\n` +
+                `USE_BS_LOCAL_TUNNEL: ${p.tunnel || 'true'}\n` +
+                `BS_RANDOM_BROWSER: ${p.bsRandomBrowser || 'true'}\n` +
+                `BS_BROWSER_NAME: ${p.bsBrowserName || ''}\n` +
+                `BS_BROWSER_VERSION: ${p.bsBrowserVersion || ''}\n` +
+                `BS_OS_NAME: ${p.bsOsName || ''}\n` +
+                `BS_OS_VERSION: ${p.bsOsVersion || ''}\n` +
+                `BROWSERSTACK_USERNAME: ${p.bsUsername || ''}\n` +
+                `BROWSERSTACK_ACCESS_KEY: ${p.bsAccessKey || ''}\n` +
+                `PW_VIDEO: ${p.pwVideo || '0'}\n` +
+                `JOB_TIMEOUT: ${p.jobTimeout || 120}\n` +
+                `RUNNER_LABEL: ${p.runnerLabel || 'QSDW-TFSBA01'}`;
+
+            if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
+            else prompt += `\n\nKeep the schedule block commented out.`;
+
+            prompt += `\n\nUse the existing workflow file Web_AxosBank_UAT-OLB_Login_Smoke-Playwright.yml as the exact format reference.`;
             if (p.renamedFrom) prompt += `\n\nAlso delete the old workflow file: .github/workflows/${p.renamedFrom}`;
             return prompt;
         }
@@ -2111,13 +2261,37 @@
 
         const p = prefill || {};
 
-        const projectLabel = isMobilePipeline(p) ? 'BrowserStack mobile pipeline' : (isOrchestratorPipeline(p) ? 'Orchestrator workflow' : 'Testim pipeline');
+        // New pipeline: choose the repo first (repo drives the config section).
+        if (editable && !isEdit && !String(p.repo || '').trim()) {
+            openRepoSelectModal(prefill, editable);
+            return;
+        }
+
+        // Normalize repo for older entries (default based on filename/platform).
+        const repoName = String(
+            p.repo ||
+            (isCryptoPipeline(p) ? 'Axos.QE.Crypto.Web' : (isMobilePipeline(p) ? 'Axos.QE.Mobile' : 'Axos.QE.TestIM'))
+        ).trim();
+        p.repo = repoName;
+        const cryptoScenarioPrefill = (repoName === 'Axos.QE.Crypto.Web')
+            ? (String(p.cryptoScenario || '').trim() || (() => {
+                const fd = String(p.featureDetail || '').trim();
+                if (fd.startsWith('OLB_')) return (fd.split('_')[1] || '').trim();
+                return '';
+            })())
+            : '';
+
+        const projectLabel = isMobilePipeline(p)
+            ? 'BrowserStack mobile pipeline'
+            : (isOrchestratorPipeline(p)
+                ? 'Orchestrator workflow'
+                : (isCryptoPipeline(p) ? 'Playwright pipeline' : 'Testim pipeline'));
         let html = `<div class="main-header">
             <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
                 <div style="min-width:0;">
                     <div class="breadcrumb"><span onclick="selectFolder(null)" style="cursor:pointer;">All Pipelines</span><span class="sep">/</span><span style="color:var(--text-primary);font-weight:600;">${title}</span></div>
                     <h1>${title}</h1>
-                    <p>${isView ? 'Viewing pipeline configuration' : isClone ? 'Creating a copy with different settings' : isEdit ? 'Modify pipeline settings and save' : 'Configure a new pipeline'}</p>
+                    <p>${isView ? 'Viewing pipeline configuration' : isClone ? 'Creating a copy with different settings' : isEdit ? 'Modify pipeline settings and save' : 'Configure a new pipeline'} <span style="opacity:0.75;">—</span> <span style="font-weight:800; color:var(--text-secondary);">${repoName}</span></p>
                 </div>
                 <div style="display:flex; gap:8px; flex-shrink:0;">
                     <button class="btn btn-secondary" onclick="selectFolder(selectedFolder)" style="padding:6px 16px;">&#9664; Back</button>
@@ -2125,6 +2299,8 @@
                 </div>
             </div>
         </div>`;
+
+        html += `<input type="hidden" id="fRepo" value="${escapeHtml(repoName)}">`;
 
         // Name Preview
         html += `<div class="section">
@@ -2277,6 +2453,162 @@
                 </div>
             </div>`;
         } else {
+        const cryptoForm = repoName === 'Axos.QE.Crypto.Web' || isCryptoPipeline(p);
+        if (cryptoForm) {
+            html += `<div class="section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title"><span class="section-icon">&#128193;</span> Location & Category <span class="section-badge" style="background:rgba(59,130,246,0.1);color:#60a5fa;">Required</span></div>
+                <div class="section-toggle">&#9660;</div>
+            </div>
+            <div class="section-content">
+                <div class="form-row-3">
+                    <div class="form-group">
+                        <label class="form-label">Platform <span class="req">*</span></label>
+                        <select id="fPlatform" onchange="onPlatformChange(); updateNamePreview();" ${isView ? 'disabled' : ''}>
+                            <option value="">Select...</option>
+                            ${Object.keys(FOLDER_STRUCTURE).map(k => `<option value="${k}" ${p.platform === k ? 'selected' : ''}>${k}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Brand <span class="req">*</span></label>
+                        <select id="fBrand" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
+                            <option value="">Select...</option>
+                            ${p.platform === '02 Web' ? Object.keys(FOLDER_STRUCTURE['02 Web']).map(b => `<option value="${b}" ${p.brand === b ? 'selected' : ''}>${b}</option>`).join('') : ''}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Environment <span class="req">*</span></label>
+                        <select id="fEnv" onchange="updateNamePreview();" ${isView ? 'disabled' : ''}>
+                            <option value="">Select...</option>
+                            ${ENVIRONMENTS.map(e => `<option value="${e}" ${p.env === e ? 'selected' : ''}>${e}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Feature <span class="req">*</span></label>
+                        <select id="fFeature" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
+                            <option value="">Select...</option>
+                            ${renderWebFeatureOptions('Axos Bank', (p.feature || cryptoScenarioPrefill || 'Login'))}
+                        </select>
+                        <span class="field-help">Suite/area used to build the workflow name (example: <code>...-OLB_Login_...</code>)</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Test Type <span class="req">*</span></label>
+                        <select id="fTestType" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
+                            <option value="">Select...</option>
+                            ${['Regression','Sanity','Smoke'].map(t => `<option value="${t}" ${p.testType === t ? 'selected' : ''}>${t}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+
+            html += `<div class="section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title"><span class="section-icon">&#9881;</span> Playwright / BrowserStack Configuration <span class="section-badge" style="background:rgba(59,130,246,0.1);color:#60a5fa;">Required</span></div>
+                <div class="section-toggle">&#9660;</div>
+            </div>
+            <div class="section-content">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Run Target</label>
+                        <select id="fRunTarget" ${isView ? 'disabled' : ''}>
+                            <option value="browserstack" ${(p.runTarget || 'browserstack') === 'browserstack' ? 'selected' : ''}>BrowserStack (default)</option>
+                            <option value="local" ${p.runTarget === 'local' ? 'selected' : ''}>Local runner</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Grep Filter</label>
+                        <input type="text" id="fGrep" placeholder="@Smoke" value="${p.grep || ''}" ${isView ? 'disabled' : ''}>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Suite <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional)</span></label>
+                        <input type="text" id="fSuite" value="${p.suite || ''}" ${isView ? 'disabled' : ''}>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Spec File <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional)</span></label>
+                        <input type="text" id="fSpec" placeholder="suites/01_Login/login.spec.js" value="${p.spec || ''}" ${isView ? 'disabled' : ''}>
+                    </div>
+                </div>
+
+                <div class="form-row-3">
+                    <div class="form-group">
+                        <label class="form-label">Parallels</label>
+                        <input type="number" id="fParallel" min="1" max="25" value="${p.parallel || '10'}" ${isView ? 'disabled' : ''}>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Retries</label>
+                        <input type="number" id="fRetries" min="0" max="5" value="${p.retries || '1'}" ${isView ? 'disabled' : ''}>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">BrowserStack Tunnel</label>
+                        <select id="fTunnel" ${isView ? 'disabled' : ''}>
+                            <option value="true" ${(p.tunnel || 'true') === 'true' ? 'selected' : ''}>Enabled</option>
+                            <option value="false" ${p.tunnel === 'false' ? 'selected' : ''}>Disabled</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row-3">
+                    <div class="form-group">
+                        <label class="form-label">Random Browser</label>
+                        <select id="fBsRandomBrowser" ${isView ? 'disabled' : ''}>
+                            <option value="true" ${(p.bsRandomBrowser || 'true') === 'true' ? 'selected' : ''}>true</option>
+                            <option value="false" ${p.bsRandomBrowser === 'false' ? 'selected' : ''}>false</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">BS Browser Name</label>
+                        <input type="text" id="fBsBrowserName" value="${p.bsBrowserName || ''}" ${isView ? 'disabled' : ''}>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">BS Browser Version</label>
+                        <input type="text" id="fBsBrowserVersion" value="${p.bsBrowserVersion || ''}" ${isView ? 'disabled' : ''}>
+                    </div>
+                </div>
+
+                <div class="form-row-3">
+                    <div class="form-group">
+                        <label class="form-label">BS OS Name</label>
+                        <input type="text" id="fBsOsName" value="${p.bsOsName || ''}" ${isView ? 'disabled' : ''}>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">BS OS Version</label>
+                        <input type="text" id="fBsOsVersion" value="${p.bsOsVersion || ''}" ${isView ? 'disabled' : ''}>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Video</label>
+                        <select id="fPwVideo" ${isView ? 'disabled' : ''}>
+                            <option value="0" ${(p.pwVideo || '0') === '0' ? 'selected' : ''}>retain-on-failure</option>
+                            <option value="1" ${p.pwVideo === '1' ? 'selected' : ''}>always on</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">BrowserStack Username <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional — leave blank to use repo secrets)</span></label>
+                        <input type="text" id="fBsUsername" value="${p.bsUsername || ''}" ${isView ? 'disabled' : ''}>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">BrowserStack Access Key <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional — leave blank to use repo secrets)</span></label>
+                        <input type="password" id="fBsAccessKey" value="${p.bsAccessKey || ''}" ${isView ? 'disabled' : ''}>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Runner Label</label>
+                    <select id="fRunnerLabel" ${isView ? 'disabled' : ''}>
+                        ${['QSDW-TFSBA01','QSDW-TFSBA02','QSDW-TFSBA03','QSDW-TFSBA04','QSDW-TFSBA05','QAAutomationMobile'].map(r => `<option value="${r}" ${(p.runnerLabel || 'QSDW-TFSBA01') === r ? 'selected' : ''}>${r}</option>`).join('')}
+                    </select>
+                    <span class="field-help">Windows self-hosted runner from the same pool used by Mobile pipelines</span>
+                </div>
+            </div>
+        </div>`;
+        } else {
         // Web (Testim) — original form
         html += `<div class="section">
             <div class="section-header" onclick="toggleSection(this)">
@@ -2409,6 +2741,7 @@
                 </div>
             </div>
         </div>`;
+        } // end Playwright repo branch
         } // end web form
 
         // Execution Settings
@@ -2432,10 +2765,10 @@
                 </div>
 
                 <div style="background:var(--bg-tertiary); border-radius:10px; padding:12px 16px; display:flex; align-items:center; gap:10px;">
-                    <span style="font-size:16px;">${formIsMobile ? '&#128187;' : '&#129302;'}</span>
+                    <span style="font-size:16px;">${(formIsMobile || repoName === 'Axos.QE.Crypto.Web') ? '&#128187;' : '&#129302;'}</span>
                     <div>
-                        <div style="font-size:12px; font-weight:600; color:var(--success);">Runner: ${formIsMobile ? 'QSDW-TFSBA (Windows)' : 'Auto-selected'}</div>
-                        <div style="font-size:11px; color:var(--text-muted);">${formIsMobile ? 'Picks from QSDW-TFSBA01–05 Windows runners (ADO QAAutomationMobile pool)' : 'Picks any available online runner with "dsdl" in the name'}</div>
+                        <div style="font-size:12px; font-weight:600; color:var(--success);">Runner: ${(formIsMobile || repoName === 'Axos.QE.Crypto.Web') ? 'QSDW-TFSBA (Windows)' : 'dsdl (Linux)'}</div>
+                        <div style="font-size:11px; color:var(--text-muted);">${(formIsMobile || repoName === 'Axos.QE.Crypto.Web') ? 'Picks from QSDW-TFSBA01–05 Windows runners (same pool as Mobile)' : 'Selects a self-hosted Linux runner by label (no wildcard runner-name matching)'}</div>
                     </div>
                 </div>
 
@@ -3156,6 +3489,8 @@
 
     function onBrandChange(initialSelectedFeature) {
         if (isMobileForm()) return;
+        const repo = document.getElementById('fRepo')?.value || '';
+        if (repo === 'Axos.QE.Crypto.Web') return;
         const brand = document.getElementById('fBrand')?.value || '';
         const featureSelect = document.getElementById('fFeature');
         if (!featureSelect) return;
@@ -3194,6 +3529,38 @@
             if (suffix) name += `_${suffix}`;
             if (feature !== testType) name += `_${testType}`;
             name += `-BrowserStack`;
+
+            const previewEl = document.getElementById('namePreview');
+            const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && p.filename !== editingPipeline);
+            if (duplicate) {
+                previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:'Plus Jakarta Sans',sans-serif;">&#9888; A pipeline with this exact name already exists.</div>`;
+                previewEl.style.borderColor = 'var(--error)';
+            } else {
+                previewEl.textContent = name;
+                previewEl.style.borderColor = '';
+            }
+            updateFormStatus();
+            return;
+        }
+
+        const repo = document.getElementById('fRepo')?.value || '';
+        if (repo === 'Axos.QE.Crypto.Web') {
+            const brand = document.getElementById('fBrand')?.value;
+            const suffix = document.getElementById('fCustomSuffix')?.value?.trim();
+            const feature = document.getElementById('fFeature')?.value?.trim();
+            if (!platform || !brand || !env || !testType || !feature) {
+                document.getElementById('namePreview').innerHTML = '<span class="dim">Select all required fields to generate pipeline name...</span>';
+                updateFormStatus();
+                return;
+            }
+
+            const pKey = PLATFORM_KEY_MAP[platform] || platform;
+            const bKey = BRAND_KEY_MAP[brand] || brand.replace(/\s+/g, '');
+            const fKey = feature.replace(/\s+/g, '');
+            const sKey = suffix ? suffix.replace(/\s+/g, '') : '';
+            const tKey = testType.replace(/\s+/g, '');
+            const featureStr = sKey ? `OLB_${fKey}_${sKey}` : `OLB_${fKey}`;
+            const name = `${pKey}_${bKey}_${env}-${featureStr}_${tKey}-Playwright`;
 
             const previewEl = document.getElementById('namePreview');
             const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && p.filename !== editingPipeline);
@@ -3337,6 +3704,13 @@
         if (isMobileForm()) {
             fieldsOk = el('fPlatform')?.value && el('fBrand')?.value && el('fFeature')?.value && el('fTestType')?.value && el('fEnv')?.value;
         } else {
+            const repo = (el('fRepo')?.value || '').trim();
+            if (repo === 'Axos.QE.Crypto.Web') {
+                fieldsOk =
+                    el('fPlatform')?.value && el('fBrand')?.value && el('fEnv')?.value &&
+                    el('fFeature')?.value && el('fTestType')?.value;
+                return fieldsOk && !isNameDuplicate();
+            }
             const isOrch = (el('fTestType')?.value || '') === 'Orchestrator';
             if (isOrch) {
                 fieldsOk =
@@ -3372,6 +3746,7 @@
 
         base.name = name;
         base.filename = filename;
+        base.repo = v('fRepo') || base.repo;
 
         if (isMobileForm()) {
             base.grep = v('fGrep');
@@ -3389,6 +3764,31 @@
             base.bsAccessKey = v('fBsAccessKey');
             base.jobTimeout = n('fJobTimeout', 120);
         } else {
+            const repo = v('fRepo');
+            if (repo === 'Axos.QE.Crypto.Web') {
+                base.feature = v('fFeature') || cryptoScenarioPrefill || base.feature || 'Login';
+                base.brand = v('fBrand') || base.brand;
+                base.env = v('fEnv') || base.env;
+                // Keep for backwards-compat with older cached entries / name parsing.
+                base.cryptoScenario = base.feature;
+                base.runTarget = v('fRunTarget') || 'browserstack';
+                base.grep = v('fGrep');
+                base.suite = v('fSuite');
+                base.spec = v('fSpec');
+                base.parallel = v('fParallel') || '10';
+                base.retries = v('fRetries') || '1';
+                base.tunnel = v('fTunnel') || 'true';
+                base.bsRandomBrowser = v('fBsRandomBrowser') || 'true';
+                base.bsBrowserName = v('fBsBrowserName');
+                base.bsBrowserVersion = v('fBsBrowserVersion');
+                base.bsOsName = v('fBsOsName');
+                base.bsOsVersion = v('fBsOsVersion');
+                base.pwVideo = v('fPwVideo') || '0';
+                base.bsUsername = v('fBsUsername');
+                base.bsAccessKey = v('fBsAccessKey');
+                base.runnerLabel = v('fRunnerLabel') || 'QSDW-TFSBA01';
+                base.jobTimeout = n('fJobTimeout', 120);
+            } else {
             const isOrch = (v('fTestType') === 'Orchestrator') || base.testType === 'Orchestrator';
             if (isOrch) {
                 base.testSuite = '';
@@ -3430,6 +3830,7 @@
                 base.browserTimeout = v('fBrowserTimeout') || '30';
                 base.runnerLabel = v('fRunnerLabel') || 'dsdl-timab31';
                 base.jobTimeout = n('fJobTimeout', 120);
+            }
             }
         }
 
@@ -3548,6 +3949,40 @@ ${targets}
 
 Each target element supports: enabled, name, owner, repo, workflow, ref, inputs.`;
 
+        } else if (el('fRepo') === 'Axos.QE.Crypto.Web') {
+            prompt = `Create or update a Playwright pipeline workflow file in the repo Axos.QE.Crypto.Web at:
+.github/workflows/${name}.yml
+
+This workflow should be self-contained (Playwright + BrowserStack) and reflect these settings:
+
+PIPELINE_NAME: ${name}
+RUN_TARGET: ${el('fRunTarget') || 'browserstack'}
+TEST_ENV: ${el('fEnv') || 'UAT'}
+GREP: ${el('fGrep') || ''}
+SUITE: ${el('fSuite') || ''}
+SPEC: ${el('fSpec') || ''}
+PARALLELS: ${el('fParallel') || '10'}
+RETRIES: ${el('fRetries') || '1'}
+USE_BS_LOCAL_TUNNEL: ${el('fTunnel') || 'true'}
+BS_RANDOM_BROWSER: ${el('fBsRandomBrowser') || 'true'}
+BS_BROWSER_NAME: ${el('fBsBrowserName') || ''}
+BS_BROWSER_VERSION: ${el('fBsBrowserVersion') || ''}
+BS_OS_NAME: ${el('fBsOsName') || ''}
+BS_OS_VERSION: ${el('fBsOsVersion') || ''}
+BROWSERSTACK_USERNAME: ${el('fBsUsername') || ''}
+BROWSERSTACK_ACCESS_KEY: ${el('fBsAccessKey') || ''}
+PW_VIDEO: ${el('fPwVideo') || '0'}
+JOB_TIMEOUT: ${el('fJobTimeout') || '120'}
+RUNNER_LABEL: ${el('fRunnerLabel') || 'QSDW-TFSBA01'}`;
+
+            if (scheduleEnabled && scheduleCron) {
+                prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron}`;
+            } else {
+                prompt += `\n\nKeep the schedule block commented out.`;
+            }
+
+            prompt += `\n\nUse the existing workflow file Web_AxosBank_UAT-OLB_Login_Smoke-Playwright.yml as the exact format reference.`;
+
         } else {
             prompt = `Create a new Testim pipeline workflow file in the repo Axos.QE.TestIM at:
 .github/workflows/${name}.yml
@@ -3565,7 +4000,7 @@ TIMEOUTMIN: ${el('fTimeoutMin')}
 BROWSER_TIMEOUT: ${el('fBrowserTimeout')}
 JOB_TIMEOUT: ${el('fJobTimeout')}
 
-Runner: Auto-select any available online runner with "dsdl" in its name.`;
+Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.`;
 
             if (scheduleEnabled && scheduleCron) {
                 prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron}`;
@@ -3601,6 +4036,201 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
     // ══════════════════════════════════════════
     //  SYNC
     // ══════════════════════════════════════════
+    const SYNC_REPOS_KEY = 'axos_sync_repos';
+    const DEFAULT_SYNC_REPOS = [
+        { owner: 'axos-financial', repo: 'Axos.QE.TestIM' },
+        { owner: 'axos-financial', repo: 'Axos.QE.Mobile' }
+    ];
+
+    function cloneRepos(repos) {
+        return (repos || []).map(r => ({ owner: String(r.owner || '').trim(), repo: String(r.repo || '').trim() }))
+            .filter(r => r.owner && r.repo);
+    }
+
+    function parseRepoLine(line) {
+        const raw = String(line || '').trim();
+        if (!raw || raw.startsWith('#')) return null;
+
+        // Accept full GitHub URLs or owner/repo slugs
+        let s = raw.replace(/\/+$/, '');
+        try {
+            if (/^https?:\/\//i.test(s)) {
+                const u = new URL(s);
+                const parts = u.pathname.split('/').filter(Boolean);
+                if (parts.length >= 2) return { owner: parts[0], repo: parts[1] };
+                return null;
+            }
+        } catch { /* ignore */ }
+
+        const m = s.match(/^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/);
+        if (!m) return null;
+        return { owner: m[1], repo: m[2] };
+    }
+
+    function loadSyncRepos() {
+        try {
+            const stored = localStorage.getItem(SYNC_REPOS_KEY);
+            if (!stored) return cloneRepos(DEFAULT_SYNC_REPOS);
+            const parsed = JSON.parse(stored);
+            if (!Array.isArray(parsed)) return cloneRepos(DEFAULT_SYNC_REPOS);
+            const cleaned = cloneRepos(parsed);
+            return cleaned.length ? cleaned : cloneRepos(DEFAULT_SYNC_REPOS);
+        } catch {
+            return cloneRepos(DEFAULT_SYNC_REPOS);
+        }
+    }
+
+    function saveSyncRepos(repos) {
+        const cleaned = cloneRepos(repos);
+        localStorage.setItem(SYNC_REPOS_KEY, JSON.stringify(cleaned));
+        renderSyncReposDisplay();
+    }
+
+    function renderSyncReposDisplay() {
+        const el = document.getElementById('syncReposDisplay');
+        if (!el) return;
+        const repos = loadSyncRepos();
+        el.textContent = repos.map(r => `${r.owner}/${r.repo}`).join(', ');
+    }
+
+    function openReposModal() {
+        renderSyncReposDisplay();
+        const repos = loadSyncRepos();
+        const ta = document.getElementById('reposInput');
+        if (ta) ta.value = repos.map(r => `${r.owner}/${r.repo}`).join('\n');
+        document.getElementById('reposModal').classList.add('show');
+    }
+
+    function resetReposToDefault() {
+        saveSyncRepos(DEFAULT_SYNC_REPOS);
+        const ta = document.getElementById('reposInput');
+        if (ta) ta.value = cloneRepos(DEFAULT_SYNC_REPOS).map(r => `${r.owner}/${r.repo}`).join('\n');
+        showToast('Repo list reset to default.');
+    }
+
+    function saveReposFromModal() {
+        const ta = document.getElementById('reposInput');
+        const input = String(ta ? ta.value : '').split(/\r?\n/);
+        const repos = [];
+        const invalid = [];
+        for (const line of input) {
+            const parsed = parseRepoLine(line);
+            if (parsed) repos.push(parsed);
+            else if (String(line || '').trim() && !String(line || '').trim().startsWith('#')) invalid.push(String(line || '').trim());
+        }
+
+        if (invalid.length) {
+            showToast(`Invalid repo line(s): ${invalid.slice(0, 3).join(' | ')}${invalid.length > 3 ? ' ...' : ''}`, true);
+            return;
+        }
+
+        if (!repos.length) {
+            showToast('Add at least one repo (owner/repo).', true);
+            return;
+        }
+
+        saveSyncRepos(repos);
+        closeModal('reposModal');
+        showToast('Repo list saved.');
+    }
+
+    let pendingRepoPrefill = null;
+    let pendingRepoEditable = true;
+
+    function repoDefaults(repoName) {
+        const repo = String(repoName || '').trim();
+        if (repo === 'Axos.QE.Mobile') {
+            return {
+                repo,
+                platform: '01 Mobile',
+                brand: 'Android',
+                env: 'UAT',
+                feature: 'Smoke',
+                testType: 'Smoke',
+                grep: '@Sanity',
+                parallel: '10',
+                retries: '1',
+                tunnel: 'true',
+                parallelSplit: 'true',
+                jobTimeout: 120,
+                runnerLabel: 'QSDW-TFSBA01',
+            };
+        }
+        if (repo === 'Axos.QE.Crypto.Web') {
+            return {
+                repo,
+                platform: '02 Web',
+                brand: 'Axos Bank',
+                env: 'UAT',
+                feature: 'Login',
+                testType: 'Smoke',
+                cryptoScenario: 'Login',
+                grep: '@Smoke',
+                suite: '',
+                spec: '',
+                parallel: '10',
+                retries: '1',
+                tunnel: 'true',
+                bsRandomBrowser: 'true',
+                bsBrowserName: '',
+                bsBrowserVersion: '',
+                bsOsName: '',
+                bsOsVersion: '',
+                runTarget: 'browserstack',
+                jobTimeout: 120,
+                runnerLabel: 'QSDW-TFSBA01',
+            };
+        }
+        // Default: TestIM pipelines
+        return {
+            repo,
+            platform: '02 Web',
+            brand: 'Outsystems',
+            env: 'UAT',
+            feature: 'EWM',
+            testType: 'Regression',
+            testSuite: '',
+            baseUrl: ENV_URLS.UAT,
+            branch: 'UDB - API and Web',
+            grid: 'Testim-Grid',
+            parallel: '5',
+            retries: '1',
+            browserTimeout: '30',
+            runnerLabel: 'dsdl-timab31',
+            jobTimeout: 120,
+        };
+    }
+
+    function openRepoSelectModal(prefill = null, editable = true) {
+        pendingRepoPrefill = prefill;
+        pendingRepoEditable = editable;
+        const sel = document.getElementById('repoSelect');
+        if (!sel) return;
+        const repos = loadSyncRepos().map(r => r.repo);
+        const unique = [...new Set(repos.filter(Boolean))];
+        const baseList = unique.length ? unique : ['Axos.QE.TestIM', 'Axos.QE.Mobile', 'Axos.QE.Crypto.Web'];
+        const current = String(prefill?.repo || '').trim() || '';
+        sel.innerHTML = baseList.map(r => `<option value="${r}" ${current === r ? 'selected' : ''}>${r}</option>`).join('');
+        document.getElementById('repoSelectModal').classList.add('show');
+    }
+
+    function confirmRepoSelection() {
+        const sel = document.getElementById('repoSelect');
+        const repo = String(sel?.value || '').trim();
+        if (!repo) { showToast('Select a repository first.'); return; }
+        closeModal('repoSelectModal');
+        const pre = { ...(pendingRepoPrefill || {}) };
+        const defaults = repoDefaults(repo);
+        // Repo drives the platform; force it to avoid mismatched forms.
+        pre.platform = defaults.platform;
+        for (const [k, v] of Object.entries(defaults)) {
+            if (pre[k] === undefined || pre[k] === null || pre[k] === '') pre[k] = v;
+        }
+        pre.repo = repo;
+        pendingRepoPrefill = null;
+        showCreateForm(pre, pendingRepoEditable);
+    }
+
     function openSyncModal() {
         syncFileContent = null;
         const inputEl = document.getElementById('syncInput');
@@ -3611,6 +4241,7 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         if (fiEl) fiEl.value = '';
         const statusEl = document.getElementById('syncStatus');
         if (statusEl) statusEl.style.display = 'none';
+        renderSyncReposDisplay();
         document.getElementById('syncModal').classList.add('show');
     }
 
@@ -3769,6 +4400,7 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
 
         const mobileMap = {
             TEST_ENV: 'env',
+            RUN_TARGET: 'runTarget',
             GREP: 'grep',
             SUITE: 'suite',
             SPEC: 'spec',
@@ -3776,6 +4408,12 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
             PARALLEL_SPLIT: 'parallelSplit',
             RETRIES: 'retries',
             USE_BS_LOCAL_TUNNEL: 'tunnel',
+            BS_RANDOM_BROWSER: 'bsRandomBrowser',
+            BS_BROWSER_NAME: 'bsBrowserName',
+            BS_BROWSER_VERSION: 'bsBrowserVersion',
+            BS_OS_NAME: 'bsOsName',
+            BS_OS_VERSION: 'bsOsVersion',
+            PW_VIDEO: 'pwVideo',
             JOB_TIMEOUT: 'jobTimeout',
             RUNNER_LABEL: 'runnerLabel',
             BROWSERSTACK_USERNAME: 'bsUsername',
@@ -3829,15 +4467,21 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         statusEl.style.display = 'block';
         statusText.innerHTML = 'Fetching workflows from GitHub...';
 
-        const repos = [
-            { owner: 'axos-financial', repo: 'Axos.QE.TestIM' },
-            { owner: 'axos-financial', repo: 'Axos.QE.Mobile' }
-        ];
+        const repos = loadSyncRepos();
+        if (!repos.length) {
+            showToast('No repos configured to sync. Click Manage to add repos.', true);
+            btn.disabled = false;
+            btn.textContent = 'Sync from GitHub';
+            return;
+        }
+
+        // Use the first repo matching Axos.QE.TestIM as the orchestrator source (targets.json), else fall back to first repo.
+        const orchestratorRepo = repos.find(r => String(r.repo || '').toLowerCase() === 'axos.qe.testim') || repos[0];
 
         // Optional: load orchestrator sets so orchestrator workflows can show/edit their targets.
         let orchestratorSets = null;
         try {
-            const resp = await fetch(`https://api.github.com/repos/axos-financial/Axos.QE.TestIM/contents/.github/orchestrator/targets.json`, {
+            const resp = await fetch(`https://api.github.com/repos/${orchestratorRepo.owner}/${orchestratorRepo.repo}/contents/.github/orchestrator/targets.json`, {
                 headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/vnd.github.v3+json' }
             });
             if (resp.ok) {
@@ -3852,7 +4496,7 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         const allFiles = [];
         try {
             for (const r of repos) {
-                statusText.innerHTML += `<br>  ${r.repo}...`;
+                statusText.innerHTML += `<br>  ${r.owner}/${r.repo}...`;
                 const resp = await fetch(`https://api.github.com/repos/${r.owner}/${r.repo}/contents/.github/workflows`, {
                     headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/vnd.github.v3+json' }
                 });
@@ -3866,7 +4510,7 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
                     if (f.name.startsWith('_') || !f.name.endsWith('.yml')) continue;
                     try {
                         const entry = await fetchWorkflowEntry(r, f.name, pat);
-                        if (r.repo === 'Axos.QE.TestIM' && entry && entry.orchestratorSet && orchestratorSets) {
+                        if (r.repo === orchestratorRepo.repo && entry && entry.orchestratorSet && orchestratorSets) {
                             entry.orchestratorTargets = orchestratorSets[entry.orchestratorSet] || [];
                         }
                         allFiles.push(entry);
@@ -3930,6 +4574,9 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
             for (const entry of jsonData) {
                 const parsed = parseFilename(entry.filename);
                 if (!parsed) continue;
+
+                // Preserve repo source for Results/Metrics and for multi-repo workflows.
+                if (entry.repo) parsed.repo = entry.repo;
 
                 if (entry.testSuite) parsed.testSuite = entry.testSuite;
                 if (entry.baseUrl) parsed.baseUrl = entry.baseUrl;
@@ -4081,6 +4728,44 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
     function parseFilename(filename) {
         const name = filename.replace('.yml', '');
 
+        // Crypto Web pipelines: crypto-web[-<env>]-<type>
+        // Examples:
+        // - crypto-web-e2e.yml
+        // - crypto-web-smoke.yml
+        // - crypto-web-uat-smoke.yml
+        const lower = name.toLowerCase();
+        if (lower.startsWith('crypto-web-') || lower.startsWith('crypto-web_')) {
+            const envMatch = lower.match(/(?:^|[-_])(dev|qa|stg|uat|prod)(?:[-_]|$)/i);
+            const env = (envMatch ? String(envMatch[1]).toUpperCase() : 'UAT');
+            let testType = 'Regression';
+            if (lower.includes('smoke')) testType = 'Smoke';
+            else if (lower.includes('sanity')) testType = 'Sanity';
+            else if (lower.includes('health')) testType = 'Health Check';
+
+            return {
+                filename,
+                name,
+                platform: '02 Web',
+                brand: 'Axos.QE.Crypto.Web',
+                env,
+                feature: 'Crypto Web',
+                featureDetail: 'CryptoWeb',
+                testType,
+                testSuite: '',
+                baseUrl: ENV_URLS[env] || '',
+                branch: 'main',
+                grid: '',
+                parallel: String(5),
+                retries: String(1),
+                timeoutMin: String(30),
+                browserTimeout: String(30),
+                runnerLabel: '',
+                jobTimeout: 120,
+                schedule: '',
+                scheduleEnabled: false
+            };
+        }
+
         // Mobile pipelines: Mobile_{Android|iOS}_{Feature}_{TestType}-BrowserStack
         if (name.startsWith('Mobile_')) {
             const withoutBs = name.replace(/-BrowserStack$/, '');
@@ -4133,12 +4818,17 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         const envFeaturePart = parts.slice(2).join('_');
         const envMatch = envFeaturePart.match(/^(DEV|QA|STG|UAT|PROD)-(.+)$/);
         let env = '', featureDetail = '', testType = 'Regression';
+        let isPlaywright = false;
 
         if (envMatch) {
             env = envMatch[1];
             // Support orchestrators: ...-Orchestrator (non-Testim).
             const isOrch = /-Orchestrator$/.test(envMatch[2]);
-            const rest = envMatch[2].replace(/-Testim$/, '').replace(/-Orchestrator$/, '');
+            isPlaywright = /-Playwright$/.test(envMatch[2]);
+            const rest = envMatch[2]
+                .replace(/-Testim$/, '')
+                .replace(/-Orchestrator$/, '')
+                .replace(/-Playwright$/, '');
 
             if (isOrch) {
                 testType = 'Orchestrator';
@@ -4185,6 +4875,11 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
             for (const fName of featureNamesForParse) {
                 if (fName.replace(/\s+/g, '') === tKey) { feature = fName; break; }
             }
+        }
+
+        if (isPlaywright) {
+            // Playwright workflows use the same Axos Bank suite features (Login, Accounts, etc.)
+            // so keep the feature parsed from the filename (e.g., OLB_Login → Login).
         }
 
         return {
@@ -4272,9 +4967,11 @@ Runner: Auto-select any available online runner with "dsdl" in its name.`;
         window.addEventListener('blur', hide);
     })();
 
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal('outputModal'); closeModal('syncModal'); closeModal('deleteModal'); closeModal('saveModal'); closeModal('diffModal'); closeModal('emailModal'); } });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal('outputModal'); closeModal('syncModal'); closeModal('reposModal'); closeModal('repoSelectModal'); closeModal('deleteModal'); closeModal('saveModal'); closeModal('diffModal'); closeModal('emailModal'); } });
     document.getElementById('outputModal').addEventListener('click', e => { if (e.target.id === 'outputModal') closeModal('outputModal'); });
     document.getElementById('syncModal').addEventListener('click', e => { if (e.target.id === 'syncModal') closeModal('syncModal'); });
+    document.getElementById('reposModal').addEventListener('click', e => { if (e.target.id === 'reposModal') closeModal('reposModal'); });
+    document.getElementById('repoSelectModal').addEventListener('click', e => { if (e.target.id === 'repoSelectModal') closeModal('repoSelectModal'); });
     document.getElementById('deleteModal').addEventListener('click', e => { if (e.target.id === 'deleteModal') closeModal('deleteModal'); });
     document.getElementById('saveModal').addEventListener('click', e => { if (e.target.id === 'saveModal') closeModal('saveModal'); });
     document.getElementById('diffModal').addEventListener('click', e => { if (e.target.id === 'diffModal') closeModal('diffModal'); });
