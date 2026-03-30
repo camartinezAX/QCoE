@@ -1326,6 +1326,7 @@
                     const isCrypto = repo === 'Axos.QE.Crypto.Web' || fn.includes('-Playwright') || fn.startsWith('crypto-web-') || fn.startsWith('crypto-web_');
                     if (!isCrypto) return;
                     if (p.runTarget === undefined || p.runTarget === null || p.runTarget === '') p.runTarget = 'local';
+                    if (p.localBrowser === undefined || p.localBrowser === null || p.localBrowser === '') p.localBrowser = 'chrome';
                     if (p.pwVideo === undefined || p.pwVideo === null || p.pwVideo === '') p.pwVideo = '1';
                     if (p.parallel === undefined || p.parallel === null || p.parallel === '') p.parallel = '1';
                     if (p.tunnel === undefined || p.tunnel === null || p.tunnel === '') p.tunnel = 'false';
@@ -2154,6 +2155,7 @@
             let prompt = `Create or update a Playwright pipeline workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
                 `This workflow should be self-contained (Playwright + BrowserStack) and reflect these settings:\n\n` +
                 `RUN_TARGET: ${p.runTarget || 'local'}\n` +
+                `LOCAL_BROWSER: ${p.localBrowser || 'chrome'}\n` +
                 `TEST_ENV: ${p.env || 'UAT'}\n` +
                 `GREP: ${p.grep || ''}\n` +
                 `SUITE: ${p.suite || ''}\n` +
@@ -2524,13 +2526,21 @@
                 <div class="section-toggle">&#9660;</div>
             </div>
             <div class="section-content">
-                <div class="form-row">
+                <div class="form-row-3">
                     <div class="form-group">
                         <label class="form-label">Run Target</label>
                         <select id="fRunTarget" onchange="toggleCryptoRunTargetSections()" ${isView ? 'disabled' : ''}>
                             <option value="local" ${String(p.runTarget || 'local') === 'local' ? 'selected' : ''}>Local runner</option>
                             <option value="browserstack" ${String(p.runTarget || 'local') === 'browserstack' ? 'selected' : ''}>BrowserStack</option>
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Local Browser</label>
+                        <select id="fLocalBrowser" ${isView ? 'disabled' : ''}>
+                            <option value="chrome" ${String(p.localBrowser || 'chrome') === 'chrome' ? 'selected' : ''}>Chrome</option>
+                            <option value="edge" ${String(p.localBrowser || 'chrome') === 'edge' ? 'selected' : ''}>Edge</option>
+                        </select>
+                        <span class="field-help">Used only when <b>Run Target</b> is <code>local</code></span>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Grep Filter</label>
@@ -3803,6 +3813,7 @@
                 // Keep for backwards-compat with older cached entries / name parsing.
                 base.cryptoScenario = base.feature;
                 base.runTarget = v('fRunTarget') || 'local';
+                base.localBrowser = v('fLocalBrowser') || 'chrome';
                 base.grep = v('fGrep');
                 base.suite = v('fSuite');
                 base.spec = v('fSpec');
@@ -3988,6 +3999,7 @@ This workflow should be self-contained (Playwright + BrowserStack) and reflect t
 
 PIPELINE_NAME: ${name}
 RUN_TARGET: ${el('fRunTarget') || 'local'}
+LOCAL_BROWSER: ${el('fLocalBrowser') || 'chrome'}
 TEST_ENV: ${el('fEnv') || 'UAT'}
 GREP: ${el('fGrep') || ''}
 SUITE: ${el('fSuite') || ''}
@@ -4208,6 +4220,7 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
                 bsOsName: '',
                 bsOsVersion: '',
                 runTarget: 'local',
+                localBrowser: 'chrome',
                 pwVideo: '1',
                 bsUsername: 'carlosmartinez_l4KG2B',
                 bsAccessKey: 'YRSBPaX6VJBfDycsdrWQ',
@@ -4435,6 +4448,7 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
         const mobileMap = {
             TEST_ENV: 'env',
             RUN_TARGET: 'runTarget',
+            LOCAL_BROWSER: 'localBrowser',
             GREP: 'grep',
             SUITE: 'suite',
             SPEC: 'spec',
@@ -4629,6 +4643,7 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
                 if (entry.parallelSplit !== undefined) parsed.parallelSplit = entry.parallelSplit;
                 // Crypto Web (Playwright) fields
                 if (entry.runTarget !== undefined) parsed.runTarget = entry.runTarget;
+                if (entry.localBrowser !== undefined) parsed.localBrowser = entry.localBrowser;
                 if (entry.bsRandomBrowser !== undefined) parsed.bsRandomBrowser = entry.bsRandomBrowser;
                 if (entry.bsBrowserName !== undefined) parsed.bsBrowserName = entry.bsBrowserName;
                 if (entry.bsBrowserVersion !== undefined) parsed.bsBrowserVersion = entry.bsBrowserVersion;
