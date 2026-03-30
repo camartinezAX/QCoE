@@ -2139,14 +2139,14 @@
         if (repoName === 'Axos.QE.Crypto.Web' || isCryptoPipeline(p)) {
             let prompt = `Create or update a Playwright pipeline workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
                 `This workflow should be self-contained (Playwright + BrowserStack) and reflect these settings:\n\n` +
-                `RUN_TARGET: ${p.runTarget || 'browserstack'}\n` +
+                `RUN_TARGET: ${p.runTarget || 'local'}\n` +
                 `TEST_ENV: ${p.env || 'UAT'}\n` +
                 `GREP: ${p.grep || ''}\n` +
                 `SUITE: ${p.suite || ''}\n` +
                 `SPEC: ${p.spec || ''}\n` +
-                `PARALLELS: ${p.parallel || '10'}\n` +
+                `PARALLELS: ${p.parallel || '1'}\n` +
                 `RETRIES: ${p.retries || '1'}\n` +
-                `USE_BS_LOCAL_TUNNEL: ${p.tunnel || 'true'}\n` +
+                `USE_BS_LOCAL_TUNNEL: ${p.tunnel || 'false'}\n` +
                 `BS_RANDOM_BROWSER: ${p.bsRandomBrowser || 'true'}\n` +
                 `BS_BROWSER_NAME: ${p.bsBrowserName || ''}\n` +
                 `BS_BROWSER_VERSION: ${p.bsBrowserVersion || ''}\n` +
@@ -2154,7 +2154,7 @@
                 `BS_OS_VERSION: ${p.bsOsVersion || ''}\n` +
                 `BROWSERSTACK_USERNAME: ${p.bsUsername || ''}\n` +
                 `BROWSERSTACK_ACCESS_KEY: ${p.bsAccessKey || ''}\n` +
-                `PW_VIDEO: ${p.pwVideo || '0'}\n` +
+                `PW_VIDEO: ${p.pwVideo || '1'}\n` +
                 `JOB_TIMEOUT: ${p.jobTimeout || 120}\n` +
                 `RUNNER_LABEL: ${p.runnerLabel || 'QSDW-TFSBA01'}`;
 
@@ -2513,9 +2513,9 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Run Target</label>
-                        <select id="fRunTarget" ${isView ? 'disabled' : ''}>
-                            <option value="browserstack" ${(p.runTarget || 'browserstack') === 'browserstack' ? 'selected' : ''}>BrowserStack (default)</option>
+                        <select id="fRunTarget" onchange="toggleCryptoRunTargetSections()" ${isView ? 'disabled' : ''}>
                             <option value="local" ${p.runTarget === 'local' ? 'selected' : ''}>Local runner</option>
+                            <option value="browserstack" ${(p.runTarget || 'local') === 'browserstack' ? 'selected' : ''}>BrowserStack</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -2535,7 +2535,7 @@
                     </div>
                 </div>
 
-                <div class="form-row-3">
+                <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Parallels</label>
                         <input type="number" id="fParallel" min="1" max="25" value="${p.parallel || '10'}" ${isView ? 'disabled' : ''}>
@@ -2544,59 +2544,73 @@
                         <label class="form-label">Retries</label>
                         <input type="number" id="fRetries" min="0" max="5" value="${p.retries || '1'}" ${isView ? 'disabled' : ''}>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">BrowserStack Tunnel</label>
-                        <select id="fTunnel" ${isView ? 'disabled' : ''}>
-                            <option value="true" ${(p.tunnel || 'true') === 'true' ? 'selected' : ''}>Enabled</option>
-                            <option value="false" ${p.tunnel === 'false' ? 'selected' : ''}>Disabled</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-row-3">
-                    <div class="form-group">
-                        <label class="form-label">Random Browser</label>
-                        <select id="fBsRandomBrowser" ${isView ? 'disabled' : ''}>
-                            <option value="true" ${(p.bsRandomBrowser || 'true') === 'true' ? 'selected' : ''}>true</option>
-                            <option value="false" ${p.bsRandomBrowser === 'false' ? 'selected' : ''}>false</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">BS Browser Name</label>
-                        <input type="text" id="fBsBrowserName" value="${p.bsBrowserName || ''}" ${isView ? 'disabled' : ''}>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">BS Browser Version</label>
-                        <input type="text" id="fBsBrowserVersion" value="${p.bsBrowserVersion || ''}" ${isView ? 'disabled' : ''}>
-                    </div>
-                </div>
-
-                <div class="form-row-3">
-                    <div class="form-group">
-                        <label class="form-label">BS OS Name</label>
-                        <input type="text" id="fBsOsName" value="${p.bsOsName || ''}" ${isView ? 'disabled' : ''}>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">BS OS Version</label>
-                        <input type="text" id="fBsOsVersion" value="${p.bsOsVersion || ''}" ${isView ? 'disabled' : ''}>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Video</label>
-                        <select id="fPwVideo" ${isView ? 'disabled' : ''}>
-                            <option value="0" ${(p.pwVideo || '0') === '0' ? 'selected' : ''}>retain-on-failure</option>
-                            <option value="1" ${p.pwVideo === '1' ? 'selected' : ''}>always on</option>
-                        </select>
-                    </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">BrowserStack Username <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional — leave blank to use repo secrets)</span></label>
-                        <input type="text" id="fBsUsername" value="${p.bsUsername || ''}" ${isView ? 'disabled' : ''}>
+                        <label class="form-label">Video Recording</label>
+                        <select id="fPwVideo" ${isView ? 'disabled' : ''}>
+                            <option value="0" ${(p.pwVideo || '0') === '0' ? 'selected' : ''}>retain-on-failure</option>
+                            <option value="1" ${p.pwVideo === '1' ? 'selected' : ''}>always on</option>
+                        </select>
+                        <span class="field-help">Controls Playwright video capture (saved under <code>test-results/</code> / Playwright artifacts)</span>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">BrowserStack Access Key <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional — leave blank to use repo secrets)</span></label>
-                        <input type="password" id="fBsAccessKey" value="${p.bsAccessKey || ''}" ${isView ? 'disabled' : ''}>
+                </div>
+
+                <div id="cryptoBsNote" style="display:none; margin-top:10px; padding:10px 12px; border-radius:10px; background:rgba(59,130,246,0.08); color:var(--text-secondary); font-size:12px; font-weight:700;">
+                    BrowserStack-only settings are hidden because <b>Run Target</b> is <code>local</code>. Switch to <code>browserstack</code> to configure them.
+                </div>
+
+                <div id="cryptoBsOnly">
+                    <div style="margin-top:14px; margin-bottom:8px; font-size:12px; font-weight:900; letter-spacing:0.2px; color:var(--text-secondary);">
+                        BrowserStack-only settings
+                    </div>
+
+                    <div class="form-row-3">
+                        <div class="form-group">
+                            <label class="form-label">Random Browser</label>
+                            <select id="fBsRandomBrowser" ${isView ? 'disabled' : ''}>
+                                <option value="true" ${(p.bsRandomBrowser || 'true') === 'true' ? 'selected' : ''}>true</option>
+                                <option value="false" ${p.bsRandomBrowser === 'false' ? 'selected' : ''}>false</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">BS Browser Name</label>
+                            <input type="text" id="fBsBrowserName" value="${p.bsBrowserName || ''}" ${isView ? 'disabled' : ''}>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">BS Browser Version</label>
+                            <input type="text" id="fBsBrowserVersion" value="${p.bsBrowserVersion || ''}" ${isView ? 'disabled' : ''}>
+                        </div>
+                    </div>
+
+                    <div class="form-row-3">
+                        <div class="form-group">
+                            <label class="form-label">BS OS Name</label>
+                            <input type="text" id="fBsOsName" value="${p.bsOsName || ''}" ${isView ? 'disabled' : ''}>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">BS OS Version</label>
+                            <input type="text" id="fBsOsVersion" value="${p.bsOsVersion || ''}" ${isView ? 'disabled' : ''}>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">BrowserStack Tunnel</label>
+                            <select id="fTunnel" ${isView ? 'disabled' : ''}>
+                                <option value="true" ${(p.tunnel || 'true') === 'true' ? 'selected' : ''}>Enabled</option>
+                                <option value="false" ${p.tunnel === 'false' ? 'selected' : ''}>Disabled</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">BrowserStack Username</label>
+                            <input type="text" id="fBsUsername" value="${p.bsUsername || ''}" ${isView ? 'disabled' : ''}>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">BrowserStack Access Key</label>
+                            <input type="password" id="fBsAccessKey" value="${p.bsAccessKey || ''}" ${isView ? 'disabled' : ''}>
+                        </div>
                     </div>
                 </div>
                 <div class="form-group">
@@ -3005,6 +3019,7 @@
         onBrandChange(p.feature || '');
         toggleOrchestratorSections();
         updateOrchestratorTargetsPreview();
+        toggleCryptoRunTargetSections();
         updateNamePreview();
         updateFormStatus();
     }
@@ -3502,6 +3517,17 @@
         featureSelect.innerHTML = '<option value="">Select...</option>' + renderWebFeatureOptions(brand, selected);
     }
 
+    function toggleCryptoRunTargetSections() {
+        const repo = document.getElementById('fRepo')?.value || '';
+        if (repo !== 'Axos.QE.Crypto.Web') return;
+        const rt = String(document.getElementById('fRunTarget')?.value || 'local').trim().toLowerCase();
+        const bsOnly = document.getElementById('cryptoBsOnly');
+        const note = document.getElementById('cryptoBsNote');
+        const isBs = rt === 'browserstack';
+        if (bsOnly) bsOnly.style.display = isBs ? 'block' : 'none';
+        if (note) note.style.display = isBs ? 'none' : 'block';
+    }
+
     function onEnvChange() {
         const env = document.getElementById('fEnv').value;
         const urlInput = document.getElementById('fBaseUrl');
@@ -3771,7 +3797,7 @@
                 base.env = v('fEnv') || base.env;
                 // Keep for backwards-compat with older cached entries / name parsing.
                 base.cryptoScenario = base.feature;
-                base.runTarget = v('fRunTarget') || 'browserstack';
+                base.runTarget = v('fRunTarget') || 'local';
                 base.grep = v('fGrep');
                 base.suite = v('fSuite');
                 base.spec = v('fSpec');
@@ -3956,14 +3982,14 @@ Each target element supports: enabled, name, owner, repo, workflow, ref, inputs.
 This workflow should be self-contained (Playwright + BrowserStack) and reflect these settings:
 
 PIPELINE_NAME: ${name}
-RUN_TARGET: ${el('fRunTarget') || 'browserstack'}
+RUN_TARGET: ${el('fRunTarget') || 'local'}
 TEST_ENV: ${el('fEnv') || 'UAT'}
 GREP: ${el('fGrep') || ''}
 SUITE: ${el('fSuite') || ''}
 SPEC: ${el('fSpec') || ''}
-PARALLELS: ${el('fParallel') || '10'}
+PARALLELS: ${el('fParallel') || '1'}
 RETRIES: ${el('fRetries') || '1'}
-USE_BS_LOCAL_TUNNEL: ${el('fTunnel') || 'true'}
+USE_BS_LOCAL_TUNNEL: ${el('fTunnel') || 'false'}
 BS_RANDOM_BROWSER: ${el('fBsRandomBrowser') || 'true'}
 BS_BROWSER_NAME: ${el('fBsBrowserName') || ''}
 BS_BROWSER_VERSION: ${el('fBsBrowserVersion') || ''}
@@ -3971,7 +3997,7 @@ BS_OS_NAME: ${el('fBsOsName') || ''}
 BS_OS_VERSION: ${el('fBsOsVersion') || ''}
 BROWSERSTACK_USERNAME: ${el('fBsUsername') || ''}
 BROWSERSTACK_ACCESS_KEY: ${el('fBsAccessKey') || ''}
-PW_VIDEO: ${el('fPwVideo') || '0'}
+PW_VIDEO: ${el('fPwVideo') || '1'}
 JOB_TIMEOUT: ${el('fJobTimeout') || '120'}
 RUNNER_LABEL: ${el('fRunnerLabel') || 'QSDW-TFSBA01'}`;
 
@@ -4168,15 +4194,18 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
                 grep: '@Smoke',
                 suite: '',
                 spec: '',
-                parallel: '10',
+                parallel: '1',
                 retries: '1',
-                tunnel: 'true',
+                tunnel: 'false',
                 bsRandomBrowser: 'true',
                 bsBrowserName: '',
                 bsBrowserVersion: '',
                 bsOsName: '',
                 bsOsVersion: '',
-                runTarget: 'browserstack',
+                runTarget: 'local',
+                pwVideo: '1',
+                bsUsername: 'carlosmartinez_l4KG2B',
+                bsAccessKey: 'YRSBPaX6VJBfDycsdrWQ',
                 jobTimeout: 120,
                 runnerLabel: 'QSDW-TFSBA01',
             };
