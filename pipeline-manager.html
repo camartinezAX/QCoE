@@ -1318,10 +1318,24 @@
                         p.feature = String(p.cryptoScenario || '').trim();
                     }
                 };
+                // Backfill Crypto Web defaults when missing (do not override explicit user choices).
+                const backfillCryptoDefaults = (p) => {
+                    if (!p) return;
+                    const repo = String(p.repo || '').trim();
+                    const fn = String(p.filename || '');
+                    const isCrypto = repo === 'Axos.QE.Crypto.Web' || fn.includes('-Playwright') || fn.startsWith('crypto-web-') || fn.startsWith('crypto-web_');
+                    if (!isCrypto) return;
+                    if (p.runTarget === undefined || p.runTarget === null || p.runTarget === '') p.runTarget = 'local';
+                    if (p.pwVideo === undefined || p.pwVideo === null || p.pwVideo === '') p.pwVideo = '1';
+                    if (p.parallel === undefined || p.parallel === null || p.parallel === '') p.parallel = '1';
+                    if (p.tunnel === undefined || p.tunnel === null || p.tunnel === '') p.tunnel = 'false';
+                };
                 (pipelines || []).forEach(backfillRepo);
                 (savedSnapshot || []).forEach(backfillRepo);
                 (pipelines || []).forEach(backfillCryptoFeature);
                 (savedSnapshot || []).forEach(backfillCryptoFeature);
+                (pipelines || []).forEach(backfillCryptoDefaults);
+                (savedSnapshot || []).forEach(backfillCryptoDefaults);
                 // Load persisted tree open/close state (never auto-expand on first load).
                 try {
                     const t = localStorage.getItem(TREE_STATE_KEY);
@@ -4613,6 +4627,14 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
                 if (entry.suite !== undefined) parsed.suite = entry.suite;
                 if (entry.spec !== undefined) parsed.spec = entry.spec;
                 if (entry.parallelSplit !== undefined) parsed.parallelSplit = entry.parallelSplit;
+                // Crypto Web (Playwright) fields
+                if (entry.runTarget !== undefined) parsed.runTarget = entry.runTarget;
+                if (entry.bsRandomBrowser !== undefined) parsed.bsRandomBrowser = entry.bsRandomBrowser;
+                if (entry.bsBrowserName !== undefined) parsed.bsBrowserName = entry.bsBrowserName;
+                if (entry.bsBrowserVersion !== undefined) parsed.bsBrowserVersion = entry.bsBrowserVersion;
+                if (entry.bsOsName !== undefined) parsed.bsOsName = entry.bsOsName;
+                if (entry.bsOsVersion !== undefined) parsed.bsOsVersion = entry.bsOsVersion;
+                if (entry.pwVideo !== undefined) parsed.pwVideo = entry.pwVideo;
                 if (entry.tunnel !== undefined) parsed.tunnel = entry.tunnel;
                 if (entry.appId !== undefined) parsed.appId = entry.appId;
                 if (entry.deviceName !== undefined) parsed.deviceName = entry.deviceName;
