@@ -2514,8 +2514,8 @@
                     <div class="form-group">
                         <label class="form-label">Run Target</label>
                         <select id="fRunTarget" onchange="toggleCryptoRunTargetSections()" ${isView ? 'disabled' : ''}>
-                            <option value="local" ${p.runTarget === 'local' ? 'selected' : ''}>Local runner</option>
-                            <option value="browserstack" ${(p.runTarget || 'local') === 'browserstack' ? 'selected' : ''}>BrowserStack</option>
+                            <option value="local" ${String(p.runTarget || 'local') === 'local' ? 'selected' : ''}>Local runner</option>
+                            <option value="browserstack" ${String(p.runTarget || 'local') === 'browserstack' ? 'selected' : ''}>BrowserStack</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -2548,10 +2548,29 @@
 
                 <div class="form-row">
                     <div class="form-group">
+                        <label class="form-label">BrowserStack Tunnel</label>
+                        <select id="fTunnel" ${isView ? 'disabled' : ''}>
+                            <option value="true" ${String(p.tunnel || 'false') === 'true' ? 'selected' : ''}>Enabled</option>
+                            <option value="false" ${String(p.tunnel || 'false') === 'false' ? 'selected' : ''}>Disabled</option>
+                        </select>
+                        <span class="field-help">Used for BrowserStack runs (and safe to leave set for local runs)</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">BrowserStack Username</label>
+                        <input type="text" id="fBsUsername" value="${p.bsUsername || ''}" ${isView ? 'disabled' : ''}>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">BrowserStack Access Key</label>
+                        <input type="password" id="fBsAccessKey" value="${p.bsAccessKey || ''}" ${isView ? 'disabled' : ''}>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
                         <label class="form-label">Video Recording</label>
                         <select id="fPwVideo" ${isView ? 'disabled' : ''}>
-                            <option value="0" ${(p.pwVideo || '0') === '0' ? 'selected' : ''}>retain-on-failure</option>
-                            <option value="1" ${p.pwVideo === '1' ? 'selected' : ''}>always on</option>
+                            <option value="0" ${String(p.pwVideo || '0') === '0' ? 'selected' : ''}>retain-on-failure</option>
+                            <option value="1" ${String(p.pwVideo || '0') === '1' ? 'selected' : ''}>always on</option>
                         </select>
                         <span class="field-help">Controls Playwright video capture (saved under <code>test-results/</code> / Playwright artifacts)</span>
                     </div>
@@ -2567,10 +2586,10 @@
 
                     <div class="form-row-3">
                         <div class="form-group">
-                            <label class="form-label">Random Browser</label>
+                            <label class="form-label">BS Random Browser</label>
                             <select id="fBsRandomBrowser" ${isView ? 'disabled' : ''}>
-                                <option value="true" ${(p.bsRandomBrowser || 'true') === 'true' ? 'selected' : ''}>true</option>
-                                <option value="false" ${p.bsRandomBrowser === 'false' ? 'selected' : ''}>false</option>
+                                <option value="true" ${String(p.bsRandomBrowser || 'true') === 'true' ? 'selected' : ''}>true</option>
+                                <option value="false" ${String(p.bsRandomBrowser || 'true') === 'false' ? 'selected' : ''}>false</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -2591,24 +2610,6 @@
                         <div class="form-group">
                             <label class="form-label">BS OS Version</label>
                             <input type="text" id="fBsOsVersion" value="${p.bsOsVersion || ''}" ${isView ? 'disabled' : ''}>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">BrowserStack Tunnel</label>
-                            <select id="fTunnel" ${isView ? 'disabled' : ''}>
-                                <option value="true" ${(p.tunnel || 'true') === 'true' ? 'selected' : ''}>Enabled</option>
-                                <option value="false" ${p.tunnel === 'false' ? 'selected' : ''}>Disabled</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">BrowserStack Username</label>
-                            <input type="text" id="fBsUsername" value="${p.bsUsername || ''}" ${isView ? 'disabled' : ''}>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">BrowserStack Access Key</label>
-                            <input type="password" id="fBsAccessKey" value="${p.bsAccessKey || ''}" ${isView ? 'disabled' : ''}>
                         </div>
                     </div>
                 </div>
