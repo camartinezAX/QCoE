@@ -1355,20 +1355,60 @@
 
     function snapshotKey(p) { return JSON.stringify(p); }
 
+    function normRepoForPipeline(p) {
+        const r = String(p?.repo || '').trim();
+        if (r) return r;
+        if (isCryptoPipeline(p)) return 'Axos.QE.Crypto.Web';
+        if (isMobilePipeline(p)) return 'Axos.QE.Mobile';
+        return 'Axos.QE.TestIM';
+    }
+
+    function pipelineKeyFrom(repo, filename) {
+        const r = String(repo || '').trim() || 'Axos.QE.TestIM';
+        const fn = String(filename || '').trim();
+        return `${r}::${fn}`;
+    }
+
+    function pipelineKey(p) {
+        if (!p) return pipelineKeyFrom('', '');
+        return pipelineKeyFrom(normRepoForPipeline(p), p.filename);
+    }
+
+    function parsePipelineKey(keyOrFilename) {
+        const raw = String(keyOrFilename || '').trim();
+        if (raw.includes('::')) {
+            const idx = raw.indexOf('::');
+            const repo = raw.slice(0, idx).trim();
+            const filename = raw.slice(idx + 2).trim();
+            return { repo, filename, key: pipelineKeyFrom(repo, filename) };
+        }
+        return { repo: '', filename: raw, key: raw };
+    }
+
+    function findPipeline(keyOrFilename) {
+        const parsed = parsePipelineKey(keyOrFilename);
+        if (parsed.key.includes('::')) {
+            return pipelines.find(pp => pipelineKey(pp) === parsed.key) || null;
+        }
+        // Backward-compat: fall back to first match by filename.
+        return pipelines.find(pp => pp.filename === parsed.filename) || null;
+    }
+
     function getChanges() {
-        const savedMap = new Map(savedSnapshot.map(p => [p.filename, snapshotKey(p)]));
-        const currentMap = new Map(pipelines.map(p => [p.filename, snapshotKey(p)]));
+        const savedMap = new Map(savedSnapshot.map(p => [pipelineKey(p), snapshotKey(p)]));
+        const currentMap = new Map(pipelines.map(p => [pipelineKey(p), snapshotKey(p)]));
         const changes = [];
 
         for (const p of pipelines) {
-            if (!savedMap.has(p.filename)) {
+            const k = pipelineKey(p);
+            if (!savedMap.has(k)) {
                 changes.push({ type: 'added', pipeline: p });
-            } else if (savedMap.get(p.filename) !== currentMap.get(p.filename)) {
+            } else if (savedMap.get(k) !== currentMap.get(k)) {
                 changes.push({ type: 'modified', pipeline: p });
             }
         }
         for (const p of savedSnapshot) {
-            if (!currentMap.has(p.filename)) {
+            if (!currentMap.has(pipelineKey(p))) {
                 changes.push({ type: 'removed', pipeline: p });
             }
         }
@@ -1400,8 +1440,9 @@
         let html = '';
         for (let i = 0; i < changes.length; i++) {
             const c = changes[i];
+            const k = pipelineKey(c.pipeline);
             html += `<div class="save-change-item">
-                <input type="checkbox" checked data-save-idx="${i}" data-save-type="${c.type}" data-save-filename="${c.pipeline.filename}">
+                <input type="checkbox" checked data-save-idx="${i}" data-save-type="${c.type}" data-save-key="${k}">
                 <span class="save-change-type ${c.type}">${c.type}</span>
                 <span class="save-change-name" onclick="viewSaveChange(${i}); event.stopPropagation();" style="cursor:pointer;" title="View changes">${c.pipeline.name}</span>
                 <button class="sel-link save-change-view" onclick="viewSaveChange(${i}); event.stopPropagation();">View</button>
@@ -1544,15 +1585,15 @@
         const c = pendingSaveChanges[idx];
         if (!c) return;
 
-        const filename = c.pipeline?.filename;
-        const prev = savedSnapshot.find(p => p.filename === filename) || (c.type === 'removed' ? c.pipeline : null);
-        const next = pipelines.find(p => p.filename === filename) || (c.type !== 'removed' ? c.pipeline : null);
+        const k = pipelineKey(c.pipeline);
+        const prev = savedSnapshot.find(p => pipelineKey(p) === k) || (c.type === 'removed' ? c.pipeline : null);
+        const next = pipelines.find(p => pipelineKey(p) === k) || (c.type !== 'removed' ? c.pipeline : null);
 
         const pill = document.getElementById('diffModalTypePill');
         pill.className = `diff-pill ${c.type}`;
         pill.textContent = c.type;
 
-        document.getElementById('diffModalTitle').textContent = c.pipeline?.name || filename || 'Change Preview';
+        document.getElementById('diffModalTitle').textContent = c.pipeline?.name || c.pipeline?.filename || 'Change Preview';
 
         if (c.type === 'added') {
             const rows = buildDiffRows({}, next || {});
@@ -1613,28 +1654,30 @@
         const checkboxes = document.querySelectorAll('#saveChangesList input[type=checkbox]:checked');
         if (checkboxes.length === 0) { showToast('Select at least one change to save.'); return; }
 
-        const selectedFiles = new Set();
+        const selectedKeys = new Set();
         const selectedTypes = new Map();
         checkboxes.forEach(cb => {
-            selectedFiles.add(cb.dataset.saveFilename);
-            selectedTypes.set(cb.dataset.saveFilename, cb.dataset.saveType);
+            selectedKeys.add(cb.dataset.saveKey);
+            selectedTypes.set(cb.dataset.saveKey, cb.dataset.saveType);
         });
 
         const newSnapshot = [];
 
         for (const p of pipelines) {
-            if (selectedFiles.has(p.filename)) {
+            const k = pipelineKey(p);
+            if (selectedKeys.has(k)) {
                 newSnapshot.push(JSON.parse(JSON.stringify(p)));
             } else {
-                const prev = savedSnapshot.find(s => s.filename === p.filename);
+                const prev = savedSnapshot.find(s => pipelineKey(s) === k);
                 if (prev) newSnapshot.push(JSON.parse(JSON.stringify(prev)));
                 else newSnapshot.push(JSON.parse(JSON.stringify(p)));
             }
         }
 
         for (const sp of savedSnapshot) {
-            const isRemoved = !pipelines.some(p => p.filename === sp.filename);
-            if (isRemoved && !selectedFiles.has(sp.filename)) {
+            const k = pipelineKey(sp);
+            const isRemoved = !pipelines.some(p => pipelineKey(p) === k);
+            if (isRemoved && !selectedKeys.has(k)) {
                 newSnapshot.push(JSON.parse(JSON.stringify(sp)));
                 pipelines.push(JSON.parse(JSON.stringify(sp)));
             }
@@ -1800,7 +1843,7 @@
             p.testType === 'Orchestrator' ? 'type-orchestrator' :
             'type-health';
         return `<div class="tree-node tree-pipeline ${typeClass}">
-            <div class="tree-row" onclick="viewPipeline('${p.filename}')" style="padding-left:${indent}px;">
+            <div class="tree-row" onclick="viewPipeline('${pipelineKey(p)}')" style="padding-left:${indent}px;">
                 <span class="tree-arrow hidden">&#9654;</span>
                 <span class="tree-icon">&#9679;</span>
                 <span class="tree-label" title="${p.name}">${p.testType}</span>
@@ -1865,8 +1908,8 @@
     }
 
     function selectAllPipelines() {
-        document.querySelectorAll('.pipeline-card[data-filename]').forEach(c => {
-            selectedPipelines.add(c.dataset.filename);
+        document.querySelectorAll('.pipeline-card[data-pkey]').forEach(c => {
+            selectedPipelines.add(c.dataset.pkey);
         });
         refreshSelectionUI();
     }
@@ -1877,8 +1920,8 @@
     }
 
     function refreshSelectionUI() {
-        document.querySelectorAll('.pipeline-card[data-filename]').forEach(card => {
-            const fn = card.dataset.filename;
+        document.querySelectorAll('.pipeline-card[data-pkey]').forEach(card => {
+            const fn = card.dataset.pkey;
             const check = card.querySelector('.pipeline-card-check');
             const isSelected = selectedPipelines.has(fn);
             if (check) {
@@ -1998,10 +2041,11 @@
             : (p.testSuite || p.feature || '');
         const ghRepo = p.repo || (isMobilePipeline(p) ? 'Axos.QE.Mobile' : 'Axos.QE.TestIM');
         const repoPill = ghRepo ? `<span class="section-badge" style="background:rgba(255,255,255,0.06);color:var(--text-muted); font-weight:800; letter-spacing:0.2px;">${ghRepo}</span>` : '';
-        return `<div class="pipeline-card" data-filename="${p.filename}" onclick="viewPipeline('${p.filename}')">
+        const pKey = pipelineKeyFrom(ghRepo, p.filename);
+        return `<div class="pipeline-card" data-pkey="${pKey}" onclick="viewPipeline('${pKey}')">
             <div class="pipeline-card-header">
                 <div class="pipeline-card-name">
-                    <div class="pipeline-card-check" onclick="togglePipelineCheck('${p.filename}', event)" title="Select"></div>
+                    <div class="pipeline-card-check" onclick="togglePipelineCheck('${pKey}', event)" title="Select"></div>
                     <span class="test-badge ${badgeClass}">${p.testType}</span>
                     ${p.name}
                 </div>
@@ -2012,8 +2056,8 @@
                             <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
                         </svg>
                     </a>
-                    <button class="card-btn" onclick="event.stopPropagation(); clonePipeline('${p.filename}')" title="Clone">&#128203;</button>
-                    <button class="card-btn" onclick="event.stopPropagation(); editPipeline('${p.filename}')" title="Edit">&#9998;</button>
+                    <button class="card-btn" onclick="event.stopPropagation(); clonePipeline('${pKey}')" title="Clone">&#128203;</button>
+                    <button class="card-btn" onclick="event.stopPropagation(); editPipeline('${pKey}')" title="Edit">&#9998;</button>
                 </div>
             </div>
             <div class="pipeline-card-meta">
@@ -2033,9 +2077,9 @@
 
     function showDeleteConfirm() {
         if (selectedPipelines.size === 0) return;
-        const list = Array.from(selectedPipelines).map(fn => {
-            const p = pipelines.find(pp => pp.filename === fn);
-            return p ? p.name : fn;
+        const list = Array.from(selectedPipelines).map(k => {
+            const p = findPipeline(k);
+            return p ? p.name : String(k);
         });
         document.getElementById('deleteListPreview').innerHTML = list.map(n => `<div style="padding:3px 0;">&#128196; ${n}</div>`).join('');
         document.getElementById('deleteModal').classList.add('show');
@@ -2044,7 +2088,10 @@
     function confirmDelete() {
         const files = Array.from(selectedPipelines);
         const commitPush = document.getElementById('deleteCommitPush').checked;
-        const items = files.map(fn => pipelines.find(pp => pp.filename === fn) || { filename: fn, name: fn });
+        const items = files.map(k => findPipeline(k) || (() => {
+            const parsed = parsePipelineKey(k);
+            return { repo: parsed.repo, filename: parsed.filename || String(k), name: parsed.filename || String(k) };
+        })());
         const normRepo = (p) => String(
             p.repo ||
             (isCryptoPipeline(p) ? 'Axos.QE.Crypto.Web' : (isMobilePipeline(p) ? 'Axos.QE.Mobile' : 'Axos.QE.TestIM'))
@@ -2219,7 +2266,7 @@
         if (selectedPipelines.size === 0) { showToast('Select at least one pipeline first.'); return; }
         const includeCommitPush = opts.includeCommitPush !== undefined ? !!opts.includeCommitPush : true;
         const selected = Array.from(selectedPipelines)
-            .map(fn => pipelines.find(pp => pp.filename === fn))
+            .map(k => findPipeline(k))
             .filter(Boolean);
         if (selected.length === 0) { showToast('No selected pipelines found.'); return; }
 
@@ -2239,24 +2286,24 @@
     // ══════════════════════════════════════════
     //  VIEW / EDIT / CLONE PIPELINE
     // ══════════════════════════════════════════
-    function viewPipeline(filename) {
-        const p = pipelines.find(pp => pp.filename === filename);
+    function viewPipeline(keyOrFilename) {
+        const p = findPipeline(keyOrFilename);
         if (!p) return;
         editingPipeline = null;
         viewOnlyMode = true;
         showCreateForm(p, false);
     }
 
-    function editPipeline(filename) {
-        const p = pipelines.find(pp => pp.filename === filename);
+    function editPipeline(keyOrFilename) {
+        const p = findPipeline(keyOrFilename);
         if (!p) return;
-        editingPipeline = filename;
+        editingPipeline = pipelineKey(p);
         viewOnlyMode = false;
         showCreateForm(p, true);
     }
 
-    function clonePipeline(filename) {
-        const p = pipelines.find(pp => pp.filename === filename);
+    function clonePipeline(keyOrFilename) {
+        const p = findPipeline(keyOrFilename);
         if (!p) return;
         editingPipeline = null;
         viewOnlyMode = false;
@@ -3572,7 +3619,8 @@
             name += `-BrowserStack`;
 
             const previewEl = document.getElementById('namePreview');
-            const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && p.filename !== editingPipeline);
+            const currentRepo = 'Axos.QE.Mobile';
+            const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
             if (duplicate) {
                 previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:'Plus Jakarta Sans',sans-serif;">&#9888; A pipeline with this exact name already exists.</div>`;
                 previewEl.style.borderColor = 'var(--error)';
@@ -3604,7 +3652,8 @@
             const name = `${pKey}_${bKey}_${env}-${featureStr}_${tKey}-Playwright`;
 
             const previewEl = document.getElementById('namePreview');
-            const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && p.filename !== editingPipeline);
+            const currentRepo = String(document.getElementById('fRepo')?.value || '').trim() || 'Axos.QE.Crypto.Web';
+            const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
             if (duplicate) {
                 previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:'Plus Jakarta Sans',sans-serif;">&#9888; A pipeline with this exact name already exists.</div>`;
                 previewEl.style.borderColor = 'var(--error)';
@@ -3646,7 +3695,8 @@
                 return;
             }
             const name = `${pKey}_${bKey}_${env}-OLB_Orchestrators_${suffix}-Orchestrator`;
-            const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && p.filename !== editingPipeline);
+            const currentRepo = String(document.getElementById('fRepo')?.value || '').trim() || 'Axos.QE.TestIM';
+            const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
             if (duplicate) {
                 previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:'Plus Jakarta Sans',sans-serif;">&#9888; An orchestrator with this name already exists.</div>`;
                 previewEl.style.borderColor = 'var(--error)';
@@ -3664,7 +3714,8 @@
             ? `${pKey}_${bKey}_${env}-${featureStr}-Testim`
             : `${pKey}_${bKey}_${env}-${featureStr}_${tKey}-Testim`;
         const previewEl = document.getElementById('namePreview');
-        const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && p.filename !== editingPipeline);
+        const currentRepo = String(document.getElementById('fRepo')?.value || '').trim() || 'Axos.QE.TestIM';
+        const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
 
         if (duplicate) {
             previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:'Plus Jakarta Sans',sans-serif;">&#9888; A pipeline with this exact name already exists. Change the feature, suffix, test type, or environment to make it unique.</div>`;
@@ -3736,7 +3787,12 @@
         if (viewOnlyMode) return false;
         const name = getGeneratedName();
         if (!name) return false;
-        return pipelines.some(p => p.name === name && p.filename !== editingPipeline);
+        const repo = (() => {
+            if (isMobileForm()) return 'Axos.QE.Mobile';
+            const r = String(document.getElementById('fRepo')?.value || '').trim();
+            return r || 'Axos.QE.TestIM';
+        })();
+        return pipelines.some(p => p.name === name && normRepoForPipeline(p) === repo && pipelineKey(p) !== editingPipeline);
     }
 
     function isFormValid() {
@@ -3884,23 +3940,30 @@
         base.repeatEvery = v('fRepeatEvery') || '1';
         base.repeatDom = v('fRepeatDom') || '';
 
-        if (deleteOld && editingPipeline && editingPipeline !== filename) {
-            base.renamedFrom = editingPipeline;
+        const repoName = String(base.repo || '').trim();
+        const newKey = pipelineKeyFrom(repoName, filename);
+        const oldParsed = editingPipeline ? parsePipelineKey(editingPipeline) : null;
+        const oldFilename = oldParsed ? (oldParsed.filename || '') : '';
+        const oldKey = oldParsed && oldParsed.key && oldParsed.key.includes('::')
+            ? oldParsed.key
+            : (editingPipeline ? pipelineKeyFrom(repoName, editingPipeline) : newKey);
+
+        if (deleteOld && editingPipeline && oldFilename && oldFilename !== filename) {
+            base.renamedFrom = oldFilename;
         }
 
-        // Remove old entry (if editing/renaming), then add/update.
-        const oldKey = editingPipeline || filename;
-        const existingIdx = pipelines.findIndex(p => p.filename === oldKey);
+        // Remove old entry (if editing/renaming), then add/update (unique per repo).
+        const existingIdx = pipelines.findIndex(p => pipelineKey(p) === oldKey);
         if (existingIdx >= 0) pipelines.splice(existingIdx, 1);
 
-        const alreadyIdx = pipelines.findIndex(p => p.filename === filename);
+        const alreadyIdx = pipelines.findIndex(p => pipelineKey(p) === newKey);
         if (alreadyIdx >= 0) pipelines.splice(alreadyIdx, 1);
 
         pipelines.push(base);
 
         editingPipeline = null;
         viewOnlyMode = false;
-        selectedPipelines = new Set([filename]);
+        selectedPipelines = new Set([newKey]);
 
         // Jump to the saved pipeline’s folder so you can immediately Generate Prompt.
         if (isMobilePipeline(base)) {
@@ -4060,7 +4123,9 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
         }
 
         if (deleteOld && editingPipeline) {
-            prompt += `\n\nAlso delete the old workflow file: .github/workflows/${editingPipeline}`;
+            const old = parsePipelineKey(editingPipeline);
+            const oldFn = old.filename || String(editingPipeline || '').trim();
+            prompt += `\n\nAlso delete the old workflow file: .github/workflows/${oldFn}`;
         }
 
         if (commitPush) {
@@ -4612,11 +4677,11 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
         let added = 0, removed = 0, updated = 0;
 
         if (Array.isArray(jsonData)) {
-            const repoFilenames = new Set(jsonData.map(j => j.filename));
+            const repoKeys = new Set(jsonData.map(j => pipelineKeyFrom(j.repo, j.filename)));
 
-            removed = pipelines.filter(p => !repoFilenames.has(p.filename)).length;
+            removed = pipelines.filter(p => !repoKeys.has(pipelineKey(p))).length;
             for (let i = pipelines.length - 1; i >= 0; i--) {
-                if (!repoFilenames.has(pipelines[i].filename)) pipelines.splice(i, 1);
+                if (!repoKeys.has(pipelineKey(pipelines[i]))) pipelines.splice(i, 1);
             }
 
             for (const entry of jsonData) {
@@ -4668,7 +4733,8 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
                 if (entry.artifactId !== undefined) parsed.artifactId = entry.artifactId;
                 if (entry.verboseOutput !== undefined) parsed.verboseOutput = entry.verboseOutput;
 
-                const idx = pipelines.findIndex(p => p.filename === entry.filename);
+                const k = pipelineKeyFrom(parsed.repo || entry.repo, entry.filename);
+                const idx = pipelines.findIndex(p => pipelineKey(p) === k);
                 if (idx >= 0) { pipelines[idx] = parsed; updated++; }
                 else { pipelines.push(parsed); added++; }
             }
@@ -4761,7 +4827,8 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
                 let added = 0, updated = 0;
                 for (const p of imported) {
                     if (!p.filename || !p.name) continue;
-                    const idx = pipelines.findIndex(ep => ep.filename === p.filename);
+                    const k = pipelineKey(p);
+                    const idx = pipelines.findIndex(ep => pipelineKey(ep) === k);
                     if (idx >= 0) { pipelines[idx] = p; updated++; }
                     else { pipelines.push(p); added++; }
                 }
@@ -6238,7 +6305,7 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
                 name: 'Web_Outsystems_UAT-OLB_EWM_Creation_Regression-Testim'
             }]);
             processSyncInput();
-            const synced = pipelines.find(p => p.filename === 'Web_Outsystems_UAT-OLB_EWM_Creation_Regression-Testim.yml');
+            const synced = findPipeline('Axos.QE.TestIM::Web_Outsystems_UAT-OLB_EWM_Creation_Regression-Testim.yml');
             if (!synced) throw new Error('sync did not add pipeline');
             if (String(synced.repeatEvery) !== '2') throw new Error(`sync repeatEvery expected 2, got "${synced.repeatEvery}"`);
 
