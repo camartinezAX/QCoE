@@ -909,7 +909,7 @@
               <li>Install project dependencies (<code>npm install</code>) if needed</li>
               <li>Locate and set <strong>ANDROID_HOME / ANDROID_SDK_ROOT / JAVA_HOME</strong> permanently (and fix PATH issues)</li>
               <li>Detect your device (Android via <code>adb devices</code>, iOS via <code>xcrun</code> on macOS)</li>
-              <li>Update <code>.env</code> (<code>TEST_ENV</code>, <code>USE_INSTALLED_APP</code>, app paths, <code>RETRIES</code>, UDIDs)</li>
+              <li>Update <code>.env</code> (<code>TEST_ENV</code>, <code>USE_INSTALLED_APP</code>, app paths, <code>RETRIES</code>, UDIDs, Android app-state mode)</li>
               <li>Clean old UIAutomator2 packages to prevent signature conflicts</li>
               <li>Run a <strong>sanity smoke test</strong> and only declare you &ldquo;READY&rdquo; when setup issues are resolved</li>
             </ul>
@@ -938,49 +938,75 @@
         <div class="prompt-text">I need to set up my machine for local mobile test execution. Please do the full first-time setup end-to-end and only say "READY" after the sanity smoke test is running cleanly.
 
 Rules:
-- Never print secrets from my `.env`
+- Never print secrets from my `.env` (you may say which keys you set, but never show secret values)
 - Prefer changing only `.env` + user-level env vars/shell profiles (avoid repo config edits unless absolutely required)
 - If the sanity run fails due to app UI/locators (not tooling), report it as a test failure (not a setup issue)
 - If you cannot reach "READY", STOP with a final summary that includes: what you checked, what is working, what is missing, the exact next steps, and (if applicable) the ServiceNow section to use.
+- IMPORTANT: Validate the final command in the SAME shell/terminal I will actually use (PowerShell vs Git Bash vs zsh). Do not declare READY based on a different shell or a background run.
 
 1. Detect my OS (macOS or Windows)
-2. Detect which shell I&rsquo;m using (PowerShell/CMD/Git Bash on Windows; zsh/bash on macOS). On Windows, make sure the setup works in the shell I&rsquo;ll actually run tests from (and fix Git Bash env export issues if applicable).
-3. Verify Node.js + npm + npx work (`node -v`, `npm -v`, `npx -v`).
-   - If missing: download and install the latest Node.js LTS without admin (user-local), then add it to my user PATH permanently so `node`, `npm`, and `npx` work from any terminal (PowerShell/CMD/Git Bash).
+2. Detect which shell I&rsquo;m using (PowerShell/CMD/Git Bash on Windows; zsh/bash on macOS).
+   - On Windows: ask which shell I will run tests from, then make the setup work in that exact shell (and fix Git Bash env export issues if applicable).
+3. Confirm you are running from the correct project folder (this avoids `ENOENT ... package.json` issues):
+   - The working directory MUST contain `package.json` and this file: `docs/local-execution-guide.html`
+   - If Cursor/your terminal starts in a parent folder (common on Windows), `cd` into the repo root BEFORE running `npm run ...`
+   - Do not create a &ldquo;trampoline&rdquo; `package.json` outside the repo unless absolutely required (prefer fixing the working directory / terminal startup instead)
+4. Verify Node.js + npm + npx work (`node -v`, `npm -v`, `npx -v`).
+   - If missing: install the latest Node.js LTS without admin (user-local), then add it to my user PATH permanently so `node`, `npm`, and `npx` work from any terminal.
    - If on Windows and corporate restrictions block `winget`: do a user-local portable install (for example under `%LOCALAPPDATA%\\nodejs`) and set User PATH accordingly (no duplicates).
    - If on macOS and `brew` is blocked: use a user-local install (for example `nvm`) so `node` works in new shells, and update the correct shell profile (`~/.zshrc` / `~/.bashrc`).
-4. Check if `node_modules` exists &mdash; if not, run `npm install`
-5. Check if `ANDROID_HOME` / `ANDROID_SDK_ROOT` are set and valid. If not set, search for my Android SDK path and set it permanently using `setx` (Windows) or shell profile (macOS).
+5. Check if `node_modules` exists &mdash; if not, run `npm install`
+6. Check if `ANDROID_HOME` / `ANDROID_SDK_ROOT` are set and valid (directory exists). If not set, search for my Android SDK path and set it permanently using `setx` (Windows) or shell profile (macOS).
    - If the Android SDK is not installed anywhere: attempt a user-local install (no admin) using official Android SDK Command-line Tools + platform-tools under my user profile, accept licenses non-interactively, and then set env vars permanently.
    - If downloads/installation are blocked by corporate policy/proxy/firewall, STOP and tell me: "Android SDK is not installed. Please open the local execution guide (docs/local-execution-guide.html), go to Prerequisites → First-Time Setup, and expand the section '🚨 JDK or Android SDK Not Installed? (ServiceNow Request)' for instructions on requesting it through IT."
-6. Check if `JAVA_HOME` is set and valid. If not, search for my Java JDK installation and set it permanently.
+7. Check if `JAVA_HOME` is set and valid. If not, search for my Java JDK installation and set it permanently.
    - If a JDK is not installed anywhere: attempt a user-local install (no admin) using an official JDK distribution (zip/tar) under my user profile, then set `JAVA_HOME` permanently.
-   - If downloads/installation are blocked by corporate policy/proxy/firewall, STOP and tell me the same message as step 5 (refer me to the ServiceNow request section in the guide).
-7. Check if `adb` is on PATH &mdash; if not, add platform-tools to PATH permanently and verify `adb --version`
-8. Ask me: "Will you run Android tests, iOS tests, or both?"
-9. Ask me which test environment I want to target (qa, UAT, stg, prod) and set `TEST_ENV` in `.env` accordingly.
-10. Ask me: "Do you already have the app installed on your device, or do you want to provide an APK/IPA file?"
+   - If downloads/installation are blocked by corporate policy/proxy/firewall, STOP and tell me the same message as step 6 (refer me to the ServiceNow request section in the guide).
+8. Check if `adb` is on PATH in THIS shell &mdash; if not, add platform-tools to PATH permanently and verify `adb --version`.
+   - Also verify Node can spawn `adb` (this catches `spawnSync adb ENOENT`) from the same terminal:
+     - PowerShell example: `node -e "require('child_process').execSync('adb --version',{stdio:'inherit'})"`
+     - Bash/zsh/Git Bash example: `node -e 'require("child_process").execSync("adb --version",{stdio:"inherit"})'`
+9. Ask me: "Will you run Android tests, iOS tests, or both?"
+10. Ask me which test environment I want to target (qa, UAT, stg, prod) and set `TEST_ENV` in `.env` accordingly.
+11. Ask me: "Do you already have the app installed on your device, or do you want to provide an APK/IPA file?"
    - If the app is already installed: set `USE_INSTALLED_APP=true`
    - If I want to provide a file: set `USE_INSTALLED_APP=false` and ask for the path, then set `ANDROID_APP` and/or `IOS_APP` in `.env`
-11. Ask me how many retries I want per failed spec (default and recommended is `1`). Set `RETRIES` in `.env`.
-12. Run `adb devices` to detect my connected Android device (if I&rsquo;m running Android)
-13. Update `LOCAL_ANDROID_UDID` in `.env` with the detected UDID
-14. Uninstall old Appium UIAutomator2 packages to prevent signature conflicts:
+12. Ask me how many retries I want per failed spec (default and recommended is `1`). Set `RETRIES` in `.env`.
+13. Android-only: Ask me how I want to handle the app state during local Android runs, then set `LOCAL_ANDROID_APP_STATE` in `.env`:
+   - `open` (just open the app; keep state; no reset)
+   - `wipe` (recommended; wipe app data between tests for a clean state)
+   - `freshInstall` (APK only; install/upgrade at run start + wipe data; leaves the app installed after the run; requires `USE_INSTALLED_APP=false` + `ANDROID_APP` points to a local .apk)
+   - If `USE_INSTALLED_APP=true`, do NOT leave it in `freshInstall` mode (auto-correct or ask).
+14. Android-only: Determine the correct Android app package on my device and set `LOCAL_ANDROID_APP_PACKAGE` in `.env` (required for wipe/reset actions):
+   - Run: `adb shell pm list packages axos`
+   - If it returns exactly one package (example `package:com.axos.beta`), set `LOCAL_ANDROID_APP_PACKAGE=com.axos.beta`
+   - If it returns multiple, ask me which one is the app under test (beta vs prod) and set that value
+   - If it returns none, do not guess &mdash; tell me to install the app (or provide an APK) and retry
+   - If you can auto-detect unambiguously, you may leave `LOCAL_ANDROID_APP_PACKAGE=auto` (recommended)
+15. Android-only: Run `adb devices -l` to detect my connected Android device.
+   - If it shows `unauthorized`, STOP and tell me exactly what to tap/do on the phone (unlock, accept USB debugging, revoke authorizations, unplug/replug), then re-check until it shows `device`.
+16. Android-only: Update `LOCAL_ANDROID_UDID` in `.env` with the detected UDID and verify it matches the connected device:
+   - Validate with `adb -s &lt;UDID&gt; get-state` (must be `device`)
+   - If the test runner errors with &ldquo;device not found&rdquo;, treat it as an env/config mismatch: re-detect the UDID, update `.env`, and re-run.
+17. Android-only: Uninstall old Appium UIAutomator2 packages to prevent signature conflicts:
     - `adb uninstall io.appium.uiautomator2.server`
     - `adb uninstall io.appium.uiautomator2.server.test`
-15. If on macOS and running iOS: detect the iOS device using `xcrun xctrace list devices` and update `LOCAL_IOS_UDID` and `LOCAL_IOS_PLATFORM_VERSION` in .env
-16. If on Windows:
-    - Remind me to RESTART Cursor/terminal after setting env vars with `setx` (required for changes to take effect)
-    - Remind me to use `npx cross-env GREP=@Tag npm run test:android` instead of `GREP="..." npm run` (or prefer `npm run test:android:sanity`)
-    - If I use Git Bash, ensure `~/.bashrc` and `~/.bash_profile` export `ANDROID_HOME`, `ANDROID_SDK_ROOT`, and `JAVA_HOME` and include Node + Android platform-tools on PATH
-17. Auto-heal sanity run:
+    - If uninstall fails but the packages still exist, use the fallback and then retry:
+      - `adb shell pm uninstall --user 0 io.appium.uiautomator2.server`
+      - `adb shell pm uninstall --user 0 io.appium.uiautomator2.server.test`
+18. If on macOS and running iOS: detect the iOS device using `xcrun xctrace list devices` and update `LOCAL_IOS_UDID` and `LOCAL_IOS_PLATFORM_VERSION` in .env (use a fallback if `xctrace` intermittently crashes).
+19. Windows-specific hard requirements:
+    - If you used `setx` for env vars, remind me I MUST fully restart Cursor (close it completely) for the new env vars to apply.
+    - Remind me to use `npx cross-env GREP=@Tag npm run test:android` instead of `GREP="..." npm run` (or prefer `npm run test:android:sanity`).
+    - If I use Git Bash, ensure `~/.bashrc` and `~/.bash_profile` export `ANDROID_HOME`, `ANDROID_SDK_ROOT`, and `JAVA_HOME` and include Node + Android platform-tools on PATH, then verify in Git Bash with `echo $ANDROID_HOME` / `command -v adb` / `adb --version`.
+20. Auto-heal sanity run:
     - Run a smoke test using the login tag (Android/iOS as applicable):
       - Windows example: `npx cross-env GREP=@Sanity_Login npm run test:android`
       - macOS example: `GREP=@Sanity_Login npm run test:android`
       - iOS (macOS): `GREP=@Sanity_Login npm run test:ios`
-    - If it fails due to tooling/setup (npx not found, env vars missing, adb not found, app path misconfigured, Appium startup), fix it and re-run until the smoke test starts cleanly
-    - If it fails due to app UI/locators (e.g., element not found), stop and summarize the failure as a test issue (not setup)
-18. Confirm everything is ready and show me the exact command to run my first tagged test (example `@Sanity_Login`) and where to find the report artifacts</div>
+    - If it fails due to tooling/setup (npx not found, env vars missing, adb not found, app path misconfigured, Appium startup, wrong working directory/package.json), fix it and re-run until the smoke test starts cleanly.
+    - If it fails due to app UI/locators (e.g., element not found), stop and summarize the failure as a test issue (not setup).
+21. Confirm everything is ready and show me the exact command to run my first tagged test (example `@Sanity_Login`) and where to find the report artifacts.</div>
         <p class="prompt-desc">Paste once, answer a few questions, and you&rsquo;ll end with a verified working command. The prompt installs deps, fixes env vars/PATH, detects devices, updates <code>.env</code>, and runs a sanity smoke test.</p>
       </div>
 
