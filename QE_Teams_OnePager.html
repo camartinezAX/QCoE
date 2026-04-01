@@ -312,6 +312,77 @@
             justify-self: end;
         }
 
+        /* Efficiency trend (Oct → Feb) */
+        .eff-trend {
+            display: grid;
+            justify-items: center;
+            gap: 10px;
+            padding-top: 4px;
+        }
+
+        .eff-trend-sub {
+            font-size: 12px;
+            font-weight: 800;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+        }
+
+        .eff-trend-svg {
+            width: 100%;
+            max-width: 440px;
+            height: auto;
+            display: block;
+        }
+
+        .eff-grid line {
+            stroke: rgba(148, 163, 184, 0.38);
+            stroke-width: 1;
+        }
+
+        .eff-axis {
+            stroke: rgba(148, 163, 184, 0.65);
+            stroke-width: 1.5;
+        }
+
+        .eff-area {
+            fill: url(#effAreaGrad);
+            opacity: 0.95;
+        }
+
+        .eff-line {
+            stroke: url(#effTrendGrad);
+            stroke-width: 4;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .eff-point {
+            fill: #ffffff;
+            stroke: #f97316;
+            stroke-width: 4;
+        }
+
+        .eff-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 17px;
+            font-weight: 900;
+            fill: var(--axos-navy);
+            paint-order: stroke;
+            stroke: rgba(255, 255, 255, 0.98);
+            stroke-width: 6px;
+            stroke-linejoin: round;
+            letter-spacing: 0.2px;
+        }
+
+        .eff-month {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 16px;
+            font-weight: 800;
+            fill: #64748b;
+        }
+
         /* Responsive bar values - ALWAYS visible */
         @media (max-width: 768px) {
             .efficiency-bars {
@@ -1399,63 +1470,34 @@
                     <!-- 2. Operational efficiency (AI-assisted testing) -->
                     <div class="chart-container">
                         <div class="chart-title">Hours saved through AI-assisted testing</div>
-                        <div class="efficiency-bars">
-                            <div class="bar-item">
-                                <div class="bar-label">Jul</div>
-                                <div class="bar">
-                                    <div class="bar-fill" id="effJulFill" style="width: 32%;"></div>
-                                </div>
-                                <div class="bar-out-val" id="effJulVal">122 hrs</div>
-                            </div>
-                            <div class="bar-item">
-                                <div class="bar-label">Aug</div>
-                                <div class="bar">
-                                    <div class="bar-fill" id="effAugFill" style="width: 30%;"></div>
-                                </div>
-                                <div class="bar-out-val" id="effAugVal">113 hrs</div>
-                            </div>
-                            <div class="bar-item">
-                                <div class="bar-label">Sep</div>
-                                <div class="bar">
-                                    <div class="bar-fill" id="effSepFill" style="width: 25%;"></div>
-                                </div>
-                                <div class="bar-out-val" id="effSepVal">93 hrs</div>
-                            </div>
-                            <div class="bar-item">
-                                <div class="bar-label">Oct</div>
-                                <div class="bar">
-                                    <div class="bar-fill" id="effOctFill" style="width: 22%;"></div>
-                                </div>
-                                <div class="bar-out-val" id="effOctVal">84 hrs</div>
-                            </div>
-                            <div class="bar-item">
-                                <div class="bar-label">Nov</div>
-                                <div class="bar">
-                                    <div class="bar-fill" id="effNovFill" style="width: 22%;"></div>
-                                </div>
-                                <div class="bar-out-val" id="effNovVal">84 hrs</div>
-                            </div>
-                            <div class="bar-item">
-                                <div class="bar-label">Dec</div>
-                                <div class="bar">
-                                    <div class="bar-fill" id="effDecFill" style="width: 14%;"></div>
-                                </div>
-                                <div class="bar-out-val" id="effDecVal">54 hrs</div>
-                            </div>
-                            <div class="bar-item">
-                                <div class="bar-label">Jan</div>
-                                <div class="bar">
-                                    <div class="bar-fill" id="effJanFill" style="width: 35%;"></div>
-                                </div>
-                                <div class="bar-out-val" id="effJanVal">132 hrs</div>
-                            </div>
-                            <div class="bar-item">
-                                <div class="bar-label">Feb</div>
-                                <div class="bar">
-                                    <div class="bar-fill" id="effFebFill" style="width: 100%;"></div>
-                                </div>
-                                <div class="bar-out-val" id="effFebVal">376 hrs</div>
-                            </div>
+                        <div class="eff-trend">
+                            <svg id="effTrendSvg" class="eff-trend-svg" viewBox="0 0 420 320" role="img" aria-label="Hours saved through AI-assisted testing trend from October to February">
+                                <defs>
+                                    <linearGradient id="effTrendGrad" x1="0" x2="1" y1="0" y2="0">
+                                        <stop offset="0%" stop-color="#f59e0b"></stop>
+                                        <stop offset="55%" stop-color="#f97316"></stop>
+                                        <stop offset="100%" stop-color="#7c3aed"></stop>
+                                    </linearGradient>
+                                    <linearGradient id="effAreaGrad" x1="0" x2="0" y1="0" y2="1">
+                                        <stop offset="0%" stop-color="rgba(250,167,74,0.35)"></stop>
+                                        <stop offset="100%" stop-color="rgba(250,167,74,0.05)"></stop>
+                                    </linearGradient>
+                                </defs>
+
+                                <!-- Plot area -->
+                                <g class="eff-grid">
+                                    <line x1="44" y1="76" x2="404" y2="76"></line>
+                                    <line x1="44" y1="126" x2="404" y2="126"></line>
+                                    <line x1="44" y1="176" x2="404" y2="176"></line>
+                                    <line x1="44" y1="226" x2="404" y2="226"></line>
+                                </g>
+                                <line class="eff-axis" x1="44" y1="240" x2="404" y2="240"></line>
+
+                                <path id="effTrendArea" class="eff-area" d=""></path>
+                                <path id="effTrendLine" class="eff-line" d=""></path>
+                                <g id="effTrendPoints"></g>
+                                <g id="effTrendXLabels"></g>
+                            </svg>
                         </div>
                     </div>
 
@@ -1520,52 +1562,6 @@
                 </div>
             </div>
 
-            <!-- Progress Tracking Section -->
-            <div class="progress-tracking">
-                <div class="tracking-title">Month-over-Month Progress Tracking</div>
-                <div class="progress-grid">
-                    <div class="progress-item">
-                        <div class="progress-manager">Axos Mobile Automation</div>
-                        <div class="progress-before-after">
-                            <div class="progress-value progress-before">2%</div>
-                            <div class="progress-arrow">→</div>
-                            <div class="progress-value progress-after">22%</div>
-                        </div>
-                        <div class="progress-description">Jan 2026 → Feb 2026 regression mobile automation progress</div>
-                    </div>
-                    
-                    <div class="progress-item">
-                        <div class="progress-manager">Archana - UE API Coverage</div>
-                        <div class="progress-before-after">
-                            <div class="progress-value progress-before">53%</div>
-                            <div class="progress-arrow">→</div>
-                            <div class="progress-value progress-after">80%</div>
-                        </div>
-                        <div class="progress-description">Consumer Deposits Web automation coverage improvement</div>
-                    </div>
-                    
-                    <div class="progress-item">
-                        <div class="progress-manager">Manasa - API Execution</div>
-                        <div class="progress-before-after">
-                            <div class="progress-value progress-before">N/A</div>
-                            <div class="progress-arrow">→</div>
-                            <div class="progress-value progress-after">52m</div>
-                        </div>
-                        <div class="progress-description">Online Banking API went from "not executable" to 52 minutes</div>
-                    </div>
-                    
-                    <div class="progress-item">
-                        <div class="progress-manager">WFO - Bug Quality</div>
-                        <div class="progress-before-after">
-                            <div class="progress-value progress-before">High</div>
-                            <div class="progress-arrow">→</div>
-                            <div class="progress-value progress-after">-95%</div>
-                        </div>
-                        <div class="progress-description">Year-over-year bug leak reduction in WFO applications (year-end)</div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Key Insights Section -->
             <div class="insights-section">
                 <div class="insights-title">Strategic Breakthrough Achievements</div>
@@ -1604,6 +1600,18 @@
                         <div class="insight-metric">Cross Team Collaboration</div>
                         <div class="insight-label">Reducing Dependencies</div>
                         <div class="insight-detail">Built an Online Banking production sanity automation suite that runs post deployment, enabling teams like Clearning to validate releases independently and reducing cross team dependencies.</div>
+                    </div>
+
+                    <div class="insight">
+                        <div class="insight-metric">QE Guild</div>
+                        <div class="insight-label">Community & Alignment</div>
+                        <div class="insight-detail">TBD (manager to update): guild cadence, participation, and outcomes.</div>
+                    </div>
+
+                    <div class="insight">
+                        <div class="insight-metric">People Development</div>
+                        <div class="insight-label">Coaching & Growth</div>
+                        <div class="insight-detail">TBD (manager to update): upskilling plan, mentoring, and growth milestones.</div>
                     </div>
                 </div>
             </div>
@@ -1856,12 +1864,103 @@
             qeEngineersHiredPct: 'TBD%',
             automationCoveragePct: 90,
             automationCoverageViz: 'donut',
-            monthlyEfficiencyHours: { Jul: 122, Aug: 113, Sep: 93, Oct: 84, Nov: 84, Dec: 54, Jan: 132, Feb: 376 },
+            monthlyEfficiencyHours: { Oct: 84, Nov: 84, Dec: 123, Jan: 132, Feb: 376 },
             bugLeakTiles: [
                 { pct: 67, label: 'WFO Decrease' },
                 { pct: 26, label: 'Core Services' }
             ]
         };
+
+        const EFF_TREND_MONTHS = ['Oct', 'Nov', 'Dec', 'Jan', 'Feb'];
+
+        function renderEfficiencyTrend() {
+            const svg = document.getElementById('effTrendSvg');
+            const area = document.getElementById('effTrendArea');
+            const line = document.getElementById('effTrendLine');
+            const pts = document.getElementById('effTrendPoints');
+            const xlbl = document.getElementById('effTrendXLabels');
+            if (!svg || !area || !line || !pts || !xlbl) return;
+
+            const data = EFF_TREND_MONTHS
+                .map((m) => ({ m, v: Number(PAGE_DATA.monthlyEfficiencyHours?.[m]) }))
+                .filter((d) => Number.isFinite(d.v));
+            if (data.length < 2) return;
+
+            const left = 44, right = 404, top = 52, bottom = 240;
+            const rawMax = Math.max(1, ...data.map((d) => d.v));
+            const rawMin = Math.min(...data.map((d) => d.v));
+            // Add gentle padding so smaller months don't compress near baseline.
+            const max = rawMax * 1.05;
+            const min = Math.max(0, rawMin * 0.85);
+            const w = right - left;
+            const h = bottom - top;
+            const step = data.length === 1 ? 0 : (w / (data.length - 1));
+
+            const xy = data.map((d, i) => {
+                const x = left + (step * i);
+                const y = bottom - ((d.v - min) / (max - min || 1)) * h;
+                return { ...d, x, y };
+            });
+
+            const dLine = `M ${xy.map(p => `${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' L ')}`;
+            const dArea = `M ${left} ${bottom} L ${xy.map(p => `${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' L ')} L ${right} ${bottom} Z`;
+
+            line.setAttribute('d', dLine);
+            area.setAttribute('d', dArea);
+
+            // (Re)build points and labels
+            while (pts.firstChild) pts.removeChild(pts.firstChild);
+            while (xlbl.firstChild) xlbl.removeChild(xlbl.firstChild);
+
+            const ns = 'http://www.w3.org/2000/svg';
+            const xLabelY = 292;
+
+            xy.forEach((p, idx) => {
+                const c = document.createElementNS(ns, 'circle');
+                c.setAttribute('class', 'eff-point');
+                c.setAttribute('cx', String(p.x));
+                c.setAttribute('cy', String(p.y));
+                c.setAttribute('r', '7');
+                pts.appendChild(c);
+
+                const isFirst = idx === 0;
+                const isLast = idx === (xy.length - 1);
+                const anchor = isFirst ? 'start' : (isLast ? 'end' : 'middle');
+                const dx = isFirst ? 8 : (isLast ? -8 : 0);
+
+                const t = document.createElementNS(ns, 'text');
+                t.setAttribute('class', 'eff-val');
+                t.setAttribute('x', String(p.x + dx));
+                const prev = idx > 0 ? xy[idx - 1] : null;
+                const isNearPrev = !!prev && Math.abs(p.y - prev.y) < 6;
+                const valOffset = isNearPrev ? 34 : 14;
+                t.setAttribute('y', String(Math.max(22, p.y - valOffset)));
+                t.setAttribute('text-anchor', anchor);
+                t.textContent = `${Math.round(p.v)} hrs`;
+                pts.appendChild(t);
+
+                const m = document.createElementNS(ns, 'text');
+                m.setAttribute('class', 'eff-month');
+                m.setAttribute('x', String(p.x + dx));
+                m.setAttribute('y', String(xLabelY));
+                m.setAttribute('text-anchor', anchor);
+                m.textContent = p.m;
+                xlbl.appendChild(m);
+            });
+
+            // Animate line draw
+            try {
+                const len = line.getTotalLength();
+                line.style.strokeDasharray = `${len}`;
+                line.style.strokeDashoffset = `${len}`;
+                // force reflow
+                void line.getBoundingClientRect();
+                line.style.transition = 'stroke-dashoffset 900ms ease';
+                line.style.strokeDashoffset = '0';
+            } catch {
+                // ignore animation issues
+            }
+        }
 
         function setQeEngineersHiredPct(pctText) {
             const normalized = String(pctText || '').trim();
@@ -2027,32 +2126,8 @@
 
         function setMonthlyEfficiencyHours(values) {
             const next = { ...PAGE_DATA.monthlyEfficiencyHours, ...values };
-            const months = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb'];
-            const nums = months.map((m) => Number(next[m])).filter((n) => Number.isFinite(n));
-            const max = Math.max(1, ...nums);
-
-            const idMap = {
-                Jul: { fill: 'effJulFill', val: 'effJulVal' },
-                Aug: { fill: 'effAugFill', val: 'effAugVal' },
-                Sep: { fill: 'effSepFill', val: 'effSepVal' },
-                Oct: { fill: 'effOctFill', val: 'effOctVal' },
-                Nov: { fill: 'effNovFill', val: 'effNovVal' },
-                Dec: { fill: 'effDecFill', val: 'effDecVal' },
-                Jan: { fill: 'effJanFill', val: 'effJanVal' },
-                Feb: { fill: 'effFebFill', val: 'effFebVal' }
-            };
-
-            for (const m of months) {
-                const n = Number(next[m]);
-                if (!Number.isFinite(n)) continue;
-                const pct = Math.max(0, Math.min(100, (n / max) * 100));
-                const fillEl = document.getElementById(idMap[m].fill);
-                const valEl = document.getElementById(idMap[m].val);
-                if (fillEl) fillEl.style.width = `${pct}%`;
-                if (valEl) valEl.textContent = `${n} hrs`;
-            }
-
             PAGE_DATA.monthlyEfficiencyHours = next;
+            renderEfficiencyTrend();
         }
 
         let aiOpen = false;
@@ -2315,7 +2390,7 @@
                     'Here are the update formats I support (applies instantly):',
                     '- QE Engineers Hired: 30%',
                     '- Automation Coverage: 92%',
-                    '- Monthly Efficiency: Jul 122, Aug 113, Sep 93, Oct 84, Nov 84, Dec 54, Jan 132, Feb 376'
+                    '- Monthly Efficiency: Oct 84, Nov 84, Dec 123, Jan 132, Feb 376'
                 ].join('\n');
             }
 
@@ -2337,7 +2412,7 @@
 
             // Monthly Efficiency (Nov/Dec/Jan/Feb)
             const monthVals = {};
-            for (const month of ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb']) {
+            for (const month of ['Oct', 'Nov', 'Dec', 'Jan', 'Feb']) {
                 const re = new RegExp(`${month}\\s*[:=,-]?\\s*(\\d+(?:\\.\\d+)?)`, 'i');
                 const m = txt.match(re);
                 if (m) monthVals[month] = Number(m[1]);
@@ -2513,6 +2588,8 @@ Be precise. Only change what the user asked to change.`;
         document.addEventListener('DOMContentLoaded', function() {
             const aiInput = document.getElementById('aiInput');
             const aiHandle = document.getElementById('aiResizeHandle');
+            // Render charts that are built from JS (e.g. line trend)
+            renderEfficiencyTrend();
             
             aiInput.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter' && !e.shiftKey) {
