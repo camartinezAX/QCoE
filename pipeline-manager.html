@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pipeline Manager - Axos QE</title>
+    <title>GitHub Pipeline Manager - Axos Bank</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -604,12 +604,16 @@
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="sidebar-header">
-                <div class="sidebar-logo">Axos Bank - QCoE</div>
-                <div class="sidebar-title">Pipeline Manager</div>
+                <div class="sidebar-logo">Axos Bank</div>
+                <div class="sidebar-title">GitHub Pipeline Manager</div>
                 <div class="sidebar-stats">
                     <div class="stat"><span class="stat-val" id="statTotal">0</span> pipelines</div>
                     <div class="stat"><span class="stat-val" id="statFolders">0</span> categories</div>
                 </div>
+                <button onclick="openPatModal()" style="margin-top:10px; width:100%; padding:8px 12px; border-radius:8px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.05); color:var(--text-secondary); transition:all 0.2s; display:flex; align-items:center; justify-content:center; gap:6px;" onmouseover="this.style.borderColor='var(--axos-orange)';this.style.color='var(--axos-orange)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.color='var(--text-secondary)'">
+                    <span style="font-size:13px;">&#9881;</span> Settings
+                    <span id="patDot" style="width:6px;height:6px;border-radius:50%;background:var(--error);flex-shrink:0;"></span>
+                </button>
             </div>
             <div class="sidebar-actions">
                 <button class="btn-sm active" onclick="setView('tree')" id="viewTreeBtn">Folders</button>
@@ -664,7 +668,7 @@
             <!-- Fetch controls -->
             <div class="pat-bar">
                 <span style="font-size:15px;">&#128274;</span>
-                <span style="font-size:11px; color:var(--success); font-weight:700; background:rgba(16,185,129,0.12); padding:6px 10px; border-radius:999px; border:1px solid rgba(16,185,129,0.35); white-space:nowrap;">Team token configured</span>
+                <span id="resultsTokenStatus" style="font-size:11px; font-weight:700; padding:6px 10px; border-radius:999px; white-space:nowrap;"></span>
                 <div style="display:flex; align-items:center; gap:4px;">
                     <span style="font-size:11px; color:var(--text-muted); white-space:nowrap;">Last</span>
                     <input type="number" id="ghRunCount" value="3" min="1" max="100" style="width:52px; padding:8px 6px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.3); color:var(--text-primary); font-size:12px; text-align:center; font-family:'JetBrains Mono',monospace;" onfocus="this.style.borderColor='var(--axos-orange)'" onblur="this.style.borderColor='rgba(255,255,255,0.08)'">
@@ -714,9 +718,9 @@
                     <h3 style="font-size:20px; margin:12px 0 6px;">No results loaded</h3>
                     <p style="color:var(--text-secondary); max-width:400px; margin:0 auto;">Click "Fetch Results" to load your pipeline run data with live metrics.</p>
                     <div style="margin-top:20px; padding:20px 24px; background:linear-gradient(135deg, rgba(22,29,46,0.95), rgba(31,41,55,0.9)); border:1px solid rgba(255,255,255,0.06); border-radius:14px; text-align:left; max-width:520px; display:inline-block; backdrop-filter:blur(12px);">
-                        <div style="font-size:13px; font-weight:700; color:var(--axos-orange); margin-bottom:10px;">&#128274; Team GitHub Token</div>
+                        <div style="font-size:13px; font-weight:700; color:var(--axos-orange); margin-bottom:10px;">&#128274; GitHub Token Required</div>
                         <div style="font-size:12px; color:var(--text-secondary); line-height:1.8;">
-                            A read-only PAT is pre-configured for the team. Just click <strong>Fetch Results</strong> above.
+                            Set your GitHub PAT via the <strong>Settings</strong> button in the Pipelines sidebar. It's saved only in your browser.
                         </div>
                     </div>
                 </div>
@@ -1025,6 +1029,29 @@
     </div>
 
     <!-- Diff / Preview Modal -->
+    <div class="modal-overlay" id="patModal">
+        <div class="modal" style="max-width:520px;">
+            <div class="modal-header">
+                <div class="modal-title">&#9881; Settings</div>
+                <button class="modal-close" onclick="closeModal('patModal')">x</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label class="form-label" style="font-size:13px; font-weight:700;">GitHub Personal Access Token</label>
+                    <input type="password" id="patTokenInput" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="width:100%; padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.3); color:var(--text-primary); font-size:13px; font-family:'JetBrains Mono',monospace;">
+                    <span class="field-help" style="margin-top:6px; display:block; font-size:11px; color:var(--text-muted); line-height:1.6;">
+                        Required for syncing workflows and fetching run results from GitHub.<br>
+                        Needs <strong>repo</strong> and <strong>actions:read</strong> scopes. Saved only in <strong>your browser's localStorage</strong> — never sent anywhere except the GitHub API.
+                    </span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('patModal')">Cancel</button>
+                <button class="btn btn-orange" onclick="savePatFromModal()">Save Token</button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="diffModal">
         <div class="modal" style="max-width:860px;">
             <div class="modal-header" style="border-left:4px solid var(--info);">
@@ -1054,14 +1081,40 @@
     //  DATA MODEL
     // ══════════════════════════════════════════
     // ══════════════════════════════════════════
-    //  TEAM GITHUB TOKEN (read-only PAT)
+    //  GITHUB TOKEN (stored per-browser in localStorage)
     // ══════════════════════════════════════════
-    const GH_TEAM_TOKEN = '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';
+    const GH_TOKEN_KEY = 'axos_gh_pat';
 
     const SYNC_REF_KEY = 'axos_sync_ref';
 
     function getGitHubToken() {
-        return GH_TEAM_TOKEN;
+        try { return String(localStorage.getItem(GH_TOKEN_KEY) || '').trim(); } catch { return ''; }
+    }
+
+    function saveGitHubToken(token) {
+        try { localStorage.setItem(GH_TOKEN_KEY, String(token || '').trim()); } catch {}
+        updatePatDot();
+    }
+
+    function updatePatDot() {
+        const dot = document.getElementById('patDot');
+        if (!dot) return;
+        const hasToken = !!getGitHubToken();
+        dot.style.background = hasToken ? 'var(--success)' : 'var(--error)';
+        dot.title = hasToken ? 'Token configured' : 'No token set';
+    }
+
+    function openPatModal() {
+        document.getElementById('patTokenInput').value = getGitHubToken();
+        document.getElementById('patModal').classList.add('show');
+    }
+
+    function savePatFromModal() {
+        const val = document.getElementById('patTokenInput').value;
+        saveGitHubToken(val);
+        closeModal('patModal');
+        showToast(val ? 'GitHub token saved to your browser.' : 'GitHub token cleared.');
+        if (typeof updateResultsTokenStatus === 'function') updateResultsTokenStatus();
     }
 
     function getEffectiveSyncRef() {
@@ -1079,8 +1132,9 @@
             'Admin Portal': null,
             'Axos Bank': null,
             'Core Services': null,
+            'Crypto': null,
             'Enrollment': null,
-            'Outsystems': null,
+            'OutSystems': null,
             'UFB Direct': null,
             'ULP': null
         },
@@ -1128,11 +1182,15 @@
 
     const TEST_TYPES = ['Regression', 'Sanity', 'Smoke', 'Health Check', 'Orchestrator'];
 
+    const WEB_MONOREPO_TEAMS = ['Enrollment', 'OutSystems', 'Crypto'];
+
     const BRAND_KEY_MAP = {
         'Admin Portal': 'AdminPortal',
         'Axos Bank': 'AxosBank',
         'Core Services': 'CoreServices',
+        'Crypto': 'Crypto',
         'Enrollment': 'Enrollment',
+        'OutSystems': 'OutSystems',
         'Outsystems': 'Outsystems',
         'UFB Direct': 'UFBDirect',
         'ULP': 'ULP'
@@ -1170,9 +1228,36 @@
 
     function isMobilePipeline(p) { return p && p.platform === '01 Mobile'; }
     function isCryptoRepo(repo) { return String(repo || '').trim() === 'Axos.QE.Crypto.Web'; }
+    function isWebMonorepo(repo) { return String(repo || '').trim() === 'Axos.QE.Web'; }
+    function isWebMonorepoPipeline(p) {
+        if (!p) return false;
+        if (p.repo && isCryptoRepo(p.repo)) return false;
+        if (isWebMonorepo(p.repo)) return true;
+        const fn = String(p.filename || '').toLowerCase();
+        return /^web_(enrollment|outsystems|crypto)_/.test(fn) && fn.includes('-playwright');
+    }
+    function getWebMonorepoTeam(p) {
+        if (!p) return null;
+        const fn = String(p.filename || '');
+        const m = fn.match(/^Web_(Enrollment|OutSystems|Crypto)_/i);
+        if (m) {
+            const raw = m[1].toLowerCase();
+            if (raw === 'enrollment') return 'Enrollment';
+            if (raw === 'outsystems') return 'OutSystems';
+            if (raw === 'crypto') return 'Crypto';
+        }
+        if (p.brand) {
+            const b = String(p.brand).toLowerCase();
+            if (b.includes('enr') || b.includes('enrollment')) return 'Enrollment';
+            if (b.includes('outsys') || b.includes('outsystems')) return 'OutSystems';
+            if (b.includes('crypto')) return 'Crypto';
+        }
+        return null;
+    }
     function isCryptoPipeline(p) {
         if (!p) return false;
         if (isCryptoRepo(p.repo)) return true;
+        if (isWebMonorepoPipeline(p)) return false;
         const fn = String(p.filename || '');
         return fn.includes('-Playwright') || fn.startsWith('crypto-web-') || fn.startsWith('crypto-web_');
     }
@@ -1265,18 +1350,33 @@
         const b = (brand || '').toLowerCase();
         const selected = selectedFeature || '';
         const isOutsystems = b === 'outsystems';
-        const list = isOutsystems ? OUTSYSTEMS_FEATURES : FEATURES.map(f => f.name);
+        const baseList = isOutsystems ? OUTSYSTEMS_FEATURES : FEATURES.map(f => f.name);
+
+        const existingFeatures = [...new Set(
+            pipelines
+                .filter(p => p.platform === '02 Web' && (p.brand || '').toLowerCase() === b && p.feature)
+                .map(p => p.feature)
+        )];
+        const extras = existingFeatures.filter(f => !baseList.includes(f));
 
         let html = '';
         if (isOutsystems) {
-            html = list.map(name => `<option value="${name}" ${selected === name ? 'selected' : ''}>${name}</option>`).join('');
+            html = OUTSYSTEMS_FEATURES.map(name => `<option value="${name}" ${selected === name ? 'selected' : ''}>${name}</option>`).join('');
         } else {
             html = FEATURES.map(f => `<option value="${f.name}" ${selected === f.name ? 'selected' : ''}>${f.id} ${f.name}</option>`).join('');
         }
+        for (const ef of extras) {
+            if (ef === selected) {
+                html += `<option value="${ef}" selected>${ef}</option>`;
+            } else {
+                html += `<option value="${ef}">${ef}</option>`;
+            }
+        }
 
-        if (selected && !list.includes(selected)) {
+        if (selected && !baseList.includes(selected) && !extras.includes(selected)) {
             html += `<option value="${selected}" selected>${selected}</option>`;
         }
+        html += '<option value="__custom__">+ Add new...</option>';
         return html;
     }
 
@@ -1301,15 +1401,17 @@
                 // Backfill repo for older cached entries (multi-repo support).
                 const backfillRepo = (p) => {
                     if (!p || String(p.repo || '').trim()) return;
-                    const fn = String(p.filename || '');
-                    if (fn.includes('-Playwright') || fn.startsWith('crypto-web-') || fn.startsWith('crypto-web_')) p.repo = 'Axos.QE.Crypto.Web';
-                    else if (fn.startsWith('Mobile_')) p.repo = 'Axos.QE.Mobile';
+                    const fn = String(p.filename || '').toLowerCase();
+                    if (/^web_(enrollment|outsystems|crypto)_/.test(fn) && fn.includes('-playwright')) p.repo = 'Axos.QE.Web';
+                    else if (fn.includes('-playwright') || fn.startsWith('crypto-web-') || fn.startsWith('crypto-web_')) p.repo = 'Axos.QE.Crypto.Web';
+                    else if (fn.startsWith('mobile_')) p.repo = 'Axos.QE.Mobile';
                     else p.repo = 'Axos.QE.TestIM';
                 };
                 // Backfill Crypto Web feature to the actual suite area (Login, Accounts, etc.)
                 // Older versions stored feature as "Crypto Web" which breaks the dropdown UX.
                 const backfillCryptoFeature = (p) => {
                     if (!p) return;
+                    if (isWebMonorepoPipeline(p)) return;
                     const repo = String(p.repo || '').trim();
                     const fn = String(p.filename || '');
                     const isCrypto = repo === 'Axos.QE.Crypto.Web' || fn.includes('-Playwright') || fn.startsWith('crypto-web-') || fn.startsWith('crypto-web_');
@@ -1332,6 +1434,7 @@
                 // Backfill Crypto Web defaults when missing (do not override explicit user choices).
                 const backfillCryptoDefaults = (p) => {
                     if (!p) return;
+                    if (isWebMonorepoPipeline(p)) return;
                     const repo = String(p.repo || '').trim();
                     const fn = String(p.filename || '');
                     const isCrypto = repo === 'Axos.QE.Crypto.Web' || fn.includes('-Playwright') || fn.startsWith('crypto-web-') || fn.startsWith('crypto-web_');
@@ -1369,6 +1472,7 @@
     function normRepoForPipeline(p) {
         const r = String(p?.repo || '').trim();
         if (r) return r;
+        if (isWebMonorepoPipeline(p)) return 'Axos.QE.Web';
         if (isCryptoPipeline(p)) return 'Axos.QE.Crypto.Web';
         if (isMobilePipeline(p)) return 'Axos.QE.Mobile';
         return 'Axos.QE.TestIM';
@@ -1740,7 +1844,8 @@
 
             if (brands && Object.keys(brands).length) {
                 for (const brandName of Object.keys(brands)) {
-                    const brandPipelines = platformPipelines.filter(p => p.brand === brandName);
+                    const brandLower = brandName.toLowerCase();
+                    const brandPipelines = platformPipelines.filter(p => (p.brand || '').toLowerCase() === brandLower);
                     const brandKey = `${platformKey}__${brandName}`;
                     const brandOpen = isOpen(brandKey);
 
@@ -1815,7 +1920,21 @@
                             }
 
                             const noFeatPipelines = envPipelines.filter(p => !featureList.some(f => f.name === p.feature));
-                            for (const pp of noFeatPipelines) { html += pipelineTreeNode(pp, 72); }
+                            const extraFeatures = [...new Set(noFeatPipelines.map(p => p.feature).filter(Boolean))];
+                            for (const ef of extraFeatures) {
+                                const efPipelines = noFeatPipelines.filter(p => p.feature === ef);
+                                const efKey = `${envKey}__${ef}`;
+                                html += `<div class="tree-node">
+                                    <div class="tree-row${selectedFolder === efKey ? ' selected' : ''}" onclick="selectFolder('${efKey}')" style="padding-left:72px;">
+                                        <span class="tree-arrow hidden">&#9654;</span>
+                                        <span class="tree-icon">&#128196;</span>
+                                        <span class="tree-label">${ef}</span>
+                                        <span class="tree-count">${efPipelines.length}</span>
+                                    </div>
+                                </div>`;
+                            }
+                            const trulyUnmatched = noFeatPipelines.filter(p => !p.feature);
+                            for (const pp of trulyUnmatched) { html += pipelineTreeNode(pp, 72); }
 
                             html += `</div></div>`;
                         }
@@ -1824,7 +1943,8 @@
                 }
             }
 
-            const noBrandPipelines = platformPipelines.filter(p => !Object.keys(brands || {}).includes(p.brand));
+            const brandKeysLower = Object.keys(brands || {}).map(k => k.toLowerCase());
+            const noBrandPipelines = platformPipelines.filter(p => !brandKeysLower.includes((p.brand || '').toLowerCase()));
             for (const pp of noBrandPipelines) { html += pipelineTreeNode(pp, 32); }
 
             html += `</div></div>`;
@@ -1966,7 +2086,7 @@
                     breadcrumbParts.push(suite);
                 }
             } else {
-                if (parts[1]) { filtered = filtered.filter(p => p.brand === parts[1]); breadcrumbParts.push(parts[1]); }
+                if (parts[1]) { const bLower = parts[1].toLowerCase(); filtered = filtered.filter(p => (p.brand || '').toLowerCase() === bLower); breadcrumbParts.push(parts[1]); }
                 if (parts[2]) { filtered = filtered.filter(p => p.env === parts[2]); breadcrumbParts.push(parts[2]); }
                 if (parts[3]) { filtered = filtered.filter(p => p.feature === parts[3]); breadcrumbParts.push(parts[3]); }
             }
@@ -2107,7 +2227,7 @@
         })());
         const normRepo = (p) => String(
             p.repo ||
-            (isCryptoPipeline(p) ? 'Axos.QE.Crypto.Web' : (isMobilePipeline(p) ? 'Axos.QE.Mobile' : 'Axos.QE.TestIM'))
+            (isWebMonorepoPipeline(p) ? 'Axos.QE.Web' : (isCryptoPipeline(p) ? 'Axos.QE.Crypto.Web' : (isMobilePipeline(p) ? 'Axos.QE.Mobile' : 'Axos.QE.TestIM')))
         ).trim();
         const byRepo = new Map();
         for (const it of items) {
@@ -2135,7 +2255,7 @@
         const isMobile = isMobilePipeline(p);
         const repoName = String(
             p.repo ||
-            (isCryptoPipeline(p) ? 'Axos.QE.Crypto.Web' : (isMobile ? 'Axos.QE.Mobile' : 'Axos.QE.TestIM'))
+            (isWebMonorepoPipeline(p) ? 'Axos.QE.Web' : (isCryptoPipeline(p) ? 'Axos.QE.Crypto.Web' : (isMobile ? 'Axos.QE.Mobile' : 'Axos.QE.TestIM')))
         ).trim();
         const filePath = `.github/workflows/${p.filename || (p.name + '.yml')}`;
 
@@ -2207,6 +2327,28 @@
                 prompt += `\n- Add WEEK_MODULO: ${n} to the with: block so the template skips runs on off-weeks (do NOT add a separate gate job)`;
             }
 
+            if (p.renamedFrom) prompt += `\n\nAlso delete the old workflow file: .github/workflows/${p.renamedFrom}`;
+            return prompt;
+        }
+
+        if (repoName === 'Axos.QE.Web' || isWebMonorepoPipeline(p)) {
+            const team = getWebMonorepoTeam(p) || 'Unknown';
+            let prompt = `Create or update a Playwright pipeline workflow file in the repo Axos.QE.Web at:\n${filePath}\n\n` +
+                `This is a monorepo workflow for the ${team} team.\n` +
+                `The repo uses a reusable workflow (_reusable-playwright.yml) called by thin project-specific workflows.\n\n` +
+                `Settings:\n` +
+                `PROJECT_DIR: projects/Axos.QE.${team === 'Enrollment' ? 'Enr' : team === 'OutSystems' ? 'OutSys' : team === 'Crypto' ? 'Crypto' : 'UNKNOWN_TEAM'}.Web\n` +
+                `RUN_TARGET: ${p.runTarget || 'local'}\n` +
+                `LOCAL_BROWSER: ${p.localBrowser || 'chrome'}\n` +
+                `TEST_ENV: ${p.env || 'UAT'}\n` +
+                `GREP: ${p.grep || ''}\n` +
+                `PARALLELS: ${p.parallel || '1'}\n` +
+                `RETRIES: ${p.retries || '1'}\n` +
+                `PW_VIDEO: ${p.pwVideo || '1'}\n` +
+                `JOB_TIMEOUT: ${p.jobTimeout || 120}\n` +
+                `RUNNER_LABEL: ${p.runnerLabel || 'QSDW-TFSBA01'}`;
+            if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
+            else prompt += `\n\nKeep the schedule block commented out.`;
             if (p.renamedFrom) prompt += `\n\nAlso delete the old workflow file: .github/workflows/${p.renamedFrom}`;
             return prompt;
         }
@@ -2349,7 +2491,7 @@
         // Normalize repo for older entries (default based on filename/platform).
         const repoName = String(
             p.repo ||
-            (isCryptoPipeline(p) ? 'Axos.QE.Crypto.Web' : (isMobilePipeline(p) ? 'Axos.QE.Mobile' : 'Axos.QE.TestIM'))
+            (isWebMonorepoPipeline(p) ? 'Axos.QE.Web' : (isCryptoPipeline(p) ? 'Axos.QE.Crypto.Web' : (isMobilePipeline(p) ? 'Axos.QE.Mobile' : 'Axos.QE.TestIM')))
         ).trim();
         p.repo = repoName;
         const cryptoScenarioPrefill = (repoName === 'Axos.QE.Crypto.Web')
@@ -2364,7 +2506,7 @@
             ? 'BrowserStack mobile pipeline'
             : (isOrchestratorPipeline(p)
                 ? 'Orchestrator workflow'
-                : (isCryptoPipeline(p) ? 'Playwright pipeline' : 'Testim pipeline'));
+                : ((isCryptoPipeline(p) || repoName === 'Axos.QE.Web') ? 'Playwright pipeline' : 'Testim pipeline'));
         let html = `<div class="main-header">
             <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
                 <div style="min-width:0;">
@@ -2709,6 +2851,187 @@
                 </div>
             </div>
         </div>`;
+        } else if (repoName === 'Axos.QE.Web') {
+        // Web Monorepo (Playwright) form
+        const webMonoTeamBrand = p.brand || 'Enrollment';
+        html += `<div class="section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title"><span class="section-icon">&#128193;</span> Location & Category <span class="section-badge" style="background:rgba(59,130,246,0.1);color:#60a5fa;">Required</span></div>
+                <div class="section-toggle">&#9660;</div>
+            </div>
+            <div class="section-content">
+                <div class="form-row-3">
+                    <div class="form-group">
+                        <label class="form-label">Platform <span class="req">*</span></label>
+                        <select id="fPlatform" ${isView ? 'disabled' : ''}>
+                            <option value="02 Web" selected>02 Web</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Team <span class="req">*</span></label>
+                        <select id="fBrand" onchange="onBrandChange(); updateNamePreview()" ${isView ? 'disabled' : ''}>
+                            <option value="">Select...</option>
+                            ${WEB_MONOREPO_TEAMS.map(t => `<option value="${t}" ${webMonoTeamBrand === t ? 'selected' : ''}>${t}</option>`).join('')}
+                            ${webMonoTeamBrand && !WEB_MONOREPO_TEAMS.includes(webMonoTeamBrand) ? `<option value="${webMonoTeamBrand}" selected>${webMonoTeamBrand}</option>` : ''}
+                            <option value="__custom__">+ Add new...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Environment <span class="req">*</span></label>
+                        <select id="fEnv" onchange="updateNamePreview();" ${isView ? 'disabled' : ''}>
+                            <option value="">Select...</option>
+                            ${ENVIRONMENTS.map(e => `<option value="${e}" ${p.env === e ? 'selected' : ''}>${e}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Feature <span class="req">*</span></label>
+                        <select id="fFeature" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
+                            <option value="">Select...</option>
+                            ${renderWebFeatureOptions(webMonoTeamBrand, p.feature || 'Login')}
+                        </select>
+                        <span class="field-help">Suite/area used to build the workflow name</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Test Type <span class="req">*</span></label>
+                        <select id="fTestType" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
+                            <option value="">Select...</option>
+                            ${['Regression','Sanity','Smoke'].map(t => `<option value="${t}" ${p.testType === t ? 'selected' : ''}>${t}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+
+            html += `<div class="section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title"><span class="section-icon">&#9881;</span> Playwright / BrowserStack Configuration <span class="section-badge" style="background:rgba(59,130,246,0.1);color:#60a5fa;">Required</span></div>
+                <div class="section-toggle">&#9660;</div>
+            </div>
+            <div class="section-content">
+                <div class="form-row-3">
+                    <div class="form-group">
+                        <label class="form-label">Run Target</label>
+                        <select id="fRunTarget" ${isView ? 'disabled' : ''}>
+                            <option value="local" ${String(p.runTarget || 'local') === 'local' ? 'selected' : ''}>Local runner</option>
+                            <option value="browserstack" ${String(p.runTarget || 'local') === 'browserstack' ? 'selected' : ''}>BrowserStack</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Local Browser</label>
+                        <select id="fLocalBrowser" ${isView ? 'disabled' : ''}>
+                            <option value="chrome" ${String(p.localBrowser || 'chrome') === 'chrome' ? 'selected' : ''}>Chrome</option>
+                            <option value="edge" ${String(p.localBrowser || 'chrome') === 'edge' ? 'selected' : ''}>Edge</option>
+                        </select>
+                        <span class="field-help">Used only when <b>Run Target</b> is <code>local</code></span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Grep Filter</label>
+                        <input type="text" id="fGrep" placeholder="@Enr_Smoke_Login" value="${p.grep || ''}" oninput="this.dataset.userEdited='1'" ${isView ? 'disabled' : ''}>
+                        <span class="field-help">Auto-generated from team/type/feature. Edit to override.</span>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Suite <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional)</span></label>
+                        <input type="text" id="fSuite" value="${p.suite || ''}" ${isView ? 'disabled' : ''}>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Spec File <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional)</span></label>
+                        <input type="text" id="fSpec" placeholder="suites/01_Login/login.spec.js" value="${p.spec || ''}" ${isView ? 'disabled' : ''}>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Parallels</label>
+                        <input type="number" id="fParallel" min="1" max="25" value="${p.parallel || '1'}" ${isView ? 'disabled' : ''}>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Retries</label>
+                        <input type="number" id="fRetries" min="0" max="5" value="${p.retries || '1'}" ${isView ? 'disabled' : ''}>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">BrowserStack Tunnel</label>
+                        <select id="fTunnel" ${isView ? 'disabled' : ''}>
+                            <option value="true" ${String(p.tunnel || 'false') === 'true' ? 'selected' : ''}>Enabled</option>
+                            <option value="false" ${String(p.tunnel || 'false') === 'false' ? 'selected' : ''}>Disabled</option>
+                        </select>
+                        <span class="field-help">Used for BrowserStack runs (and safe to leave set for local runs)</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">BrowserStack Username</label>
+                        <input type="text" id="fBsUsername" value="${p.bsUsername || ''}" ${isView ? 'disabled' : ''}>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">BrowserStack Access Key</label>
+                        <input type="password" id="fBsAccessKey" value="${p.bsAccessKey || ''}" ${isView ? 'disabled' : ''}>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Video Recording</label>
+                        <select id="fPwVideo" ${isView ? 'disabled' : ''}>
+                            <option value="0" ${String(p.pwVideo || '1') === '0' ? 'selected' : ''}>retain-on-failure</option>
+                            <option value="1" ${String(p.pwVideo || '1') === '1' ? 'selected' : ''}>always on</option>
+                        </select>
+                        <span class="field-help">Controls Playwright video capture (saved under <code>test-results/</code> / Playwright artifacts)</span>
+                    </div>
+                </div>
+
+                <div id="cryptoBsOnly">
+                    <div style="margin-top:14px; margin-bottom:6px; font-size:12px; font-weight:900; letter-spacing:0.2px; color:var(--text-secondary);">
+                        BrowserStack-only settings
+                    </div>
+                    <div style="margin-bottom:10px; font-size:11px; color:var(--text-muted); font-weight:700;">
+                        These inputs are used only when <b>Run Target</b> is <code>browserstack</code>.
+                    </div>
+
+                    <div class="form-row-3">
+                        <div class="form-group">
+                            <label class="form-label">BS Random Browser</label>
+                            <select id="fBsRandomBrowser" ${isView ? 'disabled' : ''}>
+                                <option value="true" ${String(p.bsRandomBrowser || 'true') === 'true' ? 'selected' : ''}>true</option>
+                                <option value="false" ${String(p.bsRandomBrowser || 'true') === 'false' ? 'selected' : ''}>false</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">BS Browser Name</label>
+                            <input type="text" id="fBsBrowserName" value="${p.bsBrowserName || ''}" ${isView ? 'disabled' : ''}>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">BS Browser Version</label>
+                            <input type="text" id="fBsBrowserVersion" value="${p.bsBrowserVersion || ''}" ${isView ? 'disabled' : ''}>
+                        </div>
+                    </div>
+
+                    <div class="form-row-3">
+                        <div class="form-group">
+                            <label class="form-label">BS OS Name</label>
+                            <input type="text" id="fBsOsName" value="${p.bsOsName || ''}" ${isView ? 'disabled' : ''}>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">BS OS Version</label>
+                            <input type="text" id="fBsOsVersion" value="${p.bsOsVersion || ''}" ${isView ? 'disabled' : ''}>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Runner Label</label>
+                    <select id="fRunnerLabel" ${isView ? 'disabled' : ''}>
+                        ${['QSDW-TFSBA01','QSDW-TFSBA02','QSDW-TFSBA03','QSDW-TFSBA04','QSDW-TFSBA05','QAAutomationMobile'].map(r => `<option value="${r}" ${(p.runnerLabel || 'QSDW-TFSBA01') === r ? 'selected' : ''}>${r}</option>`).join('')}
+                    </select>
+                    <span class="field-help">Windows self-hosted runner from the same pool used by Mobile pipelines</span>
+                </div>
+            </div>
+        </div>`;
+
         } else {
         // Web (Testim) — original form
         html += `<div class="section">
@@ -2730,6 +3053,7 @@
                         <select id="fBrand" onchange="onBrandChange(); updateNamePreview()" ${isView ? 'disabled' : ''}>
                             <option value="">Select...</option>
                             ${p.platform === '02 Web' ? Object.keys(FOLDER_STRUCTURE['02 Web']).map(b => `<option value="${b}" ${p.brand === b ? 'selected' : ''}>${b}</option>`).join('') : ''}
+                            <option value="__custom__">+ Add new...</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -3605,7 +3929,26 @@
         if (isMobileForm()) return;
         const repo = document.getElementById('fRepo')?.value || '';
         if (repo === 'Axos.QE.Crypto.Web') return;
-        const brand = document.getElementById('fBrand')?.value || '';
+        const brandSelect = document.getElementById('fBrand');
+        if (!brandSelect) return;
+        let brand = brandSelect.value || '';
+
+        if (brand === '__custom__') {
+            const custom = prompt('Enter new team/brand name:');
+            if (custom && custom.trim()) {
+                const val = custom.trim();
+                const opt = document.createElement('option');
+                opt.value = val;
+                opt.textContent = val;
+                opt.selected = true;
+                brandSelect.insertBefore(opt, brandSelect.querySelector('option[value="__custom__"]'));
+                brand = val;
+            } else {
+                brandSelect.value = '';
+                return;
+            }
+        }
+
         const featureSelect = document.getElementById('fFeature');
         if (!featureSelect) return;
 
@@ -3614,6 +3957,7 @@
             : (featureSelect.value || '');
 
         featureSelect.innerHTML = '<option value="">Select...</option>' + renderWebFeatureOptions(brand, selected);
+        updateNamePreview();
     }
 
     function toggleCryptoRunTargetSections() { /* no-op (keep BS section visible) */ }
@@ -3682,6 +4026,42 @@
             const previewEl = document.getElementById('namePreview');
             const currentRepo = String(document.getElementById('fRepo')?.value || '').trim() || 'Axos.QE.Crypto.Web';
             const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
+            if (duplicate) {
+                previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:'Plus Jakarta Sans',sans-serif;">&#9888; A pipeline with this exact name already exists.</div>`;
+                previewEl.style.borderColor = 'var(--error)';
+            } else {
+                previewEl.textContent = name;
+                previewEl.style.borderColor = '';
+            }
+            updateFormStatus();
+            return;
+        }
+
+        if (repo === 'Axos.QE.Web') {
+            const brand = document.getElementById('fBrand')?.value;
+            const suffix = document.getElementById('fCustomSuffix')?.value?.trim();
+            const feature = document.getElementById('fFeature')?.value?.trim();
+            if (!brand || !env || !testType || !feature) {
+                document.getElementById('namePreview').innerHTML = '<span class="dim">Select all required fields to generate pipeline name...</span>';
+                updateFormStatus();
+                return;
+            }
+
+            const fKey = feature.replace(/\s+/g, '');
+            const sKey = suffix ? suffix.replace(/\s+/g, '') : '';
+            const tKey = testType.replace(/\s+/g, '');
+            const featureStr = sKey ? `OLB_${fKey}_${sKey}` : `OLB_${fKey}`;
+            const name = `Web_${brand}_${env}-${featureStr}_${tKey}-Playwright`;
+
+            const teamShortMap = { Enrollment: 'Enr', OutSystems: 'OutSys', Crypto: 'Crypto' };
+            const teamShort = teamShortMap[brand] || brand;
+            const grepInput = document.getElementById('fGrep');
+            if (grepInput && !grepInput.dataset.userEdited) {
+                grepInput.value = `@${teamShort}_${tKey}_${fKey}`;
+            }
+
+            const previewEl = document.getElementById('namePreview');
+            const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && normRepoForPipeline(p) === 'Axos.QE.Web' && pipelineKey(p) !== editingPipeline);
             if (duplicate) {
                 previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:'Plus Jakarta Sans',sans-serif;">&#9888; A pipeline with this exact name already exists.</div>`;
                 previewEl.style.borderColor = 'var(--error)';
@@ -3830,9 +4210,9 @@
             fieldsOk = el('fPlatform')?.value && el('fBrand')?.value && el('fFeature')?.value && el('fTestType')?.value && el('fEnv')?.value;
         } else {
             const repo = (el('fRepo')?.value || '').trim();
-            if (repo === 'Axos.QE.Crypto.Web') {
+            if (repo === 'Axos.QE.Crypto.Web' || repo === 'Axos.QE.Web') {
                 fieldsOk =
-                    el('fPlatform')?.value && el('fBrand')?.value && el('fEnv')?.value &&
+                    el('fBrand')?.value && el('fEnv')?.value &&
                     el('fFeature')?.value && el('fTestType')?.value;
                 return fieldsOk && !isNameDuplicate();
             }
@@ -3890,7 +4270,29 @@
             base.jobTimeout = n('fJobTimeout', 120);
         } else {
             const repo = v('fRepo');
-            if (repo === 'Axos.QE.Crypto.Web') {
+            if (repo === 'Axos.QE.Web') {
+                base.brand = v('fBrand') || base.brand;
+                base.env = v('fEnv') || base.env;
+                base.feature = v('fFeature') || base.feature || 'Login';
+                base.runTarget = v('fRunTarget') || 'local';
+                base.localBrowser = v('fLocalBrowser') || 'chrome';
+                base.grep = v('fGrep');
+                base.suite = v('fSuite');
+                base.spec = v('fSpec');
+                base.parallel = v('fParallel') || '1';
+                base.retries = v('fRetries') || '1';
+                base.tunnel = v('fTunnel') || 'false';
+                base.bsRandomBrowser = v('fBsRandomBrowser') || 'true';
+                base.bsBrowserName = v('fBsBrowserName');
+                base.bsBrowserVersion = v('fBsBrowserVersion');
+                base.bsOsName = v('fBsOsName');
+                base.bsOsVersion = v('fBsOsVersion');
+                base.pwVideo = v('fPwVideo') || '1';
+                base.bsUsername = v('fBsUsername');
+                base.bsAccessKey = v('fBsAccessKey');
+                base.runnerLabel = v('fRunnerLabel') || 'QSDW-TFSBA01';
+                base.jobTimeout = n('fJobTimeout', 120);
+            } else if (repo === 'Axos.QE.Crypto.Web') {
                 base.feature = v('fFeature') || cryptoScenarioPrefill || base.feature || 'Login';
                 base.brand = v('fBrand') || base.brand;
                 base.env = v('fEnv') || base.env;
@@ -4086,6 +4488,33 @@ ${targets}
 
 Each target element supports: enabled, name, owner, repo, workflow, ref, inputs.`;
 
+        } else if (el('fRepo') === 'Axos.QE.Web') {
+            const brand = el('fBrand') || 'Enrollment';
+            const projMap = { 'Enrollment': 'Axos.QE.Enr.Web', 'OutSystems': 'Axos.QE.OutSys.Web', 'Crypto': 'Axos.QE.Crypto.Web' };
+            const projDir = projMap[brand] || `Axos.QE.${brand}.Web`;
+            prompt = `Create or update a Playwright pipeline workflow file in the Axos.QE.Web monorepo at:
+.github/workflows/${name}.yml
+
+This repo is a monorepo using npm workspaces. It uses a reusable workflow (_reusable-playwright.yml) called by thin project-specific caller workflows.
+
+Team: ${brand}
+PROJECT_DIR: projects/${projDir}
+RUN_TARGET: ${el('fRunTarget') || 'local'}
+LOCAL_BROWSER: ${el('fLocalBrowser') || 'chrome'}
+TEST_ENV: ${el('fEnv') || 'UAT'}
+GREP: ${el('fGrep') || ''}
+PARALLELS: ${el('fParallel') || '1'}
+RETRIES: ${el('fRetries') || '1'}
+PW_VIDEO: ${el('fPwVideo') || '1'}
+JOB_TIMEOUT: ${el('fJobTimeout') || '120'}
+RUNNER_LABEL: ${el('fRunnerLabel') || 'QSDW-TFSBA01'}`;
+
+            if (scheduleEnabled && scheduleCron) {
+                prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron}`;
+            } else {
+                prompt += `\n\nKeep the schedule block commented out.`;
+            }
+
         } else if (el('fRepo') === 'Axos.QE.Crypto.Web') {
             prompt = `Create or update a Playwright pipeline workflow file in the repo Axos.QE.Crypto.Web at:
 .github/workflows/${name}.yml
@@ -4182,7 +4611,8 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
     const SYNC_REPOS_KEY = 'axos_sync_repos';
     const DEFAULT_SYNC_REPOS = [
         { owner: 'axos-financial', repo: 'Axos.QE.TestIM' },
-        { owner: 'axos-financial', repo: 'Axos.QE.Mobile' }
+        { owner: 'axos-financial', repo: 'Axos.QE.Mobile' },
+        { owner: 'axos-financial', repo: 'Axos.QE.Web' }
     ];
 
     function cloneRepos(repos) {
@@ -4299,6 +4729,24 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
                 runnerLabel: 'QSDW-TFSBA01',
             };
         }
+        if (repo === 'Axos.QE.Web') {
+            return {
+                repo,
+                platform: '02 Web',
+                brand: 'Enrollment',
+                env: 'UAT',
+                feature: 'Login',
+                testType: 'Smoke',
+                grep: '@Enr_Smoke_Login',
+                parallel: '1',
+                retries: '1',
+                runTarget: 'local',
+                localBrowser: 'chrome',
+                pwVideo: '1',
+                jobTimeout: 120,
+                runnerLabel: 'QSDW-TFSBA01',
+            };
+        }
         if (repo === 'Axos.QE.Crypto.Web') {
             return {
                 repo,
@@ -4357,7 +4805,7 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
         if (!sel) return;
         const repos = loadSyncRepos().map(r => r.repo);
         const unique = [...new Set(repos.filter(Boolean))];
-        const baseList = unique.length ? unique : ['Axos.QE.TestIM', 'Axos.QE.Mobile', 'Axos.QE.Crypto.Web'];
+        const baseList = unique.length ? unique : ['Axos.QE.TestIM', 'Axos.QE.Mobile', 'Axos.QE.Crypto.Web', 'Axos.QE.Web'];
         const current = String(prefill?.repo || '').trim() || '';
         sel.innerHTML = baseList.map(r => `<option value="${r}" ${current === r ? 'selected' : ''}>${r}</option>`).join('');
         document.getElementById('repoSelectModal').classList.add('show');
@@ -4612,7 +5060,7 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
     async function autoSyncFromGitHub() {
         const pat = getGitHubToken();
         if (!pat) {
-            showToast('Configure your GitHub token first (Results tab).', true);
+            showToast('Configure your GitHub token first (Settings button in sidebar).', true);
             return;
         }
         const ref = getEffectiveSyncRef();
@@ -4900,13 +5348,69 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
 
     function parseFilename(filename) {
         const name = filename.replace('.yml', '');
-
-        // Crypto Web pipelines: crypto-web[-<env>]-<type>
-        // Examples:
-        // - crypto-web-e2e.yml
-        // - crypto-web-smoke.yml
-        // - crypto-web-uat-smoke.yml
         const lower = name.toLowerCase();
+
+        // Web Monorepo pipelines (Axos.QE.Web): Web_{Team}_{Env}-OLB_{Feature}_{TestType}-Playwright
+        // e.g. Web_Enrollment_UAT-OLB_Login_Smoke-Playwright → team=Enrollment, env=UAT, feature=Login, testType=Smoke
+        const webMonoMatch = lower.match(/^web_(enrollment|outsystems|crypto)_(.+)-playwright$/);
+        if (webMonoMatch) {
+            const teamMap = { enrollment: 'Enrollment', outsystems: 'OutSystems', crypto: 'Crypto' };
+            const team = teamMap[webMonoMatch[1]] || webMonoMatch[1];
+            const rest = webMonoMatch[2]; // e.g. "uat-olb_login_smoke"
+            const envMatch = rest.match(/^(dev|qa|stg|uat|prod)-/i);
+            const env = envMatch ? String(envMatch[1]).toUpperCase() : 'UAT';
+            // After env, expect OLB_{feature}[_{suffix}]_{testType}
+            const afterEnv = envMatch ? rest.slice(envMatch[0].length) : rest;
+            // Strip leading "olb_" if present
+            const withoutOlb = afterEnv.replace(/^olb_/i, '');
+            // Last segment is testType, everything before is feature (+ optional suffix)
+            const segments = withoutOlb.split('_').filter(Boolean);
+            let testType = 'Regression';
+            let feature = 'Login';
+            if (segments.length >= 2) {
+                const lastSeg = segments[segments.length - 1];
+                if (/^(smoke|sanity|regression|healthcheck|health)$/i.test(lastSeg)) {
+                    const ttMap = { smoke: 'Smoke', sanity: 'Sanity', regression: 'Regression', healthcheck: 'Health Check', health: 'Health Check' };
+                    testType = ttMap[lastSeg.toLowerCase()] || 'Regression';
+                    const featureSegs = segments.slice(0, -1);
+                    feature = featureSegs.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
+                } else {
+                    feature = segments.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
+                }
+            } else if (segments.length === 1) {
+                const seg = segments[0];
+                if (/^(smoke|sanity|regression)$/i.test(seg)) {
+                    const ttMap = { smoke: 'Smoke', sanity: 'Sanity', regression: 'Regression' };
+                    testType = ttMap[seg.toLowerCase()] || 'Regression';
+                } else {
+                    feature = seg.charAt(0).toUpperCase() + seg.slice(1);
+                }
+            }
+            const teamShortMap = { Enrollment: 'Enr', OutSystems: 'OutSys', Crypto: 'Crypto' };
+            const teamShort = teamShortMap[team] || team;
+            return {
+                filename, name,
+                repo: 'Axos.QE.Web',
+                platform: '02 Web',
+                brand: team,
+                env,
+                feature,
+                featureDetail: `OLB_${feature}`,
+                testType,
+                grep: `@${teamShort}_${testType}_${feature.replace(/\s+/g, '')}`,
+                parallel: '1',
+                retries: '1',
+                runTarget: 'local',
+                localBrowser: 'chrome',
+                pwVideo: '1',
+                runnerLabel: 'QSDW-TFSBA01',
+                jobTimeout: 120,
+                schedule: '',
+                scheduleEnabled: false
+            };
+        }
+
+        // Crypto Web pipelines (standalone repo): crypto-web[-<env>]-<type>
         if (lower.startsWith('crypto-web-') || lower.startsWith('crypto-web_')) {
             const envMatch = lower.match(/(?:^|[-_])(dev|qa|stg|uat|prod)(?:[-_]|$)/i);
             const env = (envMatch ? String(envMatch[1]).toUpperCase() : 'UAT');
@@ -5140,7 +5644,7 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
         window.addEventListener('blur', hide);
     })();
 
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal('outputModal'); closeModal('syncModal'); closeModal('reposModal'); closeModal('repoSelectModal'); closeModal('deleteModal'); closeModal('saveModal'); closeModal('diffModal'); closeModal('emailModal'); } });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal('outputModal'); closeModal('syncModal'); closeModal('reposModal'); closeModal('repoSelectModal'); closeModal('deleteModal'); closeModal('saveModal'); closeModal('diffModal'); closeModal('emailModal'); closeModal('patModal'); } });
     document.getElementById('outputModal').addEventListener('click', e => { if (e.target.id === 'outputModal') closeModal('outputModal'); });
     document.getElementById('syncModal').addEventListener('click', e => { if (e.target.id === 'syncModal') closeModal('syncModal'); });
     document.getElementById('reposModal').addEventListener('click', e => { if (e.target.id === 'reposModal') closeModal('reposModal'); });
@@ -5148,10 +5652,29 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
     document.getElementById('deleteModal').addEventListener('click', e => { if (e.target.id === 'deleteModal') closeModal('deleteModal'); });
     document.getElementById('saveModal').addEventListener('click', e => { if (e.target.id === 'saveModal') closeModal('saveModal'); });
     document.getElementById('diffModal').addEventListener('click', e => { if (e.target.id === 'diffModal') closeModal('diffModal'); });
+    document.getElementById('patModal').addEventListener('click', e => { if (e.target.id === 'patModal') closeModal('patModal'); });
 
     // Watch form changes for status updates
     document.addEventListener('input', e => { if (e.target.closest('.section')) updateFormStatus(); });
-    document.addEventListener('change', e => { if (e.target.closest('.section')) updateFormStatus(); });
+    document.addEventListener('change', e => {
+        if (e.target.closest('.section')) updateFormStatus();
+        if (e.target.id === 'fFeature' && e.target.value === '__custom__') {
+            const custom = prompt('Enter new feature name:');
+            if (custom && custom.trim()) {
+                const val = custom.trim();
+                const nextId = String(FEATURES.length).padStart(2, '0');
+                FEATURES.push({ id: nextId, name: val });
+                const opt = document.createElement('option');
+                opt.value = val;
+                opt.textContent = `${nextId} ${val}`;
+                opt.selected = true;
+                e.target.insertBefore(opt, e.target.querySelector('option[value="__custom__"]'));
+            } else {
+                e.target.value = '';
+            }
+            updateNamePreview();
+        }
+    });
 
     // ══════════════════════════════════════════
     //  TOP TABS
@@ -5192,7 +5715,10 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
     function getPipelineRepo(p) {
         if (!p) return 'Axos.QE.TestIM';
         if (p.repo) return p.repo;
-        return isMobilePipeline(p) ? 'Axos.QE.Mobile' : 'Axos.QE.TestIM';
+        if (isWebMonorepoPipeline(p)) return 'Axos.QE.Web';
+        if (isCryptoPipeline(p)) return 'Axos.QE.Crypto.Web';
+        if (isMobilePipeline(p)) return 'Axos.QE.Mobile';
+        return 'Axos.QE.TestIM';
     }
 
     function getResultsPipelineConfigs() {
@@ -5211,8 +5737,6 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
         }
         return out;
     }
-
-    // Token is hardcoded — nothing to init.
 
     async function ghFetch(path) {
         const pat = getGitHubToken();
@@ -5348,7 +5872,7 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
 
     async function fetchAllResults() {
         const pat = getGitHubToken();
-        if (!pat) { showToast('No GitHub token configured.'); return; }
+        if (!pat) { showToast('No GitHub token — set one via Settings in the Pipelines sidebar.', true); return; }
         const status = document.getElementById('patStatus');
         const btn = document.getElementById('fetchBtn');
         btn.disabled = true; btn.innerHTML = '<span style="display:inline-flex; align-items:center; gap:6px;"><span class="fetch-spinner"></span>Fetching...</span>';
@@ -5373,16 +5897,14 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
             status.innerHTML = `<span style="color:var(--axos-orange); font-weight:600;">Fetching workflows</span> from ${repos.join(', ')}...`;
 
             let totalMatched = 0;
-            const repoErrors = [];
 
             for (const repo of repos) {
                 const repoPipes = resultsPipelines.filter(p => p.repo === repo);
                 for (const p of repoPipes) {
-                    totalMatched++;
                     try {
-                        // Fetch most recent runs of any status (completed + queued/in_progress).
                         const wfIdOrFile = encodeURIComponent(p.filename);
                         const runsData = await ghFetch(`/repos/${owner}/${repo}/actions/workflows/${wfIdOrFile}/runs?per_page=${perPage}`);
+                        totalMatched++;
                         for (const r of (runsData.workflow_runs || [])) {
                             const duration = r.updated_at && r.run_started_at
                                 ? Math.round((new Date(r.updated_at) - new Date(r.run_started_at)) / 1000)
@@ -5417,8 +5939,7 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
             status.innerHTML = `<span style="color:var(--axos-orange); font-weight:600;">Analyzing</span> scheduled runs (skip gate)...`;
             await enrichGateSkippedRuns(owner);
             const miss = missingWorkflows.length ? ` &mdash; <span style="color:var(--danger); font-weight:700;">${missingWorkflows.length} issue(s)</span>` : '';
-            const repoErr = repoErrors.length ? `<br><span style="color:var(--danger);">Repo errors:</span> ${repoErrors.map(escapeHtml).join(' | ')}` : '';
-            status.innerHTML = `<span style="color:var(--success); font-weight:600;">&#10003; Loaded ${allRuns.length} run(s)</span> across ${resultsPipelines.length} pipeline(s) (${totalMatched} matched in GitHub)${miss}.${repoErr}`;
+            status.innerHTML = `<span style="color:var(--success); font-weight:600;">&#10003; Loaded ${allRuns.length} run(s)</span> across ${resultsPipelines.length} pipeline(s) (${totalMatched} matched in GitHub)${miss}.`;
             status.className = 'pat-status ok';
             renderResults();
             document.getElementById('emailNoData').style.display = 'none';
@@ -6257,7 +6778,7 @@ ${incLinks ? '<td style="padding:12px 14px;text-align:center;border-bottom:1px s
 
 <tr><td style="padding:20px 30px;background-color:#f8fafc;border-radius:0 0 8px 8px;text-align:center;">
 <p style="margin:0;font-size:13px;color:#64748b;font-family:Arial,sans-serif;line-height:1.6;">
-Generated by <strong style="color:#1E3860;">Axos QCoE Pipeline Manager</strong><br>
+Generated by <strong style="color:#1E3860;">Axos Bank — GitHub Pipeline Manager</strong><br>
 ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
 </p></td></tr>
 </table></td></tr></table></body></html>`;
@@ -6454,6 +6975,29 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
     buildTree();
     showFolderPipelines(null);
     updateSaveStatus();
+    updatePatDot();
+    updateResultsTokenStatus();
+
+    function updateResultsTokenStatus() {
+        const el = document.getElementById('resultsTokenStatus');
+        if (!el) return;
+        const hasToken = !!getGitHubToken();
+        if (hasToken) {
+            el.textContent = 'Token configured';
+            el.style.color = 'var(--success)';
+            el.style.background = 'rgba(16,185,129,0.12)';
+            el.style.border = '1px solid rgba(16,185,129,0.35)';
+            el.style.cursor = 'default';
+            el.onclick = null;
+        } else {
+            el.textContent = 'No token — set in Settings';
+            el.style.color = 'var(--error)';
+            el.style.background = 'rgba(239,68,68,0.12)';
+            el.style.border = '1px solid rgba(239,68,68,0.35)';
+            el.style.cursor = 'pointer';
+            el.onclick = openPatModal;
+        }
+    }
     </script>
 </body>
 </html>
