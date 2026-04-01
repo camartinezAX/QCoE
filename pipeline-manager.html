@@ -407,8 +407,6 @@
         .tab-content.active { display:block; }
 
         .pat-bar { display:flex; gap:10px; align-items:center; padding:14px 18px; background:linear-gradient(135deg, rgba(22,29,46,0.95), rgba(31,41,55,0.9)); border:1px solid rgba(255,255,255,0.06); border-radius:16px; margin-bottom:24px; flex-wrap:wrap; backdrop-filter:blur(12px); animation:fadeSlideUp 0.4s ease-out both; }
-        .pat-bar input[type=password] { flex:1; min-width:200px; padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.3); color:var(--text-primary); font-family:'JetBrains Mono',monospace; font-size:12px; transition:border-color 0.2s; }
-        .pat-bar input[type=password]:focus { border-color:var(--axos-orange); outline:none; box-shadow:0 0 0 3px rgba(250,167,74,0.15); }
         .pat-bar .pat-status { font-size:11px; color:var(--text-muted); }
         .pat-bar .pat-status.ok { color:var(--success); }
 
@@ -663,17 +661,17 @@
             <div class="results-folder-tree" id="resultsTree"></div>
         </div>
         <div class="main" id="resultsContent" style="padding:24px 30px;">
-            <!-- PAT config -->
+            <!-- Fetch controls -->
             <div class="pat-bar">
                 <span style="font-size:15px;">&#128274;</span>
-                <input type="password" id="ghPat" placeholder="GitHub Personal Access Token (repo scope)" value="">
+                <span style="font-size:11px; color:var(--success); font-weight:700; background:rgba(16,185,129,0.12); padding:6px 10px; border-radius:999px; border:1px solid rgba(16,185,129,0.35); white-space:nowrap;">Team token configured</span>
                 <div style="display:flex; align-items:center; gap:4px;">
                     <span style="font-size:11px; color:var(--text-muted); white-space:nowrap;">Last</span>
                     <input type="number" id="ghRunCount" value="3" min="1" max="100" style="width:52px; padding:8px 6px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.3); color:var(--text-primary); font-size:12px; text-align:center; font-family:'JetBrains Mono',monospace;" onfocus="this.style.borderColor='var(--axos-orange)'" onblur="this.style.borderColor='rgba(255,255,255,0.08)'">
                     <span style="font-size:11px; color:var(--text-muted); white-space:nowrap;">runs</span>
                 </div>
                 <button class="btn btn-orange" onclick="fetchAllResults()" id="fetchBtn" style="background:linear-gradient(135deg, #FAA74A, #f59e0b); font-weight:700; letter-spacing:0.3px; box-shadow:0 4px 14px rgba(250,167,74,0.25); transition:all 0.2s;">Fetch Results</button>
-                <span class="pat-status" id="patStatus">Enter PAT to fetch data</span>
+                <span class="pat-status" id="patStatus"></span>
             </div>
 
             <!-- Metrics -->
@@ -714,22 +712,12 @@
                 <div class="empty-state" id="resultsEmpty" style="animation:fadeSlideUp 0.5s ease-out both;">
                     <div class="empty-icon" style="font-size:56px; filter:drop-shadow(0 4px 12px rgba(250,167,74,0.3));">&#128202;</div>
                     <h3 style="font-size:20px; margin:12px 0 6px;">No results loaded</h3>
-                    <p style="color:var(--text-secondary); max-width:400px; margin:0 auto;">Enter your GitHub PAT above and click "Fetch Results" to load your pipeline run data with live metrics.</p>
+                    <p style="color:var(--text-secondary); max-width:400px; margin:0 auto;">Click "Fetch Results" to load your pipeline run data with live metrics.</p>
                     <div style="margin-top:20px; padding:20px 24px; background:linear-gradient(135deg, rgba(22,29,46,0.95), rgba(31,41,55,0.9)); border:1px solid rgba(255,255,255,0.06); border-radius:14px; text-align:left; max-width:520px; display:inline-block; backdrop-filter:blur(12px);">
-                        <div style="font-size:13px; font-weight:700; color:var(--axos-orange); margin-bottom:10px;">How to get a PAT:</div>
-                        <ol style="font-size:12px; color:var(--text-secondary); padding-left:18px; line-height:2;">
-                            <li>Go to <a href="https://github.com/settings/tokens?type=beta" target="_blank" style="color:var(--info);">github.com/settings/tokens</a></li>
-                            <li>Click <strong>"Generate new token"</strong> (Fine-grained)</li>
-                            <li>Set expiration, select <strong>axos-financial</strong> as resource owner</li>
-                            <li>Under "Repository access" pick <strong>"Only select repositories"</strong> &rarr; select every repo you plan to sync/fetch (see <strong>Sync</strong> &rarr; <strong>Manage</strong>)</li>
-                            <li>Under "Permissions" &rarr; "Repository permissions":
-                                <br>&nbsp;&nbsp;&bull; <strong>Actions</strong>: Read-only
-                                <br>&nbsp;&nbsp;&bull; <strong>Checks</strong>: Read-only
-                                <br>&nbsp;&nbsp;&bull; <strong>Contents</strong>: Read-only
-                            </li>
-                            <li>Click <strong>"Generate token"</strong> and paste it above</li>
-                        </ol>
-                        <div style="font-size:10px; color:var(--text-muted); margin-top:8px;">Token is stored in your browser's localStorage only. Never sent anywhere except api.github.com.</div>
+                        <div style="font-size:13px; font-weight:700; color:var(--axos-orange); margin-bottom:10px;">&#128274; Team GitHub Token</div>
+                        <div style="font-size:12px; color:var(--text-secondary); line-height:1.8;">
+                            A read-only PAT is pre-configured for the team. Just click <strong>Fetch Results</strong> above.
+                        </div>
                     </div>
                 </div>
                 <div id="resultsTableWrap" style="display:none; animation:fadeSlideUp 0.5s ease-out both; animation-delay:0.35s;">
@@ -876,7 +864,7 @@
             <div class="modal-body">
                 <div style="background:var(--info-bg); border:1px solid rgba(59,130,246,0.3); border-radius:12px; padding:14px 18px; margin-bottom:16px;">
                     <p style="font-size:13px; color:var(--text-secondary); line-height:1.6;">
-                        Sync pulls all workflow files from GitHub and updates your pipeline list automatically. Requires a PAT (set in Results tab).
+                        Sync pulls all workflow files from GitHub and updates your pipeline list automatically.
                     </p>
                 </div>
 
@@ -887,6 +875,12 @@
                         <div style="font-size:10px; color:var(--text-muted); margin-top:6px;">Saved in your browser (localStorage). Each user can have their own list.</div>
                     </div>
                     <button class="btn btn-secondary" onclick="openReposModal()" style="padding:8px 10px; font-size:12px; white-space:nowrap;">Manage</button>
+                </div>
+
+                <div class="form-group" style="margin-bottom:12px;">
+                    <label class="form-label">Sync ref (branch / tag / SHA)</label>
+                    <input type="text" id="syncRef" placeholder="(default branch)" style="font-size:13px;">
+                    <span class="field-help">Set this to your feature branch to sync workflows before they’re merged.</span>
                 </div>
 
                 <div id="syncStatus" style="display:none; background:var(--bg-tertiary); border:1px solid var(--border-color); border-radius:10px; padding:14px 18px; margin-bottom:14px;">
@@ -1059,6 +1053,23 @@
     // ══════════════════════════════════════════
     //  DATA MODEL
     // ══════════════════════════════════════════
+    // ══════════════════════════════════════════
+    //  TEAM GITHUB TOKEN (read-only PAT)
+    // ══════════════════════════════════════════
+    const GH_TEAM_TOKEN = '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';
+
+    const SYNC_REF_KEY = 'axos_sync_ref';
+
+    function getGitHubToken() {
+        return GH_TEAM_TOKEN;
+    }
+
+    function getEffectiveSyncRef() {
+        const fromUi = String(document.getElementById('syncRef')?.value || '').trim();
+        if (fromUi) return fromUi;
+        try { return String(localStorage.getItem(SYNC_REF_KEY) || '').trim(); } catch { return ''; }
+    }
+
     const FOLDER_STRUCTURE = {
         '01 Mobile': {
             'Android': null,
@@ -1499,6 +1510,8 @@
             // Testim
             testSuite: 'Test suite',
             baseUrl: 'Base URL',
+            project: 'Testim project (PROJECT)',
+            token: 'Testim token secret (TOKEN)',
             branch: 'Testim branch',
             grid: 'Grid',
             parallel: 'Parallel',
@@ -2111,7 +2124,7 @@
         }
 
         prompt = prompt.trimEnd();
-        if (commitPush) prompt += `\n\nAfter deleting, commit and push the changes to main.`;
+        if (commitPush) prompt += `\n\nAfter deleting, commit and push your current branch (e.g. \`git push origin HEAD\`).`;
 
         closeModal('deleteModal');
         document.getElementById('outputBox').textContent = prompt;
@@ -2234,6 +2247,8 @@
             `PIPELINE_NAME: ${p.name}\n` +
             `TEST_SUITE: ${p.testSuite || ''}\n` +
             `BASE_URL: ${p.baseUrl || ''}\n` +
+            `PROJECT: ${p.project || ''}\n` +
+            `TOKEN: ${p.token || 'TESTIM_TOKEN'}\n` +
             `BRANCH: ${p.branch || 'UDB - API and Web'}\n` +
             `GRID: ${p.grid || 'Testim-Grid'}\n` +
             `PARALLEL: ${p.parallel || '1'}\n` +
@@ -2249,9 +2264,10 @@
         prompt += `\n\nUse the existing caller workflow file Web_AxosBank_UAT-OLB_HealthCheck-Testim.yml as the exact format reference. Include:\n` +
             `- A header comment showing the folder path (e.g. Web > Axos Bank > UAT > ...)\n` +
             `- name: and run-name fields matching the pipeline name\n` +
-            `- workflow_dispatch inputs for ALL variables: TEST_SUITE, BASE_URL, BRANCH, GRID (choice: Testim-Grid, CHROME_DRIVER), PARALLEL, RETRIES, TIMEOUTMIN, BROWSER_TIMEOUT, JOB_TIMEOUT, and RUNNER_LABEL\n` +
+            `- workflow_dispatch inputs for ALL variables: TEST_SUITE, BASE_URL, PROJECT, TOKEN, BRANCH, GRID (choice: Testim-Grid, CHROME_DRIVER), PARALLEL, RETRIES, TIMEOUTMIN, BROWSER_TIMEOUT, JOB_TIMEOUT, and RUNNER_LABEL\n` +
             `- permissions block (contents: read, checks: write, actions: write)\n` +
-            `- jobs section calling _testim-template.yml passing all inputs with fallback defaults using the \${{ inputs.VAR || 'default' }} pattern`;
+            `- jobs section calling _testim-template.yml passing all inputs with fallback defaults using the \${{ inputs.VAR || 'default' }} pattern\n` +
+            `- secrets mapping should pass TESTIM_TOKEN dynamically from TOKEN: \${{ secrets[inputs.TOKEN] || secrets.TESTIM_TOKEN }}`;
 
         if (p.scheduleEnabled && (p.repeatUnit || 'weeks') === 'weeks' && parseInt(p.repeatEvery || '1', 10) > 1) {
             const n = parseInt(p.repeatEvery || '1', 10);
@@ -2276,7 +2292,7 @@
 
         let combined = prompts.join('\n\n---\n\n');
         if (includeCommitPush) {
-            combined += `\n\nAfter making these changes, commit and push to main.`;
+            combined += `\n\nAfter making these changes, commit and push your current branch (e.g. \`git push origin HEAD\`).`;
         }
 
         document.getElementById('outputBox').textContent = combined;
@@ -2757,6 +2773,18 @@
                 <div class="form-group">
                     <label class="form-label">Base URL <span class="req">*</span></label>
                     <input type="url" id="fBaseUrl" placeholder="https://secure.uat.axosbank.com/login" value="${p.baseUrl || ''}" ${isView ? 'disabled' : ''}>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Project (Testim Project ID)</label>
+                        <input type="text" id="fProject" placeholder="(leave blank to use repo variable PROJECT)" value="${p.project || ''}" ${isView ? 'disabled' : ''}>
+                        <span class="field-help">Leave blank to use the repo-level <code>PROJECT</code> variable (template fallback).</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Token (GitHub secret name)</label>
+                        <input type="text" id="fToken" placeholder="TESTIM_TOKEN" value="${p.token || 'TESTIM_TOKEN'}" ${isView ? 'disabled' : ''}>
+                        <span class="field-help">Name of a GitHub Actions secret that holds the Testim token (default: <code>TESTIM_TOKEN</code>).</span>
+                    </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
@@ -3891,6 +3919,8 @@
             if (isOrch) {
                 base.testSuite = '';
                 base.baseUrl = '';
+                base.project = '';
+                base.token = '';
                 base.branch = '';
                 base.grid = '';
                 base.parallel = '';
@@ -3920,6 +3950,8 @@
             } else {
                 base.testSuite = v('fTestSuite');
                 base.baseUrl = v('fBaseUrl');
+                base.project = v('fProject');
+                base.token = v('fToken') || 'TESTIM_TOKEN';
                 base.branch = v('fBranch') || 'UDB - API and Web';
                 base.grid = v('fGrid') || 'Testim-Grid';
                 base.parallel = v('fParallel') || '1';
@@ -4098,6 +4130,8 @@ This file should call the reusable template _testim-template.yml with these exac
 PIPELINE_NAME: ${name}
 TEST_SUITE: ${el('fTestSuite')}
 BASE_URL: ${el('fBaseUrl')}
+PROJECT: ${el('fProject')}
+TOKEN: ${el('fToken')}
 BRANCH: ${el('fBranch')}
 GRID: ${el('fGrid')}
 PARALLEL: ${el('fParallel')}
@@ -4117,9 +4151,10 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
             prompt += `\n\nUse the existing caller workflow file Web_AxosBank_UAT-OLB_HealthCheck-Testim.yml as the exact format reference. Include:
 - A header comment showing the folder path (e.g. Web > Axos Bank > UAT > ...)
 - name: and run-name: fields matching the pipeline name
-- workflow_dispatch inputs for ALL variables: TEST_SUITE, BASE_URL, BRANCH, GRID (choice: Testim-Grid, CHROME_DRIVER), PARALLEL, RETRIES, TIMEOUTMIN, BROWSER_TIMEOUT, JOB_TIMEOUT, and RUNNER_LABEL (choice: dsdl-timab21, dsdl-timab27, dsdl-timab31, QAAutomationTestIM) — each with the correct default value from the settings above
+- workflow_dispatch inputs for ALL variables: TEST_SUITE, BASE_URL, PROJECT, TOKEN, BRANCH, GRID (choice: Testim-Grid, CHROME_DRIVER), PARALLEL, RETRIES, TIMEOUTMIN, BROWSER_TIMEOUT, JOB_TIMEOUT, and RUNNER_LABEL (choice: dsdl-timab21, dsdl-timab27, dsdl-timab31, QAAutomationTestIM) — each with the correct default value from the settings above
 - permissions block (contents: read, checks: write, actions: write)
-- The jobs section calling _testim-template.yml passing all inputs with fallback defaults using the \${{ inputs.VAR || 'default' }} pattern`;
+- The jobs section calling _testim-template.yml passing all inputs with fallback defaults using the \${{ inputs.VAR || 'default' }} pattern
+- secrets mapping should pass TESTIM_TOKEN dynamically from TOKEN: \${{ secrets[inputs.TOKEN] || secrets.TESTIM_TOKEN }}`;
         }
 
         if (deleteOld && editingPipeline) {
@@ -4129,7 +4164,7 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
         }
 
         if (commitPush) {
-            prompt += `\n\nAfter creating the file, commit and push the changes to main.`;
+            prompt += `\n\nAfter creating the file, commit and push your current branch (e.g. \`git push origin HEAD\`).`;
         }
 
         document.getElementById('outputBox').textContent = prompt;
@@ -4303,6 +4338,8 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
             testType: 'Regression',
             testSuite: '',
             baseUrl: ENV_URLS.UAT,
+            project: '',
+            token: 'TESTIM_TOKEN',
             branch: 'UDB - API and Web',
             grid: 'Testim-Grid',
             parallel: '5',
@@ -4353,6 +4390,8 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
         if (fiEl) fiEl.value = '';
         const statusEl = document.getElementById('syncStatus');
         if (statusEl) statusEl.style.display = 'none';
+        const refEl = document.getElementById('syncRef');
+        if (refEl) refEl.value = getEffectiveSyncRef();
         renderSyncReposDisplay();
         document.getElementById('syncModal').classList.add('show');
     }
@@ -4485,6 +4524,8 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
         const testimMap = {
             TEST_SUITE: 'testSuite',
             BASE_URL: 'baseUrl',
+            PROJECT: 'project',
+            TOKEN: 'token',
             BRANCH: 'branch',
             GRID: 'grid',
             PARALLEL: 'parallel',
@@ -4555,7 +4596,9 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
     }
 
     async function fetchWorkflowEntry(r, fileName, pat) {
-        const resp = await fetch(`https://api.github.com/repos/${r.owner}/${r.repo}/contents/.github/workflows/${encodeURIComponent(fileName)}`, {
+        const ref = getEffectiveSyncRef();
+        const refQ = ref ? `?ref=${encodeURIComponent(ref)}` : '';
+        const resp = await fetch(`https://api.github.com/repos/${r.owner}/${r.repo}/contents/.github/workflows/${encodeURIComponent(fileName)}${refQ}`, {
             headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/vnd.github.v3+json' }
         });
         if (!resp.ok) throw new Error(`fetch ${fileName} failed (${resp.status})`);
@@ -4567,11 +4610,13 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
     }
 
     async function autoSyncFromGitHub() {
-        const pat = localStorage.getItem(PAT_KEY);
+        const pat = getGitHubToken();
         if (!pat) {
-            showToast('Set your GitHub PAT first (Results tab > Settings).', true);
+            showToast('Configure your GitHub token first (Results tab).', true);
             return;
         }
+        const ref = getEffectiveSyncRef();
+        try { localStorage.setItem(SYNC_REF_KEY, String(ref || '').trim()); } catch { /* ignore */ }
         const btn = document.getElementById('syncAutoBtn');
         const statusEl = document.getElementById('syncStatus');
         const statusText = document.getElementById('syncStatusText');
@@ -4594,7 +4639,8 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
         // Optional: load orchestrator sets so orchestrator workflows can show/edit their targets.
         let orchestratorSets = null;
         try {
-            const resp = await fetch(`https://api.github.com/repos/${orchestratorRepo.owner}/${orchestratorRepo.repo}/contents/.github/orchestrator/targets.json`, {
+            const refQ = ref ? `?ref=${encodeURIComponent(ref)}` : '';
+            const resp = await fetch(`https://api.github.com/repos/${orchestratorRepo.owner}/${orchestratorRepo.repo}/contents/.github/orchestrator/targets.json${refQ}`, {
                 headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/vnd.github.v3+json' }
             });
             if (resp.ok) {
@@ -4610,7 +4656,8 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
         try {
             for (const r of repos) {
                 statusText.innerHTML += `<br>  ${r.owner}/${r.repo}...`;
-                const resp = await fetch(`https://api.github.com/repos/${r.owner}/${r.repo}/contents/.github/workflows`, {
+                const refQ = ref ? `?ref=${encodeURIComponent(ref)}` : '';
+                const resp = await fetch(`https://api.github.com/repos/${r.owner}/${r.repo}/contents/.github/workflows${refQ}`, {
                     headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/vnd.github.v3+json' }
                 });
                 if (!resp.ok) {
@@ -4693,6 +4740,8 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
 
                 if (entry.testSuite) parsed.testSuite = entry.testSuite;
                 if (entry.baseUrl) parsed.baseUrl = entry.baseUrl;
+                if (entry.project !== undefined) parsed.project = entry.project;
+                if (entry.token !== undefined) parsed.token = entry.token;
                 if (entry.branch) parsed.branch = entry.branch;
                 if (entry.grid) parsed.grid = entry.grid;
                 if (entry.parallel) parsed.parallel = entry.parallel;
@@ -5123,7 +5172,6 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
     //  RESULTS ENGINE
     // ══════════════════════════════════════════
     const GH_OWNER = 'axos-financial';
-    const PAT_KEY = 'axos_gh_pat';
     let allRuns = [];
     let resultsPipelines = [];
     let missingWorkflows = [];
@@ -5164,17 +5212,11 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
         return out;
     }
 
-    (function loadPat() {
-        const stored = localStorage.getItem(PAT_KEY);
-        if (stored) {
-            const el = document.getElementById('ghPat');
-            if (el) el.value = stored;
-        }
-    })();
+    // Token is hardcoded — nothing to init.
 
     async function ghFetch(path) {
-        const pat = document.getElementById('ghPat').value.trim();
-        if (!pat) throw new Error('No PAT');
+        const pat = getGitHubToken();
+        if (!pat) throw new Error('No GitHub token');
         const resp = await fetch(`https://api.github.com${path}`, {
             headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/vnd.github+json' }
         });
@@ -5304,26 +5346,9 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
         });
     }
 
-    async function listAllWorkflows(owner, repo) {
-        const perPage = 100;
-        let page = 1;
-        let all = [];
-        while (true) {
-            const data = await ghFetch(`/repos/${owner}/${repo}/actions/workflows?per_page=${perPage}&page=${page}`);
-            const items = data.workflows || [];
-            all = all.concat(items);
-            const total = Number.isFinite(data.total_count) ? data.total_count : all.length;
-            if (!items.length || all.length >= total) break;
-            page++;
-            if (page > 25) break; // safety guard
-        }
-        return all;
-    }
-
     async function fetchAllResults() {
-        const pat = document.getElementById('ghPat').value.trim();
-        if (!pat) { showToast('Enter a GitHub PAT first.'); return; }
-        localStorage.setItem(PAT_KEY, pat);
+        const pat = getGitHubToken();
+        if (!pat) { showToast('No GitHub token configured.'); return; }
         const status = document.getElementById('patStatus');
         const btn = document.getElementById('fetchBtn');
         btn.disabled = true; btn.innerHTML = '<span style="display:inline-flex; align-items:center; gap:6px;"><span class="fetch-spinner"></span>Fetching...</span>';
@@ -5351,36 +5376,13 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
             const repoErrors = [];
 
             for (const repo of repos) {
-                let workflows = [];
-                try {
-                    workflows = await listAllWorkflows(owner, repo);
-                } catch (e) {
-                    repoErrors.push(`${repo}: ${e.message}`);
-                    // Mark all pipelines in this repo as missing so the UI explains why they have 0 runs.
-                    for (const p of resultsPipelines.filter(p => p.repo === repo)) {
-                        missingWorkflows.push({ repo, filename: p.filename, name: p.name, reason: 'repo_error' });
-                    }
-                    continue;
-                }
-
-                const byFile = new Map();
-                for (const wf of workflows) {
-                    if (wf?.name?.startsWith('_')) continue;
-                    const file = wf?.path?.split('/')?.pop();
-                    if (file) byFile.set(file, wf);
-                }
-
                 const repoPipes = resultsPipelines.filter(p => p.repo === repo);
                 for (const p of repoPipes) {
-                    const wf = byFile.get(p.filename);
-                    if (!wf) {
-                        missingWorkflows.push({ repo, filename: p.filename, name: p.name });
-                        continue;
-                    }
                     totalMatched++;
                     try {
                         // Fetch most recent runs of any status (completed + queued/in_progress).
-                        const runsData = await ghFetch(`/repos/${owner}/${repo}/actions/workflows/${wf.id}/runs?per_page=${perPage}`);
+                        const wfIdOrFile = encodeURIComponent(p.filename);
+                        const runsData = await ghFetch(`/repos/${owner}/${repo}/actions/workflows/${wfIdOrFile}/runs?per_page=${perPage}`);
                         for (const r of (runsData.workflow_runs || [])) {
                             const duration = r.updated_at && r.run_started_at
                                 ? Math.round((new Date(r.updated_at) - new Date(r.run_started_at)) / 1000)
@@ -5403,7 +5405,9 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
                         }
                     } catch (e) {
                         // If runs can't be fetched for this workflow, keep going, but surface it in the UI.
-                        missingWorkflows.push({ repo, filename: p.filename, name: p.name, reason: 'runs_error' });
+                        const msg = String(e?.message || '');
+                        const isNotFound = msg.includes('GitHub API 404');
+                        missingWorkflows.push({ repo, filename: p.filename, name: p.name, reason: isNotFound ? 'not_found' : 'runs_error' });
                     }
                 }
             }
