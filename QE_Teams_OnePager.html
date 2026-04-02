@@ -335,6 +335,19 @@
             display: block;
         }
 
+        .eff-note {
+            width: 100%;
+            max-width: 520px;
+            margin: 4px auto 0;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(148, 163, 184, 0.45);
+            background: rgba(241, 245, 249, 0.65);
+            color: #334155;
+            font-size: 13px;
+            line-height: 1.35;
+        }
+
         .eff-grid line {
             stroke: rgba(148, 163, 184, 0.38);
             stroke-width: 1;
@@ -431,6 +444,7 @@
             height: 180px;
             position: relative;
             margin: 20px auto;
+            overflow: visible;
         }
 
         .donut-chart svg {
@@ -443,6 +457,8 @@
             left: 50%;
             transform: translate(-50%, -50%);
             text-align: center;
+            overflow: visible;
+            white-space: nowrap;
         }
 
         .donut-percentage {
@@ -535,6 +551,11 @@
             margin-bottom: 12px;
         }
 
+        .bug-leak-kicker:empty {
+            margin: 0;
+            padding: 0;
+        }
+
         .bug-leak-table {
             width: 100%;
             border-collapse: separate;
@@ -584,6 +605,11 @@
             font-size: 12px;
             color: #475569;
             font-weight: 600;
+        }
+
+        .bug-leak-note:empty {
+            margin: 0;
+            padding: 0;
         }
 
         /* Automation Coverage progress meter (alternative to donut) */
@@ -675,6 +701,7 @@
         .teams-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
+            align-items: start;
             gap: 24px;
             margin-bottom: 32px;
         }
@@ -735,6 +762,17 @@
             font-size: 13px;
             color: #64748b;
             line-height: 1.6;
+        }
+
+        .team-details:empty {
+            display: none;
+        }
+
+        body.edit-mode .bug-leak-kicker:empty,
+        body.edit-mode .bug-leak-note:empty,
+        body.edit-mode .team-details:empty {
+            display: block !important;
+            min-height: 18px;
         }
 
         .progress-indicator {
@@ -1365,19 +1403,140 @@
             border-color: var(--axos-navy);
         }
 
+        /* PDF capture mode (used by Generate PDF) */
+        body.pdf-mode .ai-fab,
+        body.pdf-mode .ai-drawer,
+        body.pdf-mode .page-tools,
+        body.pdf-mode .edit-hint,
+        body.pdf-mode .edit-modal {
+            display: none !important;
+        }
+
+        body.pdf-mode {
+            background: #fff;
+            overflow: visible;
+        }
+        body.pdf-mode .page { box-shadow: none; min-height: auto; }
+        body.pdf-mode .header-content, body.pdf-mode .content { max-width: none !important; }
+
+        /* Kill shadows / filters / grey artifacts */
+        body.pdf-mode .chart-container, body.pdf-mode .insight, body.pdf-mode .team-card,
+        body.pdf-mode .journey-timeline, body.pdf-mode .insights-section {
+            box-shadow: none !important; filter: none !important; backdrop-filter: none !important;
+        }
+        body.pdf-mode .chart-container, body.pdf-mode .insight, body.pdf-mode .team-card,
+        body.pdf-mode .journey-timeline { background: #ffffff !important; }
+        body.pdf-mode .insights-section { background: #ffffff !important; border-color: #e2e8f0 !important; }
+        body.pdf-mode .bug-leak-table { box-shadow: none !important; }
+        body.pdf-mode .bug-leak-kicker, body.pdf-mode .bug-leak-note { display: none !important; }
+
+        /* ===== FONT SCALE ===== */
+        body.pdf-mode .main-title          { font-size: 28px !important; line-height: 1.1 !important; }
+        body.pdf-mode .subtitle            { font-size: 11px !important; margin-bottom: 6px !important; }
+        body.pdf-mode .section-title,
+        body.pdf-mode .insights-title,
+        body.pdf-mode .journey-title        { font-size: 15px !important; margin-bottom: 6px !important; }
+        body.pdf-mode .chart-title          { font-size: 12px !important; margin-bottom: 4px !important; }
+        body.pdf-mode .journey-subtitle     { font-size: 10px !important; margin-bottom: 4px !important; }
+        body.pdf-mode .vision-text          { font-size: 11px !important; line-height: 1.3 !important; }
+        body.pdf-mode .vision-title         { font-size: 12px !important; }
+        body.pdf-mode .eff-note             { font-size: 10px !important; padding: 3px 6px !important; margin-top: 2px !important; max-width: none !important; }
+        body.pdf-mode .insight-metric       { font-size: 13px !important; }
+        body.pdf-mode .insight-label        { font-size: 10px !important; margin-bottom: 2px !important; }
+        body.pdf-mode .insight-detail       { font-size: 10px !important; line-height: 1.3 !important; }
+
+        /* ===== COMPACT SPACING ===== */
+        body.pdf-mode .header               { padding: 14px 14px !important; }
+        body.pdf-mode .headline-vision      { margin-top: 8px !important; padding: 8px 10px !important; max-width: none !important; }
+        body.pdf-mode .content              { padding: 6px 10px !important; }
+        body.pdf-mode .section              { margin-bottom: 6px !important; }
+
+        /* Key Wins row */
+        body.pdf-mode .charts-grid          { grid-template-columns: repeat(4,minmax(0,1fr)) !important; gap: 8px !important; margin-bottom: 6px !important; }
+        body.pdf-mode .chart-container      { padding: 8px !important; min-height: auto !important; display: flex !important; flex-direction: column !important; overflow: visible !important; }
+
+        /* Donut — no clipping anywhere */
+        body.pdf-mode #automationCoverageSection { align-items: center !important; justify-content: center !important; text-align: center !important; overflow: visible !important; }
+        body.pdf-mode #automationCoverageSection #automationCoverageViz { display: flex !important; justify-content: center !important; align-items: center !important; flex: 1 1 auto !important; overflow: visible !important; }
+        body.pdf-mode .donut-chart { overflow: visible !important; }
+        body.pdf-mode .donut-center { overflow: visible !important; white-space: nowrap !important; }
+        body.pdf-mode .donut-percentage { font-size: 34px !important; }
+        body.pdf-mode .donut-label { font-size: 10px !important; }
+
+        /* Automation Wins — vertical stack */
+        body.pdf-mode #cycleTimeWinsCard .insights-grid {
+            grid-template-columns: 1fr !important; gap: 4px !important;
+            flex: 1 1 auto !important; display: grid !important; align-content: center !important;
+        }
+        body.pdf-mode #cycleTimeWinsCard .insight { padding: 6px 8px !important; }
+        body.pdf-mode #cycleTimeWinsCard .insight-metric { font-size: 13px !important; }
+        body.pdf-mode #cycleTimeWinsCard .insight-detail { font-size: 9px !important; }
+
+        /* Bug Leak table — center vertically */
+        body.pdf-mode #bugLeakReductionSection .bug-leak-table-wrap {
+            flex: 1 1 auto !important; display: flex !important; flex-direction: column !important;
+            justify-content: center !important; margin-top: 0 !important;
+        }
+
+        /* Strategic Breakthrough section */
+        body.pdf-mode .insights-section     { padding: 8px !important; margin-bottom: 6px !important; }
+        body.pdf-mode .insights-grid        { grid-template-columns: repeat(4,minmax(0,1fr)) !important; gap: 6px !important; }
+        body.pdf-mode .insight              { padding: 6px !important; }
+
+        /* Team cards */
+        body.pdf-mode .teams-section        { margin-bottom: 6px !important; }
+        body.pdf-mode .teams-grid           { grid-template-columns: repeat(2,minmax(0,1fr)) !important; gap: 6px !important; margin-bottom: 6px !important; }
+        body.pdf-mode .team-card            { padding: 6px !important; line-height: 1.2 !important; font-size: 10px !important; }
+        body.pdf-mode .team-card *          { font-size: inherit !important; line-height: inherit !important; }
+        body.pdf-mode .team-card .progress-indicator { font-size: 9px !important; padding: 2px 6px !important; }
+        body.pdf-mode .team-card .team-metric, body.pdf-mode .team-card .team-details,
+        body.pdf-mode .team-card .team-description, body.pdf-mode .team-card .team-scope,
+        body.pdf-mode .team-card .team-manager { font-size: 10px !important; }
+        body.pdf-mode .team-scope           { margin-bottom: 3px !important; }
+        body.pdf-mode .team-description     { font-size: 10px !important; margin-bottom: 2px !important; }
+        body.pdf-mode .team-details         { font-size: 10px !important; line-height: 1.2 !important; }
+
+        /* Timeline — full width, natural height, scales with everything */
+        body.pdf-mode .journey-timeline     { margin-top: 6px !important; padding: 8px 10px !important; }
+
+        /* Footer */
+        body.pdf-mode .footer               { padding: 8px 12px !important; font-size: 10px !important; }
+
         /* Print styles */
         @media print {
-            .ai-fab, .ai-drawer {
+            @page {
+                /* A2 portrait (vertical one-pager; better on-screen readability) */
+                size: 420mm 594mm;
+                margin: 0mm;
+            }
+
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .ai-fab,
+            .ai-drawer,
+            .page-tools,
+            .edit-hint,
+            .edit-modal {
                 display: none !important;
             }
+
+            html,
             body {
-                background: white;
-                padding: 0;
+                background: #fff !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                overflow: visible !important;
             }
+
             .page {
-                box-shadow: none;
-                width: 100%;
-                min-height: auto;
+                box-shadow: none !important;
+                width: 100% !important;
+                min-height: auto !important;
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
             }
         }
 
@@ -1394,6 +1553,8 @@
             <button class="tool-btn primary" id="toggleEditBtn" onclick="toggleEditMode()">Edit</button>
             <button class="tool-btn" onclick="exportHTML()">Export HTML</button>
             <button class="tool-btn" onclick="importHTML()">Import HTML</button>
+                <button class="tool-btn" onclick="generatePDF()">Generate PDF</button>
+                <button class="tool-btn" onclick="generateEmail()">Generate Email</button>
         </div>
 
         <div class="edit-hint" id="editHint">
@@ -1418,6 +1579,7 @@
             </div>
         </div>
 
+        <div id="pdfContent">
         <!-- Header -->
         <div class="header">
             <div class="header-content">
@@ -1451,10 +1613,10 @@
                                 <svg width="180" height="180">
                                     <circle cx="90" cy="90" r="70" stroke="#e2e8f0" stroke-width="20" fill="none"/>
                                     <circle id="automationCoverageRing" cx="90" cy="90" r="70" stroke="#FAA74A" stroke-width="20" fill="none"
-                                            stroke-dasharray="395" stroke-dashoffset="39.5" stroke-linecap="round"/>
+                                            stroke-dasharray="395" stroke-dashoffset="79" stroke-linecap="round"/>
                                 </svg>
                                 <div class="donut-center">
-                                    <div class="donut-percentage" id="automationCoveragePct">90%</div>
+                                    <div class="donut-percentage" id="automationCoveragePct">80%</div>
                                     <div class="donut-label">Coverage</div>
                                 </div>
                             </div>
@@ -1493,6 +1655,7 @@
                                 <g id="effTrendXLabels"></g>
                             </svg>
                         </div>
+                        <div class="eff-note editable" id="efficiencyNote">TestGennie AI accelerates test case authoring and bug creation.</div>
                     </div>
 
                     <!-- 3. Cycle Time & Automation Wins (replaces Hours Saved by Manager) -->
@@ -1521,7 +1684,7 @@
                     <div class="chart-container" id="bugLeakReductionSection">
                         <div class="chart-title">PROD Bug Leak Reduction (YOY)</div>
                         <div class="bug-leak-table-wrap">
-                            <div class="bug-leak-kicker"><br></div>
+                            <div class="bug-leak-kicker"></div>
                             <table class="bug-leak-table" aria-label="Year end bug leak numbers">
                                 <thead>
                                     <tr>
@@ -1548,7 +1711,7 @@
                                     </tr>
                                 </tbody>
                             </table>
-                            <div class="bug-leak-note"><br></div>
+                            <div class="bug-leak-note"></div>
                         </div>
                         <!-- Keep this hidden container so the built-in AI assistant tooling doesn’t error -->
                         <div class="bug-progress" id="bugLeakTiles" style="display:none;"></div>
@@ -1593,7 +1756,7 @@
                     <div class="insight">
                         <div class="insight-metric">Cross Enterprise Collaboration</div>
                         <div class="insight-label">Community &amp; Alignment</div>
-                        <div class="insight-detail">Reestablished a monthly QE Guild bringing together enterprise quality leaders to align on a shared vision, tools and technology.</div>
+                        <div class="insight-detail">Reestablished a monthly QE Guild to align enterprise quality leaders on strategy and tooling, and implemented a process to track BU reported production issues and review mobile app feedback weekly.</div>
                     </div>
 
                     <div class="insight">
@@ -1617,10 +1780,10 @@
                     <div class="team-card" id="teamCardArchana" data-manager="Archana">
                         <div class="progress-indicator" spellcheck="false">Archana Gorantla</div>
                         <div class="team-manager" spellcheck="false"><span style="color: rgb(100, 116, 139); font-size: 12px; letter-spacing: 1px; text-transform: uppercase;">ENROLLMENT (Universal and Legacy)</span></div>
-                        <div class="team-scope" spellcheck="false"><span style="letter-spacing: normal; text-transform: none; font-size: 13px; font-weight: 400;">•&nbsp;</span><strong style="letter-spacing: normal; text-transform: none; font-size: 13px;">Legacy Enrollment:</strong><span style="letter-spacing: normal; text-transform: none; font-size: 13px; font-weight: 400;">&nbsp;90% automation coverage achieved</span><br style="letter-spacing: normal; text-transform: none; font-size: 13px; font-weight: 400;"><span style="letter-spacing: normal; text-transform: none; font-size: 13px; font-weight: 400;">•&nbsp;</span><strong style="letter-spacing: normal; text-transform: none; font-size: 13px;">Universal Enrollment Admin Portal:</strong><span style="letter-spacing: normal; text-transform: none; font-size: 13px; font-weight: 400;">&nbsp;24 hours saved per run, 60% faster cycles</span><div><span style="letter-spacing: normal; text-transform: none; font-size: 13px; font-weight: 400;">•&nbsp;</span><strong style="letter-spacing: normal; text-transform: none; font-size: 13px;">Project 20902, 870, 723:</strong><span style="letter-spacing: normal; text-transform: none; font-size: 13px; font-weight: 400;">&nbsp;70% faster cycles</span><br style="letter-spacing: normal; text-transform: none; font-size: 13px; font-weight: 400;"><span style="letter-spacing: normal; text-transform: none; font-size: 13px; font-weight: 400;">•&nbsp;</span><strong style="letter-spacing: normal; text-transform: none; font-size: 13px;">Universal Enrollment Web PROD Testing:</strong><span style="letter-spacing: normal; text-transform: none; font-size: 13px; font-weight: 400;">&nbsp;50% cycle improvement</span><div style="color: rgb(71, 85, 105); font-size: 15px; letter-spacing: normal; text-transform: none;"><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•&nbsp;</span><strong style="color: rgb(100, 116, 139); font-size: 13px;">Universal Enrollment Core Services Web Testing:</strong><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;75% cycle improvement</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;"></span></div><div style="color: rgb(71, 85, 105); font-size: 15px; letter-spacing: normal; text-transform: none;"><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•&nbsp;</span><strong style="color: rgb(100, 116, 139); font-size: 13px;">Universal Enrollment Decision System Testing:</strong><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;65% cycle improvement</span></div></div></div>
+                        <div class="team-scope" spellcheck="false"><span style="letter-spacing: normal; text-transform: none; font-size: 13px; font-weight: 400;">•&nbsp;</span><strong style="letter-spacing: normal; text-transform: none; font-size: 13px;">Legacy Enrollment:</strong><span style="letter-spacing: normal; text-transform: none; font-size: 13px; font-weight: 400;">&nbsp;90% automation coverage achieved</span><br style="letter-spacing: normal; text-transform: none; font-size: 13px; font-weight: 400;"><span style="letter-spacing: normal; text-transform: none; font-size: 13px; font-weight: 400;">•&nbsp;</span><strong style="letter-spacing: normal; text-transform: none; font-size: 13px;">Universal Enrollment Admin Portal:</strong><span style="letter-spacing: normal; text-transform: none; font-size: 13px; font-weight: 400;">&nbsp;24 hours saved per run, 60% faster cycles</span><div><span style="letter-spacing: normal; text-transform: none; font-size: 13px; font-weight: 400;">•&nbsp;</span><strong style="letter-spacing: normal; text-transform: none; font-size: 13px;">Project 20902, 870, 723 automation:</strong><span style="letter-spacing: normal; text-transform: none; font-size: 13px; font-weight: 400;">&nbsp;70% faster cycles</span><br style="letter-spacing: normal; text-transform: none; font-size: 13px; font-weight: 400;"><span style="letter-spacing: normal; text-transform: none; font-size: 13px; font-weight: 400;">•&nbsp;</span><strong style="letter-spacing: normal; text-transform: none; font-size: 13px;">Universal Enrollment Web PROD Testing:</strong><span style="letter-spacing: normal; text-transform: none; font-size: 13px; font-weight: 400;">&nbsp;50% cycle improvement</span><div style="color: rgb(71, 85, 105); font-size: 15px; letter-spacing: normal; text-transform: none;"><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•&nbsp;</span><strong style="color: rgb(100, 116, 139); font-size: 13px;">Universal Enrollment Core Services Web Testing:</strong><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;75% cycle improvement</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;"></span></div><div style="color: rgb(71, 85, 105); font-size: 15px; letter-spacing: normal; text-transform: none;"><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•&nbsp;</span><strong style="color: rgb(100, 116, 139); font-size: 13px;">Universal Enrollment Decision System Testing:</strong><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;65% cycle improvement</span></div></div></div>
                         <div class="team-metric" spellcheck="false"><font color="#64748b" face="Inter, sans-serif"><span style="font-size: 12px; letter-spacing: 1px; text-transform: uppercase;">Focus area</span></font></div>
                         <div class="team-description" spellcheck="false"><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">Automate Enrollment mobile regression suite</span><div><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">Project 36101 Crypto UI automation</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;"></span></div><div><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">Project 36101 Crypto&nbsp;</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">Performance testing</span></div></div>
-                        <div class="team-details" spellcheck="false"><br></div>
+                        <div class="team-details" spellcheck="false"></div>
                     </div>
                     
                     <div class="team-card" id="teamCardMarco" data-manager="Marco">
@@ -1628,8 +1791,8 @@
                         <div class="team-manager" spellcheck="false"><span style="color: rgb(100, 116, 139); font-size: 12px; letter-spacing: 1px; text-transform: uppercase;">CORE SERVICES • QCOE • PERFORMANCE • Outsystems• ULP</span><span style="color: rgb(100, 116, 139); font-size: 12px; letter-spacing: 1px; text-transform: uppercase;">• MOBILE</span></div>
                         <div class="team-scope" spellcheck="false"><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">•&nbsp;</span><strong style="font-size: 13px; letter-spacing: normal; text-transform: none;">ULP:</strong><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">&nbsp;64% faster cycles, automation debt eliminated</span><br style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;"><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">•&nbsp;</span><strong style="font-size: 13px; letter-spacing: normal; text-transform: none;">TestGennie AI:</strong><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">&nbsp;Org rollout&nbsp; Jan 2026 ; Tachyon AI deprecated Jan 2026</span><br style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;"><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">•&nbsp;</span><strong style="font-size: 13px; letter-spacing: normal; text-transform: none;">Rules Manager:</strong><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">&nbsp;83% faster test cycles, 25 mins saved</span><br style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;"><span style="font-size: 13px; letter-spacing: normal; text-transform: none;"><span style="font-weight: 400;">•</span>&nbsp;</span><strong style="font-size: 13px; letter-spacing: normal; text-transform: none;">Axos Mobile Sanity:</strong><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">&nbsp;78% faster, 4h 30m saved per run</span><div><span style="font-size: 13px; letter-spacing: normal; text-transform: none;"><span style="font-weight: 400;">•&nbsp;</span></span><strong style="font-size: 13px; letter-spacing: normal; text-transform: none;">Outsystems:</strong><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">&nbsp;11 Outsystems applications automated; 70% faster cycles</span><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;"><br></span><div><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">•&nbsp;</span><strong style="font-size: 13px; letter-spacing: normal; text-transform: none;">Online Banking prod sanity:</strong><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">&nbsp;67% faster, 50 mins saved per run</span><br></div></div></div>
                         <div class="team-metric" spellcheck="false"><span style="color: rgb(100, 116, 139); font-family: Inter, sans-serif; font-size: 12px; letter-spacing: 1px; text-transform: uppercase;">Focus area</span></div>
-                        <div class="team-description" spellcheck="false"><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">QA and UAT Environment&nbsp;Stabiltiy<br></span><div><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">Staging Environment Utilization for Load Testing</span></div><div><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">Core Services Automation Coverage</span></div><div><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">Core Services Bug Reduction</span></div><div><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">Core Services&nbsp;</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;"></span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">Performance Testing</span></div><div><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">OLB 3.0 Performance Testing</span></div><div><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;"><br></span></div></div>
-                        <div class="team-details" spellcheck="false"><br></div>
+                        <div class="team-description" spellcheck="false"><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">QA and UAT Environment&nbsp;Stabiltiy<br></span><div><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">Staging Environment Utilization for Load Testing</span></div><div><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">Core Services Automation Coverage</span></div><div><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">Core Services Bug Reduction</span></div><div><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">Core Services&nbsp;</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;"></span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">Performance Testing</span></div><div><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">Online Banking 3.0 Performance Testing</span></div><div><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;Axos&nbsp;</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">Mobile regression suite automation</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;"></span></div></div>
+                        <div class="team-details" spellcheck="false"></div>
                     </div>
                     
                     <div class="team-card" id="teamCardManasa" data-manager="Manasa">
@@ -1637,8 +1800,8 @@
                         <div class="team-manager" spellcheck="false"><span style="color: rgb(100, 116, 139); font-size: 12px; letter-spacing: 1px; text-transform: uppercase;">BORROW • Online banking 1.0 sit • online banking 3.0</span></div>
                         <div class="team-scope" spellcheck="false"><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">• </span><strong style="font-size: 13px; letter-spacing: normal; text-transform: none;">Online Banking API Regression:</strong><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">&nbsp;52 minutes (from "not executable")</span><br style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;"><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">•&nbsp;</span><strong style="font-size: 13px; letter-spacing: normal; text-transform: none;">Online Banking Web Regression:</strong><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">&nbsp;6</span><span style="color: rgb(71, 85, 105); font-size: 15px; letter-spacing: normal; text-transform: none;">→</span><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">4 days; 33% faster test cycles</span><br style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;"><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">• </span><strong style="font-size: 13px; letter-spacing: normal; text-transform: none;">Project 884 Credit Card :</strong><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">&nbsp;50</span><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">% faster test cycles</span><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">, 2 days saved per cycle</span><br style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;"><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">•&nbsp;</span><strong style="font-size: 13px; letter-spacing: normal; text-transform: none;">Project 19051 SBLOC:</strong><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">&nbsp;80% faster test cycles, 2 hrs saved per run</span></div>
                         <div class="team-metric" spellcheck="false"><span style="color: rgb(100, 116, 139); font-family: Inter, sans-serif; font-size: 12px; letter-spacing: 1px; text-transform: uppercase;">Focus area</span></div>
-                        <div class="team-description" spellcheck="false"><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;Online Banking 3.0 functional testing</span><div><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;Online Banking 3.0 UI automation in Playwright</span></div><div><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;Online Banking 1.0 and UDB release support</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;"></span></div></div>
-                        <div class="team-details" spellcheck="false"><br></div>
+                        <div class="team-description" spellcheck="false"><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;Online Banking 3.0 functional testing</span><div><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;Online Banking 3.0 UI automation in Playwright</span></div><div><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;Online Banking 1.0 and UDB release support</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;"></span></div><div><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;Project 1017 Debit Card Push Provisioning testing</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;"></span></div></div>
+                        <div class="team-details" spellcheck="false"></div>
                     </div>
                     
                     <div class="team-card" id="teamCardIrina" data-manager="Irina">
@@ -1646,8 +1809,8 @@
                         <div class="team-manager" spellcheck="false"><span style="color: rgb(100, 116, 139); font-size: 12px; letter-spacing: 1px; text-transform: uppercase;">BANK • INVEST • PLAN</span></div>
                         <div class="team-scope" spellcheck="false"><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">• </span><strong style="font-size: 13px; letter-spacing: normal; text-transform: none;">Project 23902 Reg-E:</strong><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">&nbsp;88% faster test cycles</span><div><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">•&nbsp;</span><strong style="font-size: 13px; letter-spacing: normal; text-transform: none;">Project 20502 Consumer Deposit Onboarding:</strong><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">&nbsp;20% faster test cycles</span><br style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;"><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">•&nbsp;</span><strong style="font-size: 13px; letter-spacing: normal; text-transform: none;">Project 29401 FDIC Expanded:</strong><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">&nbsp;25% cycle improvement, 2.5 hrs saved</span><br style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;"><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">•&nbsp;</span><strong style="font-size: 13px; letter-spacing: normal; text-transform: none;">Project 723 IBD Accounts:</strong><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">&nbsp;35% faster test cycles, 7 hrs saved</span><br style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;"><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">•&nbsp;</span><strong style="font-size: 13px; letter-spacing: normal; text-transform: none;">Project 870 Managed Portfolio:</strong><span style="font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none;">&nbsp;18% cycle improvement, 5 hrs saved</span></div></div>
                         <div class="team-metric" spellcheck="false"><span style="color: rgb(100, 116, 139); font-family: Inter, sans-serif; font-size: 12px; letter-spacing: 1px; text-transform: uppercase;">Focus area</span></div>
-                        <div class="team-description" spellcheck="false"><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;Project 31201 House Holding Automation</span><div><div><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">Mobile production bug automation</span></div></div></div>
-                        <div class="team-details" spellcheck="false"><br></div>
+                        <div class="team-description" spellcheck="false"><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;Project 31201 House Holding automation</span><div><div><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">•</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">&nbsp;</span><span style="color: rgb(100, 116, 139); font-size: 13px; font-weight: 400;">Mobile production bug automation</span></div></div></div>
+                        <div class="team-details" spellcheck="false"></div>
                     </div>
                 </div>
             </div>
@@ -1751,6 +1914,7 @@
         <div class="footer">
             <strong>CONFIDENTIAL</strong> • Internal Use Only • Consumer IT Quality Engineering • February 2026
         </div>
+        </div>
     </div>
 
     <!-- AI Assistant -->
@@ -1785,6 +1949,8 @@
             <div class="ai-actions">
                 <button class="ai-action-btn" onclick="exportHTML()">Export HTML</button>
                 <button class="ai-action-btn" onclick="importHTML()">Import HTML</button>
+                <button class="ai-action-btn" onclick="generatePDF()">Generate PDF</button>
+                <button class="ai-action-btn" onclick="generateEmail()">Generate Email</button>
                 <button class="ai-action-btn" onclick="clearChat()">Clear Chat</button>
             </div>
         </div>
@@ -1841,7 +2007,7 @@
 
         const PAGE_DATA = {
             qeEngineersHiredPct: 'TBD%',
-            automationCoveragePct: 90,
+            automationCoveragePct: 80,
             automationCoverageViz: 'donut',
             monthlyEfficiencyHours: { Oct: 84, Nov: 84, Dec: 123, Jan: 132, Feb: 376 },
             bugLeakTiles: [
@@ -2121,6 +2287,7 @@
             '.vision-text',
             '.section-title',
             '.chart-title',
+            '.eff-note',
             '.tracking-title',
             '.progress-manager',
             '.progress-description',
@@ -2526,6 +2693,350 @@ Be precise. Only change what the user asked to change.`;
             messages.innerHTML = '<div class="ai-message system">Chat cleared. AI Assistant ready to help you update this QE transformation report.</div>';
         }
 
+        let __pdfPrevInline = null;
+
+        function mmToPx(mm) {
+            return (mm * 96) / 25.4;
+        }
+
+        function computeZoomToFitA2(el) {
+            // A2 portrait (matches @page)
+            const pageWmm = 420;
+            const pageHmm = 594;
+            const marginMm = 0;
+            // Chrome "Headers and footers" steals vertical space; keep buffer.
+            const reservedHpx = 50;
+
+            const availW = mmToPx(pageWmm - marginMm * 2);
+            const availH = Math.max(1, mmToPx(pageHmm - marginMm * 2) - reservedHpx);
+
+            const rect = el.getBoundingClientRect();
+            const w = Math.max(1, Math.ceil(rect.width));
+            const h = Math.max(1, Math.ceil(el.scrollHeight));
+
+            let z = Math.min(availW / w, availH / h);
+            if (!isFinite(z) || z <= 0) z = 1;
+            z = Math.min(1.5, z);
+            z = Math.max(0.1, z * 0.9995);
+            return z;
+        }
+
+        function chooseBestPrintFit(el) {
+            // Search for a content width that maximizes the final zoom (i.e., fills the page)
+            const pageWmm = 420;
+            const pageHmm = 594;
+            const marginMm = 0;
+            const reservedHpx = 50;
+
+            const availW = mmToPx(pageWmm - marginMm * 2);
+            const availH = Math.max(1, mmToPx(pageHmm - marginMm * 2) - reservedHpx);
+
+            let best = null;
+            const widths = [];
+            for (let w = 850; w <= 2800; w += 10) widths.push(w);
+
+            for (const w of widths) {
+                el.style.width = `${w}px`;
+                // Force layout
+                const rect = el.getBoundingClientRect();
+                const wActual = Math.max(1, Math.ceil(rect.width));
+                const h = Math.max(1, Math.ceil(el.scrollHeight));
+                const zW = availW / wActual;
+                const zH = availH / h;
+                let z = Math.min(zW, zH);
+                if (!isFinite(z) || z <= 0) continue;
+                z = Math.min(1.5, z);
+
+                // Prefer solutions that maximize used page area (minimize whitespace)
+                const usedW = (wActual * z) / availW; // <= 1
+                const usedH = (h * z) / availH;       // <= 1
+                const areaUsed = Math.max(0, Math.min(1, usedW)) * Math.max(0, Math.min(1, usedH));
+                const balancePenalty = Math.abs(usedW - usedH);
+                const score = (areaUsed * 100) - (balancePenalty * 18);
+
+                if (!best || score > best.score) {
+                    best = { width: w, score };
+                }
+            }
+
+            // Fallback if something goes wrong
+            if (!best) {
+                el.style.width = '1600px';
+                return { width: 1600, zoom: computeZoomToFitA2(el) };
+            }
+
+            // Recompute zoom precisely for the chosen width (ensures max fill without stale h/wActual)
+            el.style.width = `${best.width}px`;
+            el.getBoundingClientRect();
+            return { width: best.width, zoom: computeZoomToFitA2(el) };
+        }
+
+        function applyPdfMode(purpose = 'capture') {
+            const el = document.getElementById('pdfContent');
+            if (!el) return;
+
+            if (!__pdfPrevInline) {
+                __pdfPrevInline = {
+                    width: el.style.width,
+                    margin: el.style.margin,
+                    zoom: el.style.zoom,
+                    transform: el.style.transform,
+                    transformOrigin: el.style.transformOrigin
+                };
+            }
+
+            el.style.margin = '0';
+            el.style.transform = '';
+            el.style.transformOrigin = '';
+            el.style.zoom = '1';
+
+            if (purpose === 'print') {
+                const fit = chooseBestPrintFit(el);
+                el.getBoundingClientRect(); // reflow
+                const z = fit.zoom;
+                el.style.zoom = String(z);
+                // Fallback if a browser ignores zoom
+                if (!('zoom' in el.style) || el.style.zoom === '') {
+                    el.style.transform = `scale(${z})`;
+                    el.style.transformOrigin = 'top left';
+                }
+                document.documentElement.style.setProperty('--pdf-zoom', String(z));
+            } else {
+                // Screen/preview mode (no scaling)
+                el.style.width = '1200px';
+                document.documentElement.style.setProperty('--pdf-zoom', '1');
+            }
+            document.body.classList.add('pdf-mode');
+        }
+
+        function clearPdfMode() {
+            document.body.classList.remove('pdf-mode');
+            document.documentElement.style.removeProperty('--pdf-zoom');
+
+            const el = document.getElementById('pdfContent');
+            if (el && __pdfPrevInline) {
+                el.style.width = __pdfPrevInline.width;
+                el.style.margin = __pdfPrevInline.margin;
+                el.style.zoom = __pdfPrevInline.zoom;
+                el.style.transform = __pdfPrevInline.transform;
+                el.style.transformOrigin = __pdfPrevInline.transformOrigin;
+            }
+            __pdfPrevInline = null;
+        }
+
+        function generatePDF() {
+            // Ensure charts are rendered and interactive UI is not captured
+            try { renderEfficiencyTrend(); } catch {}
+
+            try {
+                const modal = document.getElementById('editModal');
+                if (modal?.classList.contains('open')) closeEditModal();
+            } catch {}
+
+            try { if (typeof editMode !== 'undefined' && editMode) toggleEditMode(false); } catch {}
+            try { if (typeof aiOpen !== 'undefined' && aiOpen) toggleAI(); } catch {}
+
+            // Reliable path: print dialog (Save as PDF) with auto-fit to 1 page
+            applyPdfMode('print');
+            const onAfter = () => clearPdfMode();
+            window.addEventListener('afterprint', onAfter, { once: true });
+            // Give layout time to expand/zoom before print preview snapshots it.
+            requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(() => window.print(), 120)));
+        }
+
+        // Auto-fit whenever the browser prints (including print-to-pdf)
+        window.addEventListener('beforeprint', () => applyPdfMode('print'));
+        window.addEventListener('afterprint', () => clearPdfMode());
+
+        function generateEmail() {
+            try { if (typeof editMode !== 'undefined' && editMode) toggleEditMode(false); } catch {}
+            try { if (typeof aiOpen !== 'undefined' && aiOpen) toggleAI(); } catch {}
+
+            const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            const txt = sel => (document.querySelector(sel)?.textContent?.trim() || '');
+
+            const insightsEls = document.querySelectorAll('.insights-section .insights-grid > .insight');
+            let insightRows = '';
+            for (let i = 0; i < insightsEls.length; i += 2) {
+                const a = insightsEls[i]; const b = insightsEls[i+1];
+                const cell = (el) => {
+                    if (!el) return '<td width="50%" style="padding:0;"></td>';
+                    const m = el.querySelector('.insight-metric')?.textContent?.trim() || '';
+                    const l = el.querySelector('.insight-label')?.textContent?.trim() || '';
+                    const d = el.querySelector('.insight-detail')?.textContent?.trim() || '';
+                    return `<td width="50%" valign="top" bgcolor="#f8fafc" style="background-color:#f8fafc;padding:12px 16px;border-left:4px solid #FAA74A;">
+                        <p style="margin:0 0 4px 0;font-size:14px;font-weight:bold;color:#1E3860;font-family:Arial,sans-serif;">${esc(m)}</p>
+                        <p style="margin:0 0 4px 0;font-size:12px;font-weight:600;color:#FAA74A;font-family:Arial,sans-serif;">${esc(l)}</p>
+                        <p style="margin:0;font-size:13px;color:#475569;font-family:Arial,sans-serif;line-height:1.5;">${esc(d)}</p>
+                    </td>`;
+                };
+                insightRows += `<tr>${cell(a)}<td width="12" style="padding:0;"></td>${cell(b)}</tr><tr><td colspan="3" style="padding:6px 0;"></td></tr>`;
+            }
+
+            const teamCards = document.querySelectorAll('.teams-grid .team-card');
+            let teamRows = '';
+            teamCards.forEach(card => {
+                const name = card.querySelector('.progress-indicator')?.textContent?.trim() || '';
+                const scope = card.querySelector('.team-manager')?.textContent?.trim() || '';
+                const metrics = card.querySelector('.team-scope')?.innerText?.trim() || '';
+                const focusLabel = card.querySelector('.team-metric')?.textContent?.trim() || '';
+                const focus = card.querySelector('.team-description')?.innerText?.trim() || '';
+                teamRows += `<tr>
+                    <td style="padding:0 0 12px 0;">
+                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                                <td width="4" bgcolor="#FAA74A" style="background-color:#FAA74A;"></td>
+                                <td bgcolor="#f8fafc" style="background-color:#f8fafc;padding:14px 18px;">
+                                    <p style="margin:0 0 4px 0;font-size:15px;font-weight:bold;color:#1E3860;font-family:Arial,sans-serif;">${esc(name)}</p>
+                                    <p style="margin:0 0 8px 0;font-size:11px;color:#94a3b8;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:1px;">${esc(scope)}</p>
+                                    <p style="margin:0 0 8px 0;font-size:13px;color:#334155;font-family:Arial,sans-serif;line-height:1.6;white-space:pre-line;">${esc(metrics)}</p>
+                                    ${focusLabel ? `<p style="margin:0 0 4px 0;font-size:11px;color:#94a3b8;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:1px;">${esc(focusLabel)}</p>` : ''}
+                                    ${focus ? `<p style="margin:0;font-size:13px;color:#64748b;font-family:Arial,sans-serif;line-height:1.6;white-space:pre-line;">${esc(focus)}</p>` : ''}
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>`;
+            });
+
+            const bugRows = [...document.querySelectorAll('.bug-leak-table tbody tr')].map(tr => {
+                const cells = tr.querySelectorAll('td');
+                return `<tr><td style="padding:8px 14px;font-size:13px;color:#334155;font-family:Arial,sans-serif;border-bottom:1px solid #e2e8f0;">${esc(cells[0]?.textContent?.trim())}</td><td style="padding:8px 14px;font-size:13px;font-weight:bold;color:#10b981;font-family:Arial,sans-serif;border-bottom:1px solid #e2e8f0;">${esc(cells[1]?.textContent?.trim())}</td></tr>`;
+            }).join('');
+
+            const winsEls = document.querySelectorAll('#cycleTimeWinsCard .insight');
+            let winsRows = '';
+            winsEls.forEach(el => {
+                const m = el.querySelector('.insight-metric')?.textContent?.trim() || '';
+                const l = el.querySelector('.insight-label')?.textContent?.trim() || '';
+                const d = el.querySelector('.insight-detail')?.textContent?.trim() || '';
+                winsRows += `<tr><td width="4" bgcolor="#10b981" style="background-color:#10b981;"></td><td bgcolor="#ecfdf5" style="background-color:#ecfdf5;padding:10px 16px;">
+                    <p style="margin:0 0 2px 0;font-size:14px;font-weight:bold;color:#065f46;font-family:Arial,sans-serif;">${esc(m)} — ${esc(l)}</p>
+                    <p style="margin:0;font-size:13px;color:#047857;font-family:Arial,sans-serif;">${esc(d)}</p>
+                </td></tr><tr><td colspan="2" style="padding:4px 0;"></td></tr>`;
+            });
+
+            const coveragePct = txt('#automationCoveragePct') || '80%';
+            const effNote = txt('#efficiencyNote') || '';
+            const effData = PAGE_DATA.monthlyEfficiencyHours || {};
+            let effText = Object.entries(effData).map(([m,h]) => `${m}: ${h} hrs`).join(' | ');
+
+            const html = `<html xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!--[if mso]><style type="text/css">table{border-collapse:collapse;}td{padding:0;}</style><![endif]-->
+</head>
+<body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background-color:#f4f6f9;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f4f6f9" style="background-color:#f4f6f9;"><tr><td align="center" style="padding:20px 0;">
+<table width="700" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="background-color:#ffffff;">
+
+<!-- Header -->
+<tr><td bgcolor="#1E3860" style="background-color:#1E3860;padding:30px 40px;text-align:center;">
+<p style="margin:0 0 6px 0;font-size:12px;font-weight:600;color:#FAA74A;font-family:Arial,sans-serif;letter-spacing:2px;text-transform:uppercase;">Axos Bank</p>
+<h1 style="margin:0 0 8px 0;font-size:24px;font-weight:bold;color:#ffffff;font-family:Arial,sans-serif;">QA to AI Assisted Quality Engineering</h1>
+<p style="margin:0;font-size:12px;color:#94a3b8;font-family:Arial,sans-serif;">Consumer IT Quality Engineering Evolution &bull; July 2025 &rarr; February 2026</p>
+</td></tr>
+
+<!-- Vision -->
+<tr><td style="padding:24px 40px 0 40px;">
+<table width="100%" cellpadding="18" cellspacing="0" border="0" bgcolor="#eff6ff" style="background-color:#eff6ff;">
+<tr><td align="center">
+<p style="margin:0 0 6px 0;font-size:16px;font-weight:bold;color:#1E3860;font-family:Arial,sans-serif;">&#127919; Our Vision</p>
+<p style="margin:0;font-size:13px;color:#475569;font-family:Arial,sans-serif;line-height:1.6;">${esc(txt('.vision-text'))}</p>
+</td></tr></table>
+</td></tr>
+
+<!-- Key Wins header -->
+<tr><td style="padding:24px 40px 12px 40px;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="border-bottom:3px solid #FAA74A;padding-bottom:10px;">
+<h2 style="margin:0;font-size:20px;font-weight:bold;color:#1E3860;font-family:Arial,sans-serif;">Key Wins</h2>
+</td></tr></table>
+</td></tr>
+
+<!-- Key Wins content -->
+<tr><td style="padding:0 40px;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td width="30%" valign="top" bgcolor="#f8fafc" style="background-color:#f8fafc;padding:16px;text-align:center;border:1px solid #e2e8f0;">
+<p style="margin:0 0 8px 0;font-size:13px;font-weight:bold;color:#1E3860;font-family:Arial,sans-serif;">Automation Coverage</p>
+<p style="margin:0 0 4px 0;font-size:36px;font-weight:bold;color:#FAA74A;font-family:Arial,sans-serif;">${esc(coveragePct)}</p>
+<p style="margin:0;font-size:11px;color:#94a3b8;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:1px;">Coverage</p>
+</td>
+<td width="4%" style="padding:0;"></td>
+<td width="66%" valign="top" bgcolor="#f8fafc" style="background-color:#f8fafc;padding:16px;border:1px solid #e2e8f0;">
+<p style="margin:0 0 8px 0;font-size:13px;font-weight:bold;color:#1E3860;font-family:Arial,sans-serif;">Hours Saved Through AI-Assisted Testing</p>
+<p style="margin:0 0 6px 0;font-size:14px;color:#334155;font-family:Arial,sans-serif;">${esc(effText)}</p>
+${effNote ? `<p style="margin:0;font-size:12px;color:#64748b;font-family:Arial,sans-serif;font-style:italic;">${esc(effNote)}</p>` : ''}
+</td>
+</tr></table>
+</td></tr>
+
+<!-- Automation Wins -->
+<tr><td style="padding:16px 40px 0 40px;">
+<p style="margin:0 0 8px 0;font-size:14px;font-weight:bold;color:#1E3860;font-family:Arial,sans-serif;">Automation Wins</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0">${winsRows}</table>
+</td></tr>
+
+<!-- Bug Leak Reduction -->
+<tr><td style="padding:16px 40px 0 40px;">
+<p style="margin:0 0 8px 0;font-size:14px;font-weight:bold;color:#1E3860;font-family:Arial,sans-serif;">PROD Bug Leak Reduction (YOY)</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e2e8f0;">
+<tr bgcolor="#1E3860"><td style="padding:8px 14px;font-size:12px;font-weight:bold;color:#ffffff;font-family:Arial,sans-serif;">Application</td><td style="padding:8px 14px;font-size:12px;font-weight:bold;color:#ffffff;font-family:Arial,sans-serif;">PROD Bugs 2025 vs 2024</td></tr>
+${bugRows}
+</table>
+</td></tr>
+
+<!-- Strategic Breakthrough header -->
+<tr><td style="padding:24px 40px 12px 40px;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="border-bottom:3px solid #FAA74A;padding-bottom:10px;">
+<h2 style="margin:0;font-size:20px;font-weight:bold;color:#1E3860;font-family:Arial,sans-serif;">Strategic Breakthrough Achievements</h2>
+</td></tr></table>
+</td></tr>
+<tr><td style="padding:0 40px;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">${insightRows}</table>
+</td></tr>
+
+<!-- Quality Health header -->
+<tr><td style="padding:24px 40px 12px 40px;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="border-bottom:3px solid #FAA74A;padding-bottom:10px;">
+<h2 style="margin:0;font-size:20px;font-weight:bold;color:#1E3860;font-family:Arial,sans-serif;">Quality Health by Area</h2>
+</td></tr></table>
+</td></tr>
+<tr><td style="padding:0 40px;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">${teamRows}</table>
+</td></tr>
+
+<!-- Signature -->
+<tr><td style="padding:24px 40px 0 40px;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #e5e7eb;">
+<tr><td align="center" style="padding-top:20px;">
+<p style="margin:0 0 3px 0;font-size:13px;color:#64748b;font-family:Arial,sans-serif;">Consumer IT Quality Engineering</p>
+<p style="margin:0;font-size:13px;font-weight:600;font-family:Arial,sans-serif;"><span style="color:#1E3860;">A</span><span style="color:#FAA74A;">x</span><span style="color:#1E3860;">os Bank</span></p>
+</td></tr></table>
+</td></tr>
+
+<!-- Footer -->
+<tr><td bgcolor="#1E3860" style="background-color:#1E3860;padding:16px 40px;text-align:center;margin-top:20px;">
+<p style="margin:0;color:#94a3b8;font-size:11px;font-family:Arial,sans-serif;">CONFIDENTIAL &bull; Internal Use Only &bull; Consumer IT Quality Engineering &bull; February 2026</p>
+</td></tr>
+
+</table>
+</td></tr></table>
+</body></html>`;
+
+            const blob = new Blob([html], { type: 'text/html' });
+            const item = new ClipboardItem({ 'text/html': blob });
+            navigator.clipboard.write([item]).then(() => {
+                alert('Copied to clipboard!\\n\\nOpen Outlook → New Email → Paste (Ctrl+V / Cmd+V).\\nFormatting will be preserved.');
+                addAIMessage('Email content copied to clipboard (Outlook-compatible HTML).', 'system');
+            }).catch(() => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = 'QE_OnePager_Email.html'; a.click();
+                URL.revokeObjectURL(url);
+                alert('Clipboard copy failed — HTML file downloaded instead.\\nOpen it, Select All (Ctrl+A), Copy (Ctrl+C), then paste into Outlook.');
+                addAIMessage('Clipboard unavailable; downloaded HTML file for manual paste.', 'system');
+            });
+        }
+
         function exportHTML() {
             const htmlContent = document.documentElement.outerHTML;
             const blob = new Blob([htmlContent], { type: 'text/html' });
@@ -2569,7 +3080,16 @@ Be precise. Only change what the user asked to change.`;
             const aiHandle = document.getElementById('aiResizeHandle');
             // Render charts that are built from JS (e.g. line trend)
             renderEfficiencyTrend();
-            
+
+            // For automated PDF validation (and power users), allow:
+            // `?print=1` to pre-apply one-page print layout without opening the print dialog.
+            try {
+                const u = new URL(window.location.href);
+                if (u.searchParams.get('print') === '1') {
+                    applyPdfMode('print');
+                }
+            } catch {}
+
             aiInput.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault(); // Prevent sending on Enter
