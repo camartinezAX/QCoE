@@ -547,7 +547,7 @@
             font-weight: 800;
             letter-spacing: 0.8px;
             text-transform: uppercase;
-            color: #991b1b;
+            color: var(--axos-navy);
             margin-bottom: 12px;
         }
 
@@ -562,7 +562,7 @@
             border-spacing: 0;
             overflow: hidden;
             border-radius: 14px;
-            border: 1px solid rgba(220, 38, 38, 0.25);
+            border: 1px solid rgba(96, 165, 250, 0.45);
             background: #fff;
             box-shadow: 0 3px 14px rgba(0,0,0,0.06);
         }
@@ -575,12 +575,12 @@
 
         .bug-leak-table th {
             text-align: left;
-            background: #fef2f2;
-            color: #7f1d1d;
+            background: #eff6ff;
+            color: var(--axos-navy);
             font-weight: 900;
             text-transform: uppercase;
             letter-spacing: 0.6px;
-            border-bottom: 1px solid rgba(220, 38, 38, 0.18);
+            border-bottom: 1px solid rgba(96, 165, 250, 0.35);
         }
 
         .bug-leak-table tr:not(:last-child) td {
@@ -594,7 +594,7 @@
 
         .bug-leak-delta {
             font-weight: 900;
-            color: #dc2626;
+            color: #16a34a;
             font-family: 'JetBrains Mono', monospace;
             white-space: nowrap;
         }
@@ -1501,6 +1501,15 @@
 
         /* Footer */
         body.pdf-mode .footer               { padding: 8px 12px !important; font-size: 10px !important; }
+
+        /* Hide interactive UI for screenshots/capture (email images) */
+        body.capture-mode .ai-fab,
+        body.capture-mode .ai-drawer,
+        body.capture-mode .page-tools,
+        body.capture-mode .edit-hint,
+        body.capture-mode .edit-modal {
+            display: none !important;
+        }
 
         /* Print styles */
         @media print {
@@ -3087,6 +3096,9 @@ ${bugRows}
                 const u = new URL(window.location.href);
                 if (u.searchParams.get('print') === '1') {
                     applyPdfMode('print');
+                }
+                if (u.searchParams.get('capture') === '1') {
+                    document.body.classList.add('capture-mode');
                 }
             } catch {}
 
