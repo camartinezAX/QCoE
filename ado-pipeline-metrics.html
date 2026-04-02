@@ -439,6 +439,14 @@ kbd{background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px;font-size
         </div>
         <div class="field-hint">This updates the generated ADO console script (and can override lower values in your selected pipeline configs).</div>
       </div>
+      <div class="field" style="min-width:260px">
+        <div class="field-label">Month (optional)</div>
+        <div class="exec-row">
+          <input class="field-input" id="fetchMonth" type="month" oninput="handleFetchMonthInput()">
+          <button class="btn btn-ghost" style="padding:.45rem .7rem" onclick="clearFetchMonth()">Any</button>
+        </div>
+        <div class="field-hint">If set, the script only fetches runs whose finish time is within that month (e.g. 2025-12, 2026-03).</div>
+      </div>
     </div>
     <div class="steps">
       <div class="step"><div class="step-num">1</div><div>Open <a href="https://bofaz.visualstudio.com" target="_blank">Azure DevOps</a> in your browser (make sure you're logged in).</div></div>
@@ -681,6 +689,7 @@ let selectedConfigIds = new Set();
 
 const LS_KEY = 'pipeline-hub-configs';
 const EXEC_PREF_KEY = 'ado-pipeline-metrics-executions'; // number string or "all"
+const FETCH_MONTH_KEY = 'ado-pipeline-metrics-fetch-month'; // "YYYY-MM"
 
 // ─── Init ───
 (function init() {
@@ -691,6 +700,7 @@ const EXEC_PREF_KEY = 'ado-pipeline-metrics-executions'; // number string or "al
   configs.forEach(c => selectedConfigIds.add(c.id));
   renderConfigs();
   updateScript();
+  applyFetchMonthToInput();
 
   // Apply saved executions preference (Results filter) if present.
   const execEl = document.getElementById('filterExec');
@@ -722,6 +732,37 @@ function applyPreferredExecToInputs() {
   if (fetchEl) fetchEl.value = asText;
 }
 
+function getFetchMonth() {
+  const raw = (localStorage.getItem(FETCH_MONTH_KEY) || '').trim();
+  if (!raw) return null;
+  return /^\d{4}-\d{2}$/.test(raw) ? raw : null;
+}
+
+function setFetchMonth(month) {
+  if (month && /^\d{4}-\d{2}$/.test(month)) localStorage.setItem(FETCH_MONTH_KEY, month);
+  else localStorage.removeItem(FETCH_MONTH_KEY);
+}
+
+function applyFetchMonthToInput() {
+  const el = document.getElementById('fetchMonth');
+  if (!el) return;
+  el.value = getFetchMonth() || '';
+}
+
+function handleFetchMonthInput() {
+  const raw = (document.getElementById('fetchMonth')?.value || '').trim();
+  setFetchMonth(raw || null);
+  applyFetchMonthToInput();
+  updateScript();
+}
+
+function clearFetchMonth() {
+  setFetchMonth(null);
+  applyFetchMonthToInput();
+  updateScript();
+  showToast('Month filter cleared (fetching across all time).');
+}
+
 // ─── View Switching ───
 function switchView(view) {
   document.querySelectorAll('.view').forEach(v => { v.classList.remove('active'); v.style.display = 'none'; });
@@ -737,6 +778,7 @@ function switchView(view) {
     document.getElementById('fetchContent').classList.toggle('hidden', !hasSelected);
     if (hasSelected) updateScript();
     applyPreferredExecToInputs();
+    applyFetchMonthToInput();
   }
   if (view === 'results') {
     const hasData = pipelines.length > 0;
@@ -1130,6 +1172,7 @@ function generateScript() {
   const pref = getPreferredExecutions();
   const prefExec = pref === 'all' ? 0 : (pref || 10);
   const wantAll = pref === 'all';
+  const fetchMonth = getFetchMonth() || '';
   const configsJson = JSON.stringify(active.map(c => ({
     orgUrl: c.orgUrl,
     project: c.project,
@@ -1141,7 +1184,20 @@ function generateScript() {
 
   return `(async()=>{
   const CONFIGS=${configsJson};
+  const FETCH_MONTH=${JSON.stringify(fetchMonth)}; // "YYYY-MM" or ""
+  const monthRange=(ym)=>{
+    if(!ym) return null;
+    const m=/^(\\d{4})-(\\d{2})$/.exec(ym);
+    if(!m) return null;
+    const y=parseInt(m[1],10), mo=parseInt(m[2],10);
+    if(!Number.isFinite(y)||!Number.isFinite(mo)||mo<1||mo>12) return null;
+    const start=new Date(Date.UTC(y,mo-1,1,0,0,0));
+    const end=new Date(Date.UTC(y,mo,1,0,0,0));
+    return { ym, startIso:start.toISOString(), endIso:end.toISOString(), startMs:start.getTime(), endMs:end.getTime() };
+  };
+  const RANGE=monthRange(FETCH_MONTH);
   const L=m=>console.log('%c[ADO Pipeline Metrics] '+m,'color:#F59E0B;font-weight:bold');
+  if(RANGE) L('Month filter: '+RANGE.ym);
   const allDefs=[],allBuilds=[],tMap={};
   for(let ci=0;ci<CONFIGS.length;ci++){
     const C=CONFIGS[ci];
@@ -1202,21 +1258,32 @@ function generateScript() {
       while(true){
         guard++;
         if(guard>5000)break; // safety guard
-        const top=limit===0?200:Math.min(200,Math.max(1,limit-out.length));
+        const top=limit===0?200:(RANGE?200:Math.min(200,Math.max(1,limit-out.length)));
         let url=API+'/build/builds?definitions='+defId+'&$top='+top+'&queryOrder=finishTimeDescending&api-version=7.0';
+        if(RANGE){ url+='&minTime='+encodeURIComponent(RANGE.startIso)+'&maxTime='+encodeURIComponent(RANGE.endIso); }
         if(token) url+='&continuationToken='+encodeURIComponent(token);
         const r=await fetch(url);
         if(!r.ok)break;
         const d=await r.json();
-        const vals=(d.value||[]);
+        const valsAll=(d.value||[]);
+        let vals=valsAll;
+        if(RANGE&&valsAll.length){
+          vals=valsAll.filter(b=>{
+            const t=Date.parse(b.finishTime||b.startTime||b.queueTime||'');
+            return Number.isFinite(t) && t>=RANGE.startMs && t<RANGE.endMs;
+          });
+          const last=valsAll[valsAll.length-1];
+          const lastT=last?Date.parse(last.finishTime||last.startTime||last.queueTime||''):NaN;
+          if(Number.isFinite(lastT) && lastT<RANGE.startMs) { if(vals.length) out.push(...vals); break; }
+        }
         if(vals.length) out.push(...vals);
         token=r.headers.get('x-ms-continuationtoken')||'';
         if(limit!==0 && out.length>=limit) break;
-        if(!token || vals.length===0) break;
+        if(!token || valsAll.length===0) break;
       }
       return limit===0?out:out.slice(0,limit);
     };
-    L('  Fetching '+(wantAll?'ALL':('last '+perP))+' executions per pipeline...');
+    L('  Fetching '+(wantAll?'ALL':('last '+perP))+' executions per pipeline'+(RANGE?(' for '+RANGE.ym):'')+'...');
     const buildArrays=await mapLimit(ids,6,async(defId)=>{
       try{return await fetchBuildsForDefinition(defId,wantAll?0:Math.max(1,perP));}catch(e){return [];}
     });
@@ -1257,7 +1324,7 @@ function generateScript() {
     }
   }
   L('All done! '+allDefs.length+' pipelines, '+allBuilds.length+' builds.');
-  const out=JSON.stringify({definitions:allDefs,builds:allBuilds,testResults:tMap});
+  const out=JSON.stringify({meta:{fetchMonth:FETCH_MONTH||null,generatedAt:new Date().toISOString()},definitions:allDefs,builds:allBuilds,testResults:tMap});
   const ts=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
   const bl=new Blob([out],{type:'application/json'});
   const u=URL.createObjectURL(bl);
