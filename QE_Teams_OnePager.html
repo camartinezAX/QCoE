@@ -219,6 +219,8 @@
             border: 2px solid #e2e8f0;
             box-shadow: 0 4px 16px rgba(0,0,0,0.08);
             min-height: 300px;
+            display: flex;
+            flex-direction: column;
         }
 
         .chart-title {
@@ -318,6 +320,7 @@
             justify-items: center;
             gap: 10px;
             padding-top: 4px;
+            flex: 1 1 auto;
         }
 
         .eff-trend-sub {
@@ -346,6 +349,24 @@
             color: #334155;
             font-size: 13px;
             line-height: 1.35;
+        }
+
+        /* Keep the note boxes aligned across the top row */
+        .chart-container .eff-note {
+            margin-top: auto;
+        }
+
+        #automationCoverageViz {
+            flex: 1 1 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Prevent Marco badge from covering long scope line */
+        #teamCardMarco .team-manager,
+        #teamCardMarco .team-scope {
+            padding-right: 220px;
         }
 
         .eff-grid line {
@@ -1433,26 +1454,36 @@
         body.pdf-mode .journey-timeline, body.pdf-mode .insights-section {
             box-shadow: none !important; filter: none !important; backdrop-filter: none !important;
         }
-        body.pdf-mode .chart-container, body.pdf-mode .insight, body.pdf-mode .team-card,
-        body.pdf-mode .journey-timeline { background: #ffffff !important; }
+        body.pdf-mode .chart-container, body.pdf-mode .insight, body.pdf-mode .team-card { background: #ffffff !important; }
         body.pdf-mode .insights-section { background: #ffffff !important; border-color: #e2e8f0 !important; }
         body.pdf-mode .bug-leak-table { box-shadow: none !important; }
         body.pdf-mode .bug-leak-kicker, body.pdf-mode .bug-leak-note { display: none !important; }
 
-        /* ===== FONT SCALE ===== */
-        body.pdf-mode .main-title          { font-size: 28px !important; line-height: 1.1 !important; }
+        /* Timeline card should match the reference (light gradient + border) */
+        body.pdf-mode .journey-timeline {
+            background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%) !important;
+            border: 2px solid #e2e8f0 !important;
+        }
+
+        /* ===== FONT SCALE (PDF) ===== */
+        body.pdf-mode .main-title          { font-size: 30px !important; line-height: 1.1 !important; }
         body.pdf-mode .subtitle            { font-size: 11px !important; margin-bottom: 6px !important; }
         body.pdf-mode .section-title,
         body.pdf-mode .insights-title,
         body.pdf-mode .journey-title        { font-size: 15px !important; margin-bottom: 6px !important; }
         body.pdf-mode .chart-title          { font-size: 12px !important; margin-bottom: 4px !important; }
-        body.pdf-mode .journey-subtitle     { font-size: 10px !important; margin-bottom: 4px !important; }
-        body.pdf-mode .vision-text          { font-size: 11px !important; line-height: 1.3 !important; }
+        body.pdf-mode .journey-subtitle     { font-size: 10px !important; margin-bottom: 10px !important; }
+        body.pdf-mode .vision-text          { font-size: 11px !important; line-height: 1.35 !important; }
         body.pdf-mode .vision-title         { font-size: 12px !important; }
         body.pdf-mode .eff-note             { font-size: 10px !important; padding: 3px 6px !important; margin-top: 2px !important; max-width: none !important; }
         body.pdf-mode .insight-metric       { font-size: 13px !important; }
         body.pdf-mode .insight-label        { font-size: 10px !important; margin-bottom: 2px !important; }
         body.pdf-mode .insight-detail       { font-size: 10px !important; line-height: 1.3 !important; }
+
+        /* Timeline typography (PDF) — keep it compact like reference */
+        body.pdf-mode .journey-month        { font-size: 12px !important; stroke-width: 4px !important; }
+        body.pdf-mode .journey-label        { font-size: 12px !important; }
+        body.pdf-mode .journey-text         { font-size: 10px !important; filter: none !important; }
 
         /* ===== COMPACT SPACING ===== */
         body.pdf-mode .header               { padding: 14px 14px !important; }
@@ -1469,12 +1500,20 @@
         body.pdf-mode .chart-container      { padding: 8px !important; min-height: auto !important; display: flex !important; flex-direction: column !important; overflow: visible !important; }
 
         /* Donut — no clipping anywhere */
-        body.pdf-mode #automationCoverageSection { align-items: center !important; justify-content: center !important; text-align: center !important; overflow: visible !important; }
+        body.pdf-mode #automationCoverageSection { align-items: stretch !important; justify-content: flex-start !important; text-align: center !important; overflow: visible !important; }
         body.pdf-mode #automationCoverageSection #automationCoverageViz { display: flex !important; justify-content: center !important; align-items: center !important; flex: 1 1 auto !important; overflow: visible !important; }
         body.pdf-mode .donut-chart { overflow: visible !important; }
         body.pdf-mode .donut-center { overflow: visible !important; white-space: nowrap !important; }
         body.pdf-mode .donut-percentage { font-size: 34px !important; }
         body.pdf-mode .donut-label { font-size: 10px !important; }
+
+        /* Align note boxes across the Key Wins row */
+        body.pdf-mode .chart-container .eff-trend { flex: 1 1 auto !important; }
+        body.pdf-mode .chart-container .eff-note { margin-top: auto !important; }
+
+        /* Prevent Marco badge overlap in PDF mode */
+        body.pdf-mode #teamCardMarco .team-manager,
+        body.pdf-mode #teamCardMarco .team-scope { padding-right: 150px !important; }
 
         /* Automation Wins — vertical stack */
         body.pdf-mode #cycleTimeWinsCard .insights-grid {
@@ -1482,7 +1521,7 @@
             flex: 1 1 auto !important; display: grid !important; align-content: center !important;
         }
         body.pdf-mode #cycleTimeWinsCard .insight { padding: 6px 8px !important; }
-        body.pdf-mode #cycleTimeWinsCard .insight-metric { font-size: 13px !important; }
+        body.pdf-mode #cycleTimeWinsCard .insight-metric { font-size: 12px !important; }
         body.pdf-mode #cycleTimeWinsCard .insight-detail { font-size: 9px !important; }
 
         /* Bug Leak table — center vertically */
@@ -1511,7 +1550,7 @@
         body.pdf-mode .team-metric          { margin-top: 10px !important; }
 
         /* Timeline — full width, natural height, scales with everything */
-        body.pdf-mode .journey-timeline     { margin-top: 6px !important; padding: 8px 10px !important; }
+        body.pdf-mode .journey-timeline     { margin-top: 6px !important; padding: 10px 12px !important; }
 
         /* Footer */
         body.pdf-mode .footer               { padding: 8px 12px !important; font-size: 10px !important; }
@@ -2818,19 +2857,13 @@ Be precise. Only change what the user asked to change.`;
             el.style.zoom = '1';
 
             if (purpose === 'print') {
-                const fit = chooseBestPrintFit(el);
-                el.getBoundingClientRect(); // reflow
-                const z = fit.zoom;
-                el.style.zoom = String(z);
-                // Fallback if a browser ignores zoom
-                if (!('zoom' in el.style) || el.style.zoom === '') {
-                    el.style.transform = `scale(${z})`;
-                    el.style.transformOrigin = 'top left';
-                }
-                document.documentElement.style.setProperty('--pdf-zoom', String(z));
+                // Use a fixed, predictable layout width (avoids auto-fit "tiny text" issues).
+                // The print engine will scale to the selected paper size.
+                el.style.width = '1600px';
+                document.documentElement.style.setProperty('--pdf-zoom', '1');
             } else {
                 // Screen/preview mode (no scaling)
-                el.style.width = '1200px';
+                el.style.width = '1600px';
                 document.documentElement.style.setProperty('--pdf-zoom', '1');
             }
             document.body.classList.add('pdf-mode');
