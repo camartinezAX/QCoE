@@ -2359,10 +2359,16 @@
                 `PARALLELS: ${p.parallel || '1'}\n` +
                 `RETRIES: ${p.retries || '1'}\n` +
                 `PW_VIDEO: ${p.pwVideo || '1'}\n` +
+                `PW_HEADLESS: ${p.pwHeadless || 'inherit'}\n` +
                 `JOB_TIMEOUT: ${p.jobTimeout || 120}\n` +
                 `RUNNER_LABEL: ${p.runnerLabel || 'QSDW-TFSBA01'}`;
             if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
             else prompt += `\n\nKeep the schedule block commented out.`;
+            prompt += `\n\nUse the existing workflow file Web_Enrollment_UAT-OLB_Smoke-Playwright.yml as the exact format reference. Include:\n` +
+                `- name: and run-name fields matching the pipeline name\n` +
+                `- workflow_dispatch inputs for run_target, local_browser, test_env, grep, parallels, retries, runner_label, pw_video, and pw_headless (choice: inherit, 0, 1) with correct defaults\n` +
+                `- permissions block (contents: read, checks: write, actions: write)\n` +
+                `- jobs.smoke calling ./.github/workflows/_reusable-playwright.yml with secrets: inherit and with: passing the settings above with fallback defaults`;
             if (p.renamedFrom) prompt += `\n\nAlso delete the old workflow file: .github/workflows/${p.renamedFrom}`;
             return prompt;
         }
@@ -2387,13 +2393,15 @@
                 `BROWSERSTACK_USERNAME: ${p.bsUsername || ''}\n` +
                 `BROWSERSTACK_ACCESS_KEY: ${p.bsAccessKey || ''}\n` +
                 `PW_VIDEO: ${p.pwVideo || '1'}\n` +
+                `PW_HEADLESS: ${p.pwHeadless || 'inherit'}\n` +
                 `JOB_TIMEOUT: ${p.jobTimeout || 120}\n` +
                 `RUNNER_LABEL: ${p.runnerLabel || 'QSDW-TFSBA01'}`;
 
             if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
             else prompt += `\n\nKeep the schedule block commented out.`;
 
-            prompt += `\n\nUse the existing workflow file Web_AxosBank_UAT-OLB_Login_Smoke-Playwright.yml as the exact format reference.`;
+            prompt += `\n\nUse the existing workflow file Web_AxosBank_UAT-OLB_Login_Smoke-Playwright.yml as the exact format reference. Include:\n` +
+                `- permissions block (contents: read, checks: write, actions: write)`;
             if (p.renamedFrom) prompt += `\n\nAlso delete the old workflow file: .github/workflows/${p.renamedFrom}`;
             return prompt;
         }
@@ -2818,6 +2826,15 @@
                         </select>
                         <span class="field-help">Controls Playwright video capture (saved under <code>test-results/</code> / Playwright artifacts)</span>
                     </div>
+                    <div class="form-group">
+                        <label class="form-label">Headless</label>
+                        <select id="fPwHeadless" ${isView ? 'disabled' : ''}>
+                            <option value="inherit" ${String(p.pwHeadless || 'inherit') === 'inherit' ? 'selected' : ''}>inherit</option>
+                            <option value="0" ${String(p.pwHeadless || 'inherit') === '0' ? 'selected' : ''}>0 (headed)</option>
+                            <option value="1" ${String(p.pwHeadless || 'inherit') === '1' ? 'selected' : ''}>1 (headless)</option>
+                        </select>
+                        <span class="field-help">For local runs: <code>inherit</code> uses the project’s <code>.env</code> (<code>PW_HEADLESS</code>). <code>0</code> shows the browser UI, <code>1</code> hides it.</span>
+                    </div>
                 </div>
 
                 <div id="cryptoBsOnly">
@@ -2998,6 +3015,15 @@
                             <option value="1" ${String(p.pwVideo || '1') === '1' ? 'selected' : ''}>always on</option>
                         </select>
                         <span class="field-help">Controls Playwright video capture (saved under <code>test-results/</code> / Playwright artifacts)</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Headless</label>
+                        <select id="fPwHeadless" ${isView ? 'disabled' : ''}>
+                            <option value="inherit" ${String(p.pwHeadless || 'inherit') === 'inherit' ? 'selected' : ''}>inherit</option>
+                            <option value="0" ${String(p.pwHeadless || 'inherit') === '0' ? 'selected' : ''}>0 (headed)</option>
+                            <option value="1" ${String(p.pwHeadless || 'inherit') === '1' ? 'selected' : ''}>1 (headless)</option>
+                        </select>
+                        <span class="field-help">For local runs: <code>inherit</code> uses the project’s <code>.env</code> (<code>PW_HEADLESS</code>). <code>0</code> shows the browser UI, <code>1</code> hides it.</span>
                     </div>
                 </div>
 
@@ -4304,6 +4330,7 @@
                 base.bsOsName = v('fBsOsName');
                 base.bsOsVersion = v('fBsOsVersion');
                 base.pwVideo = v('fPwVideo') || '1';
+                base.pwHeadless = v('fPwHeadless') || 'inherit';
                 base.bsUsername = v('fBsUsername');
                 base.bsAccessKey = v('fBsAccessKey');
                 base.runnerLabel = v('fRunnerLabel') || 'QSDW-TFSBA01';
@@ -4328,6 +4355,7 @@
                 base.bsOsName = v('fBsOsName');
                 base.bsOsVersion = v('fBsOsVersion');
                 base.pwVideo = v('fPwVideo') || '0';
+                base.pwHeadless = v('fPwHeadless') || 'inherit';
                 base.bsUsername = v('fBsUsername');
                 base.bsAccessKey = v('fBsAccessKey');
                 base.runnerLabel = v('fRunnerLabel') || 'QSDW-TFSBA01';
@@ -4522,6 +4550,7 @@ GREP: ${el('fGrep') || ''}
 PARALLELS: ${el('fParallel') || '1'}
 RETRIES: ${el('fRetries') || '1'}
 PW_VIDEO: ${el('fPwVideo') || '1'}
+PW_HEADLESS: ${el('fPwHeadless') || 'inherit'}
 JOB_TIMEOUT: ${el('fJobTimeout') || '120'}
 RUNNER_LABEL: ${el('fRunnerLabel') || 'QSDW-TFSBA01'}`;
 
@@ -4530,6 +4559,11 @@ RUNNER_LABEL: ${el('fRunnerLabel') || 'QSDW-TFSBA01'}`;
             } else {
                 prompt += `\n\nKeep the schedule block commented out.`;
             }
+            prompt += `\n\nUse the existing workflow file Web_Enrollment_UAT-OLB_Smoke-Playwright.yml as the exact format reference. Include:\n` +
+                `- name: and run-name fields matching the pipeline name\n` +
+                `- workflow_dispatch inputs for run_target, local_browser, test_env, grep, parallels, retries, runner_label, pw_video, and pw_headless (choice: inherit, 0, 1) with correct defaults\n` +
+                `- permissions block (contents: read, checks: write, actions: write)\n` +
+                `- jobs.smoke calling ./.github/workflows/_reusable-playwright.yml with secrets: inherit and with: passing the settings above with fallback defaults`;
 
         } else if (el('fRepo') === 'Axos.QE.Crypto.Web') {
             prompt = `Create or update a Playwright pipeline workflow file in the repo Axos.QE.Crypto.Web at:
@@ -4555,6 +4589,7 @@ BS_OS_VERSION: ${el('fBsOsVersion') || ''}
 BROWSERSTACK_USERNAME: ${el('fBsUsername') || ''}
 BROWSERSTACK_ACCESS_KEY: ${el('fBsAccessKey') || ''}
 PW_VIDEO: ${el('fPwVideo') || '1'}
+PW_HEADLESS: ${el('fPwHeadless') || 'inherit'}
 JOB_TIMEOUT: ${el('fJobTimeout') || '120'}
 RUNNER_LABEL: ${el('fRunnerLabel') || 'QSDW-TFSBA01'}`;
 
@@ -4564,7 +4599,8 @@ RUNNER_LABEL: ${el('fRunnerLabel') || 'QSDW-TFSBA01'}`;
                 prompt += `\n\nKeep the schedule block commented out.`;
             }
 
-            prompt += `\n\nUse the existing workflow file Web_AxosBank_UAT-OLB_Login_Smoke-Playwright.yml as the exact format reference.`;
+            prompt += `\n\nUse the existing workflow file Web_AxosBank_UAT-OLB_Login_Smoke-Playwright.yml as the exact format reference. Include:\n` +
+                `- permissions block (contents: read, checks: write, actions: write)`;
 
         } else {
             prompt = `Create a new Testim pipeline workflow file in the repo Axos.QE.TestIM at:
@@ -4759,6 +4795,7 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
                 runTarget: 'local',
                 localBrowser: 'chromium',
                 pwVideo: '1',
+                pwHeadless: 'inherit',
                 jobTimeout: 120,
                 runnerLabel: 'QSDW-TFSBA01',
             };
@@ -4786,6 +4823,7 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
                 runTarget: 'local',
                 localBrowser: 'chromium',
                 pwVideo: '1',
+                pwHeadless: 'inherit',
                 bsUsername: 'carlosmartinez_l4KG2B',
                 bsAccessKey: 'YRSBPaX6VJBfDycsdrWQ',
                 jobTimeout: 120,
@@ -5032,6 +5070,7 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
             BS_OS_NAME: 'bsOsName',
             BS_OS_VERSION: 'bsOsVersion',
             PW_VIDEO: 'pwVideo',
+            PW_HEADLESS: 'pwHeadless',
             JOB_TIMEOUT: 'jobTimeout',
             RUNNER_LABEL: 'runnerLabel',
             BROWSERSTACK_USERNAME: 'bsUsername',
