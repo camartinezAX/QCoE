@@ -110,6 +110,236 @@
         }
         .btn-secondary:hover { background: var(--bg-secondary); border-color: var(--text-muted); }
 
+        /* Fetch Filters (server-side) */
+        .fetch-filter-bar { align-items: flex-start; position: relative; z-index: 60; }
+        .fetch-filter-info { display: flex; flex-direction: column; gap: 6px; min-width: 220px; flex: 1; }
+        .fetch-filter-title { font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: .9px; }
+        .fetch-filter-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.3; }
+        .fetch-filter-controls { flex: 2; min-width: 520px; display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+        .fetch-filter-card {
+            padding: 14px 14px 12px;
+            border-radius: 14px;
+            background: rgba(255,255,255,.03);
+            border: 1px solid rgba(255,255,255,.06);
+        }
+        .fetch-filter-grid { display: grid; grid-template-columns: repeat(5, minmax(160px, 1fr)); gap: 10px; align-items: end; }
+        @media (max-width: 1100px) { .fetch-filter-grid { grid-template-columns: repeat(3, minmax(180px, 1fr)); } }
+        @media (max-width: 760px) { .fetch-filter-grid { grid-template-columns: repeat(2, minmax(160px, 1fr)); } }
+        .fetch-filter-grid .ff-field { display: flex; flex-direction: column; gap: 4px; }
+        .fetch-filter-grid .ff-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .8px; font-weight: 800; }
+        .fetch-filter-grid .ff-input {
+            width: 100%;
+            min-width: 0;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,.10);
+            background: rgba(0,0,0,.25);
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+        }
+        .fetch-filter-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; margin-top: 12px; }
+        .fetch-filter-actions .btn { height: 38px; }
+
+        .adv-fetch-wrap {
+            width: 100%;
+            padding: 14px 14px 12px;
+            border-radius: 14px;
+            background: rgba(255,255,255,.03);
+            border: 1px solid rgba(255,255,255,.06);
+        }
+        .adv-fetch-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+        .adv-fetch-header .left { display: flex; flex-direction: column; gap: 2px; }
+        .adv-fetch-header .title { font-size: 11px; font-weight: 900; letter-spacing: .9px; text-transform: uppercase; color: var(--text-muted); }
+        .adv-fetch-header .hint { font-size: 12px; color: var(--text-secondary); line-height: 1.2; }
+        .adv-fetch-tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .adv-fetch-tools { justify-content: flex-end; }
+        .adv-consider-date { position: relative; display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; user-select: none; cursor: pointer; }
+        .adv-consider-date .lbl {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 700;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+        }
+        .adv-toggle {
+            position: relative;
+            display: inline-block;
+            width: 42px;
+            height: 22px;
+            flex: 0 0 auto;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,.14);
+            background: rgba(0,0,0,.22);
+            transition: background .18s ease, border-color .18s ease;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,.15);
+            overflow: hidden;
+        }
+        .adv-toggle::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 18px;
+            height: 18px;
+            border-radius: 999px;
+            background: rgba(255,255,255,.88);
+            box-shadow: 0 4px 12px rgba(0,0,0,.35);
+            transition: transform .18s ease, background .18s ease;
+        }
+        .adv-consider-date input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .adv-consider-date input:checked + .adv-toggle {
+            background: rgba(250,167,74,.26);
+            border-color: rgba(250,167,74,.45);
+        }
+        .adv-consider-date input:checked + .adv-toggle::after {
+            transform: translateX(20px);
+            background: var(--axos-orange);
+        }
+        .adv-consider-date input:focus-visible + .adv-toggle {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(250,167,74,0.18);
+        }
+        #dashAdvConsiderWrap { flex: 0 0 auto; gap: 14px; }
+        .detail-item label.adv-consider-date {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 0;
+            text-transform: none;
+            letter-spacing: 0;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .adv-fetch-preview {
+            margin-top: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+            background: rgba(0,0,0,.25);
+            border: 1px solid rgba(255,255,255,.08);
+            border-radius: 10px;
+            padding: 10px 12px;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .adv-rules { display: flex; flex-direction: column; gap: 8px; }
+        .adv-rule {
+            display: grid;
+            grid-template-columns: 92px 1.3fr 170px 1.4fr 42px;
+            gap: 8px;
+            align-items: center;
+        }
+        @media (max-width: 980px) {
+            .fetch-filter-controls { min-width: 280px; }
+            .adv-rule { grid-template-columns: 92px 1fr 160px 1fr 42px; }
+        }
+        @media (max-width: 720px) {
+            .adv-rule { grid-template-columns: 1fr; }
+        }
+        .adv-rule .cell { min-width: 0; }
+        .adv-rule .rule-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+        .adv-rule input, .adv-rule select {
+            width: 100%;
+            min-width: 0;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,.10);
+            background: rgba(0,0,0,.25);
+            color: var(--text-primary);
+            font-size: 12px;
+        }
+
+        .combo { position: relative; }
+        .combo-menu {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            z-index: 20000;
+            display: none;
+            max-height: 260px;
+            overflow: auto;
+            background: linear-gradient(135deg, rgba(22,29,46,0.98), rgba(31,41,55,0.96));
+            border: 1px solid rgba(255,255,255,.10);
+            border-radius: 12px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 18px 46px rgba(0,0,0,.45);
+            padding: 6px;
+        }
+        .combo-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 9px 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 12px;
+            border: 1px solid transparent;
+        }
+        .combo-item:hover, .combo-item.active {
+            background: rgba(250,167,74,0.12);
+            color: var(--text-primary);
+            border-color: rgba(250,167,74,0.25);
+        }
+        .combo-item .combo-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: rgba(255,255,255,.55);
+            white-space: nowrap;
+        }
+        .combo-empty {
+            padding: 10px 10px;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+        .joiner-toggle { display: flex; gap: 6px; justify-content: flex-start; }
+        .joiner-btn {
+            padding: 8px 10px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,.12);
+            background: rgba(0,0,0,.22);
+            color: var(--text-secondary);
+            font-weight: 800;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all .15s ease;
+        }
+        .joiner-btn.active {
+            border-color: rgba(250,167,74,.5);
+            color: var(--axos-orange);
+            box-shadow: 0 0 0 3px rgba(250,167,74,0.12);
+        }
+        .adv-remove {
+            width: 38px;
+            height: 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,.10);
+            background: rgba(239,68,68,0.10);
+            color: rgba(239,68,68,0.95);
+            cursor: pointer;
+            transition: all .15s ease;
+        }
+        .adv-remove:hover { background: rgba(239,68,68,0.18); }
+
         /* Animations */
         @keyframes fadeSlideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
         @keyframes spin { to { transform:rotate(360deg); } }
@@ -117,7 +347,7 @@
         .fetch-spinner { width:14px; height:14px; border:2px solid rgba(250,167,74,0.3); border-top-color:var(--axos-orange); border-radius:50%; animation:spin 0.6s linear infinite; display:inline-block; }
 
         /* Metrics Grid */
-        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; position: relative; z-index: 1; }
         .metric-card {
             position: relative; overflow: hidden; border-radius: 16px; padding: 22px 20px;
             background: linear-gradient(135deg, rgba(22,29,46,0.95), rgba(31,41,55,0.9));
@@ -126,6 +356,7 @@
             animation: fadeSlideUp 0.5s ease-out both;
             transition: transform 0.25s ease, box-shadow 0.25s ease;
         }
+        .metric-card { z-index: 1; }
         .metric-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,0.3); }
         .metric-card::before {
             content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
@@ -421,7 +652,7 @@
         .modal-close:hover { background: var(--error-bg); color: var(--error); }
         .modal-body { padding: 24px; overflow-y: auto; flex: 1; }
         .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .detail-item { }
+        .detail-item { display: flex; flex-direction: column; gap: 4px; }
         .detail-item label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; display: block; margin-bottom: 4px; }
         .detail-item .val { font-size: 14px; color: var(--text-primary); word-break: break-word; }
         .detail-item.full { grid-column: 1 / -1; }
@@ -737,35 +968,60 @@
         </div>
 
         <!-- Fetch Filters (server-side) -->
-        <div class="auth-bar" id="fetchFilterBar" style="margin-top:10px;gap:10px;flex-wrap:wrap;align-items:flex-start;">
-            <div style="display:flex;flex-direction:column;gap:6px;min-width:180px;flex:1;">
-                <div style="font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.9px;">Fetch Filters (server-side)</div>
-                <div style="font-size:12px;color:var(--text-secondary);line-height:1.3;">
-                    These limit what we <b>retrieve</b> from ServiceNow. (The filters below the charts limit what we <b>view</b> after retrieval.)
+        <div class="auth-bar fetch-filter-bar" id="fetchFilterBar" style="margin-top:10px;">
+            <div class="fetch-filter-controls" style="flex:1;min-width:0;">
+                <div class="fetch-filter-title">Fetch Filters (server-side)</div>
+                <div class="fetch-filter-desc">
+                    These limit what we retrieve from ServiceNow. (The filters below the charts limit what we view after retrieval.)
                 </div>
-            </div>
-            <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;justify-content:flex-end;flex:2;min-width:420px;">
-                <div style="display:flex;flex-direction:column;gap:4px;">
-                    <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;">Short Description</label>
-                    <input id="ffShortDesc" type="text" placeholder="contains..." style="width:200px;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:var(--text-primary);font-size:12px;">
+                <div class="fetch-filter-card" style="margin-top:10px;">
+                <div class="fetch-filter-grid">
+                    <div class="ff-field">
+                        <label class="ff-label" for="ffShortDesc">Short Description</label>
+                        <input id="ffShortDesc" class="ff-input" type="text" placeholder="contains..." oninput="syncFetchFilterUi()">
+                    </div>
+                    <div class="ff-field">
+                        <label class="ff-label" for="ffReportedBy">Reported By</label>
+                        <input id="ffReportedBy" class="ff-input" type="text" placeholder="name contains..." oninput="syncFetchFilterUi()">
+                    </div>
+                    <div class="ff-field">
+                        <label class="ff-label" for="ffRequestedFor">Requested For</label>
+                        <input id="ffRequestedFor" class="ff-input" type="text" placeholder="name contains..." oninput="syncFetchFilterUi()">
+                    </div>
+                    <div class="ff-field">
+                        <label class="ff-label" for="ffRequestType">Request Type</label>
+                        <input id="ffRequestType" class="ff-input" type="text" placeholder="contains..." oninput="syncFetchFilterUi()">
+                    </div>
+                    <div class="ff-field">
+                        <label class="ff-label" for="ffState">State</label>
+                        <input id="ffState" class="ff-input" type="text" placeholder="e.g. Closed, Work in Progress" oninput="syncFetchFilterUi()">
+                    </div>
                 </div>
-                <div style="display:flex;flex-direction:column;gap:4px;">
-                    <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;">Reported By</label>
-                    <input id="ffReportedBy" type="text" placeholder="name contains..." style="width:180px;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:var(--text-primary);font-size:12px;">
+                <div class="fetch-filter-actions">
+                    <button class="btn btn-secondary" type="button" id="advFetchToggleBtn" onclick="toggleAdvancedFetchFilters()" title="Add AND/OR conditions across any ServiceNow fields">Advanced filters</button>
+                    <button class="btn btn-secondary" type="button" onclick="clearFetchFilters()">Clear fetch filters</button>
                 </div>
-                <div style="display:flex;flex-direction:column;gap:4px;">
-                    <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;">Requested For</label>
-                    <input id="ffRequestedFor" type="text" placeholder="name contains..." style="width:180px;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:var(--text-primary);font-size:12px;">
                 </div>
-                <div style="display:flex;flex-direction:column;gap:4px;">
-                    <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;">Request Type</label>
-                    <input id="ffRequestType" type="text" placeholder="contains..." style="width:180px;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:var(--text-primary);font-size:12px;">
+
+                <div class="adv-fetch-wrap" id="advFetchWrap" style="display:none;">
+                    <div class="adv-fetch-header">
+                        <div class="left">
+                            <div class="title">Advanced fetch filters</div>
+                            <div class="hint">Build ServiceNow-style AND/OR conditions. Field names are searchable. Applied server-side during fetch.</div>
+                        </div>
+                        <div class="adv-fetch-tools">
+                            <label class="adv-consider-date" title="When off, Advanced mode ignores the top date range and fetches across all time.">
+                                <input type="checkbox" id="advConsiderDateChk" onchange="syncAdvancedDateRangeUi()">
+                                <span class="adv-toggle" aria-hidden="true"></span>
+                                <span class="lbl">Consider date range</span>
+                            </label>
+                            <button class="btn btn-secondary" type="button" onclick="addAdvFetchRule()">+ Add condition</button>
+                            <button class="btn btn-secondary" type="button" onclick="clearAdvFetchRules()">Clear advanced</button>
+                        </div>
+                    </div>
+                    <div class="adv-rules" id="advRules"></div>
+                    <div class="adv-fetch-preview" id="advFetchPreview" style="display:none;">Advanced query: (none)</div>
                 </div>
-                <div style="display:flex;flex-direction:column;gap:4px;">
-                    <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;">State</label>
-                    <input id="ffState" type="text" placeholder="e.g. Closed, Work in Progress" style="width:170px;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:var(--text-primary);font-size:12px;">
-                </div>
-                <button class="btn btn-secondary" onclick="clearFetchFilters()" style="height:36px;">Clear fetch filters</button>
             </div>
         </div>
 
@@ -976,8 +1232,8 @@
                     <label>Name</label>
                     <div class="val"><input id="dashName" type="text" placeholder="e.g. SRR · Env Issue" style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border-color);background:var(--bg-tertiary);color:var(--text-primary);"></div>
                 </div>
-                <div class="detail-item">
-                    <label>Date Range</label>
+                <div class="detail-item" id="dashDateRangeItem">
+                    <label id="dashDateRangeLbl">Date Range</label>
                     <div class="val" style="display:flex;gap:8px;align-items:center;">
                         <input id="dashFrom" type="date" style="flex:1;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border-color);background:var(--bg-tertiary);color:var(--text-primary);">
                         <span style="color:var(--text-muted);">→</span>
@@ -1003,6 +1259,20 @@
                 <div class="detail-item">
                     <label>State contains</label>
                     <div class="val"><input id="dashFfSt" type="text" placeholder="e.g. Closed, Work in Progress" style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border-color);background:var(--bg-tertiary);color:var(--text-primary);"></div>
+                </div>
+                <div class="detail-item" style="grid-column:1 / -1;">
+                    <label>Advanced fetch filters</label>
+                    <div class="val" style="padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.18);">
+                        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                            <div id="dashAdvCount" style="color:var(--text-secondary);font-size:13px;">No advanced conditions</div>
+                            <label class="adv-consider-date" id="dashAdvConsiderWrap" style="display:none;">
+                                <input type="checkbox" id="dashAdvConsiderDateChk" onchange="onDashAdvConsiderDateChanged()">
+                                <span class="adv-toggle" aria-hidden="true"></span>
+                                <span class="lbl">Consider date range</span>
+                            </label>
+                        </div>
+                        <div id="dashAdvRulesSummary" style="margin-top:8px;color:var(--text-muted);font-size:12px;line-height:1.35;white-space:pre-wrap;"></div>
+                    </div>
                 </div>
             </div>
             <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
@@ -1299,6 +1569,8 @@ async function startAndPoll(dateFrom, dateTo, rangeLabel) {
     if (rf) qp.set('rf', rf);
     if (rt) qp.set('rt', rt);
     if (st) qp.set('st', st);
+    const adv = getAdvancedFetchPayload();
+    if (adv) qp.set('adv', JSON.stringify(adv));
     const qs = qp.toString();
     if (qs) url += `?${qs}`;
     const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
@@ -1312,7 +1584,893 @@ function clearFetchFilters() {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
+    clearAdvFetchRules({ silent: true });
     showToast('Fetch filters cleared');
+    syncFetchFilterUi();
+}
+
+// ─── ADVANCED FETCH FILTERS (server-side) ───
+const ADV_FIELD_LINES = `
+123TEXTQUERY321|Keywords
+u_cwr_3rd_party_info|3rd Party Info (if applicable)
+u_jira_record_number|ADO ID
+u_cwr_acceptance_criteria|Acceptance Criteria
+u_action|Action
+active|Active
+activity_due|Activity due
+work_end|Actual end
+work_start|Actual start
+additional_assignee_list|Additional assignee list
+u_age|Age
+u_appscan_attached|AppScan Attached?
+u_string_10|Application Owner
+approval|Approval
+approval_set|Approval set
+u_artifact_attached|Artifact attached
+u_asset_to_decommission|Asset to Decommission
+assigned_to|Assigned to
+assignment_group|Assignment group
+backout_plan|Backout plan
+u_brand|Brand
+u_build_number|Build number
+u_business_justification|Business Justification
+business_duration|Business duration
+business_service|Business service
+u_cab_atendees|CAB Attendees(u_cab_atendees)
+u_cab_attendees|CAB Attendees(u_cab_attendees)
+cab_date|CAB date
+cab_date_time|CAB date/time
+cab_delegate|CAB delegate
+cab_recommendation|CAB recommendation
+u_cwr_cwr_case_number|CWR Case Number
+u_cwr_product|CWR Product
+category|Category
+u_change_impact|Change Impact
+change_plan|Change plan
+close_code|Close code
+close_notes|Close notes
+closed_at|Closed
+closed_by|Closed by
+company|Company
+cmdb_ci|Configuration item
+conflict_last_run|Conflict last run
+conflict_status|Conflict status
+contact_type|Contact type
+contract|Contract
+copied_from|Copied from
+correlation_id|Correlation ID
+correlation_display|Correlation display
+sys_created_on|Created
+sys_created_by|Created by
+delivery_plan|Delivery plan
+delivery_task|Delivery task
+u_dependencies|Dependencies
+u_cwr_dependencies_constraints|Dependencies & Constraints
+u_deployment_package_link|Deployment Package Link
+u_change_description|Description(u_change_description)
+u_description|Description(u_description)
+description|Description
+u_cwr_work_description|Description of the work
+u_destination_host|Destination Host
+u_destination_host_dr|Destination Host (DR)
+u_destination_ip|Destination IP
+u_destination_ip_dr|Destination IP (DR)
+sys_domain|Domain
+sys_domain_path|Domain Path
+u_down_time|Down time
+due_date|Due date
+calendar_duration|Duration(calendar_duration)
+u_duration|Duration(u_duration)
+u_duration_period|Duration Period
+task_effective_number|Effective number
+work_notes_list|Emails to Notify
+escalation|Escalation
+expected_start|Expected start
+u_expedited_justification|Expedited justification
+u_external_documentation|External documentation
+follow_up|Follow up
+group_list|Group list
+impact|Impact
+implementation_plan|Implementation plan
+u_initial_incident|Initial incident
+justification|Justification
+knowledge|Knowledge
+u_legacy_data|Legacy Data
+u_legacy_id|Legacy ID
+u_legacy_sys_id|Legacy Sys ID
+location|Location
+made_sla|Made SLA
+number|Number
+on_hold_task|On Hold Change Tasks
+on_hold|On hold
+on_hold_reason|On hold reason
+opened_at|Opened Date
+opened_by|Opened by
+order|Order
+u_outage|Outage
+outside_maintenance_schedule|Outside maintenance schedule
+end_date|PROD Planned end date
+start_date|PROD Planned start date
+parent|Parent
+phase|Phase
+phase_state|Phase state
+u_post_change_state|Post change state
+u_post_implementation_support|Post-implementation support
+u_priority|Priority
+priority|Priority(priority)
+u_product|Product
+production_system|Production system
+u_project_id|Project ID
+u_protocol|Protocol
+reason|Reason
+u_reason_for_change|Reason for change
+reassignment_count|Reassignment count
+risk|Risk
+sla_due|SLA due
+scope|Scope
+service_offering|Service offering
+skills|Skills
+state|State
+sys_id|Sys ID
+sys_tags|Tags
+sys_class_name|Task type
+test_plan|Test plan
+time_worked|Time worked
+short_description|Title
+type|Type(type)
+unauthorized|Unauthorized
+universal_request|Universal Request
+sys_updated_on|Updated
+sys_updated_by|Updated by
+sys_mod_count|Updates
+upon_approval|Upon approval
+upon_reject|Upon reject
+urgency|Urgency
+user_input|User input
+watch_list|Watch list
+variables|Questions
+u_click_on_below_link_to_submit_a_new_database_request|Click here to submit a New Database Request
+u_cwr_client_work_requested|Client Work Requested
+u_code_compare|Code compare
+u_dba_approval_needed|DBA approval needed?
+u_other_planned_start_date|DEV Planned start date
+u_enter_request_number_of_the_completed_db_request|Enter Request Number of the completed DB Request
+u_feature_checklist_attached|Feature Checklist Attached?
+u_firewall_change_request|Firewall Change Request
+u_hot_fix|Hot Fix
+u_impacted_parties|Impacted parties
+u_intersections|Intersections
+u_is_a_new_database_required|Is a New Database Required?
+u_is_this_for_production|Is this for Production?
+u_mirror_policy_to_lv_dc|Mirror Policy to LV-DC
+chg_model|Model
+u_nat_required|Nat Required
+u_other_product|Other Product
+u_port|Port(u_port)
+u_port1|Port(u_port1)
+u_production_tag|Production tag
+u_push_date|Push date
+u_qa_planned_start_date|QA Planned start date
+u_recipient|Recipient
+u_cwr_regulatory_req|Regulatory Requirements
+u_release_steps|Release steps
+u_release_tracking_ticket|Release tracking ticket
+u_request_type|Request Type
+u_cwr_req_completion_date|Requested Completion Date
+requested_by|Requested by
+requested_by_date|Requested by date
+u_resources_and_support|Resources and support
+review_comments|Review comments
+review_date|Review date
+review_status|Review status
+risk_impact_analysis|Risk Analysis
+u_stg_planned_start_date|STG Planned start date
+u_send_communication|Send communication
+u_slack_channel|Slack channel
+u_source_host|Source Host(u_source_host)
+u_string_4|Source Host(u_string_4)
+u_source_host_dr|Source Host (DR)
+u_source_ip|Source IP
+u_source_ip_dr|Source IP (DR)
+u_cwr_special_gov_standards|Special Govering Standards
+std_change_producer_version|Standard Change Template version
+u_systems_infrastructure_team_approval|Systems Infrastructure team approval needed?
+route_reason|Transfer reason
+u_type|Type(u_type)
+u_uat_planned_start_date|UAT Planned start date
+u_cwr_use_case_desc|Use Case Description
+u_change_details|User details
+u_cwr_support_call|Was a support call placed?
+u_workflow_step|Workflow Step
+u_change_approval|change Approval
+request.requested_for.name|Request.Requested for
+requested_for_date|Requested for date
+request.request_state|Request state
+request.opened_at|Request.Opened Date
+request.opened_by.name|Request.Opened by
+request.number|Request.Number
+`;
+
+const ADV_FIELD_OPTIONS_BUILTIN = (() => {
+    const seen = new Set();
+    const out = [];
+    const FIELD_RE = /^[A-Za-z0-9_.]+$/;
+    const lines = (ADV_FIELD_LINES || '').split('\n').map(l => l.trim()).filter(Boolean);
+    for (const line of lines) {
+        const parts = line.split('|');
+        const value = (parts[0] || '').trim();
+        const label = (parts[1] || value).trim();
+        if (!value || value.includes(' ') || !FIELD_RE.test(value)) continue;
+        if (seen.has(value)) continue;
+        seen.add(value);
+        out.push({ value, label });
+    }
+    out.sort((a, b) => (a.label || '').localeCompare(b.label || ''));
+    return out;
+})();
+
+let _activeComboCloser = null;
+
+function _closeActiveCombo() {
+    if (_activeComboCloser) {
+        try { _activeComboCloser(); } catch {}
+        _activeComboCloser = null;
+    }
+}
+
+document.addEventListener('click', (e) => {
+    const t = e.target;
+    if (t && t.closest && t.closest('.combo')) return;
+    _closeActiveCombo();
+}, true);
+
+function getAdvFieldOptions() {
+    return ADV_FIELD_OPTIONS_BUILTIN;
+}
+
+function _createCombo({ inputClass, placeholder, options, initialValue, initialKey, allowCustom, onResolved, renderItem }) {
+    const wrap = document.createElement('div');
+    wrap.className = 'combo';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = inputClass;
+    input.placeholder = placeholder || '';
+
+    const menu = document.createElement('div');
+    menu.className = 'combo-menu';
+
+    wrap.appendChild(input);
+    wrap.appendChild(menu);
+
+    const norm = (s) => (s || '').toString().trim().toLowerCase();
+
+    let activeIdx = -1;
+    let current = [];
+
+    function setActive(idx) {
+        activeIdx = idx;
+        [...menu.querySelectorAll('.combo-item')].forEach((el, i) => el.classList.toggle('active', i === idx));
+    }
+
+    function pick(opt) {
+        if (!opt) return;
+        if (typeof onResolved === 'function') onResolved({ type: 'pick', opt, input });
+        close();
+        syncFetchFilterUi();
+    }
+
+    function render() {
+        const q = norm(input.value);
+        const opts = (typeof options === 'function') ? (options() || []) : (options || []);
+        const indexed = (opts || []).map(o => ({
+            o,
+            hay: norm((o.label || '') + ' ' + (o.value || '') + ' ' + (o.key || ''))
+        }));
+        current = q
+            ? indexed.filter(x => x.hay.includes(q)).slice(0, 80).map(x => x.o)
+            : indexed.slice(0, 80).map(x => x.o);
+
+        menu.innerHTML = '';
+        if (!current.length) {
+            const empty = document.createElement('div');
+            empty.className = 'combo-empty';
+            empty.textContent = allowCustom ? 'No matches. Press Enter to use custom value.' : 'No matches.';
+            menu.appendChild(empty);
+            activeIdx = -1;
+            return;
+        }
+        current.forEach((opt, i) => {
+            const el = document.createElement('div');
+            el.className = 'combo-item';
+            el.innerHTML = renderItem(opt);
+            el.addEventListener('mousedown', (ev) => {
+                ev.preventDefault(); // prevent blur
+                pick(opt);
+            });
+            menu.appendChild(el);
+            if (i === 0) setActive(0);
+        });
+    }
+
+    function open() {
+        _closeActiveCombo();
+        menu.style.display = 'block';
+        render();
+        _activeComboCloser = close;
+    }
+
+    function close() {
+        menu.style.display = 'none';
+        activeIdx = -1;
+        if (_activeComboCloser === close) _activeComboCloser = null;
+    }
+
+    function resolveFromText() {
+        const raw = (input.value || '').trim();
+        if (!raw) {
+            if (typeof onResolved === 'function') onResolved({ type: 'clear', input });
+            return;
+        }
+        const q = norm(raw);
+        const opts = (typeof options === 'function') ? (options() || []) : (options || []);
+        const exact = (opts || []).find(o => norm(o.value) === q || norm(o.label) === q || norm(o.key) === q);
+        if (exact) {
+            if (typeof onResolved === 'function') onResolved({ type: 'pick', opt: exact, input });
+            return;
+        }
+        if (allowCustom && typeof onResolved === 'function') onResolved({ type: 'custom', text: raw, input });
+    }
+
+    input.addEventListener('focus', open);
+    input.addEventListener('input', () => { open(); render(); if (typeof onResolved === 'function') onResolved({ type: 'typing', input }); });
+    input.addEventListener('keydown', (ev) => {
+        if (menu.style.display !== 'block') return;
+        if (ev.key === 'ArrowDown') { ev.preventDefault(); setActive(Math.min(activeIdx + 1, current.length - 1)); return; }
+        if (ev.key === 'ArrowUp') { ev.preventDefault(); setActive(Math.max(activeIdx - 1, 0)); return; }
+        if (ev.key === 'Enter') {
+            ev.preventDefault();
+            if (activeIdx >= 0 && current[activeIdx]) pick(current[activeIdx]);
+            else resolveFromText();
+            close();
+            return;
+        }
+        if (ev.key === 'Escape') { ev.preventDefault(); close(); return; }
+    });
+    input.addEventListener('blur', () => { setTimeout(() => { resolveFromText(); close(); }, 140); });
+
+    // Init
+    if (initialValue != null && String(initialValue).trim()) input.value = String(initialValue).trim();
+    if (initialKey != null && String(initialKey).trim()) input.dataset.key = String(initialKey).trim();
+    render();
+
+    return { wrap, input, open, close, render };
+}
+
+
+const ADV_FETCH_OPS = [
+    { key: 'like', label: 'contains', valueKind: 'text' },
+    { key: 'not_like', label: 'does not contain', valueKind: 'text' },
+    { key: 'eq', label: 'is', valueKind: 'text' },
+    { key: 'neq', label: 'is not', valueKind: 'text' },
+    { key: 'startswith', label: 'starts with', valueKind: 'text' },
+    { key: 'endswith', label: 'ends with', valueKind: 'text' },
+    { key: 'isempty', label: 'is empty', valueKind: 'none' },
+    { key: 'isnotempty', label: 'is not empty', valueKind: 'none' },
+    { key: 'on', label: 'on', valueKind: 'date' },
+    { key: 'noton', label: 'not on', valueKind: 'date' },
+    { key: 'before', label: 'before', valueKind: 'date' },
+    { key: 'at_or_before', label: 'at or before', valueKind: 'date' },
+    { key: 'after', label: 'after', valueKind: 'date' },
+    { key: 'at_or_after', label: 'at or after', valueKind: 'date' },
+    { key: 'between', label: 'between', valueKind: 'date_range' },
+    { key: 'in', label: 'is one of (IN)', valueKind: 'text' },
+    { key: 'not_in', label: 'is not one of (NOT IN)', valueKind: 'text' },
+    { key: 'custom', label: 'custom (raw operator)', valueKind: 'custom' },
+];
+
+function toggleAdvancedFetchFilters(forceOpen) {
+    const wrap = document.getElementById('advFetchWrap');
+    if (!wrap) return;
+    const isOpen = wrap.style.display !== 'none';
+    const nextOpen = (typeof forceOpen === 'boolean') ? forceOpen : !isOpen;
+    wrap.style.display = nextOpen ? '' : 'none';
+    if (nextOpen) {
+        const rulesEl = document.getElementById('advRules');
+        if (rulesEl && rulesEl.children.length === 0) addAdvFetchRule();
+    }
+    syncAdvancedDateRangeUi();
+    syncFetchFilterUi();
+}
+
+function addAdvFetchRule(seed) {
+    const rulesEl = document.getElementById('advRules');
+    if (!rulesEl) return;
+    const idx = rulesEl.children.length;
+    const join = (seed && seed.join) ? seed.join : (idx === 0 ? 'AND' : 'AND');
+    const field = (seed && seed.field) ? seed.field : '';
+    const op = (seed && seed.op) ? seed.op : '';
+    const valueFrom = (seed && seed.valueFrom) ? seed.valueFrom : '';
+    const valueTo = (seed && seed.valueTo) ? seed.valueTo : '';
+    const value = (op === 'between' ? (valueFrom || (seed && seed.value) || '') : ((seed && seed.value) ? seed.value : ''));
+    const value2 = (op === 'between' ? (valueTo || (seed && seed.value2) || '') : ((seed && seed.value2) ? seed.value2 : ''));
+    const rawOp = (seed && seed.rawOp) ? seed.rawOp : '';
+
+    const row = document.createElement('div');
+    row.className = 'adv-rule';
+    row.dataset.join = join === 'OR' ? 'OR' : 'AND';
+
+    // Joiner cell
+    const cellJoin = document.createElement('div');
+    cellJoin.className = 'cell';
+    const jl = document.createElement('div');
+    jl.className = 'rule-label';
+    jl.textContent = idx === 0 ? 'Where' : 'Join';
+    const joinWrap = document.createElement('div');
+    joinWrap.className = 'joiner-toggle';
+    const btnAnd = document.createElement('button');
+    btnAnd.type = 'button';
+    btnAnd.className = 'joiner-btn';
+    btnAnd.textContent = 'AND';
+    const btnOr = document.createElement('button');
+    btnOr.type = 'button';
+    btnOr.className = 'joiner-btn';
+    btnOr.textContent = 'OR';
+    if (idx === 0) {
+        btnAnd.disabled = true;
+        btnOr.disabled = true;
+        row.dataset.join = 'AND';
+    }
+    btnAnd.addEventListener('click', () => setAdvRuleJoin(row, 'AND'));
+    btnOr.addEventListener('click', () => setAdvRuleJoin(row, 'OR'));
+    joinWrap.appendChild(btnAnd);
+    joinWrap.appendChild(btnOr);
+    cellJoin.appendChild(jl);
+    cellJoin.appendChild(joinWrap);
+
+    // Field cell
+    const cellField = document.createElement('div');
+    cellField.className = 'cell';
+    cellField.innerHTML = `<div class="rule-label">Field</div>`;
+    const fieldCombo = _createCombo({
+        inputClass: 'adv-field',
+        placeholder: 'Search field… (or type custom)',
+        options: getAdvFieldOptions,
+        initialValue: field || '',
+        allowCustom: true,
+        renderItem: (opt) => `<span>${escapeHtml(opt.label || opt.value)}</span>`,
+        onResolved: (res) => {
+            if (!res || !res.input) return;
+            const FIELD_RE = /^[A-Za-z0-9_.]+$/;
+            if (res.type === 'pick') {
+                if ((res.input.dataset.value || '') === res.opt.value) return;
+                res.input.value = res.opt.label || res.opt.value;
+                res.input.dataset.value = res.opt.value;
+                res.input.dataset.label = res.opt.label || '';
+            } else if (res.type === 'custom') {
+                const v = (res.text || '').trim();
+                if ((res.input.dataset.value || '') === v && v) return;
+                if (!v || v.includes(' ') || !FIELD_RE.test(v)) {
+                    res.input.dataset.value = '';
+                    res.input.dataset.label = '';
+                    res.input.style.borderColor = 'rgba(239,68,68,.55)';
+                    showToast('Invalid field. Pick from list or type an API field path like request.requested_for.name', 'error');
+                } else {
+                    res.input.style.borderColor = '';
+                    res.input.dataset.value = v;
+                    res.input.dataset.label = '';
+                }
+                res.input.dataset.label = '';
+            } else if (res.type === 'clear') {
+                res.input.dataset.value = '';
+                res.input.dataset.label = '';
+                res.input.style.borderColor = '';
+            }
+            syncFetchFilterUi();
+        }
+    });
+    // If initial value matches a known field, normalize to canonical value.
+    const fNorm = (field || '').trim().toLowerCase();
+    const matchField = getAdvFieldOptions().find(o => (o.value || '').toLowerCase() === fNorm || (o.label || '').toLowerCase() === fNorm);
+    if (matchField) {
+        fieldCombo.input.value = matchField.label || matchField.value;
+        fieldCombo.input.dataset.value = matchField.value;
+        fieldCombo.input.dataset.label = matchField.label || '';
+    } else if ((field || '').trim()) {
+        fieldCombo.input.dataset.value = (field || '').trim();
+        fieldCombo.input.dataset.label = '';
+    }
+    cellField.appendChild(fieldCombo.wrap);
+
+    // Operator cell
+    const cellOp = document.createElement('div');
+    cellOp.className = 'cell';
+    cellOp.innerHTML = `<div class="rule-label">Operator</div>`;
+    const opCombo = _createCombo({
+        inputClass: 'adv-op',
+        placeholder: 'Select operator…',
+        options: ADV_FETCH_OPS,
+        initialValue: (ADV_FETCH_OPS.find(x => x.key === op)?.label) || '',
+        initialKey: ADV_FETCH_OPS.some(x => x.key === op) ? op : '',
+        allowCustom: true,
+        renderItem: (opt) => `<span>${escapeHtml(opt.label)}</span><span class="combo-value">${escapeHtml(opt.key)}</span>`,
+        onResolved: (res) => {
+            if (!res || !res.input) return;
+            if (res.type === 'pick') {
+                if ((res.input.dataset.key || '') === res.opt.key) return;
+                res.input.value = res.opt.label;
+                res.input.dataset.key = res.opt.key;
+                if (res.opt.key !== 'custom') row.dataset._customOpText = '';
+            } else if (res.type === 'custom') {
+                // Unknown operator text → treat as custom and pre-fill raw operator.
+                if ((res.input.dataset.key || '') === 'custom' && (row.dataset._customOpText || '') === res.text) return;
+                res.input.dataset.key = 'custom';
+                row.dataset._customOpText = res.text;
+                res.input.value = res.text;
+            } else if (res.type === 'clear') {
+                res.input.dataset.key = '';
+                res.input.value = '';
+                row.dataset._customOpText = '';
+            }
+            renderAdvRuleValueCell(row);
+            syncFetchFilterUi();
+        }
+    });
+    // Init op key
+    const opMatch = ADV_FETCH_OPS.find(o => o.key === op) || ADV_FETCH_OPS.find(o => o.label.toLowerCase() === String(op || '').toLowerCase());
+    opCombo.input.dataset.key = opMatch ? opMatch.key : (op ? 'custom' : '');
+    if (opMatch) opCombo.input.value = opMatch.label;
+    cellOp.appendChild(opCombo.wrap);
+
+    // Value cell (dynamic)
+    const cellVal = document.createElement('div');
+    cellVal.className = 'cell adv-value-cell';
+
+    // Remove button
+    const cellRemove = document.createElement('div');
+    cellRemove.className = 'cell';
+    const rm = document.createElement('button');
+    rm.type = 'button';
+    rm.className = 'adv-remove';
+    rm.title = 'Remove condition';
+    rm.textContent = '×';
+    rm.addEventListener('click', () => {
+        row.remove();
+        normalizeAdvRuleJoiners();
+        syncFetchFilterUi();
+    });
+    cellRemove.appendChild(rm);
+
+    row.appendChild(cellJoin);
+    row.appendChild(cellField);
+    row.appendChild(cellOp);
+    row.appendChild(cellVal);
+    row.appendChild(cellRemove);
+    rulesEl.appendChild(row);
+
+    renderAdvRuleValueCell(row, { value, value2, rawOp });
+    setAdvRuleJoin(row, row.dataset.join || 'AND', { silent: true });
+    normalizeAdvRuleJoiners();
+    syncFetchFilterUi();
+}
+
+function normalizeAdvRuleJoiners() {
+    const rulesEl = document.getElementById('advRules');
+    if (!rulesEl) return;
+    [...rulesEl.children].forEach((row, idx) => {
+        const btns = row.querySelectorAll('.joiner-btn');
+        const label = row.querySelector('.rule-label');
+        if (label) label.textContent = idx === 0 ? 'Where' : 'Join';
+        btns.forEach(b => { b.disabled = idx === 0; });
+        if (idx === 0) row.dataset.join = 'AND';
+        setAdvRuleJoin(row, row.dataset.join || 'AND', { silent: true });
+    });
+}
+
+function setAdvRuleJoin(rowEl, join, opts) {
+    if (!rowEl) return;
+    rowEl.dataset.join = join === 'OR' ? 'OR' : 'AND';
+    const [btnAnd, btnOr] = rowEl.querySelectorAll('.joiner-btn');
+    if (btnAnd && btnOr) {
+        btnAnd.classList.toggle('active', rowEl.dataset.join === 'AND');
+        btnOr.classList.toggle('active', rowEl.dataset.join === 'OR');
+    }
+    if (!opts || !opts.silent) syncFetchFilterUi();
+}
+
+function renderAdvRuleValueCell(rowEl, seed) {
+    if (!rowEl) return;
+    const cell = rowEl.querySelector('.adv-value-cell');
+    if (!cell) return;
+    const op = rowEl.querySelector('.adv-op')?.dataset?.key || 'like';
+    const meta = ADV_FETCH_OPS.find(o => o.key === op) || ADV_FETCH_OPS[0];
+
+    const v1 = (seed && seed.value) ? seed.value : '';
+    const v2 = (seed && seed.value2) ? seed.value2 : '';
+    const rawOp = (seed && seed.rawOp) ? seed.rawOp : (rowEl.dataset._customOpText || '');
+
+    cell.innerHTML = '';
+    const label = document.createElement('div');
+    label.className = 'rule-label';
+    label.textContent = meta.valueKind === 'date_range' ? 'Value (from / to)' : (meta.valueKind === 'custom' ? 'Operator + Value' : 'Value');
+    cell.appendChild(label);
+
+    if (!rowEl.querySelector('.adv-op')?.dataset?.key) {
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.disabled = true;
+        inp.value = 'Select operator first';
+        cell.appendChild(inp);
+        return;
+    }
+
+    if (meta.valueKind === 'none') {
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.disabled = true;
+        inp.value = '(no value)';
+        cell.appendChild(inp);
+        return;
+    }
+
+    if (meta.valueKind === 'date_range') {
+        const wrap = document.createElement('div');
+        wrap.style.display = 'grid';
+        wrap.style.gridTemplateColumns = '1fr 1fr';
+        wrap.style.gap = '8px';
+        const iFrom = document.createElement('input');
+        iFrom.type = 'date';
+        iFrom.className = 'adv-value-from';
+        iFrom.value = v1 || '';
+        iFrom.addEventListener('input', syncFetchFilterUi);
+        const iTo = document.createElement('input');
+        iTo.type = 'date';
+        iTo.className = 'adv-value-to';
+        iTo.value = v2 || '';
+        iTo.addEventListener('input', syncFetchFilterUi);
+        wrap.appendChild(iFrom);
+        wrap.appendChild(iTo);
+        cell.appendChild(wrap);
+        return;
+    }
+
+    if (meta.valueKind === 'custom') {
+        const wrap = document.createElement('div');
+        wrap.style.display = 'grid';
+        wrap.style.gridTemplateColumns = '1fr 1.4fr';
+        wrap.style.gap = '8px';
+        const iOp = document.createElement('input');
+        iOp.type = 'text';
+        iOp.className = 'adv-raw-op';
+        iOp.placeholder = 'e.g. LIKE, !=, ON, BETWEEN...';
+        iOp.value = rawOp || '';
+        iOp.addEventListener('input', () => { rowEl.dataset._customOpText = iOp.value || ''; syncFetchFilterUi(); });
+        const iVal = document.createElement('input');
+        iVal.type = 'text';
+        iVal.className = 'adv-value';
+        iVal.placeholder = 'value';
+        iVal.value = v1 || '';
+        iVal.addEventListener('input', syncFetchFilterUi);
+        wrap.appendChild(iOp);
+        wrap.appendChild(iVal);
+        cell.appendChild(wrap);
+        return;
+    }
+
+    const inp = document.createElement('input');
+    inp.className = 'adv-value';
+    inp.type = meta.valueKind === 'date' ? 'date' : 'text';
+    inp.placeholder = meta.valueKind === 'date' ? 'YYYY-MM-DD' : 'value';
+    inp.value = v1 || '';
+    inp.addEventListener('input', syncFetchFilterUi);
+    cell.appendChild(inp);
+}
+
+function clearAdvFetchRules(opts) {
+    const rulesEl = document.getElementById('advRules');
+    if (rulesEl) rulesEl.innerHTML = '';
+    syncFetchFilterUi();
+    if (!opts || !opts.silent) showToast('Advanced fetch filters cleared');
+}
+
+function getAdvFetchRulesFromDom() {
+    const rulesEl = document.getElementById('advRules');
+    if (!rulesEl) return [];
+    const rows = [...rulesEl.querySelectorAll('.adv-rule')];
+    return rows.map((row, idx) => {
+        const join = idx === 0 ? 'AND' : (row.dataset.join === 'OR' ? 'OR' : 'AND');
+        const fieldInput = row.querySelector('.adv-field');
+        const field = ((fieldInput?.dataset?.value || fieldInput?.value) || '').trim();
+        const opInput = row.querySelector('.adv-op');
+        const op = (opInput?.dataset?.key || '').trim();
+        const value = (row.querySelector('.adv-value')?.value || '').trim();
+        const valueFrom = (row.querySelector('.adv-value-from')?.value || '').trim();
+        const valueTo = (row.querySelector('.adv-value-to')?.value || '').trim();
+        const rawOp = (row.querySelector('.adv-raw-op')?.value || '').trim();
+        return { join, field, op, value, valueFrom, valueTo, rawOp };
+    });
+}
+
+function getAdvFetchRulesCompleteOnly() {
+    const rules = getAdvFetchRulesFromDom();
+    const FIELD_RE = /^[A-Za-z0-9_.]+$/;
+    return rules.filter(r => {
+        if (!r.field) return false;
+        if (r.field.includes(' ') || !FIELD_RE.test(r.field)) return false;
+        if (!r.op) return false;
+        if (r.op === 'isempty' || r.op === 'isnotempty') return true;
+        if (r.op === 'between') return !!(r.valueFrom && r.valueTo);
+        if (r.op === 'custom') return !!(r.rawOp && r.value);
+        return !!r.value;
+    });
+}
+
+function buildAdvEncodedQuery(rules) {
+    const clean = (s) => String(s ?? '').replaceAll('^', ' ').replaceAll('\n', ' ').replaceAll('\r', ' ').trim();
+    const esc = (s) => clean(s);
+    const qParts = [];
+    const add = (join, clause) => {
+        if (!clause) return;
+        if (qParts.length === 0) qParts.push(clause);
+        else qParts.push((join === 'OR' ? '^OR' : '^') + clause);
+    };
+    for (const r of (rules || [])) {
+        const field = esc(r.field);
+        if (!field) continue;
+        const join = r.join === 'OR' ? 'OR' : 'AND';
+        const v = esc(r.value);
+        const vf = esc(r.valueFrom);
+        const vt = esc(r.valueTo);
+        const rawOp = esc(r.rawOp);
+
+        let clause = '';
+        switch (r.op) {
+            case 'like': clause = `${field}LIKE${v}`; break;
+            case 'not_like': clause = `${field}NOT LIKE${v}`; break;
+            case 'eq': clause = `${field}=${v}`; break;
+            case 'neq': clause = `${field}!=${v}`; break;
+            case 'startswith': clause = `${field}STARTSWITH${v}`; break;
+            case 'endswith': clause = `${field}ENDSWITH${v}`; break;
+            case 'isempty': clause = `${field}ISEMPTY`; break;
+            case 'isnotempty': clause = `${field}ISNOTEMPTY`; break;
+            case 'on':
+                clause = `${field}ON${v}@javascript:gs.dateGenerate('${v}','start')@javascript:gs.dateGenerate('${v}','end')`;
+                break;
+            case 'noton':
+                clause = `${field}NOTON${v}@javascript:gs.dateGenerate('${v}','start')@javascript:gs.dateGenerate('${v}','end')`;
+                break;
+            case 'before': clause = `${field}<${v}`; break;
+            case 'at_or_before': clause = `${field}<=${v}`; break;
+            case 'after': clause = `${field}>${v}`; break;
+            case 'at_or_after': clause = `${field}>=${v}`; break;
+            case 'between':
+                clause = `${field}BETWEENjavascript:gs.dateGenerate('${vf}','00:00:00')@javascript:gs.dateGenerate('${vt}','23:59:59')`;
+                break;
+            case 'in': clause = `${field}IN${v}`; break;
+            case 'not_in': clause = `${field}NOT IN${v}`; break;
+            case 'custom':
+                clause = `${field}${rawOp}${v}`;
+                break;
+            default:
+                clause = `${field}LIKE${v}`;
+        }
+        // If we need a value but it's missing, skip.
+        const needsValue = !['isempty','isnotempty'].includes(r.op);
+        if (needsValue) {
+            if (r.op === 'between' && !(vf && vt)) continue;
+            if (r.op === 'custom' && !(rawOp && v)) continue;
+            if (['between'].includes(r.op)) { /* handled */ }
+            else if (!v) continue;
+        }
+        add(join, clause);
+    }
+    return qParts.join('');
+}
+
+function syncFetchFilterUi() {
+    const btn = document.getElementById('advFetchToggleBtn');
+    const preview = document.getElementById('advFetchPreview');
+    const complete = getAdvFetchRulesCompleteOnly();
+    const count = complete.length;
+
+    if (btn) {
+        btn.textContent = count ? `Advanced filters (${count})` : 'Advanced filters';
+        btn.style.borderColor = count ? 'rgba(250,167,74,.45)' : '';
+        btn.style.color = count ? 'var(--axos-orange)' : '';
+    }
+    if (preview) {
+        const q = count ? buildAdvEncodedQuery(complete) : '';
+        preview.textContent = count ? `Advanced query: ${q}` : 'Advanced query: (none)';
+    }
+}
+
+function getAdvancedFetchPayload() {
+    const rules = getAdvFetchRulesCompleteOnly();
+    const isOpen = isAdvancedPanelOpen();
+    if (!rules.length && !isOpen) return null;
+    const chk = document.getElementById('advConsiderDateChk');
+    const considerDateRange = isOpen ? (!!chk && chk.checked) : true;
+    // Strip derived fields to keep payload small and predictable
+    return {
+        considerDateRange,
+        rules: rules.map(r => ({
+            join: r.join === 'OR' ? 'OR' : 'AND',
+            field: r.field,
+            op: r.op,
+            value: r.value,
+            valueFrom: r.valueFrom,
+            valueTo: r.valueTo,
+            rawOp: r.rawOp,
+        }))
+    };
+}
+
+function applyAdvancedFetchPayload(payload) {
+    const hasPayload = !!payload && typeof payload === 'object';
+    const rules = hasPayload && Array.isArray(payload.rules) ? payload.rules : [];
+    const chk = document.getElementById('advConsiderDateChk');
+    if (chk) {
+        const v = (payload && typeof payload.considerDateRange === 'boolean') ? payload.considerDateRange : true;
+        chk.checked = v;
+    }
+    // Apply visibility to match saved mode (dashboards expect this)
+    toggleAdvancedFetchFilters(hasPayload);
+    clearAdvFetchRules({ silent: true });
+    if (rules.length) {
+        for (const r of rules) {
+            addAdvFetchRule({
+                join: r.join,
+                appliesTo: r.appliesTo,
+                field: r.field,
+                op: r.op,
+                value: r.value,
+                value2: '',
+                rawOp: r.rawOp,
+                valueFrom: r.valueFrom,
+                valueTo: r.valueTo,
+            });
+        }
+        normalizeAdvRuleJoiners();
+    } else if (hasPayload) {
+        addAdvFetchRule();
+    }
+    syncFetchFilterUi();
+}
+
+function isAdvancedPanelOpen() {
+    const wrap = document.getElementById('advFetchWrap');
+    return !!wrap && wrap.style.display !== 'none';
+}
+
+function hasAdvancedRules() {
+    return getAdvFetchRulesCompleteOnly().length > 0;
+}
+
+function shouldConsiderDateRange() {
+    // Default: false when advanced panel is open (per request)
+    const chk = document.getElementById('advConsiderDateChk');
+    if (isAdvancedPanelOpen()) return !!chk && chk.checked;
+    return true;
+}
+
+function syncAdvancedDateRangeUi() {
+    const bar = document.getElementById('dateRangeBar');
+    if (!bar) return;
+    const hideDates = isAdvancedPanelOpen() && !shouldConsiderDateRange();
+
+    const els = [
+        bar.querySelector('label'),
+        document.getElementById('dateFrom'),
+        document.getElementById('dateTo'),
+        bar.querySelector('.date-sep'),
+        document.getElementById('datePresets'),
+    ].filter(Boolean);
+
+    els.forEach(el => el.style.display = hideDates ? 'none' : '');
+
+    // Keep fetch button visible; add subtle hint on the bar.
+    bar.style.borderColor = hideDates ? 'rgba(250,167,74,.35)' : '';
+    bar.dataset.advNoDate = hideDates ? '1' : '';
 }
 
 // ─── DASHBOARDS (saved fetch presets) ───
@@ -1320,6 +2478,88 @@ const DASHBOARDS_KEY = 'snow_saved_dashboards_v1';
 let dashboards = [];
 let dashboardsSearchTerm = '';
 let dashboardsFilter = { sd:false, rb:false, rf:false, rt:false, st:false };
+let dashEditAdv = null;
+
+function _dashNormalizeAdvPayload(p) {
+    if (!p || typeof p !== 'object') return null;
+    const considerDateRange = (typeof p.considerDateRange === 'boolean') ? p.considerDateRange : true;
+    const rules = Array.isArray(p.rules) ? p.rules.filter(r => r && typeof r === 'object') : [];
+    return { considerDateRange, rules };
+}
+
+function _dashFieldLabel(field) {
+    const v = (field || '').trim();
+    if (!v) return '';
+    const opt = getAdvFieldOptions().find(o => o.value === v);
+    return opt ? (opt.label || opt.value) : v;
+}
+
+function _dashOpLabel(opKey, rawOp) {
+    const k = (opKey || '').trim();
+    if (!k) return '';
+    if (k === 'custom') return (rawOp || '').trim() ? `custom (${String(rawOp).trim()})` : 'custom';
+    const m = (ADV_FETCH_OPS || []).find(o => o.key === k);
+    return m ? (m.label || m.key) : k;
+}
+
+function syncDashEditorAdvUi() {
+    const countEl = document.getElementById('dashAdvCount');
+    const rulesEl = document.getElementById('dashAdvRulesSummary');
+    const considerWrap = document.getElementById('dashAdvConsiderWrap');
+    const chk = document.getElementById('dashAdvConsiderDateChk');
+    const dashFrom = document.getElementById('dashFrom');
+    const dashTo = document.getElementById('dashTo');
+    const dateLbl = document.getElementById('dashDateRangeLbl');
+    const dateItem = document.getElementById('dashDateRangeItem');
+
+    const adv = _dashNormalizeAdvPayload(dashEditAdv);
+    dashEditAdv = adv;
+
+    if (considerWrap) considerWrap.style.display = adv ? '' : 'none';
+    if (chk) chk.checked = adv ? !!adv.considerDateRange : true;
+
+    const disableDates = !!adv && adv.considerDateRange === false;
+    if (dateItem) dateItem.style.display = disableDates ? 'none' : '';
+    if (dashFrom) dashFrom.disabled = false;
+    if (dashTo) dashTo.disabled = false;
+    if (dateLbl) dateLbl.textContent = 'Date Range';
+
+    if (!countEl || !rulesEl) return;
+    if (!adv) {
+        countEl.textContent = 'No advanced conditions';
+        rulesEl.textContent = '';
+        return;
+    }
+
+    const rules = Array.isArray(adv.rules) ? adv.rules : [];
+    const n = rules.length;
+    countEl.textContent = n ? `${n} advanced condition${n === 1 ? '' : 's'} will be saved` : 'Advanced mode (no conditions)';
+
+    const lines = [];
+    const max = 8;
+    for (let i = 0; i < Math.min(n, max); i++) {
+        const r = rules[i] || {};
+        const join = i === 0 ? 'WHERE' : ((r.join || 'AND') === 'OR' ? 'OR' : 'AND');
+        const fieldLbl = _dashFieldLabel(r.field);
+        const opLbl = _dashOpLabel(r.op, r.rawOp);
+        let val = '';
+        if (r.op === 'between') val = `${(r.valueFrom || '').trim()} → ${(r.valueTo || '').trim()}`.trim();
+        else if (r.op === 'isempty' || r.op === 'isnotempty') val = '';
+        else if (r.op === 'custom') val = String(r.value || '').trim();
+        else val = String(r.value || '').trim();
+        const tail = val ? ` ${val}` : '';
+        lines.push(`${join} ${fieldLbl} ${opLbl}${tail}`.trim());
+    }
+    if (n > max) lines.push(`… +${n - max} more`);
+    rulesEl.textContent = lines.join('\n');
+}
+
+function onDashAdvConsiderDateChanged() {
+    const chk = document.getElementById('dashAdvConsiderDateChk');
+    if (!dashEditAdv || typeof dashEditAdv !== 'object') return;
+    dashEditAdv.considerDateRange = !!chk && chk.checked;
+    syncDashEditorAdvUi();
+}
 
 function loadDashboards() {
     try { dashboards = JSON.parse(localStorage.getItem(DASHBOARDS_KEY) || '[]'); }
@@ -1390,6 +2630,8 @@ function summarizeFetchFilters(ff) {
     if (ff?.rb) parts.push(`Reported By: ${ff.rb}`);
     if (ff?.rf) parts.push(`Requested For: ${ff.rf}`);
     if (ff?.st) parts.push(`State: ${ff.st}`);
+    const advCount = ff?.adv?.rules?.length || 0;
+    if (advCount) parts.push(`Advanced: ${advCount}`);
     return parts.join(' · ');
 }
 
@@ -1430,6 +2672,7 @@ function renderDashboards() {
         if (d.fetchFilters?.rb) badges.push(`<span class="dash-badge" title="Fetch filter: Reported By contains">Reported By</span>`);
         if (d.fetchFilters?.rf) badges.push(`<span class="dash-badge" title="Fetch filter: Requested For contains">Requested For</span>`);
         if (d.fetchFilters?.st) badges.push(`<span class="dash-badge" title="Fetch filter: State contains">State</span>`);
+        if (d.fetchFilters?.adv?.rules?.length) badges.push(`<span class="dash-badge" title="Fetch filter: Advanced AND/OR conditions">Advanced</span>`);
         return `
         <div class="dash-card" onclick="viewDashboard('${d.id}')">
             <button class="dash-edit" title="Edit (admin)" onclick="event.stopPropagation();editDashboard('${d.id}')">✎</button>
@@ -1462,12 +2705,26 @@ function dashboardSignature(d) {
             rf: _normText(d?.fetchFilters?.rf),
             rt: _normText(d?.fetchFilters?.rt),
             st: _normText(d?.fetchFilters?.st),
+            advConsiderDateRange: d?.fetchFilters?.adv && typeof d.fetchFilters.adv.considerDateRange === 'boolean'
+                ? (d.fetchFilters.adv.considerDateRange ? '1' : '0')
+                : '',
+            adv: (d?.fetchFilters?.adv?.rules || []).map(r => ({
+                join: _normText(r?.join),
+                appliesTo: _normText(r?.appliesTo),
+                field: _normText(r?.field),
+                op: _normText(r?.op),
+                value: _normText(r?.value),
+                valueFrom: _normText(r?.valueFrom),
+                valueTo: _normText(r?.valueTo),
+                rawOp: _normText(r?.rawOp),
+            })),
         }
     });
 }
 
 function getCurrentFetchConfig() {
     const { from, to } = getDateRange();
+    const adv = getAdvancedFetchPayload();
     return {
         from,
         to,
@@ -1477,6 +2734,7 @@ function getCurrentFetchConfig() {
             rf: (document.getElementById('ffRequestedFor')?.value || '').trim(),
             rt: (document.getElementById('ffRequestType')?.value || '').trim(),
             st: (document.getElementById('ffState')?.value || '').trim(),
+            adv: adv || null,
         }
     };
 }
@@ -1490,6 +2748,8 @@ function applyFetchConfig(cfg) {
     document.getElementById('ffRequestedFor').value = cfg.fetchFilters?.rf || '';
     document.getElementById('ffRequestType').value = cfg.fetchFilters?.rt || '';
     document.getElementById('ffState').value = cfg.fetchFilters?.st || '';
+    applyAdvancedFetchPayload(cfg.fetchFilters?.adv || null);
+    syncFetchFilterUi();
 }
 
 function viewDashboard(id) {
@@ -1531,6 +2791,7 @@ function openDashboardEditor({ mode, dashboard }) {
         to: cfg.to || formatDateISO(new Date()),
         fetchFilters: cfg.fetchFilters,
     };
+    dashEditAdv = _dashNormalizeAdvPayload(d.fetchFilters?.adv) || null;
     document.getElementById('dashEditTitle').textContent = mode === 'edit' ? 'Edit Dashboard' : 'Create Dashboard';
     document.getElementById('dashId').value = d.id;
     document.getElementById('dashName').value = d.name || '';
@@ -1543,9 +2804,13 @@ function openDashboardEditor({ mode, dashboard }) {
     document.getElementById('dashFfSt').value = d.fetchFilters?.st || '';
     document.getElementById('dashDeleteBtn').style.display = mode === 'edit' ? '' : 'none';
     document.getElementById('dashEditModal').classList.add('show');
+    syncDashEditorAdvUi();
 }
 
-function closeDashEditor() { document.getElementById('dashEditModal').classList.remove('show'); }
+function closeDashEditor() {
+    dashEditAdv = null;
+    document.getElementById('dashEditModal').classList.remove('show');
+}
 
 function saveDashboardFromModal() {
     loadDashboards();
@@ -1564,6 +2829,7 @@ function saveDashboardFromModal() {
             rf: document.getElementById('dashFfRf').value.trim(),
             rt: document.getElementById('dashFfRt').value.trim(),
             st: document.getElementById('dashFfSt').value.trim(),
+            adv: dashEditAdv || null,
         },
         updatedAt: new Date().toISOString(),
     };
@@ -1594,7 +2860,9 @@ function deleteDashboardFromModal() {
 
 async function fetchWithDateRange() {
     const { from, to } = getDateRange();
-    if (!from || !to) {
+    const advActive = hasAdvancedRules();
+    const useDates = shouldConsiderDateRange();
+    if (useDates && (!from || !to)) {
         showToast('Please select both From and To dates', 'error');
         return;
     }
@@ -1602,11 +2870,13 @@ async function fetchWithDateRange() {
     btn.disabled = true;
     btn.textContent = 'Fetching...';
     isFetchingNow = true;
-    const rangeLabel = from === to ? from : `${from} to ${to}`;
+    const rangeLabel = useDates
+        ? (from === to ? from : `${from} to ${to}`)
+        : (advActive ? 'Advanced (no date range)' : 'All time');
     showF1Loader(`Fetching tickets (${rangeLabel})...`);
 
     try {
-        const records = await startAndPoll(from, to, rangeLabel);
+        const records = await startAndPoll(useDates ? from : null, useDates ? to : null, rangeLabel);
         loadRecords(records);
         showToast(`Loaded ${allTickets.length} tickets (${rangeLabel})`);
     } catch (err) {
@@ -1627,6 +2897,8 @@ async function fetchWithDateRange() {
 }
 
 setDatePreset('week', document.querySelector('.date-preset-chip[data-preset="week"]'));
+syncFetchFilterUi();
+syncAdvancedDateRangeUi();
 
 document.getElementById('dateFrom').addEventListener('input', () => {
     document.querySelectorAll('.date-preset-chip').forEach(c => c.classList.remove('active'));
@@ -2019,7 +3291,8 @@ function renderDashboard() {
 const CORE_VISIBLE = new Set([
     'number', 'short_description', 'state', 'stage', 'opened_by',
     'opened_at', 'closed_at', 'duration', 'cat_item',
-    'requested_for', 'priority', 'approval'
+    'requested_for', 'requested_by', 'start_date', 'end_date', 'work_start', 'work_end',
+    'priority', 'approval'
 ]);
 const SKIP_FIELDS = new Set([
     'sys_id', 'sys_tags', '__status', 'sys_domain', 'sys_domain_path',
@@ -2641,7 +3914,10 @@ function getInitials(name) {
 }
 
 function getServiceNowRecordUrl(ticket, instance) {
-    const table = (ticket && ticket._source_table === 'incident') ? 'incident' : 'sc_req_item';
+    const table =
+        (ticket && ticket._source_table === 'incident') ? 'incident' :
+        (ticket && ticket._source_table === 'change_request') ? 'change_request' :
+        'sc_req_item';
     const sysId = (ticket && (ticket.sys_id || ticket.sysId || ticket.sysID)) ? String(ticket.sys_id || ticket.sysId || ticket.sysID) : '';
     if (sysId) {
         const uri = `${table}.do?sys_id=${encodeURIComponent(sysId)}`;
@@ -2673,7 +3949,7 @@ function renderCellHtml(t, key, highlightWords, instance) {
     if (key === 'cat_item') {
         return val ? `<span style="color:var(--axos-orange);font-size:12px;">${escapeHtml(val)}</span>` : '--';
     }
-    if (key === 'opened_by' || key === 'assigned_to' || key === 'requested_for') {
+    if (key === 'opened_by' || key === 'assigned_to' || key === 'requested_for' || key === 'requested_by' || key === 'caller_id') {
         if (!val) return '--';
         return `<div class="person-cell"><div class="person-avatar" style="background:${getAvatarColor(val)}">${getInitials(val)}</div><span>${val}</span></div>`;
     }
