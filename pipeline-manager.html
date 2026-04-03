@@ -406,6 +406,26 @@
         .tab-content { display:none; }
         .tab-content.active { display:block; }
 
+        /* Results: resizable "Filter Pipelines" sidebar */
+        #panelResults .sidebar { border-right: none; max-width: 72vw; }
+        #panelResults .sidebar-resizer {
+            flex: 0 0 10px;
+            width: 10px;
+            cursor: col-resize;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            background: transparent;
+            border-left: 1px solid rgba(255,255,255,0.06);
+            border-right: 1px solid rgba(255,255,255,0.06);
+            outline: none;
+            z-index: 2;
+        }
+        #panelResults .sidebar-resizer:hover,
+        #panelResults .sidebar-resizer:focus-visible { background: rgba(250,167,74,0.06); }
+        #panelResults.resizing,
+        #panelResults.resizing * { cursor: col-resize !important; user-select: none !important; }
+
         .pat-bar { display:flex; gap:10px; align-items:center; padding:14px 18px; background:linear-gradient(135deg, rgba(22,29,46,0.95), rgba(31,41,55,0.9)); border:1px solid rgba(255,255,255,0.06); border-radius:16px; margin-bottom:24px; flex-wrap:wrap; backdrop-filter:blur(12px); animation:fadeSlideUp 0.4s ease-out both; }
         .pat-bar .pat-status { font-size:11px; color:var(--text-muted); }
         .pat-bar .pat-status.ok { color:var(--success); }
@@ -498,6 +518,82 @@
         .results-controls { display:flex; gap:10px; align-items:center; margin-bottom:18px; flex-wrap:wrap; }
         .results-controls input[type=text] { flex:1; min-width:200px; padding:9px 14px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-tertiary); color:var(--text-primary); font-size:13px; }
         .results-controls select { padding:9px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-tertiary); color:var(--text-primary); font-size:13px; cursor:pointer; }
+
+        /* Pipelines: advanced filtering */
+        .adv-filters-panel {
+            width:100%;
+            padding:14px 14px 10px;
+            border-radius:14px;
+            border:1px solid rgba(255,255,255,0.06);
+            background:linear-gradient(135deg, rgba(22,29,46,0.75), rgba(31,41,55,0.55));
+            backdrop-filter:blur(12px);
+        }
+        .adv-filters-top { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+        .adv-filters-title { font-size:11px; font-weight:900; letter-spacing:0.8px; text-transform:uppercase; color:var(--text-secondary); display:flex; align-items:center; gap:8px; }
+        .adv-filters-title .pill { font-size:10px; font-weight:800; padding:2px 8px; border-radius:999px; background:rgba(250,167,74,0.14); color:var(--axos-orange); border:1px solid rgba(250,167,74,0.22); }
+        .adv-filters-top-right { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+        .btn-lite {
+            padding:8px 10px; border-radius:10px; font-size:12px; font-weight:700;
+            border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.22);
+            color:var(--text-secondary); cursor:pointer; transition:all 0.2s;
+        }
+        .btn-lite:hover { border-color:rgba(250,167,74,0.45); color:var(--text-primary); background:rgba(250,167,74,0.06); transform:translateY(-1px); }
+        .btn-lite.active { border-color:rgba(250,167,74,0.6); color:var(--axos-orange); background:rgba(250,167,74,0.10); }
+        .adv-row { display:grid; grid-template-columns: 160px 140px 1fr 36px; gap:10px; align-items:center; margin:8px 0; }
+        .adv-row select, .adv-row input {
+            width:100%; padding:9px 12px; border-radius:10px;
+            border:1px solid rgba(255,255,255,0.08);
+            background:rgba(0,0,0,0.25); color:var(--text-primary); font-size:12px;
+        }
+        .adv-row input::placeholder { color: rgba(156,163,175,0.75); }
+        .adv-remove {
+            width:36px; height:36px; border-radius:10px;
+            border:1px solid rgba(255,255,255,0.08);
+            background:rgba(0,0,0,0.22); color:var(--text-muted);
+            cursor:pointer; transition:all 0.2s; font-size:18px; line-height:1;
+            display:flex; align-items:center; justify-content:center;
+        }
+        .adv-remove:hover { border-color:rgba(239,68,68,0.55); background:rgba(239,68,68,0.12); color:#f87171; }
+        .adv-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+        .adv-hint { font-size:11px; color:var(--text-muted); line-height:1.4; margin-top:2px; }
+
+        /* Results: compact toggle for metrics-only behavior */
+        .mini-toggle-row {
+            margin-top:10px;
+            display:flex; align-items:center; gap:10px;
+            padding:10px 12px;
+            border-radius:12px;
+            border:1px solid rgba(255,255,255,0.08);
+            background:rgba(0,0,0,0.18);
+            cursor:pointer;
+            transition:all 0.2s;
+        }
+        .mini-toggle-row:hover { border-color:rgba(250,167,74,0.45); background:rgba(250,167,74,0.06); }
+        .mini-toggle-switch { position:relative; width:42px; height:24px; flex-shrink:0; }
+        .mini-toggle-switch input { opacity:0; width:0; height:0; position:absolute; }
+        .mini-toggle-slider {
+            position:absolute; inset:0; border-radius:999px;
+            background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.10);
+            transition:all 0.25s;
+        }
+        .mini-toggle-slider::before {
+            content:''; position:absolute; height:18px; width:18px; left:2px; top:2px;
+            border-radius:50%;
+            background:rgba(156,163,175,0.95);
+            box-shadow:0 6px 18px rgba(0,0,0,0.25);
+            transition:all 0.25s;
+        }
+        .mini-toggle-switch input:checked + .mini-toggle-slider {
+            background:rgba(16,185,129,0.16);
+            border-color:rgba(16,185,129,0.45);
+        }
+        .mini-toggle-switch input:checked + .mini-toggle-slider::before {
+            transform:translateX(18px);
+            background:rgba(52,211,153,0.98);
+        }
+        .mini-toggle-text { min-width:0; }
+        .mini-toggle-label { font-size:12px; font-weight:800; color:var(--text-primary); }
+        .mini-toggle-desc { font-size:10px; color:var(--text-muted); margin-top:2px; }
 
         .run-table { width:100%; border-collapse:separate; border-spacing:0 4px; }
         .run-table th { padding:10px 14px; text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-muted); font-weight:700; background:transparent; border:none; }
@@ -649,8 +745,8 @@
     <!--  RESULTS & METRICS TAB                         -->
     <!-- ═══════════════════════════════════════════════ -->
     <div class="tab-content" id="panelResults">
-    <div class="app">
-        <div class="sidebar" style="padding-top:18px;">
+    <div class="app" id="resultsApp">
+        <div class="sidebar" id="resultsSidebar" style="padding-top:18px;">
             <div style="padding:0 16px 14px; border-bottom:1px solid rgba(255,255,255,0.06);">
                 <div style="font-size:13px; font-weight:700; color:var(--text-primary); margin-bottom:10px; display:flex; align-items:center; gap:6px;"><span style="font-size:16px;">&#128270;</span> Filter Pipelines</div>
                 <input type="text" id="resultsSearch" placeholder="Search by name..." oninput="filterResults()" style="width:100%; padding:9px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); color:var(--text-primary); font-size:12px; margin-bottom:8px; transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--axos-orange)'" onblur="this.style.borderColor='rgba(255,255,255,0.08)'">
@@ -661,9 +757,23 @@
                     <option value="cancelled">Cancelled Only</option>
                     <option value="skipped">Skipped Only</option>
                 </select>
+                <select id="resultsRepoFilter" onchange="onResultsRepoFilterChange()" style="width:100%; padding:9px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); color:var(--text-primary); font-size:12px; margin-top:8px;">
+                    <option value="all">All Repos</option>
+                </select>
+                <div class="mini-toggle-row" onclick="toggleResultsExcludeCancelledToggle(event)" title="Excludes cancelled runs from metrics/charts only (table stays the same).">
+                    <div class="mini-toggle-switch">
+                        <input type="checkbox" id="excludeCancelledMetrics" onchange="saveResultsExcludeCancelledPref(); filterResults();">
+                        <span class="mini-toggle-slider"></span>
+                    </div>
+                    <div class="mini-toggle-text">
+                        <div class="mini-toggle-label">Exclude cancelled from metrics</div>
+                        <div class="mini-toggle-desc">Prevents long cancelled runs from skewing duration stats</div>
+                    </div>
+                </div>
             </div>
             <div class="results-folder-tree" id="resultsTree"></div>
         </div>
+        <div class="sidebar-resizer" id="resultsSidebarResizer" role="separator" aria-orientation="vertical" aria-label="Resize Filter Pipelines panel" tabindex="0" title="Drag to resize. Double-click to reset."></div>
         <div class="main" id="resultsContent" style="padding:24px 30px;">
             <!-- Fetch controls -->
             <div class="pat-bar">
@@ -2129,6 +2239,7 @@
     function showAllPipelines() {
         document.getElementById('actionBar').style.display = 'none';
         selectedPipelines.clear();
+        const repoList = [...new Set((pipelines || []).map(p => normRepoForPipeline(p)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
         let html = `<div class="main-header"><h1>All Pipelines</h1><p>${pipelines.length} workflows detected</p></div>`;
         html += `<div class="view-header"><h2>&nbsp;</h2><button class="btn btn-orange" onclick="showCreateForm()">+ New Pipeline</button></div>`;
         html += `<div class="results-controls" style="margin-bottom:14px;">
@@ -2141,9 +2252,36 @@
                 <option value="all">All Envs</option>
                 ${ENVIRONMENTS.map(e => `<option value="${e}">${e}</option>`).join('')}
             </select>
+            <select id="pipelineFilterRepo" onchange="applyPipelineSearch()" style="width:170px;">
+                <option value="all">All Repos</option>
+                ${repoList.map(r => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join('')}
+            </select>
+            <select id="pipelineFilterSchedule" onchange="applyPipelineSearch()" style="width:160px;">
+                <option value="all">All Schedules</option>
+                <option value="scheduled">Scheduled only</option>
+                <option value="unscheduled">Not scheduled</option>
+            </select>
+            <button class="btn-lite" id="pipelineAdvBtn" onclick="togglePipelineAdvancedFilters()" title="Build complex filter combinations">Advanced</button>
+        </div>`;
+        html += `<div id="pipelineAdvancedPanel" class="adv-filters-panel" style="display:none; margin:-2px 0 14px;">
+            <div class="adv-filters-top">
+                <div class="adv-filters-title">&#9881; Advanced filters <span class="pill">AND/OR</span></div>
+                <div class="adv-filters-top-right">
+                    <span style="font-size:11px; color:var(--text-muted); font-weight:700; letter-spacing:0.4px;">Match</span>
+                    <select id="pipelineAdvMatchMode" onchange="applyPipelineSearch()" style="padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.22); color:var(--text-primary); font-size:12px;">
+                        <option value="all">All (AND)</option>
+                        <option value="any">Any (OR)</option>
+                    </select>
+                    <button class="btn-lite" onclick="addPipelineAdvRow()" title="Add another filter row">+ Add</button>
+                    <button class="btn-lite" onclick="clearPipelineAdvFilters()" title="Clear advanced filters">Clear</button>
+                </div>
+            </div>
+            <div id="pipelineAdvRows"></div>
+            <div class="adv-hint">Examples: Name contains <strong>regression</strong> AND Type equals <strong>Smoke</strong> AND Scheduled is <strong>true</strong>. Switch Match to <strong>Any</strong> for OR behavior.</div>
         </div>`;
         html += `<div id="pipelineListArea"></div>`;
         document.getElementById('mainContent').innerHTML = html;
+        initPipelineAdvancedFiltersUi();
         applyPipelineSearch();
     }
 
@@ -2151,6 +2289,8 @@
         const search = (document.getElementById('pipelineSearch')?.value || '').toLowerCase();
         const typeFilter = document.getElementById('pipelineFilterType')?.value || 'all';
         const envFilter = document.getElementById('pipelineFilterEnv')?.value || 'all';
+        const repoFilter = document.getElementById('pipelineFilterRepo')?.value || 'all';
+        const schedFilter = document.getElementById('pipelineFilterSchedule')?.value || 'all';
 
         let filtered = [...pipelines];
         if (search) filtered = filtered.filter(p =>
@@ -2162,6 +2302,18 @@
         );
         if (typeFilter !== 'all') filtered = filtered.filter(p => p.testType === typeFilter);
         if (envFilter !== 'all') filtered = filtered.filter(p => p.env === envFilter);
+        if (repoFilter !== 'all') filtered = filtered.filter(p => normRepoForPipeline(p) === repoFilter);
+        if (schedFilter !== 'all') filtered = filtered.filter(p => (schedFilter === 'scheduled') ? !!p.scheduleEnabled : !p.scheduleEnabled);
+
+        // Advanced filters (optional, combinable with the quick filters above).
+        const adv = readPipelineAdvFiltersFromUi();
+        if (adv.rows.length) {
+            filtered = filtered.filter(p => pipelineMatchesAdvancedFilters(p, adv));
+            savePipelineAdvancedFilters(adv);
+        } else {
+            // Still persist match mode changes even if no rows.
+            savePipelineAdvancedFilters(adv);
+        }
 
         filtered.sort((a, b) => a.name.localeCompare(b.name));
         const area = document.getElementById('pipelineListArea');
@@ -2176,6 +2328,259 @@
         area.innerHTML = html;
     }
 
+    // ────────────────────────────────────────────────
+    //  All Pipelines: Advanced filter builder
+    // ────────────────────────────────────────────────
+    const PIPELINE_ADV_FILTERS_KEY = 'pm.pipelines.advancedFilters.v1';
+
+    function togglePipelineAdvancedFilters() {
+        const panel = document.getElementById('pipelineAdvancedPanel');
+        const btn = document.getElementById('pipelineAdvBtn');
+        if (!panel || !btn) return;
+        const isOpen = panel.style.display !== 'none';
+        panel.style.display = isOpen ? 'none' : 'block';
+        btn.classList.toggle('active', !isOpen);
+        try { localStorage.setItem('pm.pipelines.advancedOpen', (!isOpen) ? '1' : '0'); } catch { /* ignore */ }
+    }
+
+    function initPipelineAdvancedFiltersUi() {
+        const panel = document.getElementById('pipelineAdvancedPanel');
+        const rowsEl = document.getElementById('pipelineAdvRows');
+        const btn = document.getElementById('pipelineAdvBtn');
+        if (!panel || !rowsEl || !btn) return;
+
+        // Restore open/closed state.
+        try {
+            const open = localStorage.getItem('pm.pipelines.advancedOpen');
+            const shouldOpen = open === '1';
+            panel.style.display = shouldOpen ? 'block' : 'none';
+            btn.classList.toggle('active', shouldOpen);
+        } catch { /* ignore */ }
+
+        // Restore rows.
+        const state = loadPipelineAdvancedFilters();
+        const modeEl = document.getElementById('pipelineAdvMatchMode');
+        if (modeEl) modeEl.value = state.matchMode === 'any' ? 'any' : 'all';
+
+        rowsEl.innerHTML = '';
+        if (state.rows.length) {
+            state.rows.forEach(r => addPipelineAdvRow(r));
+        } else {
+            // One starter row makes the feature discoverable.
+            addPipelineAdvRow({ field: 'name', op: 'contains', value: '' });
+        }
+    }
+
+    function loadPipelineAdvancedFilters() {
+        try {
+            const raw = localStorage.getItem(PIPELINE_ADV_FILTERS_KEY);
+            if (!raw) return { matchMode: 'all', rows: [] };
+            const parsed = JSON.parse(raw);
+            const matchMode = (parsed?.matchMode === 'any') ? 'any' : 'all';
+            const rows = Array.isArray(parsed?.rows) ? parsed.rows : [];
+            return { matchMode, rows: rows.map(cleanPipelineAdvRow).filter(Boolean) };
+        } catch {
+            return { matchMode: 'all', rows: [] };
+        }
+    }
+
+    function savePipelineAdvancedFilters(state) {
+        try {
+            const cleaned = {
+                matchMode: state?.matchMode === 'any' ? 'any' : 'all',
+                rows: (state?.rows || []).map(cleanPipelineAdvRow).filter(Boolean)
+            };
+            localStorage.setItem(PIPELINE_ADV_FILTERS_KEY, JSON.stringify(cleaned));
+        } catch { /* ignore */ }
+    }
+
+    function cleanPipelineAdvRow(row) {
+        if (!row) return null;
+        const field = String(row.field || '').trim();
+        const op = String(row.op || '').trim();
+        const value = (row.value == null) ? '' : String(row.value);
+        if (!field) return null;
+        return { field, op: op || 'contains', value };
+    }
+
+    function clearPipelineAdvFilters() {
+        const rowsEl = document.getElementById('pipelineAdvRows');
+        if (rowsEl) rowsEl.innerHTML = '';
+        const modeEl = document.getElementById('pipelineAdvMatchMode');
+        if (modeEl) modeEl.value = 'all';
+        addPipelineAdvRow({ field: 'name', op: 'contains', value: '' });
+        applyPipelineSearch();
+    }
+
+    function addPipelineAdvRow(prefill) {
+        const rowsEl = document.getElementById('pipelineAdvRows');
+        if (!rowsEl) return;
+        const r = cleanPipelineAdvRow(prefill) || { field: 'name', op: 'contains', value: '' };
+
+        const row = document.createElement('div');
+        row.className = 'adv-row';
+
+        const fieldSel = document.createElement('select');
+        fieldSel.className = 'adv-field';
+        const fields = [
+            { v: 'name', l: 'Name' },
+            { v: 'testType', l: 'Type (Smoke/Regression)' },
+            { v: 'env', l: 'Env' },
+            { v: 'repo', l: 'Repo' },
+            { v: 'scheduled', l: 'Scheduled (true/false)' },
+            { v: 'suiteOrFeature', l: 'Suite/Feature' },
+            { v: 'feature', l: 'Feature' },
+            { v: 'brand', l: 'Brand' },
+            { v: 'filename', l: 'Workflow file' },
+            { v: 'grep', l: 'Grep/Tags' }
+        ];
+        fieldSel.innerHTML = fields.map(f => `<option value="${f.v}">${escapeHtml(f.l)}</option>`).join('');
+        fieldSel.value = r.field;
+
+        const opSel = document.createElement('select');
+        opSel.className = 'adv-op';
+
+        const valueWrap = document.createElement('div');
+        valueWrap.className = 'adv-valwrap';
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'adv-remove';
+        removeBtn.type = 'button';
+        removeBtn.title = 'Remove';
+        removeBtn.textContent = '×';
+
+        row.appendChild(fieldSel);
+        row.appendChild(opSel);
+        row.appendChild(valueWrap);
+        row.appendChild(removeBtn);
+        rowsEl.appendChild(row);
+
+        const rebuildRowControls = () => {
+            const field = fieldSel.value;
+            const isBool = field === 'scheduled';
+            const isEnum = field === 'testType' || field === 'env' || field === 'repo' || isBool;
+            const prevVal = valueWrap.querySelector('.adv-val') ? valueWrap.querySelector('.adv-val').value : (r.value != null ? String(r.value) : '');
+
+            const ops = isBool
+                ? [{ v: 'is', l: 'is' }, { v: 'isNot', l: 'is not' }]
+                : [
+                    { v: 'contains', l: 'contains' },
+                    { v: 'equals', l: 'equals' },
+                    { v: 'startsWith', l: 'starts with' },
+                    { v: 'endsWith', l: 'ends with' },
+                    { v: 'notContains', l: 'not contains' },
+                    { v: 'notEquals', l: 'not equals' }
+                ];
+            const prevOp = opSel.value || r.op || 'contains';
+            opSel.innerHTML = ops.map(o => `<option value="${o.v}">${escapeHtml(o.l)}</option>`).join('');
+            opSel.value = ops.some(o => o.v === prevOp) ? prevOp : ops[0].v;
+
+            valueWrap.innerHTML = '';
+            if (isEnum) {
+                const valSel = document.createElement('select');
+                valSel.className = 'adv-val';
+                if (field === 'testType') {
+                    valSel.innerHTML = `<option value="">(any)</option>` + TEST_TYPES.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+                } else if (field === 'env') {
+                    valSel.innerHTML = `<option value="">(any)</option>` + ENVIRONMENTS.map(e => `<option value="${escapeHtml(e)}">${escapeHtml(e)}</option>`).join('');
+                } else if (field === 'repo') {
+                    const repos = [...new Set((pipelines || []).map(p => normRepoForPipeline(p)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+                    valSel.innerHTML = `<option value="">(any)</option>` + repos.map(rr => `<option value="${escapeHtml(rr)}">${escapeHtml(rr)}</option>`).join('');
+                } else if (field === 'scheduled') {
+                    valSel.innerHTML = `<option value="true">true</option><option value="false">false</option>`;
+                }
+                valSel.value = prevVal;
+                valueWrap.appendChild(valSel);
+                valSel.addEventListener('change', applyPipelineSearch);
+            } else {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'adv-val';
+                input.placeholder = 'value…';
+                input.value = prevVal;
+                valueWrap.appendChild(input);
+                input.addEventListener('input', applyPipelineSearch);
+            }
+        };
+
+        rebuildRowControls();
+
+        fieldSel.addEventListener('change', () => { rebuildRowControls(); applyPipelineSearch(); });
+        opSel.addEventListener('change', applyPipelineSearch);
+        removeBtn.addEventListener('click', () => { row.remove(); applyPipelineSearch(); });
+    }
+
+    function readPipelineAdvFiltersFromUi() {
+        const rowsEl = document.getElementById('pipelineAdvRows');
+        const modeEl = document.getElementById('pipelineAdvMatchMode');
+        const matchMode = (modeEl && modeEl.value === 'any') ? 'any' : 'all';
+        if (!rowsEl) return { matchMode, rows: [] };
+
+        const rows = [];
+        rowsEl.querySelectorAll('.adv-row').forEach(row => {
+            const field = row.querySelector('.adv-field')?.value || '';
+            const op = row.querySelector('.adv-op')?.value || 'contains';
+            const valEl = row.querySelector('.adv-val');
+            const value = valEl ? valEl.value : '';
+            const cleaned = cleanPipelineAdvRow({ field, op, value });
+            if (!cleaned) return;
+            // Empty value means "ignore" for most ops (except scheduled where value is always set).
+            if (cleaned.field !== 'scheduled' && !String(cleaned.value || '').trim()) return;
+            rows.push(cleaned);
+        });
+        return { matchMode, rows };
+    }
+
+    function pipelineMatchesAdvancedFilters(p, adv) {
+        const rows = adv?.rows || [];
+        if (!rows.length) return true;
+        const mode = adv?.matchMode === 'any' ? 'any' : 'all';
+        const evalRow = (r) => pipelineMatchesAdvRow(p, r);
+        return mode === 'any' ? rows.some(evalRow) : rows.every(evalRow);
+    }
+
+    function pipelineMatchesAdvRow(p, r) {
+        const field = String(r.field || '');
+        const op = String(r.op || 'contains');
+        const valueRaw = (r.value == null) ? '' : String(r.value);
+
+        const fieldValue = getPipelineFieldValue(p, field);
+        if (field === 'scheduled') {
+            const isScheduled = String(fieldValue) === 'true';
+            const want = String(valueRaw).toLowerCase() === 'true';
+            return op === 'isNot' ? (isScheduled !== want) : (isScheduled === want);
+        }
+
+        const a = String(fieldValue || '').toLowerCase();
+        const b = String(valueRaw || '').toLowerCase();
+        if (!b) return true;
+
+        if (op === 'equals') return a === b;
+        if (op === 'notEquals') return a !== b;
+        if (op === 'startsWith') return a.startsWith(b);
+        if (op === 'endsWith') return a.endsWith(b);
+        if (op === 'notContains') return !a.includes(b);
+        // default: contains
+        return a.includes(b);
+    }
+
+    function getPipelineFieldValue(p, field) {
+        if (!p) return '';
+        if (field === 'name') return p.name || '';
+        if (field === 'testType') return p.testType || '';
+        if (field === 'env') return p.env || '';
+        if (field === 'repo') return normRepoForPipeline(p) || '';
+        if (field === 'scheduled') return p.scheduleEnabled ? 'true' : 'false';
+        if (field === 'suiteOrFeature') return isOrchestratorPipeline(p)
+            ? (p.orchestratorSet || p.featureDetail || p.feature || '')
+            : (p.testSuite || p.feature || '');
+        if (field === 'feature') return p.feature || '';
+        if (field === 'brand') return p.brand || '';
+        if (field === 'filename') return p.filename || '';
+        if (field === 'grep') return p.grep || '';
+        return '';
+    }
+
     function pipelineCard(p) {
         const badgeClass =
             p.testType === 'Regression' ? 'badge-regression' :
@@ -2186,7 +2591,7 @@
         const suiteOrFeature = isOrchestratorPipeline(p)
             ? (p.orchestratorSet || p.featureDetail || p.feature || '')
             : (p.testSuite || p.feature || '');
-        const ghRepo = p.repo || (isMobilePipeline(p) ? 'Axos.QE.Mobile' : 'Axos.QE.TestIM');
+        const ghRepo = normRepoForPipeline(p);
         const repoPill = ghRepo ? `<span class="section-badge" style="background:rgba(255,255,255,0.06);color:var(--text-muted); font-weight:800; letter-spacing:0.2px;">${ghRepo}</span>` : '';
         const pKey = pipelineKeyFrom(ghRepo, p.filename);
         return `<div class="pipeline-card" data-pkey="${pKey}" onclick="viewPipeline('${pKey}')">
@@ -5757,6 +6162,8 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
     let selectedRuns = new Set();
     let resultsSelectedPipelines = new Set(); // multi-select; empty means "All Pipelines"
 
+    const RESULTS_EXCLUDE_CANCELLED_KEY = 'pm.results.excludeCancelledMetrics';
+
     function getGhOwner() { return GH_OWNER; }
     function getGhAuthHeader(pat) {
         const t = String(pat || '').trim();
@@ -6015,12 +6422,77 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
         metricsArea.style.animation = 'fadeSlideUp 0.5s ease-out both';
         document.getElementById('resultsEmpty').style.display = 'none';
         document.getElementById('resultsTableWrap').style.display = 'block';
+        populateResultsRepoFilter();
+        loadResultsExcludeCancelledPref();
         renderResultsTree();
         filterResults();
     }
 
+    function resultsPipelineKey(repo, workflowName) {
+        return `${String(repo || '').trim()}::${String(workflowName || '').trim()}`;
+    }
+    function parseResultsPipelineKey(key) {
+        const s = String(key || '');
+        const i = s.indexOf('::');
+        if (i < 0) return { repo: '', workflowName: s };
+        return { repo: s.slice(0, i), workflowName: s.slice(i + 2) };
+    }
+
+    function getResultsRepoFilterValue() {
+        return document.getElementById('resultsRepoFilter')?.value || 'all';
+    }
+
+    function populateResultsRepoFilter() {
+        const sel = document.getElementById('resultsRepoFilter');
+        if (!sel) return;
+        const prev = sel.value || 'all';
+        const repos = [...new Set((resultsPipelines || []).map(p => String(p?.repo || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+        sel.innerHTML = `<option value="all">All Repos</option>` + repos.map(r => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join('');
+        sel.value = repos.includes(prev) ? prev : 'all';
+    }
+
+    function onResultsRepoFilterChange() {
+        // Keep the UI predictable: switching repo resets pipeline selection to "All".
+        resultsSelectedPipelines.clear();
+        renderResultsTree();
+        filterResults();
+    }
+
+    function toggleResultsExcludeCancelledToggle(e) {
+        // Clicking anywhere on the row toggles; but don't double-toggle if the input itself was clicked.
+        const input = document.getElementById('excludeCancelledMetrics');
+        if (!input) return;
+        if (e && (e.target?.tagName || '').toLowerCase() === 'input') return;
+        input.checked = !input.checked;
+        saveResultsExcludeCancelledPref();
+        filterResults();
+    }
+
+    function saveResultsExcludeCancelledPref() {
+        const input = document.getElementById('excludeCancelledMetrics');
+        if (!input) return;
+        try { localStorage.setItem(RESULTS_EXCLUDE_CANCELLED_KEY, input.checked ? '1' : '0'); } catch { /* ignore */ }
+    }
+
+    function loadResultsExcludeCancelledPref() {
+        const input = document.getElementById('excludeCancelledMetrics');
+        if (!input) return;
+        try {
+            const v = localStorage.getItem(RESULTS_EXCLUDE_CANCELLED_KEY);
+            if (v === '1' || v === '0') input.checked = v === '1';
+        } catch { /* ignore */ }
+    }
+
+    function getMetricsRuns() {
+        let runs = getFilteredRuns();
+        const exclude = !!document.getElementById('excludeCancelledMetrics')?.checked;
+        if (exclude) runs = runs.filter(r => getRunOutcome(r) !== 'cancelled');
+        return runs;
+    }
+
     function renderMetrics() {
-        const runs = getFilteredRuns();
+        const excludeCancelled = !!document.getElementById('excludeCancelledMetrics')?.checked;
+        const runs = getMetricsRuns();
         const outcomes = runs.map(getRunOutcome);
         const passed = outcomes.filter(o => o === 'success').length;
         const failed = outcomes.filter(o => o === 'failure').length;
@@ -6033,7 +6505,7 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
         const avgDur = durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0;
         const uniquePipelines = resultsSelectedPipelines.size
             ? resultsSelectedPipelines.size
-            : (resultsPipelines.length || new Set(runs.map(r => r.workflowName)).size);
+            : new Set(runs.map(r => resultsPipelineKey(r.repo, r.workflowName))).size;
         const prClass = parseFloat(passRate) >= 90 ? 'v-green' : parseFloat(passRate) >= 70 ? 'v-orange' : 'v-red';
 
         document.getElementById('metricsGrid').innerHTML = `
@@ -6041,7 +6513,7 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
                 <div class="metric-icon">&#128640;</div>
                 <div class="metric-label">Pipelines</div>
                 <div class="metric-value" data-count="${uniquePipelines}">${uniquePipelines}</div>
-                <div class="metric-sub">${total} total runs loaded</div>
+                <div class="metric-sub">${total} runs in view${excludeCancelled ? ' (cancelled excluded)' : ''}</div>
                 <div class="metric-bar"><div class="metric-bar-fill" style="width:100%; background:linear-gradient(90deg,#3b82f6,#60a5fa);"></div></div>
             </div>
             <div class="metric-card m-green">
@@ -6207,7 +6679,7 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
     }
 
     function renderCharts() {
-        const runs = getFilteredRuns();
+        const runs = getMetricsRuns();
         const outcomes = runs.map(getRunOutcome);
         const passed = outcomes.filter(o => o === 'success').length;
         const failed = outcomes.filter(o => o === 'failure').length;
@@ -6348,7 +6820,8 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
     function renderResultsTree() {
         const tree = document.getElementById('resultsTree');
         if (!tree) return;
-        const list = (resultsPipelines || []).slice();
+        const repoFilter = getResultsRepoFilterValue();
+        const list = (resultsPipelines || []).slice().filter(p => repoFilter === 'all' ? true : (String(p?.repo || '').trim() === repoFilter));
         list.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
         const missingMap = new Map((missingWorkflows || []).map(m => [`${m.repo}::${m.filename}`, m.reason || 'missing']));
 
@@ -6382,10 +6855,12 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
                 const short = display.replace(/^Web_AxosBank_\w+-OLB_/, '');
                 const runCount = allRuns.filter(r => r.workflowName === p.name && r.repo === p.repo).length;
                 const jsName = String(p.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-                const checked = resultsSelectedPipelines.has(p.name);
-                html += `<label class="rf-node rf-indent ${checked ? 'active' : ''}" data-pipeline="${escapeHtml(p.name)}" style="${isMissing ? 'color:var(--danger);' : ''}">
-                    <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleResultsPipeline('${jsName}', this.checked)">
-                    <span class="rf-label" title="${escapeHtml(p.name)}">${escapeHtml(short)}${isMissing ? ` <span style="font-size:10px; font-weight:800;">&#9888; ${missReason === 'repo_error' ? 'repo error' : missReason === 'runs_error' ? 'runs error' : 'issue'}</span>` : ''}</span>
+                const jsRepo = String(p.repo || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const keyVal = resultsPipelineKey(p.repo, p.name);
+                const checked = resultsSelectedPipelines.has(keyVal);
+                html += `<label class="rf-node rf-indent ${checked ? 'active' : ''}" data-pipeline="${escapeHtml(keyVal)}" style="${isMissing ? 'color:var(--danger);' : ''}">
+                    <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleResultsPipeline('${jsRepo}', '${jsName}', this.checked)">
+                    <span class="rf-label" title="${escapeHtml(p.repo)}: ${escapeHtml(p.name)}">${escapeHtml(short)}${isMissing ? ` <span style="font-size:10px; font-weight:800;">&#9888; ${missReason === 'repo_error' ? 'repo error' : missReason === 'runs_error' ? 'runs error' : 'issue'}</span>` : ''}</span>
                     <span class="rf-count">${runCount}</span>
                 </label>`;
             }
@@ -6404,9 +6879,10 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
         filterResults();
     }
 
-    function toggleResultsPipeline(pipeline, checked) {
-        if (checked) resultsSelectedPipelines.add(pipeline);
-        else resultsSelectedPipelines.delete(pipeline);
+    function toggleResultsPipeline(repo, pipeline, checked) {
+        const key = resultsPipelineKey(repo, pipeline);
+        if (checked) resultsSelectedPipelines.add(key);
+        else resultsSelectedPipelines.delete(key);
 
         // Update tree UI state without rerendering (preserves scroll position).
         const tree = document.getElementById('resultsTree');
@@ -6415,7 +6891,7 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
             if (allNode) allNode.classList.toggle('active', resultsSelectedPipelines.size === 0);
             const nodes = tree.querySelectorAll('[data-pipeline]');
             for (const n of nodes) {
-                if (n?.dataset?.pipeline === pipeline) {
+                if (n?.dataset?.pipeline === key) {
                     n.classList.toggle('active', !!checked);
                     break;
                 }
@@ -6426,7 +6902,9 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
 
     function getFilteredRuns() {
         let runs = [...allRuns];
-        if (resultsSelectedPipelines.size) runs = runs.filter(r => resultsSelectedPipelines.has(r.workflowName));
+        const repoFilter = getResultsRepoFilterValue();
+        if (repoFilter !== 'all') runs = runs.filter(r => String(r.repo || '').trim() === repoFilter);
+        if (resultsSelectedPipelines.size) runs = runs.filter(r => resultsSelectedPipelines.has(resultsPipelineKey(r.repo, r.workflowName)));
         const search = document.getElementById('resultsSearch')?.value?.toLowerCase() || '';
         if (search) runs = runs.filter(r => r.workflowName.toLowerCase().includes(search));
         const statusFilter = document.getElementById('resultsStatusFilter')?.value || 'all';
@@ -6438,10 +6916,13 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
         const runs = getFilteredRuns();
         renderMetrics();
         renderCharts();
-        let title = 'All Pipeline Runs';
+        const repoFilter = getResultsRepoFilterValue();
+        let title = repoFilter !== 'all' ? `${repoFilter} — All Pipeline Runs` : 'All Pipeline Runs';
         if (resultsSelectedPipelines.size === 1) {
             const only = [...resultsSelectedPipelines][0];
-            title = String(only || '').replace(/-Testim$/, '');
+            const parsed = parseResultsPipelineKey(only);
+            const n = String(parsed.workflowName || '').replace(/-Testim$/, '');
+            title = parsed.repo ? `${parsed.repo} — ${n}` : n;
         } else if (resultsSelectedPipelines.size > 1) {
             title = `${resultsSelectedPipelines.size} Selected Pipelines`;
         }
@@ -6931,6 +7412,9 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
             missingWorkflows = [];
             selectedRuns.clear();
             resultsSelectedPipelines.clear();
+            try { localStorage.setItem('pm.results.excludeCancelledMetrics', '0'); } catch { /* ignore */ }
+            const exCb = document.getElementById('excludeCancelledMetrics');
+            if (exCb) exCb.checked = false;
 
             // Render initial (All Pipelines).
             renderResults();
@@ -6945,9 +7429,10 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
 
             // Select Pipe A + Pipe B (4 runs, 3/4 pass => 75.0%).
             function setChecked(name, checked) {
+                const key = `${repo}::${name}`;
                 const nodes = document.querySelectorAll('#resultsTree [data-pipeline]');
                 for (const n of nodes) {
-                    if (n?.dataset?.pipeline === name) {
+                    if (n?.dataset?.pipeline === key) {
                         const cb = n.querySelector('input[type=checkbox]');
                         if (!cb) throw new Error(`missing checkbox for "${name}"`);
                         cb.checked = checked;
@@ -7031,6 +7516,91 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
     updateSaveStatus();
     updatePatDot();
     updateResultsTokenStatus();
+    initResultsSidebarResize();
+
+    function initResultsSidebarResize() {
+        const panel = document.getElementById('panelResults');
+        const sidebar = document.getElementById('resultsSidebar');
+        const handle = document.getElementById('resultsSidebarResizer');
+        if (!panel || !sidebar || !handle) return;
+
+        const storageKey = 'pm.results.sidebarWidth';
+
+        const clampWidth = (w) => {
+            const min = parseFloat(getComputedStyle(sidebar).minWidth) || 240;
+            const maxFromCss = parseFloat(getComputedStyle(sidebar).maxWidth);
+            const max = (Number.isFinite(maxFromCss) && maxFromCss > 0)
+                ? maxFromCss
+                : Math.max(min, Math.min(900, window.innerWidth * 0.8));
+            return Math.max(min, Math.min(max, Math.round(w)));
+        };
+
+        const setWidth = (w, persist) => {
+            const width = clampWidth(w);
+            sidebar.style.width = width + 'px';
+            if (persist) localStorage.setItem(storageKey, String(width));
+        };
+
+        const saved = parseFloat(localStorage.getItem(storageKey) || '');
+        if (Number.isFinite(saved) && saved > 0) {
+            requestAnimationFrame(() => setWidth(saved, false));
+        }
+
+        let dragPointerId = null;
+        let pendingWidth = null;
+
+        const calcWidthFromClientX = (clientX) => {
+            const app = document.getElementById('resultsApp') || sidebar.parentElement;
+            const rect = app.getBoundingClientRect();
+            return clientX - rect.left;
+        };
+
+        handle.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0) return;
+            dragPointerId = e.pointerId;
+            pendingWidth = null;
+            panel.classList.add('resizing');
+            handle.setPointerCapture(e.pointerId);
+            e.preventDefault();
+        });
+
+        handle.addEventListener('pointermove', (e) => {
+            if (dragPointerId == null || e.pointerId !== dragPointerId) return;
+            const w = calcWidthFromClientX(e.clientX);
+            pendingWidth = w;
+            setWidth(w, false);
+        });
+
+        const endDrag = (e) => {
+            if (dragPointerId == null) return;
+            if (e.pointerId !== dragPointerId) return;
+            panel.classList.remove('resizing');
+            try { handle.releasePointerCapture(dragPointerId); } catch (_) {}
+            dragPointerId = null;
+            if (pendingWidth != null) setWidth(pendingWidth, true);
+            pendingWidth = null;
+        };
+
+        handle.addEventListener('pointerup', endDrag);
+        handle.addEventListener('pointercancel', endDrag);
+
+        handle.addEventListener('dblclick', () => {
+            sidebar.style.width = '';
+            localStorage.removeItem(storageKey);
+        });
+
+        handle.addEventListener('keydown', (e) => {
+            const step = e.shiftKey ? 24 : 12;
+            const cur = sidebar.getBoundingClientRect().width;
+            if (e.key === 'ArrowLeft') { e.preventDefault(); setWidth(cur - step, true); }
+            if (e.key === 'ArrowRight') { e.preventDefault(); setWidth(cur + step, true); }
+            if (e.key === 'Home') {
+                e.preventDefault();
+                const min = parseFloat(getComputedStyle(sidebar).minWidth) || 240;
+                setWidth(min, true);
+            }
+        });
+    }
 
     function updateResultsTokenStatus() {
         const el = document.getElementById('resultsTokenStatus');
