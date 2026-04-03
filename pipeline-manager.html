@@ -774,7 +774,7 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Report Title</label>
-                            <input type="text" id="emailTitle" value="Pipeline Status Report" style="font-size:13px;">
+                            <input type="text" id="emailTitle" value="Testim Pipeline Status Report" style="font-size:13px;">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Subtitle</label>
@@ -883,7 +883,7 @@
 
                 <div class="form-group" style="margin-bottom:12px;">
                     <label class="form-label">Sync ref (branch / tag / SHA)</label>
-                    <input type="text" id="syncRef" placeholder="(default branch)" style="font-size:13px;">
+                    <input type="text" id="syncRef" placeholder="(default branch)" style="font-size:13px;" oninput="persistSyncRefFromUi()">
                     <span class="field-help">Set this to your feature branch to sync workflows before they’re merged.</span>
                 </div>
 
@@ -1087,6 +1087,10 @@
 
     const SYNC_REF_KEY = 'axos_sync_ref';
 
+    function getStoredSyncRef() {
+        try { return String(localStorage.getItem(SYNC_REF_KEY) || '').trim(); } catch { return ''; }
+    }
+
     function getGitHubToken() {
         try { return String(localStorage.getItem(GH_TOKEN_KEY) || '').trim(); } catch { return ''; }
     }
@@ -1119,8 +1123,18 @@
 
     function getEffectiveSyncRef() {
         const fromUi = String(document.getElementById('syncRef')?.value || '').trim();
-        if (fromUi) return fromUi;
-        try { return String(localStorage.getItem(SYNC_REF_KEY) || '').trim(); } catch { return ''; }
+        // If the field is empty, treat it as intentionally cleared.
+        // Do NOT fall back to the previously stored value (prevents "sticky" refs).
+        return fromUi;
+    }
+
+    function persistSyncRefFromUi() {
+        const ref = String(document.getElementById('syncRef')?.value || '').trim();
+        try {
+            if (ref) localStorage.setItem(SYNC_REF_KEY, ref);
+            else localStorage.removeItem(SYNC_REF_KEY);
+        } catch { /* ignore */ }
+        return ref;
     }
 
     const FOLDER_STRUCTURE = {
@@ -1440,7 +1454,7 @@
                     const isCrypto = repo === 'Axos.QE.Crypto.Web' || fn.includes('-Playwright') || fn.startsWith('crypto-web-') || fn.startsWith('crypto-web_');
                     if (!isCrypto) return;
                     if (p.runTarget === undefined || p.runTarget === null || p.runTarget === '') p.runTarget = 'local';
-                    if (p.localBrowser === undefined || p.localBrowser === null || p.localBrowser === '') p.localBrowser = 'chrome';
+                    if (p.localBrowser === undefined || p.localBrowser === null || p.localBrowser === '') p.localBrowser = 'chromium';
                     if (p.pwVideo === undefined || p.pwVideo === null || p.pwVideo === '') p.pwVideo = '1';
                     if (p.parallel === undefined || p.parallel === null || p.parallel === '') p.parallel = '1';
                     if (p.tunnel === undefined || p.tunnel === null || p.tunnel === '') p.tunnel = 'false';
@@ -2339,7 +2353,7 @@
                 `Settings:\n` +
                 `PROJECT_DIR: projects/Axos.QE.${team === 'Enrollment' ? 'Enr' : team === 'OutSystems' ? 'OutSys' : team === 'Crypto' ? 'Crypto' : 'UNKNOWN_TEAM'}.Web\n` +
                 `RUN_TARGET: ${p.runTarget || 'local'}\n` +
-                `LOCAL_BROWSER: ${p.localBrowser || 'chrome'}\n` +
+                `LOCAL_BROWSER: ${p.localBrowser || 'chromium'}\n` +
                 `TEST_ENV: ${p.env || 'UAT'}\n` +
                 `GREP: ${p.grep || ''}\n` +
                 `PARALLELS: ${p.parallel || '1'}\n` +
@@ -2357,7 +2371,7 @@
             let prompt = `Create or update a Playwright pipeline workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
                 `This workflow should be self-contained (Playwright + BrowserStack) and reflect these settings:\n\n` +
                 `RUN_TARGET: ${p.runTarget || 'local'}\n` +
-                `LOCAL_BROWSER: ${p.localBrowser || 'chrome'}\n` +
+                `LOCAL_BROWSER: ${p.localBrowser || 'chromium'}\n` +
                 `TEST_ENV: ${p.env || 'UAT'}\n` +
                 `GREP: ${p.grep || ''}\n` +
                 `SUITE: ${p.suite || ''}\n` +
@@ -2742,10 +2756,11 @@
                     <div class="form-group">
                         <label class="form-label">Local Browser</label>
                         <select id="fLocalBrowser" ${isView ? 'disabled' : ''}>
-                            <option value="chrome" ${String(p.localBrowser || 'chrome') === 'chrome' ? 'selected' : ''}>Chrome</option>
-                            <option value="edge" ${String(p.localBrowser || 'chrome') === 'edge' ? 'selected' : ''}>Edge</option>
+                            <option value="chromium" ${String(p.localBrowser || 'chromium') === 'chromium' ? 'selected' : ''}>Chromium</option>
+                            <option value="chrome" ${String(p.localBrowser || 'chromium') === 'chrome' ? 'selected' : ''}>Chrome</option>
+                            <option value="edge" ${String(p.localBrowser || 'chromium') === 'edge' ? 'selected' : ''}>Edge</option>
                         </select>
-                        <span class="field-help">Used only when <b>Run Target</b> is <code>local</code></span>
+                        <span class="field-help">Used only when <b>Run Target</b> is <code>local</code> (default: <code>chromium</code>)</span>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Grep Filter</label>
@@ -2921,10 +2936,11 @@
                     <div class="form-group">
                         <label class="form-label">Local Browser</label>
                         <select id="fLocalBrowser" ${isView ? 'disabled' : ''}>
-                            <option value="chrome" ${String(p.localBrowser || 'chrome') === 'chrome' ? 'selected' : ''}>Chrome</option>
-                            <option value="edge" ${String(p.localBrowser || 'chrome') === 'edge' ? 'selected' : ''}>Edge</option>
+                            <option value="chromium" ${String(p.localBrowser || 'chromium') === 'chromium' ? 'selected' : ''}>Chromium</option>
+                            <option value="chrome" ${String(p.localBrowser || 'chromium') === 'chrome' ? 'selected' : ''}>Chrome</option>
+                            <option value="edge" ${String(p.localBrowser || 'chromium') === 'edge' ? 'selected' : ''}>Edge</option>
                         </select>
-                        <span class="field-help">Used only when <b>Run Target</b> is <code>local</code></span>
+                        <span class="field-help">Used only when <b>Run Target</b> is <code>local</code> (default: <code>chromium</code>)</span>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Grep Filter</label>
@@ -4275,7 +4291,7 @@
                 base.env = v('fEnv') || base.env;
                 base.feature = v('fFeature') || base.feature || 'Login';
                 base.runTarget = v('fRunTarget') || 'local';
-                base.localBrowser = v('fLocalBrowser') || 'chrome';
+                base.localBrowser = v('fLocalBrowser') || 'chromium';
                 base.grep = v('fGrep');
                 base.suite = v('fSuite');
                 base.spec = v('fSpec');
@@ -4299,7 +4315,7 @@
                 // Keep for backwards-compat with older cached entries / name parsing.
                 base.cryptoScenario = base.feature;
                 base.runTarget = v('fRunTarget') || 'local';
-                base.localBrowser = v('fLocalBrowser') || 'chrome';
+                base.localBrowser = v('fLocalBrowser') || 'chromium';
                 base.grep = v('fGrep');
                 base.suite = v('fSuite');
                 base.spec = v('fSpec');
@@ -4500,7 +4516,7 @@ This repo is a monorepo using npm workspaces. It uses a reusable workflow (_reus
 Team: ${brand}
 PROJECT_DIR: projects/${projDir}
 RUN_TARGET: ${el('fRunTarget') || 'local'}
-LOCAL_BROWSER: ${el('fLocalBrowser') || 'chrome'}
+LOCAL_BROWSER: ${el('fLocalBrowser') || 'chromium'}
 TEST_ENV: ${el('fEnv') || 'UAT'}
 GREP: ${el('fGrep') || ''}
 PARALLELS: ${el('fParallel') || '1'}
@@ -4523,7 +4539,7 @@ This workflow should be self-contained (Playwright + BrowserStack) and reflect t
 
 PIPELINE_NAME: ${name}
 RUN_TARGET: ${el('fRunTarget') || 'local'}
-LOCAL_BROWSER: ${el('fLocalBrowser') || 'chrome'}
+LOCAL_BROWSER: ${el('fLocalBrowser') || 'chromium'}
 TEST_ENV: ${el('fEnv') || 'UAT'}
 GREP: ${el('fGrep') || ''}
 SUITE: ${el('fSuite') || ''}
@@ -4741,7 +4757,7 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
                 parallel: '1',
                 retries: '1',
                 runTarget: 'local',
-                localBrowser: 'chrome',
+                localBrowser: 'chromium',
                 pwVideo: '1',
                 jobTimeout: 120,
                 runnerLabel: 'QSDW-TFSBA01',
@@ -4768,7 +4784,7 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
                 bsOsName: '',
                 bsOsVersion: '',
                 runTarget: 'local',
-                localBrowser: 'chrome',
+                localBrowser: 'chromium',
                 pwVideo: '1',
                 bsUsername: 'carlosmartinez_l4KG2B',
                 bsAccessKey: 'YRSBPaX6VJBfDycsdrWQ',
@@ -4839,7 +4855,7 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
         const statusEl = document.getElementById('syncStatus');
         if (statusEl) statusEl.style.display = 'none';
         const refEl = document.getElementById('syncRef');
-        if (refEl) refEl.value = getEffectiveSyncRef();
+        if (refEl) refEl.value = getStoredSyncRef();
         renderSyncReposDisplay();
         document.getElementById('syncModal').classList.add('show');
     }
@@ -5063,8 +5079,7 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
             showToast('Configure your GitHub token first (Settings button in sidebar).', true);
             return;
         }
-        const ref = getEffectiveSyncRef();
-        try { localStorage.setItem(SYNC_REF_KEY, String(ref || '').trim()); } catch { /* ignore */ }
+        const ref = persistSyncRefFromUi();
         const btn = document.getElementById('syncAutoBtn');
         const statusEl = document.getElementById('syncStatus');
         const statusText = document.getElementById('syncStatusText');
@@ -5401,7 +5416,7 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
                 parallel: '1',
                 retries: '1',
                 runTarget: 'local',
-                localBrowser: 'chrome',
+                localBrowser: 'chromium',
                 pwVideo: '1',
                 runnerLabel: 'QSDW-TFSBA01',
                 jobTimeout: 120,
@@ -6631,15 +6646,10 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
 
         let html = `<!DOCTYPE html><html><head><meta charset="utf-8">
 <!--[if gte mso 9]><xml><o:OfficeDocumentSettings><o:AllowPNG/><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
-<style>
-  body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
-  table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; border-collapse: collapse; }
-  body { margin: 0 !important; padding: 0 !important; width: 100% !important; background-color: #ffffff; font-family: Arial, Helvetica, sans-serif; }
-</style></head>
-<body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background-color:#ffffff;">
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;width:100% !important;min-width:100%;mso-width-percent:1000;">
-<tr><td style="padding:0;">
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100% !important;min-width:100%;mso-width-percent:1000;max-width:none !important;background-color:#ffffff;">
+<style>body{margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background-color:#f5f5f5;-webkit-text-size-adjust:100%}table{border-collapse:collapse;mso-table-lspace:0;mso-table-rspace:0}</style></head>
+<body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background-color:#f5f5f5;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f5f5f5;padding:20px 0;"><tr><td align="center">
+<table width="700" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border-radius:8px;">
 
 <tr><td style="background-color:#1E3860;padding:40px 30px;text-align:center;">
 <h1 style="margin:0;font-size:32px;font-weight:bold;color:#ffffff;font-family:Arial,sans-serif;">${title}</h1>
@@ -6647,7 +6657,8 @@ ${subtitle ? '<p style="margin:12px 0 0 0;font-size:16px;color:rgba(255,255,255,
 <table width="100%" cellpadding="10" cellspacing="0" border="0" style="margin-top:20px;"><tr><td align="center">
 <table cellpadding="0" cellspacing="5" border="0" align="center"><tr>
 <td style="padding:8px 16px;background-color:#2A4A7A;border-radius:20px;font-size:13px;font-weight:bold;color:#ffffff;font-family:Arial,sans-serif;">${now}</td>
-<td style="padding:8px 16px;background-color:#2A4A7A;border-radius:20px;font-size:13px;font-weight:bold;color:#ffffff;font-family:Arial,sans-serif;"><span style="color:#FAA74A;">${uniquePipelines.length}</span> Pipelines</td>
+<td style="padding:8px 16px;background-color:#2A4A7A;border-radius:20px;font-size:13px;font-weight:bold;color:#ffffff;font-family:Arial,sans-serif;">${uniquePipelines.length} Pipelines</td>
+<td style="padding:8px 16px;background-color:#2A4A7A;border-radius:20px;font-size:13px;font-weight:bold;color:#FAA74A;font-family:Arial,sans-serif;">AXOS BANK QCOE</td>
 </tr></table></td></tr></table>
 </td></tr>
 
@@ -6704,15 +6715,15 @@ ${subtitle ? '<p style="margin:12px 0 0 0;font-size:16px;color:rgba(255,255,255,
             const displayPipes = [...new Set(displayRuns.map(r => r.workflowName))].sort();
 
             html += `<h2 style="margin:30px 0 20px 0;font-size:22px;font-weight:bold;color:#1a202c;font-family:Arial,sans-serif;">&#128640; ${incFailed ? 'Failed Pipelines' : 'Pipeline Results'}</h2>
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e2e8f0;border-radius:8px;table-layout:fixed;width:100%;min-width:100%;border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e2e8f0;border-radius:8px;">
 <tr style="background-color:#1E3860;">
-<td nowrap="nowrap" style="padding:14px;text-align:left;color:#ffffff;font-weight:bold;font-size:13px;font-family:Arial,sans-serif;border:none;width:45%;white-space:nowrap;">Pipeline</td>
-<td nowrap="nowrap" style="padding:14px;text-align:center;color:#ffffff;font-weight:bold;font-size:13px;font-family:Arial,sans-serif;border:none;width:8%;white-space:nowrap;">Passed</td>
-<td nowrap="nowrap" style="padding:14px;text-align:center;color:#ffffff;font-weight:bold;font-size:13px;font-family:Arial,sans-serif;border:none;width:8%;white-space:nowrap;">Failed</td>
-<td nowrap="nowrap" style="padding:14px;text-align:center;color:#ffffff;font-weight:bold;font-size:13px;font-family:Arial,sans-serif;border:none;width:8%;white-space:nowrap;">Skipped</td>
-<td nowrap="nowrap" style="padding:14px;text-align:center;color:#ffffff;font-weight:bold;font-size:13px;font-family:Arial,sans-serif;border:none;width:10%;white-space:nowrap;">Rate</td>
-<td nowrap="nowrap" style="padding:14px;text-align:center;color:#ffffff;font-weight:bold;font-size:13px;font-family:Arial,sans-serif;border:none;width:11%;white-space:nowrap;">Avg Dur</td>
-${incLinks ? '<td nowrap="nowrap" style="padding:14px;text-align:center;color:#ffffff;font-weight:bold;font-size:13px;font-family:Arial,sans-serif;border:none;width:10%;white-space:nowrap;">Latest</td>' : ''}
+<th style="padding:14px;text-align:left;color:#ffffff;font-weight:bold;font-size:13px;font-family:Arial,sans-serif;border:none;">Pipeline</th>
+<th style="padding:14px;text-align:center;color:#ffffff;font-weight:bold;font-size:13px;font-family:Arial,sans-serif;border:none;">Passed</th>
+<th style="padding:14px;text-align:center;color:#ffffff;font-weight:bold;font-size:13px;font-family:Arial,sans-serif;border:none;">Failed</th>
+<th style="padding:14px;text-align:center;color:#ffffff;font-weight:bold;font-size:13px;font-family:Arial,sans-serif;border:none;">Skipped</th>
+<th style="padding:14px;text-align:center;color:#ffffff;font-weight:bold;font-size:13px;font-family:Arial,sans-serif;border:none;">Rate</th>
+<th style="padding:14px;text-align:center;color:#ffffff;font-weight:bold;font-size:13px;font-family:Arial,sans-serif;border:none;">Avg Dur</th>
+${incLinks ? '<th style="padding:14px;text-align:center;color:#ffffff;font-weight:bold;font-size:13px;font-family:Arial,sans-serif;border:none;">Latest</th>' : ''}
 </tr>`;
 
             displayPipes.forEach((name, idx) => {
@@ -6732,8 +6743,7 @@ ${incLinks ? '<td nowrap="nowrap" style="padding:14px;text-align:center;color:#f
                 const bg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
 
                 html += `<tr style="background-color:${bg};">
-<td style="padding:12px 14px;color:#1a202c;font-family:Arial,sans-serif;border-bottom:1px solid #e2e8f0;word-break:normal;overflow-wrap:normal;">
-<strong>${shortName.replace(/-/g, '&#8209;').replace(/_/g, '_&#8203;<wbr>')}</strong></td>
+<td style="padding:12px 14px;color:#1a202c;font-family:Arial,sans-serif;border-bottom:1px solid #e2e8f0;"><strong>${shortName}</strong></td>
 <td style="padding:12px 14px;text-align:center;color:#10b981;font-weight:bold;font-family:Arial,sans-serif;border-bottom:1px solid #e2e8f0;">${pPassed}</td>
 <td style="padding:12px 14px;text-align:center;color:${pFailed ? '#ef4444' : '#64748b'};font-weight:bold;font-family:Arial,sans-serif;border-bottom:1px solid #e2e8f0;">${pFailed}</td>
 <td style="padding:12px 14px;text-align:center;color:${pSkipped ? '#f59e0b' : '#64748b'};font-family:Arial,sans-serif;border-bottom:1px solid #e2e8f0;">${pSkipped}</td>
@@ -6783,7 +6793,7 @@ ${incLinks ? '<td style="padding:12px 14px;text-align:center;border-bottom:1px s
 
 <tr><td style="padding:20px 30px;background-color:#f8fafc;border-radius:0 0 8px 8px;text-align:center;">
 <p style="margin:0;font-size:13px;color:#64748b;font-family:Arial,sans-serif;line-height:1.6;">
-Generated by <strong style="color:#1E3860;">Axos Bank</strong><br>
+Generated by <strong style="color:#1E3860;">Axos Bank — GitHub Pipeline Manager</strong><br>
 ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
 </p></td></tr>
 </table></td></tr></table></body></html>`;
@@ -6798,78 +6808,16 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
 
     function copyEmailHtml() {
         if (!generatedEmailHtml) { showToast('Generate a report first.'); return; }
-        // Copy HTML as HTML (not rendered pixels) so Outlook can flow to full width.
-        const bodyMatch = generatedEmailHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-        const htmlFragment = (bodyMatch && bodyMatch[1]) ? bodyMatch[1] : generatedEmailHtml;
-
-        const onCopy = (e) => {
-            try {
-                e.clipboardData.setData('text/html', htmlFragment);
-                e.clipboardData.setData('text/plain', generatedEmailHtml);
-                e.preventDefault();
-            } catch {
-                // If clipboardData isn't available, let the fallback run.
-            }
-        };
-
-        document.addEventListener('copy', onCopy);
-        const tmp = document.createElement('span');
-        tmp.textContent = ' ';
-        tmp.style.position = 'fixed';
-        tmp.style.left = '-9999px';
-        tmp.style.top = '0';
-        tmp.style.opacity = '0';
-        document.body.appendChild(tmp);
-
-        const sel = window.getSelection();
-        const range = document.createRange();
-        range.selectNodeContents(tmp);
-        sel.removeAllRanges();
-        sel.addRange(range);
-
-        const ok = document.execCommand('copy');
-
-        sel.removeAllRanges();
-        document.body.removeChild(tmp);
-        document.removeEventListener('copy', onCopy);
-
-        if (ok) {
-            showToast('Email copied! Paste directly into Outlook.');
-            return;
-        }
-
-        // Last-resort fallback: select+copy from a WIDE offscreen iframe
-        const iframe = document.createElement('iframe');
-        iframe.style.position = 'fixed';
-        iframe.style.left = '-9999px';
-        iframe.style.top = '0';
-        iframe.style.width = '1600px';
-        iframe.style.height = '900px';
-        iframe.style.opacity = '0';
-        document.body.appendChild(iframe);
-
-        const cleanup = () => { try { document.body.removeChild(iframe); } catch { /* noop */ } };
-
-        iframe.onload = () => {
-            try {
-                const doc = iframe.contentDocument;
-                const win = iframe.contentWindow;
-                const range = doc.createRange();
-                range.selectNodeContents(doc.body);
-                const sel = win.getSelection();
-                sel.removeAllRanges();
-                sel.addRange(range);
-                doc.execCommand('copy');
-                sel.removeAllRanges();
-                showToast('Email copied! Paste directly into Outlook.');
-            } catch {
-                showToast('Copy failed in this browser. Try Ctrl+A then Ctrl+C in the email preview.');
-            } finally {
-                cleanup();
-            }
-        };
-
-        iframe.srcdoc = generatedEmailHtml;
+        navigator.clipboard.writeText(generatedEmailHtml).then(() => {
+            showToast('Email HTML copied! Paste into Outlook (New Email > Paste).');
+        }).catch(() => {
+            const ta = document.createElement('textarea');
+            ta.value = generatedEmailHtml;
+            document.body.appendChild(ta); ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            showToast('Email HTML copied!');
+        });
     }
 
     // ══════════════════════════════════════════
