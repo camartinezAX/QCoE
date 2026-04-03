@@ -2480,6 +2480,55 @@ let dashboardsSearchTerm = '';
 let dashboardsFilter = { sd:false, rb:false, rf:false, rt:false, st:false };
 let dashEditAdv = null;
 
+// Seeded dashboards (so they always exist, even in Incognito where storage resets)
+const SEEDED_DASHBOARDS = [
+    {
+        id: 'seed_coreservice_releases_for_burp_v1',
+        name: 'CoreService Releases for Burp',
+        from: '2026-03-30',
+        to: '2026-04-05',
+        fetchFilters: {
+            sd: '',
+            rb: '',
+            rf: '',
+            rt: '',
+            st: '',
+            adv: {
+                considerDateRange: false,
+                rules: [
+                    { join: 'AND', field: 'u_product', op: 'like', value: 'CoreService', valueFrom: '', valueTo: '', rawOp: '' },
+                    { join: 'AND', field: 'start_date', op: 'on', value: '2026-04-02', valueFrom: '', valueTo: '', rawOp: '' },
+                    { join: 'AND', field: 'state', op: 'neq', value: 'Canceled', valueFrom: '', valueTo: '', rawOp: '' },
+                ],
+            },
+        },
+        createdAt: '2026-04-03T00:00:00.000Z',
+        updatedAt: '2026-04-03T00:00:00.000Z',
+    },
+];
+
+function ensureSeedDashboards() {
+    let changed = false;
+    for (const seed of SEEDED_DASHBOARDS) {
+        try {
+            const sig = dashboardSignature(seed);
+            const exists = (dashboards || []).some(d => d && (d.id === seed.id || dashboardSignature(d) === sig));
+            if (!exists) {
+                dashboards.unshift(seed);
+                changed = true;
+            }
+        } catch {
+            // If signature fails for any reason, fall back to id-only check.
+            const exists = (dashboards || []).some(d => d && d.id === seed.id);
+            if (!exists) {
+                dashboards.unshift(seed);
+                changed = true;
+            }
+        }
+    }
+    if (changed) saveDashboards();
+}
+
 function _dashNormalizeAdvPayload(p) {
     if (!p || typeof p !== 'object') return null;
     const considerDateRange = (typeof p.considerDateRange === 'boolean') ? p.considerDateRange : true;
@@ -2565,6 +2614,7 @@ function loadDashboards() {
     try { dashboards = JSON.parse(localStorage.getItem(DASHBOARDS_KEY) || '[]'); }
     catch { dashboards = []; }
     if (!Array.isArray(dashboards)) dashboards = [];
+    ensureSeedDashboards();
 }
 
 function saveDashboards() {
@@ -2679,7 +2729,7 @@ function renderDashboards() {
             <div class="dash-hdr">
                 <div>
                     <div class="dash-name">${escapeHtml(d.name || 'Untitled')}</div>
-                    <div class="dash-meta">${escapeHtml(d.from)} → ${escapeHtml(d.to)}<br>${escapeHtml(ffSummary || 'No fetch filters')}</div>
+                    <div class="dash-meta">${escapeHtml(ffSummary || 'No fetch filters')}</div>
                 </div>
             </div>
             <div class="dash-badges">${badges.join('')}</div>
