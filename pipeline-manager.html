@@ -595,6 +595,26 @@
         .mini-toggle-label { font-size:12px; font-weight:800; color:var(--text-primary); }
         .mini-toggle-desc { font-size:10px; color:var(--text-muted); margin-top:2px; }
 
+        /* Results: select/deselect pipelines */
+        .results-pick-actions { display:flex; gap:8px; margin-top:10px; }
+        .results-pick-actions button {
+            flex:1;
+            font-size:11px; padding:7px 10px; border-radius:10px;
+            border:1px solid rgba(255,255,255,0.10);
+            background:rgba(0,0,0,0.22);
+            color:var(--text-secondary);
+            cursor:pointer;
+            transition:all 0.2s;
+            font-weight:800;
+            letter-spacing:0.2px;
+        }
+        .results-pick-actions button:hover {
+            border-color:rgba(250,167,74,0.55);
+            color:var(--axos-orange);
+            background:rgba(250,167,74,0.06);
+            transform:translateY(-1px);
+        }
+
         .run-table { width:100%; border-collapse:separate; border-spacing:0 4px; }
         .run-table th { padding:10px 14px; text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-muted); font-weight:700; background:transparent; border:none; }
         .run-table td { padding:12px 14px; font-size:13px; border:none; background:rgba(22,29,46,0.6); }
@@ -660,8 +680,22 @@
         .pipe-picker-actions { display:flex; gap:8px; align-items:center; }
         .pipe-picker-actions button { font-size:11px; padding:4px 10px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; transition:all 0.2s; }
         .pipe-picker-actions button:hover { border-color:var(--axos-orange); color:var(--axos-orange); }
-        .pipe-picker-toolbar { display:flex; gap:8px; margin-bottom:8px; }
-        .pipe-picker-toolbar input { flex:1; font-size:12px; padding:7px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-tertiary); color:var(--text-primary); }
+        .pipe-picker-toolbar { display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
+        .pipe-picker-toolbar input[type=text] { flex:1; min-width:220px; font-size:12px; padding:7px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-tertiary); color:var(--text-primary); }
+        .pipe-picker-toolbar select {
+            font-size:12px; padding:7px 10px; border-radius:8px;
+            border:1px solid var(--border-color);
+            background:var(--bg-tertiary); color:var(--text-primary); cursor:pointer;
+        }
+        .pipe-picker-toolbar .pp-toggle {
+            display:flex; align-items:center; gap:6px;
+            padding:6px 10px; border-radius:8px;
+            border:1px solid var(--border-color);
+            background:var(--bg-tertiary); color:var(--text-secondary);
+            font-size:11px; font-weight:700; cursor:pointer; user-select:none;
+        }
+        .pipe-picker-toolbar .pp-toggle:hover { border-color:var(--axos-orange); color:var(--axos-orange); }
+        .pipe-picker-toolbar .pp-toggle input { width:14px; height:14px; min-width:auto; margin:0; flex:0 0 auto; padding:0; border:none; background:transparent; }
         .pipe-picker-tabs { display:flex; gap:4px; margin-bottom:8px; flex-wrap:wrap; }
         .pipe-picker-tab { font-size:11px; padding:5px 12px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-tertiary); color:var(--text-muted); cursor:pointer; transition:all 0.15s; }
         .pipe-picker-tab.active { background:var(--axos-orange); color:#fff; border-color:var(--axos-orange); }
@@ -769,6 +803,10 @@
                         <div class="mini-toggle-label">Exclude cancelled from metrics</div>
                         <div class="mini-toggle-desc">Prevents long cancelled runs from skewing duration stats</div>
                     </div>
+                </div>
+                <div class="results-pick-actions">
+                    <button type="button" onclick="resultsPickAllPipelines(true)" title="Select all pipelines in the current view">Select All</button>
+                    <button type="button" onclick="resultsPickAllPipelines(false)" title="Clear selection (returns to All Pipelines)">Deselect All</button>
                 </div>
             </div>
             <div class="results-folder-tree" id="resultsTree"></div>
@@ -884,7 +922,7 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Report Title</label>
-                            <input type="text" id="emailTitle" value="Testim Pipeline Status Report" style="font-size:13px;">
+                            <input type="text" id="emailTitle" value="Pipeline Status Report" style="font-size:13px;">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Subtitle</label>
@@ -903,11 +941,23 @@
                             <div class="pipe-picker-actions">
                                 <button onclick="emailPickAll(true)">Select All</button>
                                 <button onclick="emailPickAll(false)">Deselect All</button>
+                                <button onclick="emailReplaceWithVisible()" title="Replace selection with current filtered list">Only these</button>
                             </div>
                         </div>
                         <div class="pipe-picker-tabs" id="emailPickerTabs"></div>
                         <div class="pipe-picker-toolbar">
                             <input type="text" id="emailPipeSearch" placeholder="Search pipelines..." oninput="filterEmailPipeList()">
+                            <select id="emailRepoFilter" onchange="onEmailRepoFilterChange()" title="Filter pipelines by repo">
+                                <option value="all">All Repos</option>
+                            </select>
+                            <select id="emailHealthFilter" onchange="onEmailHealthFilterChange()" title="Filter pipelines by health">
+                                <option value="all">All</option>
+                                <option value="failing">Has failures</option>
+                                <option value="passing">Passing only</option>
+                                <option value="cancelled">Cancelled/timed-out only</option>
+                            </select>
+                            <button onclick="emailPickAll(true)" style="font-size:11px; padding:6px 10px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; transition:all 0.2s;" onmouseover="this.style.borderColor='var(--axos-orange)';this.style.color='var(--axos-orange)'" onmouseout="this.style.borderColor='var(--border-color)';this.style.color='var(--text-secondary)'" title="Select all visible pipelines">Select All</button>
+                            <button onclick="emailPickAll(false)" style="font-size:11px; padding:6px 10px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; transition:all 0.2s;" onmouseover="this.style.borderColor='var(--axos-orange)';this.style.color='var(--axos-orange)'" onmouseout="this.style.borderColor='var(--border-color)';this.style.color='var(--text-secondary)'" title="Deselect all visible pipelines">Deselect All</button>
                         </div>
                         <div class="pipe-picker-legend">
                             <span><span class="pipe-mini-badge pipe-mini-pass">P</span> Passed</span>
@@ -922,7 +972,7 @@
 
                     <div class="email-btns">
                         <button class="btn btn-orange" onclick="generateEmailReport()">Generate Email</button>
-                        <button class="btn btn-secondary" onclick="copyEmailHtml()" id="copyEmailBtn" style="display:none;">Copy HTML to Clipboard</button>
+                        <button class="btn btn-secondary" onclick="copyEmailHtml()" id="copyEmailBtn" style="display:none;">Copy Email</button>
                     </div>
                 </div>
 
@@ -6442,6 +6492,31 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
         return document.getElementById('resultsRepoFilter')?.value || 'all';
     }
 
+    function getResultsVisiblePipelines() {
+        const repoFilter = getResultsRepoFilterValue();
+        return (resultsPipelines || []).slice().filter(p => {
+            if (!p || !p.name) return false;
+            if (repoFilter === 'all') return true;
+            return String(p.repo || '').trim() === repoFilter;
+        });
+    }
+
+    function resultsPickAllPipelines(select) {
+        const tree = document.getElementById('resultsTree');
+        const prevScroll = tree ? tree.scrollTop : 0;
+        if (select) {
+            resultsSelectedPipelines.clear();
+            getResultsVisiblePipelines().forEach(p => {
+                resultsSelectedPipelines.add(resultsPipelineKey(p.repo, p.name));
+            });
+        } else {
+            resultsSelectedPipelines.clear(); // empty == All Pipelines
+        }
+        renderResultsTree();
+        if (tree) tree.scrollTop = prevScroll;
+        filterResults();
+    }
+
     function populateResultsRepoFilter() {
         const sel = document.getElementById('resultsRepoFilter');
         if (!sel) return;
@@ -7009,16 +7084,112 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
     let emailPickerInitialized = false;
     let emailPickerTab = 'all';
 
+    function emailPipelineKey(repo, workflowName) {
+        return `${String(repo || '').trim()}::${String(workflowName || '').trim()}`;
+    }
+    function parseEmailPipelineKey(key) {
+        const s = String(key || '');
+        const i = s.indexOf('::');
+        if (i < 0) return { repo: '', workflowName: s, key: s };
+        const repo = s.slice(0, i).trim();
+        const workflowName = s.slice(i + 2).trim();
+        return { repo, workflowName, key: `${repo}::${workflowName}` };
+    }
+
+    function getEmailRepoFilter() {
+        return document.getElementById('emailRepoFilter')?.value || 'all';
+    }
+    function getEmailHealthFilter() {
+        return document.getElementById('emailHealthFilter')?.value || 'all';
+    }
+
+    function getEmailScopeKeys(opts) {
+        const includeSearch = !!opts?.includeSearch;
+        const repoFilter = getEmailRepoFilter();
+        const health = getEmailHealthFilter();
+        const search = (document.getElementById('emailPipeSearch')?.value || '').toLowerCase();
+
+        let keys = [...new Set((allRuns || []).map(r => emailPipelineKey(r.repo, r.workflowName)))].sort();
+
+        if (repoFilter !== 'all') keys = keys.filter(k => parseEmailPipelineKey(k).repo === repoFilter);
+
+        if (emailPickerTab !== 'all') {
+            keys = keys.filter(k => {
+                const n = parseEmailPipelineKey(k).workflowName;
+                if (emailPickerTab === 'Mobile > Android') return n.startsWith('Mobile_Android');
+                if (emailPickerTab === 'Mobile > iOS') return n.startsWith('Mobile_iOS');
+                if (emailPickerTab === 'Web') return n.startsWith('Web_');
+                if (emailPickerTab === 'API') return n.startsWith('API_');
+                return !n.startsWith('Mobile_') && !n.startsWith('Web_') && !n.startsWith('API_');
+            });
+        }
+
+        if (health !== 'all') {
+            keys = keys.filter(k => {
+                const { repo, workflowName } = parseEmailPipelineKey(k);
+                const pRuns = (allRuns || []).filter(r => r.repo === repo && r.workflowName === workflowName);
+                const passed = pRuns.filter(r => r.conclusion === 'success').length;
+                const failed = pRuns.filter(r => r.conclusion === 'failure').length;
+                const cancelled = pRuns.filter(r => ['cancelled','timed_out','stale'].includes(r.conclusion)).length;
+                const actionable = pRuns.length - cancelled;
+                const rate = actionable ? (passed / actionable) * 100 : NaN;
+                if (health === 'failing') return failed > 0;
+                if (health === 'cancelled') return cancelled > 0 && actionable === 0;
+                if (health === 'passing') return failed === 0 && actionable > 0 && rate === 100;
+                return true;
+            });
+        }
+
+        if (includeSearch && search) keys = keys.filter(k => parseEmailPipelineKey(k).workflowName.toLowerCase().includes(search));
+        return keys;
+    }
+
+    function getEmailRepoTabScopeKeys() {
+        const repoFilter = getEmailRepoFilter();
+        let keys = [...new Set((allRuns || []).map(r => emailPipelineKey(r.repo, r.workflowName)))].sort();
+        if (repoFilter !== 'all') keys = keys.filter(k => parseEmailPipelineKey(k).repo === repoFilter);
+        if (emailPickerTab !== 'all') {
+            keys = keys.filter(k => {
+                const n = parseEmailPipelineKey(k).workflowName;
+                if (emailPickerTab === 'Mobile > Android') return n.startsWith('Mobile_Android');
+                if (emailPickerTab === 'Mobile > iOS') return n.startsWith('Mobile_iOS');
+                if (emailPickerTab === 'Web') return n.startsWith('Web_');
+                if (emailPickerTab === 'API') return n.startsWith('API_');
+                return !n.startsWith('Mobile_') && !n.startsWith('Web_') && !n.startsWith('API_');
+            });
+        }
+        return keys;
+    }
+
+    function onEmailRepoFilterChange() {
+        renderEmailPipeList();
+        updateEmailPipeCount();
+    }
+
+    function onEmailHealthFilterChange() {
+        renderEmailPipeList();
+        updateEmailPipeCount();
+    }
+
+    function populateEmailRepoFilter() {
+        const sel = document.getElementById('emailRepoFilter');
+        if (!sel) return;
+        const prev = sel.value || 'all';
+        const repos = [...new Set((allRuns || []).map(r => String(r?.repo || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+        sel.innerHTML = `<option value="all">All Repos</option>` + repos.map(r => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join('');
+        sel.value = repos.includes(prev) ? prev : 'all';
+    }
+
     function populateEmailPipePicker() {
-        const pipeNames = [...new Set(allRuns.map(r => r.workflowName))].sort();
-        if (!pipeNames.length) return;
+        const pipeKeys = [...new Set(allRuns.map(r => emailPipelineKey(r.repo, r.workflowName)))].sort();
+        if (!pipeKeys.length) return;
 
         if (!emailPickerInitialized) {
             emailSelectedPipelines.clear();
-            pipeNames.forEach(n => emailSelectedPipelines.add(n));
             emailPickerInitialized = true;
         }
 
+        populateEmailRepoFilter();
         buildEmailPickerTabs();
         renderEmailPipeList();
     }
@@ -7049,35 +7220,24 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
     }
 
     function getEmailFilteredPipes() {
-        let pipeNames = [...new Set(allRuns.map(r => r.workflowName))].sort();
-        if (emailPickerTab !== 'all') {
-            pipeNames = pipeNames.filter(n => {
-                if (emailPickerTab === 'Mobile > Android') return n.startsWith('Mobile_Android');
-                if (emailPickerTab === 'Mobile > iOS') return n.startsWith('Mobile_iOS');
-                if (emailPickerTab === 'Web') return n.startsWith('Web_');
-                if (emailPickerTab === 'API') return n.startsWith('API_');
-                return !n.startsWith('Mobile_') && !n.startsWith('Web_') && !n.startsWith('API_');
-            });
-        }
-        const search = (document.getElementById('emailPipeSearch')?.value || '').toLowerCase();
-        if (search) pipeNames = pipeNames.filter(n => n.toLowerCase().includes(search));
-        return pipeNames;
+        return getEmailScopeKeys({ includeSearch: true });
     }
 
     function filterEmailPipeList() { renderEmailPipeList(); }
 
     function renderEmailPipeList() {
-        const pipeNames = getEmailFilteredPipes();
+        const pipeKeys = getEmailFilteredPipes();
         const list = document.getElementById('emailPipeList');
 
-        if (!pipeNames.length) {
+        if (!pipeKeys.length) {
             list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">No pipelines match the current filter.</div>';
             updateEmailPipeCount();
             return;
         }
 
-        list.innerHTML = pipeNames.map(name => {
-            const pRuns = allRuns.filter(r => r.workflowName === name);
+        list.innerHTML = pipeKeys.map(key => {
+            const { repo, workflowName } = parseEmailPipelineKey(key);
+            const pRuns = allRuns.filter(r => r.repo === repo && r.workflowName === workflowName);
             const passed = pRuns.filter(r => r.conclusion === 'success').length;
             const failed = pRuns.filter(r => r.conclusion === 'failure').length;
             const cancelled = pRuns.filter(r => ['cancelled','timed_out','stale'].includes(r.conclusion)).length;
@@ -7087,14 +7247,16 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
 
             const latest = pRuns[0];
             const latestDate = latest ? new Date(latest.createdAt).toLocaleDateString('en-US', { month:'short', day:'numeric' }) : '';
-            const shortName = name.replace(/-Testim$/, '').replace(/-BrowserStack$/, '');
-            const checked = emailSelectedPipelines.has(name);
+            const shortName = workflowName.replace(/-Testim$/, '').replace(/-BrowserStack$/, '');
+            const checked = emailSelectedPipelines.has(key);
+            const escKey = key.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
             return `<label class="pipe-picker-item ${checked ? 'checked' : ''}" onclick="event.stopPropagation()">
-                <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleEmailPipe('${name.replace(/'/g,"\\'")}', this)" style="accent-color:var(--axos-orange);">
+                <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleEmailPipe('${escKey}', this)" style="accent-color:var(--axos-orange);">
                 <div class="pipe-picker-info">
-                    <div class="pipe-picker-name" title="${name}">${shortName}</div>
+                    <div class="pipe-picker-name" title="${escapeHtml(repo)}: ${escapeHtml(workflowName)}">${escapeHtml(shortName)}</div>
                     <div class="pipe-picker-meta">
+                        <span style="font-weight:800; color:var(--text-secondary);">${escapeHtml(repo)}</span>
                         <span>${pRuns.length} runs</span>
                         <span>Latest: ${latestDate}</span>
                     </div>
@@ -7112,8 +7274,9 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
     }
 
     function toggleEmailPipe(name, cb) {
-        if (cb.checked) emailSelectedPipelines.add(name);
-        else emailSelectedPipelines.delete(name);
+        const key = String(name || '').trim();
+        if (cb.checked) emailSelectedPipelines.add(key);
+        else emailSelectedPipelines.delete(key);
         cb.closest('.pipe-picker-item').classList.toggle('checked', cb.checked);
         updateEmailPipeCount();
     }
@@ -7129,15 +7292,30 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
         updateEmailPipeCount();
     }
 
+    function emailReplaceWithVisible() {
+        const visible = getEmailFilteredPipes();
+        emailSelectedPipelines.clear();
+        visible.forEach(k => emailSelectedPipelines.add(k));
+        renderEmailPipeList();
+        updateEmailPipeCount();
+    }
+
     function updateEmailPipeCount() {
-        const total = [...new Set(allRuns.map(r => r.workflowName))].length;
-        const sel = emailSelectedPipelines.size;
+        const scope = getEmailRepoTabScopeKeys();
+        const total = scope.length;
+        const sel = [...emailSelectedPipelines].filter(k => scope.includes(k)).length;
         document.getElementById('emailPipeSelected').textContent = `${sel} of ${total} pipeline${total !== 1 ? 's' : ''} selected`;
     }
 
     function generateEmailReport() {
-        const selectedPipeNames = emailSelectedPipelines.size > 0 ? emailSelectedPipelines : new Set(allRuns.map(r => r.workflowName));
-        const runs = allRuns.filter(r => selectedPipeNames.has(r.workflowName));
+        const scopeKeys = new Set(getEmailRepoTabScopeKeys());
+        const selectedInScope = [...emailSelectedPipelines].filter(k => scopeKeys.has(k));
+        if (selectedInScope.length === 0) {
+            showToast('Select at least one pipeline (or click Select All).', true);
+            return;
+        }
+        const selectedKeys = new Set(selectedInScope);
+        const runs = allRuns.filter(r => selectedKeys.has(emailPipelineKey(r.repo, r.workflowName)));
 
         const title = document.getElementById('emailTitle').value || 'Pipeline Status Report';
         const subtitle = document.getElementById('emailSubtitle').value || '';
@@ -7159,17 +7337,17 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
         const durations = actionableRuns.filter(r => r.duration > 0).map(r => r.duration);
         const avgDur = durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0;
 
-        const uniquePipelines = [...new Set(runs.map(r => r.workflowName))].sort();
+        const uniquePipelines = [...new Set(runs.map(r => emailPipelineKey(r.repo, r.workflowName)))].sort();
         const now = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
         const prColor = parseFloat(passRate) >= 90 ? '#10b981' : parseFloat(passRate) >= 70 ? '#f59e0b' : '#ef4444';
         const prWidth = Math.min(Math.max(parseInt(passRate), 3), 100);
 
         let html = `<!DOCTYPE html><html><head><meta charset="utf-8">
 <!--[if gte mso 9]><xml><o:OfficeDocumentSettings><o:AllowPNG/><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
-<style>body{margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background-color:#f5f5f5;-webkit-text-size-adjust:100%}table{border-collapse:collapse;mso-table-lspace:0;mso-table-rspace:0}</style></head>
-<body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background-color:#f5f5f5;">
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f5f5f5;padding:20px 0;"><tr><td align="center">
-<table width="700" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border-radius:8px;">
+<style>body{margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background-color:#ffffff;-webkit-text-size-adjust:100%}table{border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt}</style></head>
+<body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background-color:#ffffff;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100% !important;min-width:100%;table-layout:fixed;background-color:#ffffff;mso-table-lspace:0pt;mso-table-rspace:0pt;"><tr><td style="padding:0;margin:0;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100% !important;min-width:100%;table-layout:fixed;background-color:#ffffff;mso-table-lspace:0pt;mso-table-rspace:0pt;">
 
 <tr><td style="background-color:#1E3860;padding:40px 30px;text-align:center;">
 <h1 style="margin:0;font-size:32px;font-weight:bold;color:#ffffff;font-family:Arial,sans-serif;">${title}</h1>
@@ -7177,8 +7355,7 @@ ${subtitle ? '<p style="margin:12px 0 0 0;font-size:16px;color:rgba(255,255,255,
 <table width="100%" cellpadding="10" cellspacing="0" border="0" style="margin-top:20px;"><tr><td align="center">
 <table cellpadding="0" cellspacing="5" border="0" align="center"><tr>
 <td style="padding:8px 16px;background-color:#2A4A7A;border-radius:20px;font-size:13px;font-weight:bold;color:#ffffff;font-family:Arial,sans-serif;">${now}</td>
-<td style="padding:8px 16px;background-color:#2A4A7A;border-radius:20px;font-size:13px;font-weight:bold;color:#ffffff;font-family:Arial,sans-serif;">${uniquePipelines.length} Pipelines</td>
-<td style="padding:8px 16px;background-color:#2A4A7A;border-radius:20px;font-size:13px;font-weight:bold;color:#FAA74A;font-family:Arial,sans-serif;">AXOS BANK QCOE</td>
+<td style="padding:8px 16px;background-color:#2A4A7A;border-radius:20px;font-size:13px;font-weight:bold;color:#ffffff;font-family:Arial,sans-serif;"><span style="color:#FAA74A;font-weight:900;">${uniquePipelines.length}</span> Pipelines</td>
 </tr></table></td></tr></table>
 </td></tr>
 
@@ -7187,19 +7364,19 @@ ${subtitle ? '<p style="margin:12px 0 0 0;font-size:16px;color:rgba(255,255,255,
         if (incSummary) {
             html += `<h2 style="margin:0 0 20px 0;font-size:22px;font-weight:bold;color:#1a202c;font-family:Arial,sans-serif;">&#128202; Execution Summary</h2>
 <table width="100%" cellpadding="0" cellspacing="12" border="0"><tr>
-<td width="24%" style="background-color:#f1f5f9;padding:20px;border-radius:8px;border-left:4px solid #1E3860;text-align:center;vertical-align:top;">
+<td width="25%" style="background-color:#f1f5f9;padding:20px;border-radius:8px;border-left:4px solid #1E3860;text-align:center;vertical-align:top;">
 <p style="margin:0 0 8px 0;font-weight:bold;color:#475569;font-size:12px;font-family:Arial,sans-serif;text-transform:uppercase;">Total Runs</p>
 <p style="margin:0;font-size:32px;font-weight:bold;color:#1E3860;font-family:Arial,sans-serif;">${total}</p>
 </td>
-<td width="24%" style="background-color:#f1f5f9;padding:20px;border-radius:8px;border-left:4px solid ${prColor};text-align:center;vertical-align:top;">
+<td width="25%" style="background-color:#f1f5f9;padding:20px;border-radius:8px;border-left:4px solid ${prColor};text-align:center;vertical-align:top;">
 <p style="margin:0 0 8px 0;font-weight:bold;color:#475569;font-size:12px;font-family:Arial,sans-serif;text-transform:uppercase;">Pass Rate</p>
 <p style="margin:0;font-size:32px;font-weight:bold;color:${prColor};font-family:Arial,sans-serif;">${passRate}%</p>
 </td>
-<td width="24%" style="background-color:#f1f5f9;padding:20px;border-radius:8px;border-left:4px solid #10b981;text-align:center;vertical-align:top;">
+<td width="25%" style="background-color:#f1f5f9;padding:20px;border-radius:8px;border-left:4px solid #10b981;text-align:center;vertical-align:top;">
 <p style="margin:0 0 8px 0;font-weight:bold;color:#475569;font-size:12px;font-family:Arial,sans-serif;text-transform:uppercase;">Passed</p>
 <p style="margin:0;font-size:32px;font-weight:bold;color:#10b981;font-family:Arial,sans-serif;">${passed}</p>
 </td>
-<td width="24%" style="background-color:#f1f5f9;padding:20px;border-radius:8px;border-left:4px solid #ef4444;text-align:center;vertical-align:top;">
+<td width="25%" style="background-color:#f1f5f9;padding:20px;border-radius:8px;border-left:4px solid #ef4444;text-align:center;vertical-align:top;">
 <p style="margin:0 0 8px 0;font-weight:bold;color:#475569;font-size:12px;font-family:Arial,sans-serif;text-transform:uppercase;">Failed</p>
 <p style="margin:0;font-size:32px;font-weight:bold;color:#ef4444;font-family:Arial,sans-serif;">${failed}</p>
 </td>
@@ -7232,7 +7409,7 @@ ${subtitle ? '<p style="margin:12px 0 0 0;font-size:16px;color:rgba(255,255,255,
 
         if (incTable) {
             const displayRuns = incFailed ? runs.filter(r => r.conclusion === 'failure') : runs;
-            const displayPipes = [...new Set(displayRuns.map(r => r.workflowName))].sort();
+            const displayPipes = [...new Set(displayRuns.map(r => emailPipelineKey(r.repo, r.workflowName)))].sort();
 
             html += `<h2 style="margin:30px 0 20px 0;font-size:22px;font-weight:bold;color:#1a202c;font-family:Arial,sans-serif;">&#128640; ${incFailed ? 'Failed Pipelines' : 'Pipeline Results'}</h2>
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e2e8f0;border-radius:8px;">
@@ -7246,8 +7423,9 @@ ${subtitle ? '<p style="margin:12px 0 0 0;font-size:16px;color:rgba(255,255,255,
 ${incLinks ? '<th style="padding:14px;text-align:center;color:#ffffff;font-weight:bold;font-size:13px;font-family:Arial,sans-serif;border:none;">Latest</th>' : ''}
 </tr>`;
 
-            displayPipes.forEach((name, idx) => {
-                const pRuns = displayRuns.filter(r => r.workflowName === name);
+            displayPipes.forEach((key, idx) => {
+                const { repo, workflowName } = parseEmailPipelineKey(key);
+                const pRuns = displayRuns.filter(r => r.repo === repo && r.workflowName === workflowName);
                 const pPassed = pRuns.filter(r => r.conclusion === 'success').length;
                 const pFailed = pRuns.filter(r => r.conclusion === 'failure').length;
                 const pSkipped = pRuns.filter(r => ['cancelled','timed_out','stale'].includes(r.conclusion)).length;
@@ -7259,11 +7437,11 @@ ${incLinks ? '<th style="padding:14px;text-align:center;color:#ffffff;font-weigh
                 const pRateBg = pRate === '--' ? '#f9fafb' : parseFloat(pRate) >= 90 ? '#ecfdf5' : parseFloat(pRate) >= 70 ? '#fefce8' : '#fef2f2';
 
                 const latest = pRuns.reduce((a,b) => new Date(a.createdAt) > new Date(b.createdAt) ? a : b, pRuns[0]);
-                const shortName = name.replace(/-Testim$/, '').replace(/-BrowserStack$/, '');
+                const shortName = workflowName.replace(/-Testim$/, '').replace(/-BrowserStack$/, '');
                 const bg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
 
                 html += `<tr style="background-color:${bg};">
-<td style="padding:12px 14px;color:#1a202c;font-family:Arial,sans-serif;border-bottom:1px solid #e2e8f0;"><strong>${shortName}</strong></td>
+<td style="padding:12px 14px;color:#1a202c;font-family:Arial,sans-serif;border-bottom:1px solid #e2e8f0;"><strong>${shortName}</strong><br><span style="font-size:11px; color:#64748b;">${repo}</span></td>
 <td style="padding:12px 14px;text-align:center;color:#10b981;font-weight:bold;font-family:Arial,sans-serif;border-bottom:1px solid #e2e8f0;">${pPassed}</td>
 <td style="padding:12px 14px;text-align:center;color:${pFailed ? '#ef4444' : '#64748b'};font-weight:bold;font-family:Arial,sans-serif;border-bottom:1px solid #e2e8f0;">${pFailed}</td>
 <td style="padding:12px 14px;text-align:center;color:${pSkipped ? '#f59e0b' : '#64748b'};font-family:Arial,sans-serif;border-bottom:1px solid #e2e8f0;">${pSkipped}</td>
@@ -7282,11 +7460,12 @@ ${incLinks ? '<td style="padding:12px 14px;text-align:center;border-bottom:1px s
                 html += `<table width="100%" cellpadding="20" cellspacing="0" border="0" style="background-color:#fef2f2;border-radius:8px;border-left:6px solid #ef4444;margin:20px 0 15px 0;">
 <tr><td>
 <h3 style="margin:0 0 10px 0;font-size:16px;font-weight:bold;color:#991b1b;font-family:Arial,sans-serif;">&#10060; Failed Pipelines</h3>`;
-                const failedPipes = uniquePipelines.filter(n => runs.filter(r => r.workflowName === n && r.conclusion === 'failure').length > 0);
-                failedPipes.forEach(name => {
-                    const fCount = runs.filter(r => r.workflowName === name && r.conclusion === 'failure').length;
-                    const shortN = name.replace(/-Testim$/, '').replace(/-BrowserStack$/, '');
-                    html += `<p style="margin:0 0 4px 0;color:#991b1b;font-family:Arial,sans-serif;font-size:14px;line-height:1.6;"><strong>${shortN}</strong> &mdash; ${fCount} failed run${fCount > 1 ? 's' : ''}</p>`;
+                const failedPipes = uniquePipelines.filter(k => runs.filter(r => emailPipelineKey(r.repo, r.workflowName) === k && r.conclusion === 'failure').length > 0);
+                failedPipes.forEach(key => {
+                    const { repo, workflowName } = parseEmailPipelineKey(key);
+                    const fCount = runs.filter(r => r.repo === repo && r.workflowName === workflowName && r.conclusion === 'failure').length;
+                    const shortN = workflowName.replace(/-Testim$/, '').replace(/-BrowserStack$/, '');
+                    html += `<p style="margin:0 0 4px 0;color:#991b1b;font-family:Arial,sans-serif;font-size:14px;line-height:1.6;"><strong>${shortN}</strong> <span style="color:#7f1d1d;">(${repo})</span> &mdash; ${fCount} failed run${fCount > 1 ? 's' : ''}</p>`;
                 });
                 html += '</td></tr></table>';
             }
@@ -7313,7 +7492,7 @@ ${incLinks ? '<td style="padding:12px 14px;text-align:center;border-bottom:1px s
 
 <tr><td style="padding:20px 30px;background-color:#f8fafc;border-radius:0 0 8px 8px;text-align:center;">
 <p style="margin:0;font-size:13px;color:#64748b;font-family:Arial,sans-serif;line-height:1.6;">
-Generated by <strong style="color:#1E3860;">Axos Bank — GitHub Pipeline Manager</strong><br>
+Generated by <strong style="color:#1E3860;">A<span style="color:#FAA74A;">x</span>os Bank</strong><br>
 ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
 </p></td></tr>
 </table></td></tr></table></body></html>`;
@@ -7323,21 +7502,63 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
         document.getElementById('emailPreviewSection').style.display = 'block';
         const iframe = document.getElementById('emailPreviewFrame');
         iframe.srcdoc = html;
-        showToast('Email report generated! Click "Copy HTML to Clipboard" to use in Outlook.');
+        showToast('Email report generated! Click "Copy Email" and paste into Outlook.');
     }
 
     function copyEmailHtml() {
         if (!generatedEmailHtml) { showToast('Generate a report first.'); return; }
-        navigator.clipboard.writeText(generatedEmailHtml).then(() => {
-            showToast('Email HTML copied! Paste into Outlook (New Email > Paste).');
-        }).catch(() => {
+        const iframe = document.getElementById('emailPreviewFrame');
+        const doc = iframe?.contentDocument || iframe?.contentWindow?.document;
+        const html = doc?.body?.innerHTML || generatedEmailHtml;
+        const plain = doc?.body?.innerText || String(html).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+
+        // Prefer DOM-selection copy (closest to Ctrl+A/Ctrl+C; Outlook tends to preserve layout best).
+        (async () => {
+            try {
+                let buf = document.getElementById('emailCopyBuffer');
+                if (!buf) {
+                    buf = document.createElement('div');
+                    buf.id = 'emailCopyBuffer';
+                    buf.contentEditable = 'true';
+                    buf.setAttribute('aria-hidden', 'true');
+                    buf.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;';
+                    document.body.appendChild(buf);
+                }
+                buf.innerHTML = html;
+                const sel = window.getSelection();
+                const range = document.createRange();
+                range.selectNodeContents(buf);
+                sel.removeAllRanges();
+                sel.addRange(range);
+                const ok = document.execCommand('copy');
+                sel.removeAllRanges();
+                buf.innerHTML = '';
+                if (ok) {
+                    showToast('Email copied! Paste directly into Outlook.');
+                    return;
+                }
+            } catch { /* fall through */ }
+
+            // Fallback: rich clipboard payload (best-effort).
+            try {
+                if (navigator.clipboard && window.ClipboardItem) {
+                    await navigator.clipboard.write([new ClipboardItem({
+                        'text/html': new Blob([html], { type: 'text/html' }),
+                        'text/plain': new Blob([plain], { type: 'text/plain' })
+                    })]);
+                    showToast('Email copied! Paste directly into Outlook.');
+                    return;
+                }
+            } catch { /* ignore */ }
+
+            // Final fallback: copy HTML string.
             const ta = document.createElement('textarea');
-            ta.value = generatedEmailHtml;
+            ta.value = html;
             document.body.appendChild(ta); ta.select();
             document.execCommand('copy');
             document.body.removeChild(ta);
-            showToast('Email HTML copied!');
-        });
+            showToast('Copied (plain HTML). If Outlook pastes raw HTML, copy from the Preview area instead.');
+        })();
     }
 
     // ══════════════════════════════════════════
@@ -7492,6 +7713,29 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
             setResultsAllPipelines(null);
             assert(titleText() === 'All Pipeline Runs', `expected reset title, got "${titleText()}"`);
             assert(countText().startsWith('6 '), `expected reset 6 runs, got "${countText()}"`);
+
+            // Email report (repo-aware selection + branding + title default).
+            allRuns = [
+                mkRun(1, 'Pipe A', 'success'),
+                mkRun(2, 'Pipe B', 'success'),
+                (() => {
+                    const r = mkRun(3, 'Pipe A', 'failure');
+                    r.repo = 'Axos.QE.Web';
+                    return r;
+                })()
+            ];
+            try { emailSelectedPipelines.clear(); } catch { /* ignore */ }
+            populateEmailPipePicker();
+            // Select only Pipe A in Axos.QE.Web.
+            emailSelectedPipelines.clear();
+            emailSelectedPipelines.add('Axos.QE.Web::Pipe A');
+            const tEl = document.getElementById('emailTitle');
+            if (tEl) tEl.value = ''; // force default
+            generateEmailReport();
+            assert(generatedEmailHtml.includes('<h1') && generatedEmailHtml.includes('Pipeline Status Report'), 'expected default email title');
+            assert(!generatedEmailHtml.includes('AXOS BANK QCOE'), 'expected QCOE badge removed');
+            assert(generatedEmailHtml.includes('A<span style="color:#FAA74A;">x</span>os Bank'), 'expected Axos Bank footer branding');
+            assert(generatedEmailHtml.includes('Axos.QE.Web') && !generatedEmailHtml.includes('Axos.QE.TestIM'), 'expected only selected repo in email table');
 
             const ok = document.createElement('div');
             ok.id = 'selftestBanner';
