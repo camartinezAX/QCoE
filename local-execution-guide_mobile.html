@@ -957,12 +957,21 @@ Rules:
    - If on macOS and `brew` is blocked: use a user-local install (for example `nvm`) so `node` works in new shells, and update the correct shell profile (`~/.zshrc` / `~/.bashrc`).
 5. Check if `node_modules` exists &mdash; if not, run `npm install`
 6. Check if `ANDROID_HOME` / `ANDROID_SDK_ROOT` are set and valid (directory exists). If not set, search for my Android SDK path and set it permanently using `setx` (Windows) or shell profile (macOS).
+   - IMPORTANT: It&rsquo;s not enough that these exist at the OS/user level &mdash; they must be exported in the <strong>same shell session</strong> that will run tests. After setting them permanently, verify they&rsquo;re visible in that exact terminal:
+     - PowerShell: `echo $env:ANDROID_SDK_ROOT` and `echo $env:ANDROID_HOME`
+     - Bash/zsh/Git Bash: `echo $ANDROID_SDK_ROOT` and `echo $ANDROID_HOME`
+   - Windows (PowerShell): if you used `setx`, also load them into the <em>current</em> session immediately (an already-open terminal won&rsquo;t see new user env vars):
+     - `$env:ANDROID_SDK_ROOT = [Environment]::GetEnvironmentVariable('ANDROID_SDK_ROOT','User'); $env:ANDROID_HOME = [Environment]::GetEnvironmentVariable('ANDROID_HOME','User')`
+   - Backup for stubborn terminals: also set `ANDROID_SDK_ROOT` and `ANDROID_HOME` in `.env` (these are not secrets; local-only) so `dotenv` injects them for WDIO/Appium even if the shell didn&rsquo;t refresh.
    - If the Android SDK is not installed anywhere: attempt a user-local install (no admin) using official Android SDK Command-line Tools + platform-tools under my user profile, accept licenses non-interactively, and then set env vars permanently.
    - If downloads/installation are blocked by corporate policy/proxy/firewall, STOP and tell me: "Android SDK is not installed. Please open the local execution guide (docs/local-execution-guide.html), go to Prerequisites → First-Time Setup, and expand the section '🚨 JDK or Android SDK Not Installed? (ServiceNow Request)' for instructions on requesting it through IT."
 7. Check if `JAVA_HOME` is set and valid. If not, search for my Java JDK installation and set it permanently.
+   - Windows (PowerShell): if you used `setx`, also load `JAVA_HOME` into the <em>current</em> session before running tests: `$env:JAVA_HOME = [Environment]::GetEnvironmentVariable('JAVA_HOME','User')` (then verify with `echo $env:JAVA_HOME`)
+   - Backup for stubborn terminals: also set `JAVA_HOME` in `.env` (not a secret; local-only) so the test runner inherits it even if the shell didn&rsquo;t refresh.
    - If a JDK is not installed anywhere: attempt a user-local install (no admin) using an official JDK distribution (zip/tar) under my user profile, then set `JAVA_HOME` permanently.
    - If downloads/installation are blocked by corporate policy/proxy/firewall, STOP and tell me the same message as step 6 (refer me to the ServiceNow request section in the guide).
 8. Check if `adb` is on PATH in THIS shell &mdash; if not, add platform-tools to PATH permanently and verify `adb --version`.
+   - NOTE: `adb` on PATH is not sufficient &mdash; WebdriverIO/Appium will still fail if `ANDROID_HOME`/`ANDROID_SDK_ROOT` aren&rsquo;t exported in <em>this</em> shell (common if env vars were added after opening the terminal).
    - Also verify Node can spawn `adb` (this catches `spawnSync adb ENOENT`) from the same terminal:
      - PowerShell example: `node -e "require('child_process').execSync('adb --version',{stdio:'inherit'})"`
      - Bash/zsh/Git Bash example: `node -e 'require("child_process").execSync("adb --version",{stdio:"inherit"})'`
@@ -997,13 +1006,17 @@ Rules:
 18. If on macOS and running iOS: detect the iOS device using `xcrun xctrace list devices` and update `LOCAL_IOS_UDID` and `LOCAL_IOS_PLATFORM_VERSION` in .env (use a fallback if `xctrace` intermittently crashes).
 19. Windows-specific hard requirements:
     - If you used `setx` for env vars, remind me I MUST fully restart Cursor (close it completely) for the new env vars to apply.
+    - If we continue in an <em>already-open</em> PowerShell session, do not assume the env vars are present &mdash; explicitly load them into the current session (or dot-source the PowerShell profile) before running tests.
+    - If using PowerShell, ensure `$PROFILE.CurrentUserAllHosts` exists and exports `ANDROID_HOME`, `ANDROID_SDK_ROOT`, and `JAVA_HOME` and adds Android `platform-tools` to PATH; after writing it, load it with: `. $PROFILE.CurrentUserAllHosts`
     - Remind me to use `npx cross-env GREP=@Tag npm run test:android` instead of `GREP="..." npm run` (or prefer `npm run test:android:sanity`).
     - If I use Git Bash, ensure `~/.bashrc` and `~/.bash_profile` export `ANDROID_HOME`, `ANDROID_SDK_ROOT`, and `JAVA_HOME` and include Node + Android platform-tools on PATH, then verify in Git Bash with `echo $ANDROID_HOME` / `command -v adb` / `adb --version`.
 20. Auto-heal sanity run:
+    - Before running the smoke test, validate env vars in the same shell you&rsquo;ll run the test from (print them and ensure paths exist).
     - Run a smoke test using the login tag (Android/iOS as applicable):
       - Windows example: `npx cross-env GREP=@Sanity_Login npm run test:android`
       - macOS example: `GREP=@Sanity_Login npm run test:android`
       - iOS (macOS): `GREP=@Sanity_Login npm run test:ios`
+    - If it fails with <code>WebDriverError: Neither ANDROID_HOME nor ANDROID_SDK_ROOT environment variable was exported</code>, treat it as a <strong>shell export</strong> problem (not a reinstall problem): export the vars into the current session, persist them in the correct profile, then re-run.
     - If it fails due to tooling/setup (npx not found, env vars missing, adb not found, app path misconfigured, Appium startup, wrong working directory/package.json), fix it and re-run until the smoke test starts cleanly.
     - If it fails due to app UI/locators (e.g., element not found), stop and summarize the failure as a test issue (not setup).
 21. Confirm everything is ready and show me the exact command to run my first tagged test (example `@Sanity_Login`) and where to find the report artifacts.</div>
