@@ -6,63 +6,87 @@
 <title>ADO Pipeline Metrics</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --accent:#F59E0B;--accent-hot:#FB923C;--accent-dim:rgba(245,158,11,.1);--accent-border:rgba(245,158,11,.2);--accent-glow:rgba(245,158,11,.08);
-  --bg:#050a12;--bg-elevated:#0a1322;--bg-card:rgba(12,22,40,.65);--bg-card-solid:#0c1628;--bg-input:rgba(6,12,24,.8);--bg-hover:rgba(245,158,11,.03);
-  --text:#e8edf5;--text-dim:#7b8faa;--text-muted:#3d5068;
-  --green:#10B981;--red:#EF4444;--blue:#3B82F6;--purple:#8B5CF6;--yellow:#F59E0B;--cyan:#06B6D4;
-  --green-bg:rgba(16,185,129,.1);--red-bg:rgba(239,68,68,.1);--blue-bg:rgba(59,130,246,.1);
-  --border:rgba(255,255,255,.05);--border-hover:rgba(255,255,255,.1);
-  --heading:'Outfit',system-ui,sans-serif;--font:'DM Sans',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
-  --radius:14px;--radius-sm:8px;--radius-xs:6px;
+  /* Match qe-vision.html design tokens */
+  --orange:#FAA74A;--orange-dark:#e8922a;--navy:#1E3860;
+  --gradient-orange:linear-gradient(135deg,#FAA74A,#f97316);
+
+  --bg:#f8fafc;--bg-elevated:#ffffff;--bg-card:#ffffff;--bg-card-solid:#ffffff;--bg-input:rgba(30,56,96,0.04);--bg-hover:rgba(250,167,74,0.04);
+  --text:#0f172a;--text-dim:#475569;--text-muted:#94a3b8;
+
+  --green:#16a34a;--red:#dc2626;--blue:#2563eb;--purple:#7c3aed;--yellow:#FAA74A;--cyan:#0891b2;
+  --green-bg:rgba(22,163,74,0.12);--red-bg:rgba(220,38,38,0.12);--blue-bg:rgba(37,99,235,0.12);
+
+  --glass-bg:rgba(30,56,96,0.04);--glass-border:rgba(30,56,96,0.1);
+  --border:rgba(30,56,96,0.1);--border-hover:rgba(250,167,74,0.25);
+  --topbar-bg:rgba(248,250,252,0.88);--topbar-border:rgba(30,56,96,0.06);
+
+  --accent:var(--orange);--accent-hot:#f97316;--accent-dim:rgba(250,167,74,0.1);--accent-border:rgba(250,167,74,0.2);--accent-glow:rgba(250,167,74,0.2);
+
+  --heading:'Space Grotesk',system-ui,sans-serif;--font:'Inter',system-ui,sans-serif;--mono:var(--font);
+  --radius:16px;--radius-sm:10px;--radius-xs:8px;
   --ease:cubic-bezier(.4,0,.2,1);--spring:cubic-bezier(.34,1.56,.64,1);
-  --shadow-sm:0 2px 8px rgba(0,0,0,.25);--shadow-md:0 8px 32px rgba(0,0,0,.4);--shadow-lg:0 16px 64px rgba(0,0,0,.5);
-  --shadow-glow:0 0 40px var(--accent-glow);
+  --shadow-sm:0 1px 3px rgba(0,0,0,0.06);--shadow-md:0 8px 32px rgba(0,0,0,0.12);--shadow-lg:0 16px 64px rgba(0,0,0,0.16);
+  --shadow-glow:0 0 50px rgba(250,167,74,0.1);
+
+  --particle-primary:30,56,96;--particle-secondary:180,190,210;--particle-alpha:.12;
+}
+[data-theme="dark"]{
+  --bg:#060e1a;--bg-elevated:#0a1628;--bg-card:rgba(30,56,96,0.14);--bg-card-solid:#0a1628;--bg-input:rgba(30,56,96,0.14);--bg-hover:rgba(250,167,74,0.06);
+  --text:#e4e9f0;--text-dim:#8a9ab4;--text-muted:#5a6a84;
+  --green:#4ade80;--red:#f87171;--blue:#60a5fa;--purple:#a78bfa;--cyan:#22d3ee;
+  --green-bg:rgba(74,222,128,0.12);--red-bg:rgba(248,113,113,0.12);--blue-bg:rgba(96,165,250,0.12);
+
+  --glass-bg:rgba(30,56,96,0.12);--glass-border:rgba(250,167,74,0.12);
+  --border:rgba(250,167,74,0.12);--border-hover:rgba(250,167,74,0.3);
+  --topbar-bg:rgba(6,14,26,0.85);--topbar-border:rgba(250,167,74,0.08);
+
+  --particle-primary:250,167,74;--particle-secondary:200,210,225;--particle-alpha:.25;
 }
 html{scroll-behavior:smooth}
-body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh;overflow-x:hidden}
-::selection{background:rgba(245,158,11,.25);color:#fff}
+body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh;overflow-x:hidden;transition:background .4s var(--ease),color .4s var(--ease)}
+::selection{background:rgba(250,167,74,0.3);color:#fff}
 
 ::-webkit-scrollbar{width:6px}
 ::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:3px}
-::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.14)}
+::-webkit-scrollbar-thumb{background:var(--navy);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:rgba(250,167,74,0.35)}
 
-/* Background effects */
-.bg-effects{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
-.orb{position:absolute;border-radius:50%;filter:blur(100px);opacity:.12}
-.orb-1{width:600px;height:600px;background:radial-gradient(circle,#F59E0B,transparent 70%);top:-200px;right:-100px;animation:orbFloat1 25s ease-in-out infinite}
-.orb-2{width:500px;height:500px;background:radial-gradient(circle,#8B5CF6,transparent 70%);bottom:-150px;left:-100px;animation:orbFloat2 30s ease-in-out infinite}
-.orb-3{width:400px;height:400px;background:radial-gradient(circle,#06B6D4,transparent 70%);top:50%;left:40%;animation:orbFloat3 20s ease-in-out infinite}
-@keyframes orbFloat1{0%,100%{transform:translate(0,0)}50%{transform:translate(-60px,40px)}}
-@keyframes orbFloat2{0%,100%{transform:translate(0,0)}50%{transform:translate(50px,-30px)}}
-@keyframes orbFloat3{0%,100%{transform:translate(0,0)}33%{transform:translate(-40px,-30px)}66%{transform:translate(30px,20px)}}
-
-.grain{position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.025;
-  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
-
-.mesh-line{position:fixed;pointer-events:none;z-index:0;opacity:.03}
-.mesh-line-h{width:100%;height:1px;background:linear-gradient(90deg,transparent,rgba(245,158,11,.3),transparent)}
-.mesh-line-v{height:100%;width:1px;background:linear-gradient(180deg,transparent,rgba(139,92,246,.3),transparent)}
+canvas#particles{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.aurora{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;overflow:hidden}
+.aurora::before{content:'';position:absolute;top:-40%;left:-20%;width:140%;height:180%;
+  background:radial-gradient(ellipse at 30% 40%,rgba(250,167,74,0.03) 0%,transparent 55%),
+             radial-gradient(ellipse at 70% 60%,rgba(30,56,96,0.06) 0%,transparent 50%);
+  animation:auroraMove 25s ease-in-out infinite alternate}
+[data-theme="dark"] .aurora::before{
+  background:radial-gradient(ellipse at 30% 40%,rgba(250,167,74,0.04) 0%,transparent 55%),
+             radial-gradient(ellipse at 70% 60%,rgba(30,56,96,0.1) 0%,transparent 50%)
+}
+@keyframes auroraMove{0%{transform:translate(0,0) rotate(0deg) scale(1)}50%{transform:translate(-3%,2%) rotate(1.5deg) scale(1.02)}100%{transform:translate(2%,-1%) rotate(-1deg) scale(0.98)}}
 
 /* Layout */
 .app-shell{position:relative;z-index:2;min-height:100vh;display:flex;flex-direction:column}
 
 /* Top Nav */
 .top-nav{position:sticky;top:0;z-index:50;padding:.6rem 1.5rem;display:flex;align-items:center;justify-content:space-between;
-  background:rgba(5,10,18,.75);backdrop-filter:blur(20px) saturate(1.5);border-bottom:1px solid var(--border)}
+  background:var(--topbar-bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--topbar-border)}
 .nav-brand{display:flex;align-items:center;gap:.6rem}
-.nav-logo{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent-hot));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.85rem;color:#000;font-family:var(--heading)}
+.nav-logo{width:32px;height:32px;border-radius:8px;background:var(--gradient-orange);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.85rem;color:#000;font-family:var(--heading)}
 .nav-title{font-family:var(--heading);font-weight:700;font-size:1rem;letter-spacing:-.3px}
-.nav-title span{background:linear-gradient(135deg,var(--accent),var(--accent-hot));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.nav-tabs{display:flex;gap:2px;background:rgba(255,255,255,.03);border-radius:10px;padding:3px}
+.nav-title span{background:var(--gradient-orange);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.nav-tabs{display:flex;gap:2px;background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:10px;padding:3px}
 .nav-tab{padding:.4rem .9rem;border-radius:8px;font-size:.72rem;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--text-dim);transition:all .25s var(--ease);font-family:var(--font);position:relative;white-space:nowrap}
-.nav-tab:hover:not(.active){color:var(--text);background:rgba(255,255,255,.04)}
-.nav-tab.active{background:linear-gradient(135deg,var(--accent),var(--accent-hot));color:#000;box-shadow:0 2px 12px rgba(245,158,11,.25)}
+.nav-tab:hover:not(.active){color:var(--text);background:rgba(250,167,74,0.08)}
+.nav-tab.active{background:var(--gradient-orange);color:#000;box-shadow:0 6px 20px rgba(0,0,0,0.1)}
 .nav-tab .badge-count{position:absolute;top:-2px;right:-2px;width:16px;height:16px;border-radius:50%;background:var(--accent);color:#000;font-size:.55rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.topbar-right{display:flex;align-items:center;gap:.75rem}
+
+/* Match qe-vision.html theme toggle button */
+.theme-toggle{width:38px;height:38px;border-radius:10px;border:1px solid var(--glass-border);background:var(--glass-bg);color:var(--text-muted);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s var(--ease)}
+.theme-toggle:hover{background:rgba(250,167,74,0.1);color:var(--orange);border-color:var(--orange)}
 
 /* Main content */
 .main{flex:1;max-width:1200px;width:100%;margin:0 auto;padding:1.5rem 1.5rem 4rem}
@@ -86,15 +110,15 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:
 
 /* Buttons */
 .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.55rem 1.1rem;border-radius:var(--radius-sm);font-family:var(--font);font-size:.78rem;font-weight:600;cursor:pointer;border:none;transition:all .2s var(--ease);white-space:nowrap;position:relative;overflow:hidden}
-.btn::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.1),transparent);opacity:0;transition:opacity .2s}
+.btn::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(250,167,74,0.12),transparent);opacity:0;transition:opacity .2s}
 .btn:hover::after{opacity:1}
 .btn:active{transform:scale(.97)}
-.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-hot));color:#000;box-shadow:0 2px 12px rgba(245,158,11,.2)}
-.btn-primary:hover{box-shadow:0 4px 20px rgba(245,158,11,.35);transform:translateY(-1px)}
-.btn-secondary{background:rgba(255,255,255,.05);color:var(--text);border:1px solid var(--border)}
-.btn-secondary:hover{background:rgba(255,255,255,.08);border-color:var(--border-hover)}
+.btn-primary{background:var(--gradient-orange);color:#000;box-shadow:0 2px 12px rgba(250,167,74,0.2)}
+.btn-primary:hover{box-shadow:0 4px 20px rgba(250,167,74,0.35);transform:translateY(-1px)}
+.btn-secondary{background:var(--glass-bg);color:var(--text);border:1px solid var(--glass-border)}
+.btn-secondary:hover{background:rgba(250,167,74,0.08);border-color:rgba(250,167,74,0.25)}
 .btn-ghost{background:transparent;color:var(--text-dim);padding:.4rem .6rem}
-.btn-ghost:hover{color:var(--text);background:rgba(255,255,255,.04)}
+.btn-ghost:hover{color:var(--text);background:rgba(250,167,74,0.08)}
 .btn-danger{background:var(--red-bg);color:var(--red);border:1px solid rgba(239,68,68,.15)}
 .btn-danger:hover{background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.3)}
 .btn-success{background:var(--green-bg);color:var(--green);border:1px solid rgba(16,185,129,.15)}
@@ -117,7 +141,7 @@ textarea.field-input{resize:vertical;min-height:100px;font-family:var(--mono);fo
 /* Pipeline config cards */
 .pipeline-configs{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem;margin:1rem 0}
 .config-card{padding:1rem 1.15rem;position:relative;overflow:hidden;transition:border-color .25s,box-shadow .25s}
-.config-card.selected{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 0 16px rgba(245,158,11,.08)}
+.config-card.selected{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 0 16px rgba(250,167,74,0.12)}
 .config-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent-hot));opacity:.7}
 .config-card .config-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:.75rem}
 .config-card .config-name{font-family:var(--heading);font-weight:700;font-size:.95rem;display:flex;align-items:center;gap:.45rem}
@@ -147,7 +171,8 @@ textarea.field-input{resize:vertical;min-height:100px;font-family:var(--mono);fo
 .empty-state .empty-desc{color:var(--text-dim);font-size:.82rem;max-width:400px;margin:0 auto .75rem}
 
 /* Slide panel */
-.panel-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);z-index:100;opacity:0;pointer-events:none;transition:opacity .3s var(--ease)}
+.panel-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.3);backdrop-filter:blur(4px);z-index:100;opacity:0;pointer-events:none;transition:opacity .3s var(--ease)}
+[data-theme="dark"] .panel-overlay{background:rgba(6,14,26,0.6)}
 .panel-overlay.open{opacity:1;pointer-events:all}
 .slide-panel{position:fixed;top:0;right:0;bottom:0;width:460px;max-width:90vw;background:var(--bg-elevated);border-left:1px solid var(--border);z-index:101;transform:translateX(100%);transition:transform .35s var(--ease);display:flex;flex-direction:column;box-shadow:-8px 0 40px rgba(0,0,0,.4)}
 .slide-panel.open{transform:translateX(0)}
@@ -158,7 +183,7 @@ textarea.field-input{resize:vertical;min-height:100px;font-family:var(--mono);fo
 
 /* Script box */
 .script-container{background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin:1rem 0}
-.script-header{display:flex;align-items:center;justify-content:space-between;padding:.6rem 1rem;background:rgba(255,255,255,.02);border-bottom:1px solid var(--border)}
+.script-header{display:flex;align-items:center;justify-content:space-between;padding:.6rem 1rem;background:rgba(250,167,74,0.04);border-bottom:1px solid var(--glass-border)}
 .script-header .lang{font-family:var(--mono);font-size:.62rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px}
 .script-body{padding:1rem;max-height:250px;overflow-y:auto}
 .script-body pre{font-family:var(--mono);font-size:.66rem;color:var(--blue);line-height:1.7;white-space:pre-wrap;word-break:break-all}
@@ -191,6 +216,31 @@ textarea.field-input{resize:vertical;min-height:100px;font-family:var(--mono);fo
 .m-purple .m-value{color:var(--purple)}
 .m-cyan .m-value{color:var(--cyan)}
 
+/* Results extras (pipeline selector + people table) */
+.results-extras{display:grid;grid-template-columns:1.1fr .9fr;gap:1rem;margin:1rem 0 1.25rem}
+.results-card{padding:1rem}
+.rc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:.75rem}
+.rc-title{font-family:var(--heading);font-weight:800;font-size:.95rem;letter-spacing:-.2px;color:var(--text)}
+.rc-sub{font-size:.72rem;color:var(--text-dim);margin-top:.15rem;line-height:1.35}
+.rc-actions{display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end}
+.rc-actions .btn{padding:.4rem .6rem;font-size:.7rem;border-radius:10px}
+
+.table-wrap{border:1px solid var(--glass-border);border-radius:var(--radius);overflow:auto;background:var(--bg-card)}
+.data-table{width:100%;border-collapse:collapse;min-width:520px}
+.data-table th{position:sticky;top:0;background:var(--bg-elevated);color:var(--text-dim);font-size:.6rem;text-transform:uppercase;letter-spacing:1px;font-weight:700;padding:.6rem .65rem;border-bottom:1px solid var(--glass-border);text-align:left;white-space:nowrap}
+.data-table td{padding:.55rem .65rem;border-bottom:1px solid rgba(30,56,96,0.06);font-size:.75rem;color:var(--text);vertical-align:middle}
+[data-theme="dark"] .data-table td{border-bottom:1px solid rgba(250,167,74,0.08)}
+.data-table tr:hover td{background:var(--bg-hover)}
+.data-table tr.row-excluded{opacity:.55}
+.data-table tr.row-excluded:hover td{background:transparent}
+.data-table .muted{color:var(--text-dim)}
+.data-table .num{font-family:var(--heading);font-weight:800;letter-spacing:-.2px}
+.pipe-inc-check{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
+.pill{display:inline-flex;align-items:center;justify-content:center;padding:2px 8px;border-radius:999px;font-size:.6rem;font-weight:800;letter-spacing:.5px;text-transform:uppercase;border:1px solid var(--glass-border);background:rgba(250,167,74,0.08);color:var(--orange)}
+.pill.blue{background:rgba(96,165,250,0.12);color:var(--blue);border-color:rgba(96,165,250,0.25)}
+.pill.green{background:rgba(74,222,128,0.12);color:var(--green);border-color:rgba(74,222,128,0.25)}
+.pill.red{background:rgba(248,113,113,0.12);color:var(--red);border-color:rgba(248,113,113,0.25)}
+
 /* Dashboard controls */
 .controls-bar{display:flex;gap:.75rem;align-items:end;flex-wrap:wrap;padding:1rem;margin:1rem 0}
 .controls-bar .field{margin:0}
@@ -215,11 +265,11 @@ textarea.field-input{resize:vertical;min-height:100px;font-family:var(--mono);fo
 .feature-hdr .fh-stats{display:flex;gap:.6rem;font-size:.68rem;color:var(--text-dim);flex-shrink:0}
 .feature-hdr .fh-chevron{color:var(--text-muted);transition:transform .2s var(--ease);font-size:.65rem;flex-shrink:0}
 .feature-hdr .fh-chevron.open{transform:rotate(180deg)}
-.feature-body{display:none;background:rgba(0,0,0,.1)}
+.feature-body{display:none;background:rgba(30,56,96,0.03)}
 .feature-body.open{display:block}
 
 /* Pipeline sections inside features */
-.pipe-section{padding:.75rem;border-bottom:1px solid rgba(255,255,255,.04)}
+.pipe-section{padding:.75rem;border-bottom:1px solid var(--glass-border)}
 .pipe-section:last-child{border-bottom:none}
 .pipe-label{font-size:.72rem;font-weight:600;color:var(--text-dim);padding:.2rem 0 .4rem;display:flex;align-items:center;gap:.5rem}
 .pipe-label .pipe-type{font-size:.55rem;padding:.15rem .4rem;border-radius:3px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
@@ -229,7 +279,7 @@ textarea.field-input{resize:vertical;min-height:100px;font-family:var(--mono);fo
 /* Exec table */
 .exec-tbl{width:100%;border-collapse:collapse;font-size:.72rem}
 .exec-tbl th{text-align:left;padding:.4rem .5rem;font-size:.58rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);border-bottom:1px solid var(--border);white-space:nowrap}
-.exec-tbl td{padding:.4rem .5rem;border-bottom:1px solid rgba(255,255,255,.02)}
+.exec-tbl td{padding:.4rem .5rem;border-bottom:1px solid rgba(30,56,96,0.06)}
 .exec-tbl tr:hover td{background:var(--bg-hover)}
 a.build-link{color:var(--blue);text-decoration:none;font-family:var(--mono);font-size:.66rem;transition:color .15s}
 a.build-link:hover{color:var(--accent)}
@@ -242,7 +292,7 @@ a.build-link:hover{color:var(--accent)}
 .badge-other{background:var(--blue-bg);color:var(--blue)}
 
 /* Test bars */
-.test-bar{display:flex;height:5px;border-radius:3px;overflow:hidden;min-width:50px;background:rgba(255,255,255,.05)}
+.test-bar{display:flex;height:5px;border-radius:3px;overflow:hidden;min-width:50px;background:rgba(30,56,96,0.08)}
 .test-bar .t-pass{background:var(--green)}.test-bar .t-fail{background:var(--red)}.test-bar .t-other{background:var(--yellow)}
 .test-info{display:flex;align-items:center;gap:.4rem}
 .test-nums{font-family:var(--mono);font-size:.62rem;color:var(--text-dim);white-space:nowrap}
@@ -251,10 +301,10 @@ a.build-link:hover{color:var(--accent)}
 .td-toggle{cursor:pointer;user-select:none}
 .td-toggle:hover .test-nums{color:var(--accent)}
 .td-row td{padding:0!important;border:none!important}
-.td-panel{background:rgba(0,0,0,.2);border-radius:8px;margin:.2rem .5rem .4rem;padding:.5rem .65rem;display:none}
+.td-panel{background:rgba(30,56,96,0.04);border:1px solid var(--glass-border);border-radius:12px;margin:.2rem .5rem .4rem;padding:.5rem .65rem;display:none}
 .td-panel.open{display:block}
 .test-list{list-style:none;padding:0;margin:0}
-.test-list li{display:flex;align-items:center;gap:.5rem;padding:.22rem 0;font-size:.68rem;border-bottom:1px solid rgba(255,255,255,.02)}
+.test-list li{display:flex;align-items:center;gap:.5rem;padding:.22rem 0;font-size:.68rem;border-bottom:1px solid rgba(30,56,96,0.06)}
 .test-list li:last-child{border-bottom:none}
 .test-list .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
 .test-list .dot-p{background:var(--green)}.test-list .dot-f{background:var(--red)}.test-list .dot-o{background:var(--yellow)}
@@ -265,7 +315,7 @@ a.build-link:hover{color:var(--accent)}
 .email-config{display:grid;grid-template-columns:280px 1fr;gap:1.5rem;margin:1rem 0}
 .email-options{display:flex;flex-direction:column;gap:.5rem}
 .email-opt{display:flex;align-items:center;gap:.5rem;padding:.45rem .65rem;border-radius:var(--radius-sm);cursor:pointer;transition:background .2s;font-size:.78rem}
-.email-opt:hover{background:rgba(255,255,255,.03)}
+.email-opt:hover{background:rgba(250,167,74,0.06)}
 .email-opt input[type=checkbox]{accent-color:var(--accent);width:15px;height:15px;cursor:pointer}
 .email-opt .opt-label{flex:1;font-weight:500}
 .email-preview{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:#fff;min-height:400px}
@@ -281,6 +331,7 @@ a.build-link:hover{color:var(--accent)}
   .sh-title{font-size:1.3rem}
   .main{padding:1rem}
   .slide-panel{width:100vw;max-width:100vw}
+  .results-extras{grid-template-columns:1fr}
 }
 
 /* Info / Error boxes */
@@ -302,7 +353,7 @@ a.build-link:hover{color:var(--accent)}
 
 .hidden{display:none!important}
 .no-data{text-align:center;padding:2rem;color:var(--text-muted);font-size:.82rem}
-kbd{background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px;font-size:.7rem;font-family:var(--mono)}
+kbd{background:rgba(250,167,74,0.12);padding:1px 5px;border-radius:4px;font-size:.7rem;font-family:var(--mono);border:1px solid rgba(250,167,74,0.2)}
 
 /* Steps instruction */
 .steps{display:flex;flex-direction:column;gap:.65rem;margin:1rem 0}
@@ -323,12 +374,12 @@ kbd{background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px;font-size
 .adv-section.open{display:block}
 
 /* Info tooltip */
-.info-trigger{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,.06);color:var(--text-muted);font-size:.58rem;font-weight:700;cursor:help;border:1px solid var(--border);transition:all .2s;margin-left:.35rem;flex-shrink:0;position:relative;font-family:var(--font);font-style:normal;line-height:1}
+.info-trigger{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:rgba(250,167,74,0.08);color:var(--text-muted);font-size:.58rem;font-weight:700;cursor:help;border:1px solid var(--glass-border);transition:all .2s;margin-left:.35rem;flex-shrink:0;position:relative;font-family:var(--font);font-style:normal;line-height:1}
 .info-trigger:hover{background:var(--accent-dim);color:var(--accent);border-color:var(--accent-border)}
 .info-tip{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);width:260px;padding:.65rem .8rem;background:var(--bg-elevated);border:1px solid var(--border-hover);border-radius:var(--radius-sm);font-size:.7rem;font-weight:400;color:var(--text-dim);line-height:1.5;box-shadow:var(--shadow-md);opacity:0;pointer-events:none;transition:opacity .15s;z-index:10;text-transform:none;letter-spacing:0}
 .info-tip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--border-hover)}
 .info-trigger:hover .info-tip{opacity:1;pointer-events:auto}
-.info-tip code{font-family:var(--mono);font-size:.62rem;background:rgba(255,255,255,.06);padding:.1rem .3rem;border-radius:3px;color:var(--blue)}
+.info-tip code{font-family:var(--mono);font-size:.62rem;background:rgba(250,167,74,0.08);padding:.1rem .3rem;border-radius:3px;color:var(--blue)}
 .info-tip strong{color:var(--text);font-weight:600}
 
 /* Chip input */
@@ -346,7 +397,8 @@ kbd{background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px;font-size
 .chip-count .cc-num{color:var(--accent);font-weight:600}
 
 /* Step nav indicator */
-.nav-tab .step-dot{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;font-size:.55rem;font-weight:700;margin-right:.3rem;background:rgba(255,255,255,.1);color:var(--text-muted);flex-shrink:0}
+.nav-tab .step-dot{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;font-size:.55rem;font-weight:700;margin-right:.3rem;background:rgba(30,56,96,0.08);color:var(--text-muted);flex-shrink:0}
+[data-theme="dark"] .nav-tab .step-dot{background:rgba(250,167,74,0.12)}
 .nav-tab.active .step-dot{background:rgba(0,0,0,.2);color:rgba(0,0,0,.7)}
 .nav-tab.done .step-dot{background:var(--green);color:#fff}
 
@@ -360,10 +412,8 @@ kbd{background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px;font-size
 </style>
 </head>
 <body>
-<div class="bg-effects">
-  <div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div>
-</div>
-<div class="grain"></div>
+<div class="aurora"></div>
+<canvas id="particles"></canvas>
 
 <div class="app-shell">
 
@@ -378,6 +428,9 @@ kbd{background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px;font-size
     <button class="nav-tab" data-view="fetch" onclick="switchView('fetch')"><span class="step-dot">2</span>Fetch Data</button>
     <button class="nav-tab" data-view="results" onclick="switchView('results')"><span class="step-dot">3</span>Results</button>
     <button class="nav-tab" data-view="email" onclick="switchView('email')"><span class="step-dot">4</span>Email Report</button>
+  </div>
+  <div class="topbar-right">
+    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle Light/Dark Mode">&#9788;</button>
   </div>
 </nav>
 
@@ -506,6 +559,36 @@ kbd{background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px;font-size
 
   <div id="resultsContent" class="hidden">
     <div id="summaryMetrics" class="metrics-grid stagger"></div>
+
+    <div class="results-extras">
+      <div class="glass-solid results-card">
+        <div class="rc-head">
+          <div>
+            <div class="rc-title">Pipelines Included</div>
+            <div class="rc-sub" id="pipelineSelectSummary">—</div>
+          </div>
+          <div class="rc-actions">
+            <button class="btn btn-ghost" onclick="setShownPipelinesIncluded(true)">Select all shown</button>
+            <button class="btn btn-ghost" onclick="setShownPipelinesIncluded(false)">Deselect all shown</button>
+          </div>
+        </div>
+        <div class="table-wrap" id="pipelineSelectTable"></div>
+      </div>
+
+      <div class="glass-solid results-card">
+        <div class="rc-head">
+          <div>
+            <div class="rc-title">Executed By</div>
+            <div class="rc-sub" id="peopleSelectSummary">—</div>
+          </div>
+          <div class="rc-actions">
+            <button class="btn btn-ghost" onclick="setShownPeopleIncluded(true)">Select all shown</button>
+            <button class="btn btn-ghost" onclick="setShownPeopleIncluded(false)">Deselect all shown</button>
+          </div>
+        </div>
+        <div class="table-wrap" id="peopleTableWrap"></div>
+      </div>
+    </div>
 
     <div class="controls-bar glass-solid">
       <div class="field">
@@ -675,6 +758,63 @@ kbd{background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px;font-size
 <div class="toast" id="toast"></div>
 
 <script>
+/* ============================================ PARTICLES (qe-vision.html) ============================================ */
+(function(){
+  const canvas=document.getElementById('particles'),ctx=canvas.getContext('2d');
+  let w,h,particles=[];
+  const COUNT=window.innerWidth<768?30:60,DIST=140;
+  window._particlePrimary='30,56,96';window._particleSecondary='180,190,210';window._particleAlpha=.12;
+  function resize(){w=canvas.width=window.innerWidth;h=canvas.height=window.innerHeight}
+  window.addEventListener('resize',resize);resize();
+  class P{
+    constructor(){this.reset()}
+    reset(){this.x=Math.random()*w;this.y=Math.random()*h;this.vx=(Math.random()-.5)*.35;this.vy=(Math.random()-.5)*.35;this.r=Math.random()*1.5+.5;this.isPrimary=Math.random()>.7;this.baseAlpha=Math.random()*.25+.08}
+    update(){this.x+=this.vx;this.y+=this.vy;if(this.x<0||this.x>w)this.vx*=-1;if(this.y<0||this.y>h)this.vy*=-1}
+    draw(){const c=this.isPrimary?window._particlePrimary:window._particleSecondary;const a=this.baseAlpha*((window._particleAlpha||.12)/.12);ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);ctx.fillStyle=`rgba(${c},${a})`;ctx.fill()}
+  }
+  for(let i=0;i<COUNT;i++)particles.push(new P());
+  function animate(){
+    ctx.clearRect(0,0,w,h);
+    for(let i=0;i<particles.length;i++){
+      particles[i].update();particles[i].draw();
+      for(let j=i+1;j<particles.length;j++){const dx=particles[i].x-particles[j].x,dy=particles[i].y-particles[j].y,dist=Math.sqrt(dx*dx+dy*dy);if(dist<DIST){const a=(1-dist/DIST)*.06;ctx.beginPath();ctx.moveTo(particles[i].x,particles[i].y);ctx.lineTo(particles[j].x,particles[j].y);ctx.strokeStyle=`rgba(${window._particlePrimary},${a})`;ctx.lineWidth=.5;ctx.stroke()}}
+    }
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+
+/* ============================================ THEME (qe-vision.html) ============================================ */
+function toggleTheme(){
+  const html=document.documentElement;
+  const current=html.getAttribute('data-theme')||'light';
+  const next=current==='light'?'dark':'light';
+  html.setAttribute('data-theme',next);
+  localStorage.setItem('qcoe-vision-theme',next);
+  updateThemeIcon(next);
+  updateParticleColors(next);
+}
+function initTheme(){
+  const saved=localStorage.getItem('qcoe-vision-theme');
+  const theme=saved||'light';
+  document.documentElement.setAttribute('data-theme',theme);
+  updateThemeIcon(theme);
+}
+function updateThemeIcon(theme){
+  document.querySelectorAll('.theme-toggle').forEach(btn=>{
+    btn.innerHTML=theme==='dark'?'&#9790;':'&#9788;';
+    btn.title=theme==='dark'?'Switch to Light Mode':'Switch to Dark Mode';
+  });
+}
+function updateParticleColors(theme){
+  const style=getComputedStyle(document.documentElement);
+  window._particlePrimary=style.getPropertyValue('--particle-primary').trim();
+  window._particleSecondary=style.getPropertyValue('--particle-secondary').trim();
+  window._particleAlpha=parseFloat(style.getPropertyValue('--particle-alpha'))||.12;
+}
+initTheme();
+updateParticleColors(document.documentElement.getAttribute('data-theme')||'light');
+
 // ─── State ───
 let configs = [];
 let editingConfigId = null;
@@ -682,6 +822,9 @@ let pipelines = [];
 let buildsByDef = {};
 let testsByBuild = {};
 let selectedFeatures = new Set();
+let includedPipelineIds = new Set();
+let includedPeople = new Set();
+let lastRenderedPeople = [];
 let generatedEmailHtml = '';
 let loadedFileContent = null;
 let chipUrls = [];
@@ -690,6 +833,8 @@ let selectedConfigIds = new Set();
 const LS_KEY = 'pipeline-hub-configs';
 const EXEC_PREF_KEY = 'ado-pipeline-metrics-executions'; // number string or "all"
 const FETCH_MONTH_KEY = 'ado-pipeline-metrics-fetch-month'; // "YYYY-MM"
+const PIPELINE_INCLUDE_KEY = 'ado-pipeline-metrics-included-pipelines'; // JSON array of definition ids
+const PEOPLE_INCLUDE_KEY = 'ado-pipeline-metrics-included-people'; // JSON array of people display names
 
 // ─── Init ───
 (function init() {
@@ -1386,6 +1531,7 @@ function loadData() {
 
   pipelines = data.definitions.map(parsePipeline).filter(Boolean);
   testsByBuild = data.testResults || {};
+  initIncludedPipelines();
 
   buildsByDef = {};
   data.builds.forEach(b => {
@@ -1450,6 +1596,102 @@ function parseDuration(s, f) { return s && f ? (new Date(f) - new Date(s)) / 600
 function fmtDuration(m) { if (m == null) return '-'; if (m < 1) return '<1m'; const h = Math.floor(m / 60); const mi = Math.round(m % 60); return h > 0 ? `${h}h ${mi}m` : `${mi}m`; }
 function fmtDate(iso) { if (!iso) return '-'; return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
 
+function initIncludedPipelines() {
+  const allIds = new Set(pipelines.map(p => String(p.id)));
+  const raw = (localStorage.getItem(PIPELINE_INCLUDE_KEY) || '').trim();
+  if (!raw) {
+    includedPipelineIds = new Set(allIds);
+    return;
+  }
+  try {
+    const arr = JSON.parse(raw);
+    const next = new Set((Array.isArray(arr) ? arr : []).map(String).filter(id => allIds.has(id)));
+    includedPipelineIds = next.size ? next : new Set(allIds);
+  } catch (e) {
+    includedPipelineIds = new Set(allIds);
+  }
+}
+
+function persistIncludedPipelines() {
+  try { localStorage.setItem(PIPELINE_INCLUDE_KEY, JSON.stringify([...includedPipelineIds])); } catch (e) {}
+}
+
+function initIncludedPeople(availableNames) {
+  const names = [...new Set((availableNames || []).map(n => String(n || '').trim()).filter(Boolean))];
+  const all = new Set(names);
+  const raw = (localStorage.getItem(PEOPLE_INCLUDE_KEY) || '').trim();
+  if (!raw) {
+    includedPeople = new Set(all);
+    return;
+  }
+  try {
+    const arr = JSON.parse(raw);
+    const next = new Set((Array.isArray(arr) ? arr : []).map(String).map(s => s.trim()).filter(n => all.has(n)));
+    includedPeople = next.size ? next : new Set(all);
+  } catch (e) {
+    includedPeople = new Set(all);
+  }
+}
+
+function persistIncludedPeople() {
+  try { localStorage.setItem(PEOPLE_INCLUDE_KEY, JSON.stringify([...includedPeople])); } catch (e) {}
+}
+
+function isPersonIncluded(name) {
+  const who = String(name || 'Unknown');
+  if (!includedPeople || includedPeople.size === 0) return true;
+  return includedPeople.has(who);
+}
+
+function togglePersonIncluded(name, checked) {
+  const who = String(name || 'Unknown');
+  if (checked) includedPeople.add(who);
+  else includedPeople.delete(who);
+  persistIncludedPeople();
+  renderDashboard();
+}
+
+function setShownPeopleIncluded(select) {
+  (lastRenderedPeople || []).forEach(name => {
+    const who = String(name || 'Unknown');
+    if (select) includedPeople.add(who);
+    else includedPeople.delete(who);
+  });
+  persistIncludedPeople();
+  renderDashboard();
+}
+
+function togglePipelineIncluded(id, checked) {
+  const key = String(id);
+  if (checked) includedPipelineIds.add(key);
+  else includedPipelineIds.delete(key);
+  persistIncludedPipelines();
+  renderDashboard();
+}
+
+function setShownPipelinesIncluded(select) {
+  const f = getFilters();
+  const shown = pipelines.filter(p => {
+    if (f.platform !== 'all' && p.platform !== f.platform) return false;
+    if (f.type !== 'all' && p.type !== f.type) return false;
+    return true;
+  });
+  shown.forEach(p => {
+    const id = String(p.id);
+    if (select) includedPipelineIds.add(id);
+    else includedPipelineIds.delete(id);
+  });
+  persistIncludedPipelines();
+  renderDashboard();
+}
+
+function getFilteredBuilds(defId, f) {
+  let builds = buildsByDef[defId] || [];
+  if (f.result !== 'all') builds = builds.filter(b => b.result === f.result);
+  if (f.executions > 0) builds = builds.slice(0, f.executions);
+  return builds;
+}
+
 function getFilters() {
   const execRaw = (document.getElementById('filterExec')?.value || '').trim();
   const execNum = parseInt(execRaw, 10);
@@ -1507,16 +1749,135 @@ function syncFetchCountToExecutions() {
   showToast(wantAll ? 'Set fetch to ALL runs per pipeline (this can be slow). Re-run the script in ADO, then load the new JSON.' : `Set fetch to ${n} runs per pipeline. Re-run the script in ADO, then load the new JSON.`);
 }
 
+function renderPipelineSelectionTable(basePipelines, pipelineStats, includedCount) {
+  const summaryEl = document.getElementById('pipelineSelectSummary');
+  if (summaryEl) {
+    summaryEl.textContent = basePipelines.length
+      ? `${includedCount} of ${basePipelines.length} pipelines included in metrics below`
+      : 'No pipelines match the current Category/Type filters.';
+  }
+
+  const wrap = document.getElementById('pipelineSelectTable');
+  if (!wrap) return;
+  if (!basePipelines.length) {
+    wrap.innerHTML = `<div class="no-data" style="padding:1rem">No pipelines to show.</div>`;
+    return;
+  }
+
+  const rows = [...basePipelines].sort((a, b) => {
+    const ar = pipelineStats[a.id]?.runs || 0;
+    const br = pipelineStats[b.id]?.runs || 0;
+    if (br !== ar) return br - ar;
+    return String(a.name || '').localeCompare(String(b.name || ''));
+  });
+
+  wrap.innerHTML = `
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width:42px">Inc</th>
+          <th>Pipeline</th>
+          <th style="width:110px">Category</th>
+          <th style="width:110px">Type</th>
+          <th style="width:90px">Runs</th>
+          <th style="width:90px">Pass</th>
+          <th style="width:90px">Fail</th>
+          <th style="width:90px">Pass %</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map(p => {
+          const id = String(p.id);
+          const s = pipelineStats[p.id] || { runs: 0, passed: 0, failed: 0 };
+          const pr = s.runs ? Math.round((s.passed / s.runs) * 100) : 0;
+          const typePill = p.type === 'Sanity' ? 'pill green' : p.type === 'Regression' ? 'pill blue' : 'pill';
+          return `
+            <tr>
+              <td><input class="pipe-inc-check" type="checkbox" ${includedPipelineIds.has(id) ? 'checked' : ''} onchange="togglePipelineIncluded('${esc(id)}', this.checked)"></td>
+              <td><span class="muted">${esc(p.featureNum)} </span><span style="font-weight:700">${esc(p.name)}</span></td>
+              <td><span class="pill">${esc(p.platform)}</span></td>
+              <td><span class="${typePill}">${esc(p.type)}</span></td>
+              <td class="num">${s.runs || 0}</td>
+              <td class="num" style="color:var(--green)">${s.passed || 0}</td>
+              <td class="num" style="color:var(--red)">${s.failed || 0}</td>
+              <td class="num">${s.runs ? pr + '%' : '-'}</td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderPeopleTable(peopleStats, totalRunsCounted) {
+  const wrap = document.getElementById('peopleTableWrap');
+  if (!wrap) return;
+  const entries = Object.entries(peopleStats || {});
+  if (!entries.length) {
+    wrap.innerHTML = `<div class="no-data" style="padding:1rem">No executions to summarize.</div>`;
+    return;
+  }
+
+  const rows = entries
+    .map(([name, s]) => ({ name, ...s }))
+    .sort((a, b) => (b.runs - a.runs) || (b.failed - a.failed) || a.name.localeCompare(b.name));
+
+  lastRenderedPeople = rows.map(r => r.name);
+  const includedCount = rows.filter(r => isPersonIncluded(r.name)).length;
+  const summaryEl = document.getElementById('peopleSelectSummary');
+  if (summaryEl) {
+    summaryEl.textContent = `${includedCount} of ${rows.length} people included in metrics (uncheck to exclude from calculations)`;
+  }
+
+  wrap.innerHTML = `
+    <table class="data-table" style="min-width:520px">
+      <thead>
+        <tr>
+          <th style="width:42px">Inc</th>
+          <th>Triggered By</th>
+          <th style="width:90px">Runs</th>
+          <th style="width:90px">Share</th>
+          <th style="width:90px">Pipelines</th>
+          <th style="width:90px">Pass %</th>
+          <th style="width:90px">Avg Dur</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map(r => {
+          const inc = isPersonIncluded(r.name);
+          const share = inc && totalRunsCounted ? Math.round((r.runs / totalRunsCounted) * 100) : null;
+          const pr = r.runs ? Math.round((r.passed / r.runs) * 100) : 0;
+          const avg = r.durCount ? fmtDuration(r.durTotal / r.durCount) : '-';
+          const pipeCount = r.pipelines ? r.pipelines.size : 0;
+          const prCls = pr >= 90 ? 'pill green' : pr >= 70 ? 'pill blue' : 'pill red';
+          return `
+            <tr class="${inc ? '' : 'row-excluded'}">
+              <td><input class="pipe-inc-check" type="checkbox" ${inc ? 'checked' : ''} onchange="togglePersonIncluded('${esc(r.name)}', this.checked)"></td>
+              <td style="font-weight:700">${esc(r.name)}</td>
+              <td class="num">${r.runs}</td>
+              <td class="num">${share == null ? '—' : share + '%'}</td>
+              <td class="num">${pipeCount}</td>
+              <td><span class="${prCls}">${pr}%</span></td>
+              <td class="num">${avg}</td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
 // ─── Dashboard Rendering ───
 function renderDashboard() {
   const f = getFilters();
-  let filtered = pipelines.filter(p => {
+  const baseFiltered = pipelines.filter(p => {
     if (f.platform !== 'all' && p.platform !== f.platform) return false;
     if (f.type !== 'all' && p.type !== f.type) return false;
     return true;
   });
+  const filtered = baseFiltered.filter(p => includedPipelineIds.has(String(p.id)));
 
-  const maxFetched = filtered.reduce((m, p) => Math.max(m, (buildsByDef[p.id] || []).length), 0);
+  const maxFetched = baseFiltered.reduce((m, p) => Math.max(m, (buildsByDef[p.id] || []).length), 0);
   const hintEl = document.getElementById('execHint');
   const actEl = document.getElementById('execActions');
   if (hintEl) {
@@ -1535,23 +1896,51 @@ function renderDashboard() {
     }
   }
 
+  const peopleStats = {};
+  filtered.forEach(p => {
+    const builds = getFilteredBuilds(p.id, f);
+    builds.forEach(b => {
+      const who = b.requestedBy || 'Unknown';
+      if (!peopleStats[who]) {
+        peopleStats[who] = { runs: 0, passed: 0, failed: 0, durTotal: 0, durCount: 0, testsTotal: 0, testsPassed: 0, testsFailed: 0, pipelines: new Set() };
+      }
+      const s = peopleStats[who];
+      s.runs++;
+      if (b.result === 'succeeded') s.passed++;
+      if (b.result === 'failed' || b.result === 'partiallySucceeded') s.failed++;
+      if (b.duration && b.duration > 0) { s.durTotal += b.duration; s.durCount++; }
+      s.pipelines.add(p.name);
+      const t = testsByBuild[b.id];
+      if (t) { s.testsTotal += t.total; s.testsPassed += t.passed; s.testsFailed += t.failed; }
+    });
+  });
+
+  initIncludedPeople(Object.keys(peopleStats));
+
   let totalRuns=0, totalPassed=0, totalFailed=0, totalDuration=0, durCount=0;
   let totalTests=0, totalTestsPassed=0, totalTestsFailed=0;
-  const people = {};
+  Object.entries(peopleStats).forEach(([name, s]) => {
+    if (!isPersonIncluded(name)) return;
+    totalRuns += s.runs;
+    totalPassed += s.passed;
+    totalFailed += s.failed;
+    totalDuration += s.durTotal;
+    durCount += s.durCount;
+    totalTests += s.testsTotal;
+    totalTestsPassed += s.testsPassed;
+    totalTestsFailed += s.testsFailed;
+  });
 
-  filtered.forEach(p => {
-    let builds = buildsByDef[p.id] || [];
-    if (f.result !== 'all') builds = builds.filter(b => b.result === f.result);
-    if (f.executions > 0) builds = builds.slice(0, f.executions);
+  const pipelineStats = {};
+  baseFiltered.forEach(p => {
+    const builds = getFilteredBuilds(p.id, f).filter(b => isPersonIncluded(b.requestedBy || 'Unknown'));
+    const ps = { runs: 0, passed: 0, failed: 0 };
     builds.forEach(b => {
-      totalRuns++;
-      if (b.result === 'succeeded') totalPassed++;
-      if (b.result === 'failed' || b.result === 'partiallySucceeded') totalFailed++;
-      if (b.duration && b.duration > 0) { totalDuration += b.duration; durCount++; }
-      if (b.requestedBy) people[b.requestedBy] = (people[b.requestedBy] || 0) + 1;
-      const t = testsByBuild[b.id];
-      if (t) { totalTests += t.total; totalTestsPassed += t.passed; totalTestsFailed += t.failed; }
+      ps.runs++;
+      if (b.result === 'succeeded') ps.passed++;
+      if (b.result === 'failed' || b.result === 'partiallySucceeded') ps.failed++;
     });
+    pipelineStats[p.id] = ps;
   });
 
   const avgDur = durCount ? totalDuration / durCount : 0;
@@ -1576,7 +1965,7 @@ function renderDashboard() {
     <div class="metric glass m-accent"><div class="m-label">Pipelines</div><div class="m-value">${filtered.length}</div>
       <div class="m-sub">${platSummary || 'none'}</div></div>
     <div class="metric glass m-blue"><div class="m-label">Total Runs</div><div class="m-value">${totalRuns}</div>
-      <div class="m-sub">${Object.keys(people).length} contributors</div></div>
+      <div class="m-sub">${Object.keys(peopleStats).filter(n => isPersonIncluded(n)).length} contributors</div></div>
     <div class="metric glass m-green"><div class="m-label">Build Pass Rate</div><div class="m-value">${passRate}%</div>
       <div class="m-sub">${totalPassed} passed / ${totalFailed} failed</div></div>
     <div class="metric glass m-purple"><div class="m-label">Avg Duration</div><div class="m-value">${fmtDuration(avgDur)}</div>
@@ -1586,6 +1975,9 @@ function renderDashboard() {
     <div class="metric glass m-red"><div class="m-label">Test Failures</div><div class="m-value">${totalTestsFailed || '-'}</div>
       <div class="m-sub">${totalTests ? ((totalTestsFailed/totalTests)*100).toFixed(1)+'% failure rate' : ''}</div></div>
   `;
+
+  renderPipelineSelectionTable(baseFiltered, pipelineStats, filtered.length);
+  renderPeopleTable(peopleStats, totalRuns);
 
   const grouped = {};
   filtered.forEach(p => {
@@ -1614,9 +2006,7 @@ function renderDashboard() {
 
       let gRuns=0, gPassed=0, gFailed=0;
       group.forEach(p => {
-        let blds = buildsByDef[p.id] || [];
-        if (f.result !== 'all') blds = blds.filter(b => b.result === f.result);
-        if (f.executions > 0) blds = blds.slice(0, f.executions);
+        let blds = getFilteredBuilds(p.id, f).filter(b => isPersonIncluded(b.requestedBy || 'Unknown'));
         blds.forEach(b => {
           gRuns++;
           if (b.result === 'succeeded') gPassed++;
@@ -1646,9 +2036,7 @@ function renderDashboard() {
         const typePipelines = group.filter(p => p.type === type);
         if (!typePipelines.length) return;
         typePipelines.forEach(p => {
-          let blds = buildsByDef[p.id] || [];
-          if (f.result !== 'all') blds = blds.filter(b => b.result === f.result);
-          if (f.executions > 0) blds = blds.slice(0, f.executions);
+          let blds = getFilteredBuilds(p.id, f).filter(b => isPersonIncluded(b.requestedBy || 'Unknown'));
           const tc = type === 'Sanity' ? 'type-sanity' : type === 'Regression' ? 'type-regression' : '';
           html += `<div class="pipe-section">
             <div class="pipe-label"><span class="pipe-type ${tc}">${type}</span><span style="color:var(--text)">${esc(p.name)}</span></div>`;
@@ -1723,6 +2111,10 @@ function toggleAllFeatures(select) {
     pipelines.filter(p => {
       if (f.platform !== 'all' && p.platform !== f.platform) return false;
       if (f.type !== 'all' && p.type !== f.type) return false;
+      if (pipelines.length) {
+        if (includedPipelineIds.size === 0) return false;
+        if (!includedPipelineIds.has(String(p.id))) return false;
+      }
       return true;
     }).forEach(p => {
       selectedFeatures.add(`${p.platform}_${p.featureNum}_${p.featureName}`);
@@ -1754,6 +2146,10 @@ function generateEmail() {
   let filtered = pipelines.filter(p => {
     if (f.platform !== 'all' && p.platform !== f.platform) return false;
     if (f.type !== 'all' && p.type !== f.type) return false;
+    if (pipelines.length) {
+      if (includedPipelineIds.size === 0) return false;
+      if (!includedPipelineIds.has(String(p.id))) return false;
+    }
     if (selectedFeatures.size > 0) {
       const fk = `${p.platform}_${p.featureNum}_${p.featureName}`;
       if (!selectedFeatures.has(fk)) return false;
@@ -1771,6 +2167,7 @@ function generateEmail() {
     if (f.result !== 'all') builds = builds.filter(b => b.result === f.result);
     if (f.executions > 0) builds = builds.slice(0, f.executions);
     if (opts.failedOnly) builds = builds.filter(b => b.result !== 'succeeded');
+    builds = builds.filter(b => isPersonIncluded(b.requestedBy || 'Unknown'));
     let pPass=0, pFail=0, pTests=0, pTestsPass=0;
     if (!platStats[p.platform]) platStats[p.platform] = { runs: 0, pass: 0 };
     builds.forEach(b => {

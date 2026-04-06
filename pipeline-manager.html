@@ -6,51 +6,79 @@
     <title>GitHub Pipeline Manager - Axos Bank</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <style>
         :root {
-            --axos-navy: #1E3860;
+            /* Match qe-vision.html design tokens */
+            --orange:#FAA74A;--orange-dark:#e8922a;--navy:#1E3860;
+            --bg-deep:#f8fafc;--bg-dark:#ffffff;--bg-card:rgba(0,0,0,0.03);
+            --glass-bg:rgba(30,56,96,0.04);--glass-border:rgba(30,56,96,0.1);
+            --glow:rgba(250,167,74,0.2);
+            --text-primary:#0f172a;--text-secondary:#475569;--text-dim:#94a3b8;
+            --gradient-orange:linear-gradient(135deg,#FAA74A,#f97316);
+            --font-h:'Space Grotesk',system-ui,sans-serif;
+            --font-b:'Inter',system-ui,sans-serif;
+            --ease:cubic-bezier(.4,0,.2,1);
+            --green:#16a34a;--blue:#2563eb;--purple:#7c3aed;--red:#dc2626;--cyan:#0891b2;
+            --topbar-bg:rgba(248,250,252,0.88);--topbar-border:rgba(30,56,96,0.06);
+            --particle-primary:30,56,96;--particle-secondary:180,190,210;--particle-alpha:.12;
+
+            /* Existing pipeline-manager variables (mapped) */
+            --axos-navy: var(--navy);
             --axos-navy-dark: #152844;
             --axos-navy-light: #2a4a7a;
-            --axos-orange: #FAA74A;
+            --axos-orange: var(--orange);
             --axos-orange-light: #fdd9a8;
-            --axos-orange-dark: #e8922a;
-            --bg-primary: #0a0e1a;
-            --bg-secondary: #111827;
-            --bg-tertiary: #1f2937;
-            --bg-card: #161d2e;
-            --border-color: #2d3748;
-            --text-primary: #f9fafb;
-            --text-secondary: #9ca3af;
-            --text-muted: #6b7280;
-            --success: #10b981;
-            --success-bg: rgba(16, 185, 129, 0.1);
-            --warning: #f59e0b;
-            --warning-bg: rgba(245, 158, 11, 0.1);
-            --error: #ef4444;
-            --error-bg: rgba(239, 68, 68, 0.1);
-            --danger: #ef4444;
-            --danger-bg: rgba(239, 68, 68, 0.1);
-            --info: #3b82f6;
-            --info-bg: rgba(59, 130, 246, 0.1);
+            --axos-orange-dark: var(--orange-dark);
+            --bg-primary: var(--bg-deep);
+            --bg-secondary: var(--bg-dark);
+            --bg-tertiary: var(--glass-bg);
+            --bg-card: var(--bg-dark);
+            --border-color: var(--glass-border);
+            --text-muted: var(--text-dim);
+            --success: var(--green);
+            --success-bg: rgba(22,163,74,0.12);
+            --warning: var(--orange);
+            --warning-bg: rgba(250,167,74,0.12);
+            --error: var(--red);
+            --error-bg: rgba(220,38,38,0.12);
+            --danger: var(--red);
+            --danger-bg: rgba(220,38,38,0.12);
+            --info: var(--blue);
+            --info-bg: rgba(37,99,235,0.12);
+        }
+        [data-theme="dark"]{
+            --bg-deep:#060e1a;--bg-dark:#0a1628;--bg-card:rgba(30,56,96,0.14);
+            --glass-bg:rgba(30,56,96,0.12);--glass-border:rgba(250,167,74,0.12);
+            --glow:rgba(250,167,74,0.25);
+            --text-primary:#e4e9f0;--text-secondary:#8a9ab4;--text-dim:#5a6a84;
+            --green:#4ade80;--blue:#60a5fa;--purple:#a78bfa;--red:#f87171;--cyan:#22d3ee;
+            --topbar-bg:rgba(6,14,26,0.85);--topbar-border:rgba(250,167,74,0.08);
+            --particle-primary:250,167,74;--particle-secondary:200,210,225;--particle-alpha:.25;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: var(--font-b);
             background: var(--bg-primary);
             color: var(--text-primary);
             line-height: 1.6;
             min-height: 100vh;
+            transition: background .4s var(--ease), color .4s var(--ease);
         }
-        .bg-pattern {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background:
-                radial-gradient(ellipse at 20% 20%, rgba(30,56,96,0.2) 0%, transparent 50%),
-                radial-gradient(ellipse at 80% 80%, rgba(30,56,96,0.15) 0%, transparent 50%),
-                radial-gradient(ellipse at 50% 50%, rgba(250,167,74,0.08) 0%, transparent 50%);
-            pointer-events: none; z-index: 0;
+        h1,h2,h3,.sidebar-title,.main-header h1,.modal-title,.top-tab{font-family:var(--font-h)}
+
+        canvas#particles{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
+        .aurora{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;overflow:hidden}
+        .aurora::before{content:'';position:absolute;top:-40%;left:-20%;width:140%;height:180%;
+            background:radial-gradient(ellipse at 30% 40%,rgba(250,167,74,0.03) 0%,transparent 55%),
+                       radial-gradient(ellipse at 70% 60%,rgba(30,56,96,0.06) 0%,transparent 50%);
+            animation:auroraMove 25s ease-in-out infinite alternate}
+        [data-theme="dark"] .aurora::before{
+            background:radial-gradient(ellipse at 30% 40%,rgba(250,167,74,0.04) 0%,transparent 55%),
+                       radial-gradient(ellipse at 70% 60%,rgba(30,56,96,0.1) 0%,transparent 50%)
         }
+        @keyframes auroraMove{0%{transform:translate(0,0) rotate(0deg) scale(1)}50%{transform:translate(-3%,2%) rotate(1.5deg) scale(1.02)}100%{transform:translate(2%,-1%) rotate(-1deg) scale(0.98)}}
         .app { position: relative; z-index: 1; display: flex; min-height: 100vh; }
 
         /* Sidebar */
@@ -399,9 +427,15 @@
         /* ═══════════════════════════════════════════ */
         /*  RESULTS TAB                                */
         /* ═══════════════════════════════════════════ */
-        .top-tabs { display:flex; gap:0; background:linear-gradient(180deg, var(--bg-secondary), rgba(10,14,26,0.95)); border-bottom:1px solid rgba(255,255,255,0.06); position:sticky; top:0; z-index:10; }
-        .top-tab { flex:1; padding:14px 20px; text-align:center; font-weight:700; font-size:13px; cursor:pointer; color:var(--text-muted); border-bottom:3px solid transparent; transition:all .25s; letter-spacing:0.5px; background:transparent; border:none; border-bottom:3px solid transparent; text-transform:uppercase; font-size:11px; }
-        .top-tab:hover { color:var(--text-secondary); background:rgba(250,167,74,0.04); }
+        .top-tabs { display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding:.5rem 1rem; background:var(--topbar-bg); border-bottom:1px solid var(--topbar-border); position:sticky; top:0; z-index:10; backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); }
+        .top-tabs-left { display:flex; gap:0; flex:1; }
+        .top-tabs-right { display:flex; align-items:center; gap:.5rem; }
+        .top-tab { flex:1; padding:12px 18px; text-align:center; font-weight:700; cursor:pointer; color:var(--text-dim); border-bottom:3px solid transparent; transition:all .25s var(--ease); background:transparent; border:none; text-transform:uppercase; font-size:11px; letter-spacing:1px; border-radius:10px; }
+        .top-tab:hover { color:var(--text-primary); background:rgba(250,167,74,0.08); }
+        .top-tab.active { background:rgba(250,167,74,0.12); color:var(--orange); border-bottom-color:transparent; }
+
+        .theme-toggle{width:38px;height:38px;border-radius:10px;border:1px solid var(--glass-border);background:var(--glass-bg);color:var(--text-dim);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s var(--ease);flex:0 0 auto}
+        .theme-toggle:hover{background:rgba(250,167,74,0.1);color:var(--orange);border-color:var(--orange)}
         .top-tab.active { color:var(--axos-orange); border-bottom-color:var(--axos-orange); background:rgba(250,167,74,0.06); text-shadow:0 0 12px rgba(250,167,74,0.3); }
         .tab-content { display:none; }
         .tab-content.active { display:block; }
@@ -718,15 +752,158 @@
         .pipe-picker-legend { display:flex; gap:12px; align-items:center; font-size:10px; color:var(--text-muted); padding:6px 0; }
         .pipe-picker-legend span { display:flex; align-items:center; gap:4px; }
         .pipe-picker-selected { font-size:12px; color:var(--text-muted); margin-top:8px; }
+
+        /* ═══════════════════════════════════════════ */
+        /*  LIGHT MODE READABILITY FIXES (keep dark-mode intact) */
+        /* ═══════════════════════════════════════════ */
+        html[data-theme="light"]{
+            --text-primary: var(--navy);
+            --text-secondary: rgba(30,56,96,0.78);
+            --text-dim: rgba(30,56,96,0.58);
+        }
+        html[data-theme="light"] .sidebar-header{
+            --text-secondary: rgba(255,255,255,0.82);
+            --text-muted: rgba(255,255,255,0.58);
+            --border-color: rgba(255,255,255,0.14);
+            color:#fff;
+        }
+        html[data-theme="light"] .sidebar-header .sidebar-logo{color:rgba(255,255,255,0.7)}
+        html[data-theme="light"] .sidebar-header .stat{
+            background:rgba(255,255,255,0.12);
+            border:1px solid rgba(255,255,255,0.12);
+            color:rgba(255,255,255,0.82);
+        }
+        html[data-theme="light"] .sidebar-header .stat-val{color:var(--orange)}
+        html[data-theme="light"] .sidebar-header button{color:var(--text-secondary)}
+
+        html[data-theme="light"] .tree-row:hover{background:rgba(30,56,96,0.04)}
+        html[data-theme="light"] .section-header:hover{background:rgba(30,56,96,0.03)}
+
+        /* Results cards/charts: use light surfaces in light mode */
+        html[data-theme="light"] .pat-bar,
+        html[data-theme="light"] .metric-card,
+        html[data-theme="light"] .chart-box{
+            background:var(--bg-dark);
+            border:1px solid var(--glass-border);
+            box-shadow:0 1px 3px rgba(0,0,0,0.06);
+        }
+        html[data-theme="light"] .metric-card:hover{box-shadow:0 10px 28px rgba(0,0,0,0.08)}
+        html[data-theme="light"] .metric-icon{filter:none}
+        html[data-theme="light"] .metric-label{color:var(--text-dim)}
+        html[data-theme="light"] .metric-sub{color:var(--text-secondary)}
+        html[data-theme="light"] .metric-value{
+            color:var(--text-primary);
+            background:none;
+            -webkit-text-fill-color:currentColor;
+        }
+        html[data-theme="light"] .metric-value.v-green{color:var(--green);-webkit-text-fill-color:currentColor;background:none}
+        html[data-theme="light"] .metric-value.v-red{color:var(--red);-webkit-text-fill-color:currentColor;background:none}
+        html[data-theme="light"] .metric-value.v-orange{color:var(--orange);-webkit-text-fill-color:currentColor;background:none}
+        html[data-theme="light"] .metric-bar{background:rgba(30,56,96,0.08)}
+
+        /* Results table rows: avoid dark row fills in light mode */
+        html[data-theme="light"] .run-table thead th{
+            color:#fff !important;
+            background:var(--navy);
+            border:1px solid rgba(30,56,96,0.25);
+        }
+        html[data-theme="light"] .run-table thead th:first-child{border-radius:10px 0 0 10px}
+        html[data-theme="light"] .run-table thead th:last-child{border-radius:0 10px 10px 0}
+        html[data-theme="light"] .run-table td{
+            background:rgba(255,255,255,0.9);
+            border:1px solid rgba(30,56,96,0.08);
+        }
+        html[data-theme="light"] .run-table tbody tr:hover td{background:rgba(250,167,74,0.08)}
+
+        /* Results sidebar inputs: override inline dark styles */
+        html[data-theme="light"] #resultsSidebar input[type="text"],
+        html[data-theme="light"] #resultsSidebar input[type="number"],
+        html[data-theme="light"] #resultsSidebar select{
+            background:#fff !important;
+            border-color:rgba(30,56,96,0.22) !important;
+            color:var(--text-primary) !important;
+        }
+        html[data-theme="light"] #resultsSidebar input::placeholder{color:var(--text-dim) !important}
+        html[data-theme="light"] #panelResults .sidebar-resizer{
+            border-left:1px solid rgba(30,56,96,0.08);
+            border-right:1px solid rgba(30,56,96,0.08);
+        }
+
+        /* Email picker list background */
+        html[data-theme="light"] .pipe-picker-list{background:rgba(30,56,96,0.03)}
+        html[data-theme="light"] .pipe-picker-item{border-bottom:1px solid rgba(30,56,96,0.06)}
+
+        html[data-theme="light"] .token-callout{
+            background:rgba(255,255,255,0.95) !important;
+            border-color:rgba(30,56,96,0.12) !important;
+            box-shadow:0 10px 28px rgba(0,0,0,0.08);
+        }
+
+        /* Light mode: make grey pills/cards white w/ outline */
+        html[data-theme="light"] .mini-toggle-row,
+        html[data-theme="light"] .results-pick-actions button,
+        html[data-theme="light"] .pipe-picker-toolbar .pp-toggle,
+        html[data-theme="light"] .btn-lite,
+        html[data-theme="light"] .adv-row select,
+        html[data-theme="light"] .adv-row input,
+        html[data-theme="light"] .adv-remove{
+            background:#fff !important;
+            border-color:rgba(30,56,96,0.28) !important;
+            color:var(--navy) !important;
+        }
+        html[data-theme="light"] .results-pick-actions button:hover,
+        html[data-theme="light"] .btn-lite:hover{
+            border-color:rgba(250,167,74,0.7) !important;
+            color:var(--orange) !important;
+            background:rgba(250,167,74,0.10) !important;
+        }
+        html[data-theme="light"] .mini-toggle-slider{
+            background:rgba(30,56,96,0.08) !important;
+            border-color:rgba(30,56,96,0.18) !important;
+        }
+        html[data-theme="light"] .mini-toggle-slider::before{
+            background:rgba(30,56,96,0.55) !important;
+            box-shadow:0 8px 20px rgba(30,56,96,0.18) !important;
+        }
+        html[data-theme="light"] .mini-toggle-switch input:checked + .mini-toggle-slider{
+            background:rgba(22,163,74,0.14) !important;
+            border-color:rgba(22,163,74,0.40) !important;
+        }
+        html[data-theme="light"] .mini-toggle-switch input:checked + .mini-toggle-slider::before{
+            background:rgba(22,163,74,0.95) !important;
+        }
+        html[data-theme="light"] #ghRunCount{
+            background:#fff !important;
+            border-color:rgba(30,56,96,0.28) !important;
+            color:var(--navy) !important;
+        }
+
+        /* Light mode: funnel rings visibility */
+        html[data-theme="light"] .funnel-arrow{color:rgba(30,56,96,0.25)}
+        html[data-theme="light"] #funnelRow svg circle:first-of-type{stroke:rgba(30,56,96,0.14) !important}
+        html[data-theme="light"] #funnelRow svg circle:nth-of-type(2){stroke-width:12px !important}
+
+        html[data-theme="light"] #pmTooltip{
+            --text-primary:#e4e9f0;
+            color:#e4e9f0;
+            background:rgba(6,14,26,0.92);
+            border-color:rgba(250,167,74,0.14);
+        }
     </style>
 </head>
 <body>
-    <div class="bg-pattern"></div>
+    <div class="aurora"></div>
+    <canvas id="particles"></canvas>
 
     <div class="top-tabs">
-        <button class="top-tab active" onclick="switchTopTab('pipelines')" id="tabPipelines">Pipelines</button>
-        <button class="top-tab" onclick="switchTopTab('results')" id="tabResults">Results & Metrics</button>
-        <button class="top-tab" onclick="switchTopTab('email')" id="tabEmail">Email Report</button>
+        <div class="top-tabs-left">
+            <button class="top-tab active" onclick="switchTopTab('pipelines')" id="tabPipelines">Pipelines</button>
+            <button class="top-tab" onclick="switchTopTab('results')" id="tabResults">Results & Metrics</button>
+            <button class="top-tab" onclick="switchTopTab('email')" id="tabEmail">Email Report</button>
+        </div>
+        <div class="top-tabs-right">
+            <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle Light/Dark Mode">&#9788;</button>
+        </div>
     </div>
 
     <div class="tab-content active" id="panelPipelines">
@@ -865,7 +1042,7 @@
                     <div class="empty-icon" style="font-size:56px; filter:drop-shadow(0 4px 12px rgba(250,167,74,0.3));">&#128202;</div>
                     <h3 style="font-size:20px; margin:12px 0 6px;">No results loaded</h3>
                     <p style="color:var(--text-secondary); max-width:400px; margin:0 auto;">Click "Fetch Results" to load your pipeline run data with live metrics.</p>
-                    <div style="margin-top:20px; padding:20px 24px; background:linear-gradient(135deg, rgba(22,29,46,0.95), rgba(31,41,55,0.9)); border:1px solid rgba(255,255,255,0.06); border-radius:14px; text-align:left; max-width:520px; display:inline-block; backdrop-filter:blur(12px);">
+                    <div class="token-callout" style="margin-top:20px; padding:20px 24px; background:linear-gradient(135deg, rgba(22,29,46,0.95), rgba(31,41,55,0.9)); border:1px solid rgba(255,255,255,0.06); border-radius:14px; text-align:left; max-width:520px; display:inline-block; backdrop-filter:blur(12px);">
                         <div style="font-size:13px; font-weight:700; color:var(--axos-orange); margin-bottom:10px;">&#128274; GitHub Token Required</div>
                         <div style="font-size:12px; color:var(--text-secondary); line-height:1.8;">
                             Set your GitHub PAT via the <strong>Settings</strong> button in the Pipelines sidebar. It's saved only in your browser.
@@ -1237,6 +1414,63 @@
     <div class="toast" id="toast"><span id="toastMsg"></span></div>
 
     <script>
+    /* ============================================ PARTICLES (qe-vision.html) ============================================ */
+    (function(){
+      const canvas=document.getElementById('particles'),ctx=canvas.getContext('2d');
+      let w,h,particles=[];
+      const COUNT=window.innerWidth<768?30:60,DIST=140;
+      window._particlePrimary='30,56,96';window._particleSecondary='180,190,210';window._particleAlpha=.12;
+      function resize(){w=canvas.width=window.innerWidth;h=canvas.height=window.innerHeight}
+      window.addEventListener('resize',resize);resize();
+      class P{
+        constructor(){this.reset()}
+        reset(){this.x=Math.random()*w;this.y=Math.random()*h;this.vx=(Math.random()-.5)*.35;this.vy=(Math.random()-.5)*.35;this.r=Math.random()*1.5+.5;this.isPrimary=Math.random()>.7;this.baseAlpha=Math.random()*.25+.08}
+        update(){this.x+=this.vx;this.y+=this.vy;if(this.x<0||this.x>w)this.vx*=-1;if(this.y<0||this.y>h)this.vy*=-1}
+        draw(){const c=this.isPrimary?window._particlePrimary:window._particleSecondary;const a=this.baseAlpha*((window._particleAlpha||.12)/.12);ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);ctx.fillStyle=`rgba(${c},${a})`;ctx.fill()}
+      }
+      for(let i=0;i<COUNT;i++)particles.push(new P());
+      function animate(){
+        ctx.clearRect(0,0,w,h);
+        for(let i=0;i<particles.length;i++){
+          particles[i].update();particles[i].draw();
+          for(let j=i+1;j<particles.length;j++){const dx=particles[i].x-particles[j].x,dy=particles[i].y-particles[j].y,dist=Math.sqrt(dx*dx+dy*dy);if(dist<DIST){const a=(1-dist/DIST)*.06;ctx.beginPath();ctx.moveTo(particles[i].x,particles[i].y);ctx.lineTo(particles[j].x,particles[j].y);ctx.strokeStyle=`rgba(${window._particlePrimary},${a})`;ctx.lineWidth=.5;ctx.stroke()}}
+        }
+        requestAnimationFrame(animate);
+      }
+      animate();
+    })();
+
+    /* ============================================ THEME (qe-vision.html) ============================================ */
+    function toggleTheme(){
+      const html=document.documentElement;
+      const current=html.getAttribute('data-theme')||'light';
+      const next=current==='light'?'dark':'light';
+      html.setAttribute('data-theme',next);
+      localStorage.setItem('qcoe-vision-theme',next);
+      updateThemeIcon(next);
+      updateParticleColors(next);
+    }
+    function initTheme(){
+      const saved=localStorage.getItem('qcoe-vision-theme');
+      const theme=saved||'light';
+      document.documentElement.setAttribute('data-theme',theme);
+      updateThemeIcon(theme);
+    }
+    function updateThemeIcon(theme){
+      document.querySelectorAll('.theme-toggle').forEach(btn=>{
+        btn.innerHTML=theme==='dark'?'&#9790;':'&#9788;';
+        btn.title=theme==='dark'?'Switch to Light Mode':'Switch to Dark Mode';
+      });
+    }
+    function updateParticleColors(theme){
+      const style=getComputedStyle(document.documentElement);
+      window._particlePrimary=style.getPropertyValue('--particle-primary').trim();
+      window._particleSecondary=style.getPropertyValue('--particle-secondary').trim();
+      window._particleAlpha=parseFloat(style.getPropertyValue('--particle-alpha'))||.12;
+    }
+    initTheme();
+    updateParticleColors(document.documentElement.getAttribute('data-theme')||'light');
+
     // ══════════════════════════════════════════
     //  DATA MODEL
     // ══════════════════════════════════════════
@@ -6721,14 +6955,16 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
     }
 
     function buildFunnel(total, passed, failed, other) {
+        const isLight = (document.documentElement.getAttribute('data-theme') || 'light') === 'light';
         const items = [
-            { label: 'Total Runs', val: total, color: '#3b82f6', colorEnd: '#93c5fd', pct: '100%' },
-            { label: 'Passed', val: passed, color: '#10b981', colorEnd: '#6ee7b7', pct: total ? (passed/total*100).toFixed(1)+'%' : '0%' },
-            { label: 'Failed', val: failed, color: '#ef4444', colorEnd: '#fca5a5', pct: total ? (failed/total*100).toFixed(1)+'%' : '0%' },
-            { label: 'Other', val: other, color: '#6b7280', colorEnd: '#9ca3af', pct: total ? (other/total*100).toFixed(1)+'%' : '0%' }
+            { label: 'Total Runs', val: total, color: isLight ? '#2563eb' : '#3b82f6', colorEnd: isLight ? '#60a5fa' : '#93c5fd', pct: '100%' },
+            { label: 'Passed', val: passed, color: isLight ? '#16a34a' : '#10b981', colorEnd: isLight ? '#4ade80' : '#6ee7b7', pct: total ? (passed/total*100).toFixed(1)+'%' : '0%' },
+            { label: 'Failed', val: failed, color: isLight ? '#dc2626' : '#ef4444', colorEnd: isLight ? '#f87171' : '#fca5a5', pct: total ? (failed/total*100).toFixed(1)+'%' : '0%' },
+            { label: 'Other', val: other, color: isLight ? '#475569' : '#6b7280', colorEnd: isLight ? '#94a3b8' : '#9ca3af', pct: total ? (other/total*100).toFixed(1)+'%' : '0%' }
         ];
         const maxVal = Math.max(total, 1);
         const el = document.getElementById('funnelRow');
+        const trackStroke = isLight ? 'rgba(30,56,96,0.14)' : 'rgba(255,255,255,0.04)';
         el.innerHTML = items.map((it, i) => {
             const frac = Math.max(it.val / maxVal, 0.08);
             const r = 48, sw = 10;
@@ -6740,7 +6976,7 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
                     <div class="funnel-ring">
                         <svg viewBox="0 0 110 110">
                             <defs><linearGradient id="fg${i}" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${it.color}"/><stop offset="100%" stop-color="${it.colorEnd}"/></linearGradient></defs>
-                            <circle cx="55" cy="55" r="${r}" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="${sw}"/>
+                            <circle cx="55" cy="55" r="${r}" fill="none" stroke="${trackStroke}" stroke-width="${sw}"/>
                             <circle cx="55" cy="55" r="${r}" fill="none" stroke="url(#fg${i})" stroke-width="${sw}"
                                 stroke-dasharray="${dashVal} ${dashGap}" stroke-dashoffset="${circ/4}"
                                 stroke-linecap="round" style="filter:drop-shadow(0 0 6px ${it.color}40);"/>
@@ -6791,12 +7027,13 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
             plugins: [{
                 id: 'centerText',
                 afterDraw(chart) {
+                    const isLight = (document.documentElement.getAttribute('data-theme') || 'light') === 'light';
                     const { ctx, chartArea: { left, right, top, bottom } } = chart;
                     const cx = (left + right) / 2, cy = (top + bottom) / 2;
                     ctx.save(); ctx.textAlign = 'center';
-                    ctx.fillStyle = '#e5e7eb'; ctx.font = "800 28px 'Plus Jakarta Sans'";
+                    ctx.fillStyle = isLight ? '#1E3860' : '#e5e7eb'; ctx.font = "800 28px 'Space Grotesk'";
                     ctx.fillText(total, cx, cy + 4);
-                    ctx.fillStyle = '#6b7280'; ctx.font = "600 10px 'Plus Jakarta Sans'";
+                    ctx.fillStyle = isLight ? 'rgba(30,56,96,0.65)' : '#6b7280'; ctx.font = "700 10px 'Inter'";
                     ctx.fillText('TOTAL', cx, cy + 20);
                     ctx.restore();
                 }
