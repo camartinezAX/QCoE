@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>QE Standard Runbook — Azure DevOps (ADO)</title>
+  <style>
+    :root {
+      --ink: #1a1d21;
+      --muted: #5c6370;
+      --border: #d8dce3;
+      --accent: #0f4c81;
+      --accent-soft: #e8f0f8;
+      --bg: #fafbfc;
+      --card: #fff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      font-size: 15px;
+      line-height: 1.55;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    .wrap {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 3rem;
+    }
+    header.doc-head {
+      border-bottom: 3px solid var(--accent);
+      padding-bottom: 1.25rem;
+      margin-bottom: 2rem;
+    }
+    h1 {
+      font-size: 1.65rem;
+      font-weight: 700;
+      margin: 0 0 0.75rem;
+      letter-spacing: -0.02em;
+    }
+    .lede {
+      display: grid;
+      gap: 0.65rem;
+      font-size: 0.95rem;
+    }
+    .lede strong { color: var(--ink); }
+    .lede span { color: var(--muted); }
+    h2 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin: 2.25rem 0 0.85rem;
+      color: var(--accent);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.35rem;
+    }
+    h3 {
+      font-size: 1.02rem;
+      font-weight: 600;
+      margin: 1.35rem 0 0.5rem;
+      color: var(--ink);
+    }
+    h4 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin: 1rem 0 0.4rem;
+      color: var(--muted);
+    }
+    p { margin: 0 0 0.85rem; }
+    ul, ol { margin: 0 0 1rem; padding-left: 1.35rem; }
+    li { margin-bottom: 0.4rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem 1.25rem;
+      margin: 1rem 0;
+    }
+    .card h3:first-child, .card h4:first-child { margin-top: 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+      margin: 0.75rem 0 1.25rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.65rem 0.85rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    th {
+      background: #f0f3f7;
+      font-weight: 600;
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--muted);
+      width: 28%;
+    }
+    tr:last-child td { border-bottom: none; }
+    code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--accent-soft);
+      padding: 0.12em 0.35em;
+      border-radius: 4px;
+    }
+    .platform {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      padding: 0.85rem 1rem;
+      margin: 0.75rem 0;
+      border-radius: 0 6px 6px 0;
+    }
+    .platform strong { display: block; margin-bottom: 0.35rem; color: var(--accent); }
+    footer {
+      margin-top: 2.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    @media print {
+      body { background: #fff; }
+      .wrap { padding: 0; max-width: 100%; }
+      .card, .platform, table { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="doc-head">
+      <h1>QE Standard Runbook — Azure DevOps (ADO)</h1>
+      <div class="lede">
+        <span><strong>Audience:</strong> QE Engineers, QE Leads, QE Managers, Dev, SDMs, Vendors</span>
+        <span><strong>Purpose:</strong> Establish a single, clear, enforceable standard for how Quality Engineering uses Azure DevOps (ADO).</span>
+        <span><strong>Goal:</strong> Remove ambiguity, reduce noise, improve triage speed, and ensure consistent QE signaling.</span>
+      </div>
+    </header>
+
+    <section id="scope">
+      <h2>1. Scope and Principles</h2>
+
+      <h3>What this runbook is</h3>
+      <ul>
+        <li>A practical execution guide for QE usage of ADO</li>
+        <li>A source of truth for states, tags, approvals, and ownership</li>
+      </ul>
+
+      <h3>What this runbook is NOT</h3>
+      <ul>
+        <li>Not a tutorial on ADO features</li>
+        <li>Not a replacement for product or scrum processes</li>
+      </ul>
+
+      <h3>Guiding principles</h3>
+      <ul>
+        <li>Consistency over flexibility</li>
+        <li>Signal over noise</li>
+        <li>QE owns quality signals, not delivery dates</li>
+      </ul>
+    </section>
+
+    <section id="work-items">
+      <h2>2. Work Item Types QE Uses</h2>
+
+      <h3>Product Backlog Item (PBI)</h3>
+      <ul>
+        <li>Owned by Product / Dev</li>
+        <li>QE does not create or rewrite PBIs</li>
+        <li>QE validates acceptance criteria against PBIs</li>
+      </ul>
+
+      <h3>Bug</h3>
+      <ul>
+        <li>Created by QE when behavior deviates from acceptance criteria or expected system behavior</li>
+        <li>All QE-found defects must be logged as Bugs, not comments</li>
+        <li>Bugs must be linked to a parent PBI, feature, or release item</li>
+      </ul>
+
+      <h3>QE Task</h3>
+      <ul>
+        <li>Used only when explicitly required by team agreements</li>
+        <li>Must always be linked to a PBI</li>
+        <li>Should represent QE effort (design, execution, regression, automation)</li>
+      </ul>
+    </section>
+
+    <section id="states">
+      <h2>3. QE-Owned States and Transitions</h2>
+
+      <h3>QE touches ONLY these states</h3>
+      <ul>
+        <li>Ready for Test (RFT)</li>
+        <li>QA Approved</li>
+        <li>Rejected by QA</li>
+        <li>QA Blocked</li>
+      </ul>
+
+      <h3>General state rules</h3>
+      <ul>
+        <li>QE does not move items into Dev Ready, Resolved, or Done</li>
+        <li>QE state changes must reflect actual validation status, not intent</li>
+      </ul>
+
+      <h3>QA Approved means</h3>
+      <ul>
+        <li>Acceptance criteria validated</li>
+        <li>Evidence documented</li>
+        <li>Required automation expectations met or explicitly waived</li>
+      </ul>
+
+      <h3>Rejected by QA</h3>
+      <ul>
+        <li>Used when validation fails or fix is incomplete</li>
+        <li>Item must be triaged</li>
+        <li>Dev is responsible for fixing and moving the item forward</li>
+        <li>QE re-tests only after Dev updates the item appropriately</li>
+      </ul>
+
+      <h3>Anti-patterns (Not allowed)</h3>
+      <ul>
+        <li>Using comments instead of state changes</li>
+        <li>Marking QA Approved with missing evidence</li>
+        <li>Advancing state to unblock development without validation</li>
+      </ul>
+
+      <h2 id="regression">3.1 Release Regression Bug — Required State Flow</h2>
+      <p><em>This section applies only to release regression bugs.</em></p>
+
+      <h3>Definition</h3>
+      <p>A <strong>Release Regression Bug</strong> is a defect found during release validation or regression testing that impacts existing, previously working functionality.</p>
+
+      <h3>Required state flow</h3>
+
+      <h4>New</h4>
+      <ul>
+        <li>Bug created by QE with a clear regression context</li>
+        <li>Mandatory regression tags applied</li>
+      </ul>
+
+      <h4>Ready for Test (RFT)</h4>
+
+      <div class="platform">
+        <strong>API &amp; Web</strong>
+        <ul style="margin-bottom:0;">
+          <li>Dev moves the bug/work item to the Build Complete state and shares the build artifacts with QA</li>
+          <li>Release Managers deploy the fix to the Main environment</li>
+          <li>QE sets the state to Ready for Test only after successful deployment</li>
+        </ul>
+      </div>
+
+      <div class="platform">
+        <strong>Mobile</strong>
+        <ul style="margin-bottom:0;">
+          <li>Dev owns deployment</li>
+          <li>Dev sets the state to Ready for Test only and build versions are tagged to the work item or bugs</li>
+          <li>QE must not pull bugs into test before deployment</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="tagging">
+      <h2>4. Tagging Standards</h2>
+
+      <h3>Mandatory tagging rules</h3>
+      <ul>
+        <li>Tags are signals, not documentation</li>
+        <li>Use only approved tags</li>
+        <li>No custom / ad-hoc tags</li>
+      </ul>
+
+      <h3>Required tag examples (adjust per org standards)</h3>
+      <ul>
+        <li><code>CreatedBy_QE</code>, <code>Conditional_QA_Approved</code>, etc.</li>
+        <li><code>ReleaseRegressionTags</code> — e.g. <code>OLB145Release</code></li>
+        <li>Release identifiers (only if officially defined)</li>
+      </ul>
+
+      <h3>Release Regression tagging rules</h3>
+      <p>All release regression bugs must include:</p>
+      <ul>
+        <li><code>ReleaseRegressionTags</code></li>
+        <li>Tags must be applied at bug creation</li>
+        <li>Tags must not be removed during the lifecycle of the bug</li>
+      </ul>
+
+      <h3>Forbidden practices</h3>
+      <ul>
+        <li>Multiple tags with the same meaning</li>
+        <li>QE-specific logic encoded inside tags</li>
+        <li>Tags used to replace comments, repro steps, or evidence</li>
+      </ul>
+    </section>
+
+    <section id="approval">
+      <h2>5. QE Approval Criteria</h2>
+      <p>A work item can be marked <strong>QA Approved</strong> only when <strong>all</strong> are true:</p>
+      <ul>
+        <li>Acceptance criteria verified</li>
+        <li>Test scenarios (positive + negative) executed</li>
+        <li>Environment documented</li>
+        <li>Evidence attached (screenshots, logs, recordings)</li>
+        <li>Automation expectations met or explicitly approved for exception</li>
+      </ul>
+      <div class="card">
+        <p style="margin:0;"><strong>QA Approved</strong> is a quality signal, not a scheduling or release signal.</p>
+      </div>
+    </section>
+
+    <section id="bugs">
+      <h2>6. Bug Management Expectations</h2>
+
+      <h3>Bug creation standards</h3>
+      <ul>
+        <li>Clear, concise title</li>
+        <li>Steps to reproduce</li>
+        <li>Expected vs actual behavior</li>
+        <li>Evidence attached</li>
+        <li>Correct parent linkage</li>
+        <li>Regression context explicitly stated when applicable</li>
+      </ul>
+
+      <h3>Bug ownership</h3>
+      <table>
+        <tbody>
+          <tr>
+            <th>QE</th>
+            <td>Owns bug quality and clarity</td>
+          </tr>
+          <tr>
+            <th>Dev</th>
+            <td>Owns fix and deployment</td>
+          </tr>
+          <tr>
+            <th>Re-validation</th>
+            <td>QE re-validates only after Dev moves the item to Ready for Test</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="escalation">
+      <h2>7. Escalation and Ownership</h2>
+
+      <h3>First point of contact</h3>
+      <p>QE Leads for clarification and unblock.</p>
+
+      <h3>When to escalate</h3>
+      <ul>
+        <li>Blocking test execution</li>
+        <li>Invalid rejection or premature state changes</li>
+        <li>Repeated process or state violations</li>
+      </ul>
+
+      <h3>Not an escalation</h3>
+      <ul>
+        <li>Priority disagreements</li>
+        <li>Delivery timeline concerns</li>
+      </ul>
+    </section>
+
+    <section id="antipatterns">
+      <h2>8. Common Anti-Patterns (Do NOT Do This)</h2>
+      <ul>
+        <li>Comments instead of bugs</li>
+        <li>Custom tags</li>
+        <li>QA Approved without evidence</li>
+        <li>Pulling bugs into test before deployment</li>
+        <li>Waiting silently when blocked</li>
+        <li>Using ADO to solve communication gaps</li>
+      </ul>
+    </section>
+
+    <section id="enforcement">
+      <h2>9. Enforcement</h2>
+      <ul>
+        <li>This runbook applies to all QE work in ADO</li>
+        <li>Deviations must be explicitly approved by QE Leadership</li>
+        <li>Repeated violations may result in items being sent back without validation</li>
+        <li>Updates to this runbook are controlled and versioned</li>
+      </ul>
+    </section>
+
+    <footer>
+      <p>QE Standard Runbook — Azure DevOps. Controlled document; updates are versioned.</p>
+    </footer>
+  </div>
+</body>
+</html>
