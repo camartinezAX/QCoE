@@ -1360,6 +1360,7 @@
     // Replace this URL with your deployed Google Apps Script Web App URL
     // ========================================
     const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw-qOJvpA3WfzKvaYS30pH5iCEx3iNUNF9MEwCmzAgg1ofP8egqxShKue-HnVq3o9UFQQ/exec';
+    const LOCAL_STORAGE_KEY = 'mobileAutomationTrackerDual';
     
     // Configuration
     const CONFIG = {
@@ -1575,9 +1576,31 @@
 
     // Initialize default values
     function initializeDefaults() {
-        // Ensure weeklyEntries objects exist
-        if (!data.android.weeklyEntries) data.android.weeklyEntries = {};
-        if (!data.ios.weeklyEntries) data.ios.weeklyEntries = {};
+        // Defensive guards (handles partially-migrated persisted data)
+        if (!data || typeof data !== 'object') data = {};
+        if (!data.android || typeof data.android !== 'object') data.android = {};
+        if (!data.ios || typeof data.ios !== 'object') data.ios = {};
+        
+        if (!data.android.weeklyTargets || typeof data.android.weeklyTargets !== 'object') data.android.weeklyTargets = {};
+        if (!data.android.weeklyActuals || typeof data.android.weeklyActuals !== 'object') data.android.weeklyActuals = {};
+        if (!data.android.weeklyEntries || typeof data.android.weeklyEntries !== 'object') data.android.weeklyEntries = {};
+        
+        if (!data.ios.weeklyTargets || typeof data.ios.weeklyTargets !== 'object') data.ios.weeklyTargets = {};
+        if (!data.ios.weeklyActuals || typeof data.ios.weeklyActuals !== 'object') data.ios.weeklyActuals = {};
+        if (!data.ios.weeklyEntries || typeof data.ios.weeklyEntries !== 'object') data.ios.weeklyEntries = {};
+        
+        // Use a shared weeklyEntries store (android is source of truth).
+        // This avoids persisting a duplicated entries blob under BOTH android + ios,
+        // which can easily exceed Google Sheets' ~50k character per-cell limit.
+        const androidEntriesStore = data.android.weeklyEntries;
+        const iosEntriesStore = data.ios.weeklyEntries;
+        if (
+            androidEntriesStore && Object.keys(androidEntriesStore).length === 0 &&
+            iosEntriesStore && Object.keys(iosEntriesStore).length > 0
+        ) {
+            data.android.weeklyEntries = iosEntriesStore;
+        }
+        data.ios.weeklyEntries = data.android.weeklyEntries;
         
         // Ensure engineers array exists with defaults
         if (!data.engineers || !Array.isArray(data.engineers)) {
@@ -1613,6 +1636,38 @@
                 data.ios.weeklyEntries[key] = [];
             }
         });
+    }
+    
+    function createPersistedDataSnapshot(source) {
+        const snapshot = {
+            totalScriptsAndroid: source?.totalScriptsAndroid ?? CONFIG.totalScriptsAndroid,
+            totalScriptsIOS: source?.totalScriptsIOS ?? CONFIG.totalScriptsIOS,
+            android: {
+                weeklyTargets: source?.android?.weeklyTargets || {},
+                weeklyActuals: source?.android?.weeklyActuals || {},
+                weeklyEntries: source?.android?.weeklyEntries || {}
+            },
+            ios: {
+                weeklyTargets: source?.ios?.weeklyTargets || {},
+                weeklyActuals: source?.ios?.weeklyActuals || {}
+                // NOTE: ios.weeklyEntries intentionally omitted (shared store)
+            },
+            engineers: Array.isArray(source?.engineers) ? source.engineers : [],
+            lastUpdated: source?.lastUpdated || new Date().toISOString(),
+            _schemaVersion: 2,
+            _weeklyEntriesStore: 'android'
+        };
+        
+        return snapshot;
+    }
+    
+    function persistLocalCache() {
+        try {
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(createPersistedDataSnapshot(data)));
+        } catch (e) {
+            // If localStorage is full or blocked, we still want the app to function in-memory.
+            console.warn('Failed to write local cache:', e);
+        }
     }
 
     // Check if data has valid structure
@@ -1684,7 +1739,7 @@
         
         if (updated) {
             console.log('✅ Vertical normalization complete - saving data...');
-            localStorage.setItem('mobileAutomationTrackerDual', JSON.stringify(data));
+            persistLocalCache();
         }
         
         return updated;
@@ -1703,7 +1758,7 @@
                     data = result.data;
                     initializeDefaults();
                     // Also save to localStorage as cache
-                    localStorage.setItem('mobileAutomationTrackerDual', JSON.stringify(data));
+                    persistLocalCache();
                     showSyncStatus('✅ Synced from cloud');
                     updateLastUpdated();
                     return;
@@ -1717,7 +1772,7 @@
         }
         
         // Fallback to localStorage
-        const saved = localStorage.getItem('mobileAutomationTrackerDual');
+        const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
         if (saved) {
             try {
                 data = JSON.parse(saved);
@@ -1737,31 +1792,86 @@
         data.lastUpdated = new Date().toISOString();
         
         // Always save to localStorage first
-        localStorage.setItem('mobileAutomationTrackerDual', JSON.stringify(data));
+        persistLocalCache();
         updateLastUpdated();
         
         // Save to Google Sheets if configured
         if (GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL !== 'YOUR_GOOGLE_SCRIPT_URL_HERE') {
             try {
                 showSyncStatus('Saving to cloud...');
-                const response = await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        data: data,
-                        updatedBy: 'Weekly Tracker User',
-                        action: 'save'
-                    })
-                });
-                showSyncStatus('✅ Saved to cloud');
-                showSaveStatus(true);
-                alert('✅ Data saved to cloud successfully!');
+                
+                const cloudSnapshot = createPersistedDataSnapshot(data);
+                const approxChars = JSON.stringify(cloudSnapshot).length;
+                
+                const payload = {
+                    data: cloudSnapshot,
+                    updatedBy: 'Weekly Tracker User',
+                    action: 'save'
+                };
+                
+                const body = JSON.stringify(payload);
+                
+                // Prefer a verifiable request (so we don't "claim success" when the backend rejected it).
+                // Use text/plain to avoid CORS preflight while still allowing readable JSON responses.
+                let result = null;
+                try {
+                    const response = await fetch(GOOGLE_SCRIPT_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body
+                    });
+                    
+                    const text = await response.text();
+                    try {
+                        result = JSON.parse(text);
+                    } catch {
+                        throw new Error('Cloud returned a non-JSON response');
+                    }
+                    
+                    if (!response.ok) {
+                        throw new Error(result?.error || `HTTP ${response.status}`);
+                    }
+                    if (!result?.success) {
+                        throw new Error(result?.error || 'Cloud save failed');
+                    }
+                    
+                    showSyncStatus('✅ Saved to cloud');
+                    showSaveStatus(true);
+                    alert('✅ Data saved to cloud successfully!');
+                    return;
+                } catch (err) {
+                    // If the browser blocked reading the response (CORS / file://), try a best-effort no-cors write.
+                    if (err instanceof TypeError) {
+                        await fetch(GOOGLE_SCRIPT_URL, {
+                            method: 'POST',
+                            mode: 'no-cors',
+                            headers: { 'Content-Type': 'application/json' },
+                            body
+                        });
+                        showSyncStatus('⚠️ Sent to cloud (unverified)');
+                        showSaveStatus(true);
+                        alert(
+                            '⚠️ Save request sent to cloud, but the browser blocked reading the response.\n\n' +
+                            'Please verify it saved by checking your Google Sheet:\n' +
+                            '- WeeklyTrackerLog should get a new "save" row\n' +
+                            '- WeeklyTrackerData lastUpdated should change\n'
+                        );
+                        return;
+                    }
+                    
+                    // Give a more actionable hint for the common Google Sheets cell-size limit scenario.
+                    const sizeHint =
+                        approxChars > 48000
+                            ? `\n\nℹ️ Your stored data is ~${approxChars.toLocaleString()} characters. The current Apps Script backend stores JSON in one cell (limit ~50k chars), so saves can fail once the tracker grows. This build already reduces payload by not duplicating iOS weeklyEntries; if it still fails, the backend needs chunked storage.`
+                            : '';
+                    
+                    throw new Error((err?.message || String(err)) + sizeHint);
+                }
             } catch (e) {
                 console.error('Error saving to Google Sheets:', e);
                 showSyncStatus('⚠️ Saved locally only');
                 showSaveStatus(true);
-                alert('✅ Data saved locally (cloud sync failed)');
+                alert('✅ Data saved locally (cloud sync failed)\n\n' + (e?.message || 'Unknown error'));
             }
         } else {
             showSaveStatus(true);
@@ -1784,7 +1894,7 @@
             if (result.success && isValidData(result.data)) {
                 data = result.data;
                 initializeDefaults();
-                localStorage.setItem('mobileAutomationTrackerDual', JSON.stringify(data));
+                persistLocalCache();
                 renderTable();
                 updateSummary();
                 renderWeeklyLog();
@@ -1854,7 +1964,7 @@
     // Reset to default
     function resetData() {
         if (confirm('⚠️ Are you sure you want to reset all data? This cannot be undone.')) {
-            localStorage.removeItem('mobileAutomationTrackerDual');
+            localStorage.removeItem(LOCAL_STORAGE_KEY);
             data = {
                 totalScriptsAndroid: CONFIG.totalScriptsAndroid,
                 totalScriptsIOS: CONFIG.totalScriptsIOS,
@@ -2682,6 +2792,12 @@
         }
     }
     
+    // Back-compat: older builds called this after import. Keep it safe/no-op.
+    function hideImportFromDailyTracker() {
+        const textarea = document.getElementById('dailyTrackerImportData');
+        if (textarea) textarea.value = '';
+    }
+    
     // Import tests from Daily Tracker export
     function importFromDailyTracker() {
         const importText = document.getElementById('dailyTrackerImportData').value.trim();
@@ -2792,7 +2908,7 @@
         data.ios.weeklyActuals[currentModalWeekKey] = iosEntries.length > 0 ? iosEntries.length : null;
         
         // Persist to localStorage immediately
-        localStorage.setItem('mobileAutomationTrackerDual', JSON.stringify(data));
+        persistLocalCache();
         
         // Update the main table to show the new counts
         renderTable();
@@ -3026,7 +3142,7 @@
         data.ios.weeklyActuals[currentModalWeekKey] = iosEntries.length > 0 ? iosEntries.length : null;
         
         // Persist to localStorage immediately
-        localStorage.setItem('mobileAutomationTrackerDual', JSON.stringify(data));
+        persistLocalCache();
         
         showSaveStatus(false);
         closeTestEntryModal();
@@ -3469,7 +3585,7 @@
             recalculateWeekActuals();
             
             // Persist to localStorage immediately
-            localStorage.setItem('mobileAutomationTrackerDual', JSON.stringify(data));
+            persistLocalCache();
             
             // Refresh the UI
             showSaveStatus(false);
@@ -3649,7 +3765,7 @@
             recalculateWeekActuals();
             
             // Persist to localStorage immediately
-            localStorage.setItem('mobileAutomationTrackerDual', JSON.stringify(data));
+        persistLocalCache();
             
             // Close modal and refresh
             closeDuplicateDetailsModal();
