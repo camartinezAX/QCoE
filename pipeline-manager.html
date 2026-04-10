@@ -6,7 +6,7 @@
     <title>GitHub Pipeline Manager - Axos Bank</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <style>
         :root {
@@ -436,7 +436,6 @@
 
         .theme-toggle{width:38px;height:38px;border-radius:10px;border:1px solid var(--glass-border);background:var(--glass-bg);color:var(--text-dim);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s var(--ease);flex:0 0 auto}
         .theme-toggle:hover{background:rgba(250,167,74,0.1);color:var(--orange);border-color:var(--orange)}
-        .top-tab.active { color:var(--axos-orange); border-bottom-color:var(--axos-orange); background:rgba(250,167,74,0.06); text-shadow:0 0 12px rgba(250,167,74,0.3); }
         .tab-content { display:none; }
         .tab-content.active { display:block; }
 
@@ -2031,6 +2030,7 @@
             timeoutMin: 'Per-test timeout (min)',
             browserTimeout: 'Browser wait (min)',
             runnerLabel: 'Runner label',
+            customRunnerLabel: 'Custom runner label',
             jobTimeout: 'Pipeline timeout (min)',
 
             // BrowserStack
@@ -2073,7 +2073,7 @@
             'platform', 'mobilePlatform', 'brand', 'env', 'feature', 'featureDetail', 'testType',
             'testSuite', 'baseUrl', 'branch', 'grid', 'parallel', 'parallels', 'retries', 'timeoutMin', 'browserTimeout',
             'grep', 'suite', 'spec', 'parallelSplit', 'tunnel', 'appId', 'deviceName', 'deviceOS', 'bsUsername', 'bsAccessKey',
-            'runnerLabel', 'jobTimeout',
+            'runnerLabel', 'customRunnerLabel', 'jobTimeout',
             'scheduleEnabled', 'schedule', 'repeatUnit', 'repeatEvery', 'repeatDom',
             'repo', 'filename', 'name'
         ];
@@ -3040,7 +3040,7 @@
                 `This is a monorepo workflow for the ${team} team.\n` +
                 `The repo uses a reusable workflow (_reusable-playwright.yml) called by thin project-specific workflows.\n\n` +
                 `Settings:\n` +
-                `PROJECT_DIR: projects/Axos.QE.${team === 'Enrollment' ? 'Enr' : team === 'OutSystems' ? 'OutSys' : team === 'Crypto' ? 'Crypto' : 'UNKNOWN_TEAM'}.Web\n` +
+                `PROJECT_DIR: projects/Axos.${team === 'Enrollment' ? 'Enr' : team === 'OutSystems' ? 'OutSys' : team === 'Crypto' ? 'Crypto' : 'UNKNOWN_TEAM'}.Web\n` +
                 `RUN_TARGET: ${p.runTarget || 'local'}\n` +
                 `LOCAL_BROWSER: ${p.localBrowser || 'chromium'}\n` +
                 `TEST_ENV: ${p.env || 'UAT'}\n` +
@@ -3103,13 +3103,14 @@
             `PROJECT: ${p.project || ''}\n` +
             `TOKEN: ${p.token || 'TESTIM_TOKEN'}\n` +
             `BRANCH: ${p.branch || 'UDB - API and Web'}\n` +
-            `GRID: ${p.grid || 'Testim-Grid'}\n` +
+            `GRID: ${p.grid || 'Testim Grid'}\n` +
             `PARALLEL: ${p.parallel || '1'}\n` +
             `RETRIES: ${p.retries || '1'}\n` +
             `TIMEOUTMIN: ${p.timeoutMin || '30'}\n` +
             `BROWSER_TIMEOUT: ${p.browserTimeout || '30'}\n` +
             `JOB_TIMEOUT: ${p.jobTimeout || 120}\n` +
-            `RUNNER_LABEL: ${p.runnerLabel || 'dsdl-timab31'}`;
+            `RUNNER_LABEL: ${p.runnerLabel || 'dsdl-timab31'}\n` +
+            `CUSTOM_RUNNER_LABEL: ${p.customRunnerLabel || ''}`;
 
         if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
         else prompt += `\n\nKeep the schedule block commented out.`;
@@ -3117,7 +3118,7 @@
         prompt += `\n\nUse the existing caller workflow file Web_AxosBank_UAT-OLB_HealthCheck-Testim.yml as the exact format reference. Include:\n` +
             `- A header comment showing the folder path (e.g. Web > Axos Bank > UAT > ...)\n` +
             `- name: and run-name fields matching the pipeline name\n` +
-            `- workflow_dispatch inputs for ALL variables: TEST_SUITE, BASE_URL, PROJECT, TOKEN, BRANCH, GRID (choice: Testim-Grid, CHROME_DRIVER), PARALLEL, RETRIES, TIMEOUTMIN, BROWSER_TIMEOUT, JOB_TIMEOUT, and RUNNER_LABEL\n` +
+            `- workflow_dispatch inputs for ALL variables: TEST_SUITE, BASE_URL, PROJECT, TOKEN, BRANCH, GRID (choice: Testim Grid, Local Agent), PARALLEL, RETRIES, TIMEOUTMIN, BROWSER_TIMEOUT, JOB_TIMEOUT, RUNNER_LABEL (choice: dsdl-timab21, dsdl-timab24, dsdl-timab27, dsdl-timab28, dsdl-timab29, dsdl-timab30, dsdl-timab31, QAAutomationTestIM), and CUSTOM_RUNNER_LABEL (string)\n` +
             `- permissions block (contents: read, checks: write, actions: write)\n` +
             `- jobs section calling _testim-template.yml passing all inputs with fallback defaults using the \${{ inputs.VAR || 'default' }} pattern\n` +
             `- secrets mapping should pass TESTIM_TOKEN dynamically from TOKEN: \${{ secrets[inputs.TOKEN] || secrets.TESTIM_TOKEN }}`;
@@ -3849,8 +3850,8 @@
                     <div class="form-group">
                         <label class="form-label">Grid</label>
                         <select id="fGrid" ${isView ? 'disabled' : ''}>
-                            <option value="Testim-Grid" ${(p.grid || 'Testim-Grid') === 'Testim-Grid' ? 'selected' : ''}>Testim-Grid (cloud)</option>
-                            <option value="CHROME_DRIVER" ${p.grid === 'CHROME_DRIVER' ? 'selected' : ''}>CHROME_DRIVER (Axos servers)</option>
+                            <option value="Testim Grid" ${(['Testim Grid','Testim-Grid'].includes(p.grid || 'Testim Grid')) ? 'selected' : ''}>Testim Grid (cloud)</option>
+                            <option value="Local Agent" ${(['Local Agent','CHROME_DRIVER'].includes(p.grid || '')) ? 'selected' : ''}>Local Agent (Axos servers)</option>
                         </select>
                     </div>
                 </div>
@@ -3871,9 +3872,14 @@
                 <div class="form-group">
                     <label class="form-label">Runner Label</label>
                     <select id="fRunnerLabel" ${isView ? 'disabled' : ''}>
-                        ${['dsdl-timab21','dsdl-timab27','dsdl-timab31','QAAutomationTestIM'].map(r => `<option value="${r}" ${(p.runnerLabel || 'dsdl-timab31') === r ? 'selected' : ''}>${r}</option>`).join('')}
+                        ${['dsdl-timab21','dsdl-timab24','dsdl-timab27','dsdl-timab28','dsdl-timab29','dsdl-timab30','dsdl-timab31','QAAutomationTestIM'].map(r => `<option value="${r}" ${(p.runnerLabel || 'dsdl-timab31') === r ? 'selected' : ''}>${r}</option>`).join('')}
                     </select>
                     <span class="field-help">Linux self-hosted runner from the QAAutomationTestIM pool. QAAutomationTestIM auto-selects any available runner (requires admin setup).</span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Custom Runner Label <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional)</span></label>
+                    <input type="text" id="fCustomRunnerLabel" placeholder="e.g. dsdl-timab26" value="${p.customRunnerLabel || ''}" ${isView ? 'disabled' : ''}>
+                    <span class="field-help">Overrides the dropdown in the generated workflow (use when you need a runner label not listed).</span>
                 </div>
             </div>
         </div>`;
@@ -4725,7 +4731,7 @@
             const currentRepo = 'Axos.QE.Mobile';
             const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
             if (duplicate) {
-                previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:'Plus Jakarta Sans',sans-serif;">&#9888; A pipeline with this exact name already exists.</div>`;
+                previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:var(--font-b);">&#9888; A pipeline with this exact name already exists.</div>`;
                 previewEl.style.borderColor = 'var(--error)';
             } else {
                 previewEl.textContent = name;
@@ -4758,7 +4764,7 @@
             const currentRepo = String(document.getElementById('fRepo')?.value || '').trim() || 'Axos.QE.Crypto.Web';
             const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
             if (duplicate) {
-                previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:'Plus Jakarta Sans',sans-serif;">&#9888; A pipeline with this exact name already exists.</div>`;
+                previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:var(--font-b);">&#9888; A pipeline with this exact name already exists.</div>`;
                 previewEl.style.borderColor = 'var(--error)';
             } else {
                 previewEl.textContent = name;
@@ -4794,7 +4800,7 @@
             const previewEl = document.getElementById('namePreview');
             const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && normRepoForPipeline(p) === 'Axos.QE.Web' && pipelineKey(p) !== editingPipeline);
             if (duplicate) {
-                previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:'Plus Jakarta Sans',sans-serif;">&#9888; A pipeline with this exact name already exists.</div>`;
+                previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:var(--font-b);">&#9888; A pipeline with this exact name already exists.</div>`;
                 previewEl.style.borderColor = 'var(--error)';
             } else {
                 previewEl.textContent = name;
@@ -4837,7 +4843,7 @@
             const currentRepo = String(document.getElementById('fRepo')?.value || '').trim() || 'Axos.QE.TestIM';
             const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
             if (duplicate) {
-                previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:'Plus Jakarta Sans',sans-serif;">&#9888; An orchestrator with this name already exists.</div>`;
+                previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:var(--font-b);">&#9888; An orchestrator with this name already exists.</div>`;
                 previewEl.style.borderColor = 'var(--error)';
             } else {
                 previewEl.textContent = name;
@@ -4857,7 +4863,7 @@
         const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
 
         if (duplicate) {
-            previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:'Plus Jakarta Sans',sans-serif;">&#9888; A pipeline with this exact name already exists. Change the feature, suffix, test type, or environment to make it unique.</div>`;
+            previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:var(--font-b);">&#9888; A pipeline with this exact name already exists. Change the feature, suffix, test type, or environment to make it unique.</div>`;
             previewEl.style.borderColor = 'var(--error)';
         } else {
             previewEl.textContent = name;
@@ -5063,6 +5069,7 @@
                 base.timeoutMin = '';
                 base.browserTimeout = '';
                 base.runnerLabel = '';
+                base.customRunnerLabel = '';
                 base.jobTimeout = n('fJobTimeout', 30);
 
                 base.orchestratorSet = (v('fOrchSetName') || v('fCustomSuffix')).trim();
@@ -5088,12 +5095,13 @@
                 base.project = v('fProject');
                 base.token = v('fToken') || 'TESTIM_TOKEN';
                 base.branch = v('fBranch') || 'UDB - API and Web';
-                base.grid = v('fGrid') || 'Testim-Grid';
+                base.grid = v('fGrid') || 'Testim Grid';
                 base.parallel = v('fParallel') || '1';
                 base.retries = v('fRetries') || '1';
                 base.timeoutMin = v('fTimeoutMin') || '30';
                 base.browserTimeout = v('fBrowserTimeout') || '30';
                 base.runnerLabel = v('fRunnerLabel') || 'dsdl-timab31';
+                base.customRunnerLabel = v('fCustomRunnerLabel');
                 base.jobTimeout = n('fJobTimeout', 120);
             }
             }
@@ -5223,8 +5231,8 @@ Each target element supports: enabled, name, owner, repo, workflow, ref, inputs.
 
         } else if (el('fRepo') === 'Axos.QE.Web') {
             const brand = el('fBrand') || 'Enrollment';
-            const projMap = { 'Enrollment': 'Axos.QE.Enr.Web', 'OutSystems': 'Axos.QE.OutSys.Web', 'Crypto': 'Axos.QE.Crypto.Web' };
-            const projDir = projMap[brand] || `Axos.QE.${brand}.Web`;
+            const projMap = { 'Enrollment': 'Axos.Enr.Web', 'OutSystems': 'Axos.OutSys.Web', 'Crypto': 'Axos.Crypto.Web' };
+            const projDir = projMap[brand] || `Axos.${brand}.Web`;
             prompt = `Create or update a Playwright pipeline workflow file in the Axos.QE.Web monorepo at:
 .github/workflows/${name}.yml
 
@@ -5310,7 +5318,10 @@ TIMEOUTMIN: ${el('fTimeoutMin')}
 BROWSER_TIMEOUT: ${el('fBrowserTimeout')}
 JOB_TIMEOUT: ${el('fJobTimeout')}
 
-Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.`;
+RUNNER_LABEL: ${el('fRunnerLabel') || 'dsdl-timab31'}
+CUSTOM_RUNNER_LABEL: ${el('fCustomRunnerLabel') || ''}
+
+Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-hosted runner label), not by runner name.`;
 
             if (scheduleEnabled && scheduleCron) {
                 prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron}`;
@@ -5321,7 +5332,7 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
             prompt += `\n\nUse the existing caller workflow file Web_AxosBank_UAT-OLB_HealthCheck-Testim.yml as the exact format reference. Include:
 - A header comment showing the folder path (e.g. Web > Axos Bank > UAT > ...)
 - name: and run-name: fields matching the pipeline name
-- workflow_dispatch inputs for ALL variables: TEST_SUITE, BASE_URL, PROJECT, TOKEN, BRANCH, GRID (choice: Testim-Grid, CHROME_DRIVER), PARALLEL, RETRIES, TIMEOUTMIN, BROWSER_TIMEOUT, JOB_TIMEOUT, and RUNNER_LABEL (choice: dsdl-timab21, dsdl-timab27, dsdl-timab31, QAAutomationTestIM) — each with the correct default value from the settings above
+- workflow_dispatch inputs for ALL variables: TEST_SUITE, BASE_URL, PROJECT, TOKEN, BRANCH, GRID (choice: Testim Grid, Local Agent), PARALLEL, RETRIES, TIMEOUTMIN, BROWSER_TIMEOUT, JOB_TIMEOUT, RUNNER_LABEL (choice: dsdl-timab21, dsdl-timab24, dsdl-timab27, dsdl-timab28, dsdl-timab29, dsdl-timab30, dsdl-timab31, QAAutomationTestIM), and CUSTOM_RUNNER_LABEL (string) — each with the correct default value from the settings above
 - permissions block (contents: read, checks: write, actions: write)
 - The jobs section calling _testim-template.yml passing all inputs with fallback defaults using the \${{ inputs.VAR || 'default' }} pattern
 - secrets mapping should pass TESTIM_TOKEN dynamically from TOKEN: \${{ secrets[inputs.TOKEN] || secrets.TESTIM_TOKEN }}`;
@@ -5532,11 +5543,12 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
             project: '',
             token: 'TESTIM_TOKEN',
             branch: 'UDB - API and Web',
-            grid: 'Testim-Grid',
+            grid: 'Testim Grid',
             parallel: '5',
             retries: '1',
             browserTimeout: '30',
             runnerLabel: 'dsdl-timab31',
+            customRunnerLabel: '',
             jobTimeout: 120,
         };
     }
@@ -5724,12 +5736,17 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
             TIMEOUTMIN: 'timeoutMin',
             BROWSER_TIMEOUT: 'browserTimeout',
             JOB_TIMEOUT: 'jobTimeout',
-            RUNNER_LABEL: 'runnerLabel'
+            RUNNER_LABEL: 'runnerLabel',
+            CUSTOM_RUNNER_LABEL: 'customRunnerLabel'
         };
 
         for (const [k, outKey] of Object.entries(testimMap)) {
             if (merged[k]) entry[outKey] = merged[k];
         }
+
+        // Normalize GRID labels for the UI/workflow_dispatch dropdown (keep backward compat)
+        if (entry.grid === 'Testim-Grid') entry.grid = 'Testim Grid';
+        if (entry.grid === 'CHROME_DRIVER') entry.grid = 'Local Agent';
 
         const orchestratorMap = {
             SET_NAME: 'orchestratorSet',
@@ -6307,7 +6324,7 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
             testSuite: '',
             baseUrl: testType === 'Orchestrator' ? '' : (ENV_URLS[env] || ''),
             branch: testType === 'Orchestrator' ? '' : 'UDB - API and Web',
-            grid: testType === 'Orchestrator' ? '' : 'Testim-Grid',
+            grid: testType === 'Orchestrator' ? '' : 'Testim Grid',
             parallel: testType === 'Orchestrator' ? '' : '5',
             retries: testType === 'Orchestrator' ? '' : '1',
             timeoutMin: testType === 'Orchestrator' ? '' : '30',
@@ -6330,7 +6347,11 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
     // ══════════════════════════════════════════
     //  UTILS
     // ══════════════════════════════════════════
-    function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+    function closeModal(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.remove('show');
+    }
     function cancelCreate() { selectedFolder = null; showFolderPipelines(null); }
 
     function showToast(msg) {
@@ -6387,15 +6408,45 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
         window.addEventListener('blur', hide);
     })();
 
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal('outputModal'); closeModal('syncModal'); closeModal('reposModal'); closeModal('repoSelectModal'); closeModal('deleteModal'); closeModal('saveModal'); closeModal('diffModal'); closeModal('emailModal'); closeModal('patModal'); } });
-    document.getElementById('outputModal').addEventListener('click', e => { if (e.target.id === 'outputModal') closeModal('outputModal'); });
-    document.getElementById('syncModal').addEventListener('click', e => { if (e.target.id === 'syncModal') closeModal('syncModal'); });
-    document.getElementById('reposModal').addEventListener('click', e => { if (e.target.id === 'reposModal') closeModal('reposModal'); });
-    document.getElementById('repoSelectModal').addEventListener('click', e => { if (e.target.id === 'repoSelectModal') closeModal('repoSelectModal'); });
-    document.getElementById('deleteModal').addEventListener('click', e => { if (e.target.id === 'deleteModal') closeModal('deleteModal'); });
-    document.getElementById('saveModal').addEventListener('click', e => { if (e.target.id === 'saveModal') closeModal('saveModal'); });
-    document.getElementById('diffModal').addEventListener('click', e => { if (e.target.id === 'diffModal') closeModal('diffModal'); });
-    document.getElementById('patModal').addEventListener('click', e => { if (e.target.id === 'patModal') closeModal('patModal'); });
+    function wireModalBackdropClose(id) {
+        const overlay = document.getElementById(id);
+        if (!overlay) return;
+
+        let startedOnBackdrop = false;
+        const downEvt = ('PointerEvent' in window) ? 'pointerdown' : 'mousedown';
+        const upEvt = ('PointerEvent' in window) ? 'pointerup' : 'mouseup';
+        const cancelEvt = ('PointerEvent' in window) ? 'pointercancel' : null;
+
+        overlay.addEventListener(downEvt, (e) => {
+            startedOnBackdrop = e.target === overlay;
+        });
+
+        overlay.addEventListener(upEvt, (e) => {
+            if (startedOnBackdrop && e.target === overlay) closeModal(id);
+            startedOnBackdrop = false;
+        });
+
+        if (cancelEvt) {
+            overlay.addEventListener(cancelEvt, () => { startedOnBackdrop = false; });
+        }
+    }
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            closeModal('outputModal');
+            closeModal('syncModal');
+            closeModal('reposModal');
+            closeModal('repoSelectModal');
+            closeModal('deleteModal');
+            closeModal('saveModal');
+            closeModal('diffModal');
+            closeModal('emailModal');
+            closeModal('patModal');
+        }
+    });
+
+    ['outputModal','syncModal','reposModal','repoSelectModal','deleteModal','saveModal','diffModal','patModal','emailModal']
+        .forEach(wireModalBackdropClose);
 
     // Watch form changes for status updates
     document.addEventListener('input', e => { if (e.target.closest('.section')) updateFormStatus(); });
@@ -7019,8 +7070,8 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
             options: {
                 responsive: true, maintainAspectRatio: false, cutout: '68%',
                 plugins: {
-                    legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 14, font: { size: 11, family: "'Plus Jakarta Sans'" }, usePointStyle: true, pointStyle: 'circle' } },
-                    tooltip: { backgroundColor: 'rgba(10,14,26,0.95)', padding: 12, cornerRadius: 8, bodyFont: { family: "'Plus Jakarta Sans'" } }
+                    legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 14, font: { size: 11, family: "'Inter'" }, usePointStyle: true, pointStyle: 'circle' } },
+                    tooltip: { backgroundColor: 'rgba(10,14,26,0.95)', padding: 12, cornerRadius: 8, bodyFont: { family: "'Inter'" } }
                 },
                 animation: { animateRotate: true, duration: 1200, easing: 'easeOutQuart' }
             },
@@ -7089,8 +7140,8 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
                     x: { ticks: { color: '#6b7280', maxRotation: 45, font: { size: 10 } }, grid: { display: false } }
                 },
                 plugins: {
-                    legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 16, font: { size: 11, family: "'Plus Jakarta Sans'" }, usePointStyle: true, pointStyle: 'circle' } },
-                    tooltip: { backgroundColor: 'rgba(10,14,26,0.95)', titleFont: { family: "'Plus Jakarta Sans'" }, bodyFont: { family: "'Plus Jakarta Sans'" }, padding: 12, cornerRadius: 8 }
+                    legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 16, font: { size: 11, family: "'Inter'" }, usePointStyle: true, pointStyle: 'circle' } },
+                    tooltip: { backgroundColor: 'rgba(10,14,26,0.95)', titleFont: { family: "'Inter'" }, bodyFont: { family: "'Inter'" }, padding: 12, cornerRadius: 8 }
                 },
                 animation: { duration: 1200, easing: 'easeOutQuart' }
             }
@@ -7423,6 +7474,7 @@ Runner: Selected by RUNNER_LABEL (self-hosted runner label), not by runner name.
 
         if (!emailPickerInitialized) {
             emailSelectedPipelines.clear();
+            pipeKeys.forEach(k => emailSelectedPipelines.add(k));
             emailPickerInitialized = true;
         }
 
