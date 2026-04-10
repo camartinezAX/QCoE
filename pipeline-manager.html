@@ -2984,7 +2984,7 @@
                 `Also create/update .github/orchestrator/targets.json so it contains the set "${setName}" with these targets:\n\n` +
                 `${JSON.stringify(targets, null, 2)}\n\n` +
                 `Each target element supports: enabled, name, owner, repo, workflow, ref, inputs.\n` +
-                `Note: for workflows in this repo, "workflow" should be the workflow filename (e.g. Web_AxosBank_UAT-OLB_HealthCheck-Testim.yml).`;
+                `Note: for workflows in this repo, "workflow" should be the workflow filename (e.g. Web_AxosBank_UAT_HealthCheck-Testim.yml).`;
 
             if (p.renamedFrom) prompt += `\n\nAlso delete the old workflow file: .github/workflows/${p.renamedFrom}`;
             return prompt;
@@ -3115,7 +3115,7 @@
         if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
         else prompt += `\n\nKeep the schedule block commented out.`;
 
-        prompt += `\n\nUse the existing caller workflow file Web_AxosBank_UAT-OLB_HealthCheck-Testim.yml as the exact format reference. Include:\n` +
+        prompt += `\n\nUse the existing caller workflow file Web_AxosBank_UAT_HealthCheck-Testim.yml as the exact format reference. Include:\n` +
             `- A header comment showing the folder path (e.g. Web > Axos Bank > UAT > ...)\n` +
             `- name: and run-name fields matching the pipeline name\n` +
             `- workflow_dispatch inputs for ALL variables: TEST_SUITE, BASE_URL, PROJECT, TOKEN, BRANCH, GRID (choice: Testim Grid, Local Agent), PARALLEL, RETRIES, TIMEOUTMIN, BROWSER_TIMEOUT, JOB_TIMEOUT, RUNNER_LABEL (choice: dsdl-timab21, dsdl-timab24, dsdl-timab27, dsdl-timab28, dsdl-timab29, dsdl-timab30, dsdl-timab31, QAAutomationTestIM), and CUSTOM_RUNNER_LABEL (string)\n` +
@@ -3245,7 +3245,13 @@
                 <div class="name-preview" id="namePreview"><span class="dim">Select options below to generate name...</span></div>
                 <div class="form-group">
                     <label class="form-label">Custom Suffix <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional - appended to feature name)</span></label>
-                    <input type="text" id="fCustomSuffix" placeholder="e.g. IBD, External, Internal" value="${p.featureDetail ? p.featureDetail.split('_').slice(2).join('_') || '' : ''}" oninput="updateNamePreview()" ${isView ? 'disabled' : ''}>
+                    <input type="text" id="fCustomSuffix" placeholder="e.g. IBD, External, Internal" value="${(() => {
+                        const fd = String(p.featureDetail || '').trim();
+                        if (!fd) return '';
+                        const parts = fd.split('_').filter(Boolean);
+                        if (parts[0] === 'OLB') return parts.slice(2).join('_') || '';
+                        return parts.slice(1).join('_') || '';
+                    })()}" oninput="updateNamePreview()" ${isView ? 'disabled' : ''}>
                 </div>
             </div>
         </div>`;
@@ -3424,7 +3430,7 @@
                             <option value="">Select...</option>
                             ${renderWebFeatureOptions('Axos Bank', (p.feature || cryptoScenarioPrefill || 'Login'))}
                         </select>
-                        <span class="field-help">Suite/area used to build the workflow name (example: <code>...-OLB_Login_...</code>)</span>
+                    <span class="field-help">Suite/area used to build the workflow name (example: <code>..._Login_...</code>)</span>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Test Type <span class="req">*</span></label>
@@ -3900,7 +3906,7 @@
 
                 <div class="form-group">
                     <label class="form-label">Targets <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(simple mode)</span></label>
-                    <textarea id="fOrchTargetRefs" rows="6" placeholder="axos-financial/Axos.QE.TestIM:Web_Outsystems_UAT-OLB_EWM_Creation_Regression-Testim.yml@main" oninput="updateOrchestratorTargetsPreview()" ${isView ? 'disabled' : ''}>${escapeHtml(orchRefsPrefill)}</textarea>
+                    <textarea id="fOrchTargetRefs" rows="6" placeholder="axos-financial/Axos.QE.TestIM:Web_Outsystems_UAT_EWM_Creation_Regression-Testim.yml@main" oninput="updateOrchestratorTargetsPreview()" ${isView ? 'disabled' : ''}>${escapeHtml(orchRefsPrefill)}</textarea>
                     <span class="field-help">One per line. Formats: <code>owner/repo:workflow.yml@ref</code> or <code>repo:workflow.yml@ref</code> or just <code>workflow.yml</code> (defaults to axos-financial/Axos.QE.TestIM @ main).</span>
                 </div>
 
@@ -4839,7 +4845,7 @@
                 updateFormStatus();
                 return;
             }
-            const name = `${pKey}_${bKey}_${env}-OLB_Orchestrators_${suffix}-Orchestrator`;
+            const name = `${pKey}_${bKey}_${env}_Orchestrators_${suffix}-Orchestrator`;
             const currentRepo = String(document.getElementById('fRepo')?.value || '').trim() || 'Axos.QE.TestIM';
             const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
             if (duplicate) {
@@ -4853,11 +4859,11 @@
             return;
         }
 
-        const featureStr = suffix ? `OLB_${fKey}_${suffix}` : `OLB_${fKey}`;
+        const featureStr = suffix ? `${fKey}_${suffix}` : `${fKey}`;
 
         const name = (fKey === tKey)
-            ? `${pKey}_${bKey}_${env}-${featureStr}-Testim`
-            : `${pKey}_${bKey}_${env}-${featureStr}_${tKey}-Testim`;
+            ? `${pKey}_${bKey}_${env}_${featureStr}-Testim`
+            : `${pKey}_${bKey}_${env}_${featureStr}_${tKey}-Testim`;
         const previewEl = document.getElementById('namePreview');
         const currentRepo = String(document.getElementById('fRepo')?.value || '').trim() || 'Axos.QE.TestIM';
         const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
@@ -5329,7 +5335,7 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
                 prompt += `\n\nKeep the schedule block commented out.`;
             }
 
-            prompt += `\n\nUse the existing caller workflow file Web_AxosBank_UAT-OLB_HealthCheck-Testim.yml as the exact format reference. Include:
+            prompt += `\n\nUse the existing caller workflow file Web_AxosBank_UAT_HealthCheck-Testim.yml as the exact format reference. Include:
 - A header comment showing the folder path (e.g. Web > Axos Bank > UAT > ...)
 - name: and run-name: fields matching the pipeline name
 - workflow_dispatch inputs for ALL variables: TEST_SUITE, BASE_URL, PROJECT, TOKEN, BRANCH, GRID (choice: Testim Grid, Local Agent), PARALLEL, RETRIES, TIMEOUTMIN, BROWSER_TIMEOUT, JOB_TIMEOUT, RUNNER_LABEL (choice: dsdl-timab21, dsdl-timab24, dsdl-timab27, dsdl-timab28, dsdl-timab29, dsdl-timab30, dsdl-timab31, QAAutomationTestIM), and CUSTOM_RUNNER_LABEL (string) — each with the correct default value from the settings above
@@ -6253,7 +6259,8 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
         const featureNamesForParse = isOutsystems ? OUTSYSTEMS_FEATURES : FEATURES.map(f => f.name);
 
         const envFeaturePart = parts.slice(2).join('_');
-        const envMatch = envFeaturePart.match(/^(DEV|QA|STG|UAT|PROD)-(.+)$/);
+        // Support both legacy "ENV-..." and newer "ENV_..." naming.
+        const envMatch = envFeaturePart.match(/^(DEV|QA|STG|UAT|PROD)[-_](.+)$/);
         let env = '', featureDetail = '', testType = 'Regression';
         let isPlaywright = false;
 
@@ -7166,7 +7173,7 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
                 const actionable = p + f;
                 const passPct = (actionable ? (p / actionable * 100) : 0).toFixed(0);
                 html += `<div class="health-row" style="animation-delay:${i * 0.08}s;">
-                    <div class="health-label" title="${name}">${name.replace(/-Testim$/, '').replace(/^Web_AxosBank_\w+-OLB_/, '')}</div>
+                    <div class="health-label" title="${name}">${name.replace(/-Testim$/, '').replace(/^Web_AxosBank_[^_]+(?:-OLB)?_/, '')}</div>
                     <div class="health-bar">
                         <div class="health-seg pass" style="width:${pW}%;" title="${p} passed"></div>
                         <div class="health-seg fail" style="width:${fW}%;" title="${f} failed"></div>
@@ -7215,7 +7222,7 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
                 const missReason = missingMap.get(missKey) || '';
                 const isMissing = !!missReason;
                 const display = String(p.name || '').replace(/-Testim$/, '');
-                const short = display.replace(/^Web_AxosBank_\w+-OLB_/, '');
+                const short = display.replace(/^Web_AxosBank_[^_]+(?:-OLB)?_/, '');
                 const runCount = allRuns.filter(r => r.workflowName === p.name && r.repo === p.repo).length;
                 const jsName = String(p.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                 const jsRepo = String(p.repo || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
@@ -7866,16 +7873,16 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
             pipelines = [];
             savedSnapshot = [];
             syncFileContent = JSON.stringify([{
-                filename: 'Web_Outsystems_UAT-OLB_EWM_Creation_Regression-Testim.yml',
+                filename: 'Web_Outsystems_UAT_EWM_Creation_Regression-Testim.yml',
                 repo: 'Axos.QE.TestIM',
                 schedule: '0 16 * * 4',
                 scheduleEnabled: true,
                 repeatUnit: 'weeks',
                 repeatEvery: '2',
-                name: 'Web_Outsystems_UAT-OLB_EWM_Creation_Regression-Testim'
+                name: 'Web_Outsystems_UAT_EWM_Creation_Regression-Testim'
             }]);
             processSyncInput();
-            const synced = findPipeline('Axos.QE.TestIM::Web_Outsystems_UAT-OLB_EWM_Creation_Regression-Testim.yml');
+            const synced = findPipeline('Axos.QE.TestIM::Web_Outsystems_UAT_EWM_Creation_Regression-Testim.yml');
             if (!synced) throw new Error('sync did not add pipeline');
             if (String(synced.repeatEvery) !== '2') throw new Error(`sync repeatEvery expected 2, got "${synced.repeatEvery}"`);
 
