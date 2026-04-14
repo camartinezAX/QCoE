@@ -98,6 +98,12 @@
             padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 600;
             cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; border: none;
         }
+        .btn:disabled, .btn[disabled] {
+            opacity: 0.55;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
         .btn-orange {
             background: linear-gradient(135deg, var(--axos-orange), var(--axos-orange-dark));
             color: var(--axos-navy-dark); font-weight: 700; letter-spacing: 0.3px;
@@ -952,7 +958,7 @@
             <span class="date-sep">→</span>
             <input type="date" id="dateTo" title="To date">
             <button class="date-range-fetch-btn" id="dateFetchBtn" onclick="fetchWithDateRange()">Fetch Tickets</button>
-            <button class="btn btn-secondary" id="saveDashboardBtn" onclick="openCreateDashboardFromCurrent()" title="Admin only" style="margin-left:8px;display:none;">Save Dashboard</button>
+            <button class="btn btn-secondary" id="saveDashboardBtn" onclick="openCreateDashboardFromCurrent()" title="Fetch tickets first" style="margin-left:8px;" disabled>Save Dashboard</button>
             <label style="display:flex;align-items:center;gap:6px;margin-left:12px;font-size:13px;color:var(--text-secondary);cursor:pointer;">
                 <input type="checkbox" id="excludeWeekendsChk" checked onchange="applyFilters()"> Exclude weekends
             </label>
@@ -1088,7 +1094,7 @@
         </div>
 
         <!-- Filters & Table -->
-        <div id="tableSection" style="display:none;">
+        <div id="tableSection">
 
             <!-- Advanced Keyword Filter -->
             <div class="keyword-filter-panel" id="keywordPanel">
@@ -1128,17 +1134,17 @@
             </div>
 
             <div class="filters-bar">
-                <input type="text" id="searchInput" placeholder="Quick search: ticket #, requester, description..." oninput="applyFilters()">
-                <select id="stateFilter" onchange="applyFilters()">
+                <input type="text" id="searchInput" placeholder="Fetch tickets to enable filters" oninput="applyFilters()" disabled>
+                <select id="stateFilter" onchange="applyFilters()" disabled>
                     <option value="">All States</option>
                 </select>
-                <select id="yearFilter" onchange="applyFilters()">
+                <select id="yearFilter" onchange="applyFilters()" disabled>
                     <option value="">All Years</option>
                 </select>
                 <span class="filter-count" id="filterCount"></span>
             </div>
 
-            <div class="table-wrap">
+            <div class="table-wrap" id="tableWrap" style="display:none;">
                 <div class="table-header">
                     <h3 id="tableTitle">Service Tickets</h3>
                     <div style="display:flex;align-items:center;gap:12px;">
@@ -1167,7 +1173,13 @@
         <div class="empty-state" id="emptyState">
             <div class="empty-icon">📅</div>
             <h3>Select a date range to get started</h3>
-            <p style="color:var(--text-muted);max-width:400px;margin:8px auto;">Choose a date range above and click <b>Fetch Tickets</b> to load data from ServiceNow.</p>
+            <p style="color:var(--text-muted);max-width:520px;margin:8px auto;line-height:1.6;">
+                Choose a date range above and click <b>Fetch Tickets</b> to load data from ServiceNow.<br>
+                Saved presets are in the <b>🗂️ Dashboards</b> tab.
+            </p>
+            <div style="margin-top:16px;display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
+                <button class="btn btn-secondary" type="button" onclick="showDashboardsView()">🗂️ View Dashboards</button>
+            </div>
         </div>
     </div>
 
@@ -1493,7 +1505,26 @@ function updateSaveDashboardVisibility() {
     const btn = document.getElementById('saveDashboardBtn');
     if (!btn) return;
     const canSave = lastFetchSuccessful && Array.isArray(allTickets) && allTickets.length > 0;
-    btn.style.display = canSave ? '' : 'none';
+    btn.disabled = !canSave;
+    btn.title = canSave ? 'Admin only' : 'Fetch tickets first';
+}
+
+function setFilterControlsEnabled(enabled) {
+    const els = [
+        document.getElementById('searchInput'),
+        document.getElementById('stateFilter'),
+        document.getElementById('yearFilter'),
+        document.getElementById('keywordInput'),
+    ].filter(Boolean);
+
+    els.forEach(el => {
+        el.disabled = !enabled;
+        if (el.id === 'searchInput') {
+            el.placeholder = enabled
+                ? 'Quick search: ticket #, requester, description...'
+                : 'Fetch tickets to enable filters';
+        }
+    });
 }
 
 function getDateRange() {
@@ -2611,14 +2642,47 @@ function onDashAdvConsiderDateChanged() {
 }
 
 function loadDashboards() {
-    try { dashboards = JSON.parse(localStorage.getItem(DASHBOARDS_KEY) || '[]'); }
-    catch { dashboards = []; }
+    const legacyKeys = [
+        'snow_saved_dashboards',
+        'snow_saved_dashboards_v0',
+        'axos_snow_saved_dashboards',
+    ];
+
+    const safeGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+
+    const parseArray = (raw) => {
+        if (!raw) return null;
+        try {
+            const v = JSON.parse(raw);
+            return Array.isArray(v) ? v : null;
+        } catch {
+            return null;
+        }
+    };
+
+    const current = parseArray(safeGet(DASHBOARDS_KEY));
+    let merged = current || [];
+    let migratedFromLegacy = false;
+
+    if (!merged.length) {
+        for (const k of legacyKeys) {
+            const legacy = parseArray(safeGet(k));
+            if (legacy && legacy.length) {
+                merged = legacy;
+                migratedFromLegacy = true;
+                break;
+            }
+        }
+    }
+
+    dashboards = merged;
     if (!Array.isArray(dashboards)) dashboards = [];
     ensureSeedDashboards();
+    if (migratedFromLegacy) saveDashboards();
 }
 
 function saveDashboards() {
-    localStorage.setItem(DASHBOARDS_KEY, JSON.stringify(dashboards));
+    try { localStorage.setItem(DASHBOARDS_KEY, JSON.stringify(dashboards)); } catch {}
 }
 
 function setDashboardsSearch(v) {
@@ -2949,6 +3013,8 @@ async function fetchWithDateRange() {
 setDatePreset('week', document.querySelector('.date-preset-chip[data-preset="week"]'));
 syncFetchFilterUi();
 syncAdvancedDateRangeUi();
+setFilterControlsEnabled(false);
+updateSaveDashboardVisibility();
 
 document.getElementById('dateFrom').addEventListener('input', () => {
     document.querySelectorAll('.date-preset-chip').forEach(c => c.classList.remove('active'));
@@ -3329,6 +3395,9 @@ function renderDashboard() {
     document.getElementById('chartsRow').style.display = '';
     document.getElementById('chartsRow2').style.display = '';
     document.getElementById('tableSection').style.display = '';
+    const tw = document.getElementById('tableWrap');
+    if (tw) tw.style.display = '';
+    setFilterControlsEnabled(true);
 
     buildDynamicColumns(allTickets);
     computeMetrics(allTickets);
@@ -3811,6 +3880,12 @@ function getTicketText(t) {
 }
 
 function applyFilters() {
+    if (!Array.isArray(allTickets) || allTickets.length === 0 || !lastFetchSuccessful) {
+        filteredTickets = [];
+        const fc = document.getElementById('filterCount');
+        if (fc) fc.textContent = '';
+        return;
+    }
     const search = document.getElementById('searchInput').value.toLowerCase();
     const stateF = document.getElementById('stateFilter').value;
     const yearF = document.getElementById('yearFilter').value;
