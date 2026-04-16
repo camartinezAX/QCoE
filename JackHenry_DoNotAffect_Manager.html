@@ -2053,6 +2053,7 @@
         let udSyncing = false;
         let udSyncAbortController = null;
         let udSyncStopped = false;
+        let _udWarnedCloudUserDetailsLimit = false;
 
         async function saveReportToHtml() {
             // Save to local server (patches the HTML file on disk)
@@ -2117,6 +2118,16 @@
                         console.log('✅ Cloud save verified — cloud has ' + cloudFound + ' found users');
                     } else {
                         console.warn('⚠️ Cloud has fewer found users (' + cloudFound + ') than local (' + localFound + ') — re-pushing...');
+                        if (!_udWarnedCloudUserDetailsLimit && localFound >= 80 && cloudFound > 0) {
+                            _udWarnedCloudUserDetailsLimit = true;
+                            try {
+                                showToast(
+                                    'Cloud save incomplete',
+                                    'Cloud still has an older/smaller User Details snapshot. This is usually a Google Sheets single-cell size limit. Fix: update the Google Apps Script to store userDetails in chunks (multiple cells) instead of one cell.',
+                                    'warning'
+                                );
+                            } catch {}
+                        }
                         retrySaveToCloud();
                     }
                 }
