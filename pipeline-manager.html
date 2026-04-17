@@ -1545,7 +1545,10 @@
             'UFB Direct': null,
             'ULP': null
         },
-        '03 API': {}
+        '03 API': {
+            'OLB API': null,
+            'UDB API': null
+        }
     };
 
     const ENVIRONMENTS = ['DEV', 'QA', 'STG', 'UAT', 'PROD'];
@@ -1600,8 +1603,90 @@
         'OutSystems': 'OutSystems',
         'Outsystems': 'Outsystems',
         'UFB Direct': 'UFBDirect',
-        'ULP': 'ULP'
+        'ULP': 'ULP',
+        'OLB API': 'OLB',
+        'UDB API': 'UDB'
     };
+
+    const API_FEATURE_SUGGESTIONS = {
+        'OLB API': [
+            '01 Login',
+            '02 Dashboard',
+            '03 Accounts',
+            '04 Pay Bills',
+            '05 Move money',
+            '06 Make a deposit',
+            '07 Messages',
+            '08 Contact',
+            '09 Alerts',
+            '10 Support',
+            '11 Profile & Settings',
+            '12 Registration'
+        ],
+        'UDB API': [
+            '01 Registration',
+            '02 Login',
+            '03 Mega menu',
+            '04 Evo chat',
+            '05 Home',
+            '06 Bank',
+            '07 Borrow',
+            '08 Invest',
+            '09 Plan'
+        ]
+    };
+
+    function normalizeApiFeatureValue(raw) {
+        const s = String(raw || '').trim();
+        if (!s) return '';
+        // Convert "01 Login" or "01_Login" to "Login" for naming.
+        return s
+            .replace(/^\d+\s+/, '')
+            .replace(/^\d+_+/, '')
+            .trim();
+    }
+
+    function initApiSuffixFromFeatureDetail(featureDetailRaw) {
+        const repo = document.getElementById('fRepo')?.value || '';
+        if (repo !== 'Axos.QE.API_OLB') return;
+
+        const suffixEl = document.getElementById('fCustomSuffix');
+        const featureEl = document.getElementById('fFeature');
+        if (!suffixEl || !featureEl) return;
+
+        // Don't override if user has already typed in this session.
+        if (suffixEl.dataset && suffixEl.dataset.userEdited === 'true') return;
+
+        const featureVal = String(featureEl.value || '').trim();
+        if (!featureVal || featureVal === '__custom__') return;
+
+        let rest = String(featureDetailRaw || '').trim();
+        if (!rest) { suffixEl.value = ''; return; }
+
+        const featureKey = featureVal.replace(/\s+/g, '_').trim();
+        if (!featureKey) { suffixEl.value = ''; return; }
+
+        // Strip numeric prefix like "01_" for legacy filenames, but only when the selected
+        // feature does NOT intentionally preserve its own numeric prefix (e.g. "201_Registration").
+        const featurePreservesNumericPrefix = /^\d+(?:\s+|_+)/.test(featureKey);
+        if (!featurePreservesNumericPrefix) rest = rest.replace(/^\d+_+/, '');
+
+        const restLower = rest.toLowerCase();
+        const featureLower = featureKey.toLowerCase();
+
+        // If featureDetail is exactly the feature, there is no suffix.
+        if (restLower === featureLower) { suffixEl.value = ''; return; }
+
+        // If featureDetail starts with "<feature>_", treat the remainder as suffix.
+        const prefix = featureLower + '_';
+        if (restLower.startsWith(prefix)) {
+            suffixEl.value = rest.slice(featureKey.length + 1);
+            return;
+        }
+
+        // Otherwise, don't try to guess — avoid duplicating the feature as suffix.
+        suffixEl.value = '';
+    }
 
     const PLATFORM_KEY_MAP = { '01 Mobile': 'Mobile', '02 Web': 'Web', '03 API': 'API' };
 
@@ -1812,6 +1897,7 @@
                     if (/^web_(enrollment|outsystems|crypto)_/.test(fn) && fn.includes('-playwright')) p.repo = 'Axos.QE.Web';
                     else if (fn.includes('-playwright') || fn.startsWith('crypto-web-') || fn.startsWith('crypto-web_')) p.repo = 'Axos.QE.Crypto.Web';
                     else if (fn.startsWith('mobile_')) p.repo = 'Axos.QE.Mobile';
+                    else if (fn.includes('-newman') || fn.startsWith('api_') || fn.startsWith('api-')) p.repo = 'Axos.QE.API_OLB';
                     else p.repo = 'Axos.QE.TestIM';
                 };
                 // Backfill Crypto Web feature to the actual suite area (Login, Accounts, etc.)
@@ -3095,6 +3181,33 @@
             return prompt;
         }
 
+        if (repoName === 'Axos.QE.API_OLB') {
+            let prompt = `Create or update a Newman pipeline workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
+                `This file should call the reusable template _newman-template.yml with these settings:\n\n` +
+                `PIPELINE_NAME: ${p.name}\n` +
+                `COLLECTION_ID: ${p.collectionId || ''}\n` +
+                `ENVIRONMENT_ID: ${p.environmentId || ''}\n` +
+                `COLLECTION_SUBFOLDER: ${p.collectionSubfolder || ''}\n` +
+                `HOSTS_UAT_ENV: ${p.hostsUatEnv || 'na'}\n` +
+                `MAX_RETRIES: ${p.maxRetries || '0'}\n` +
+                `RUNNER_LABEL: ${p.runnerLabel || 'qsdw-tfsba06'}\n` +
+                `CUSTOM_RUNNER_LABEL: ${p.customRunnerLabel || ''}\n` +
+                `JOB_TIMEOUT: ${p.jobTimeout || 120}\n\n` +
+                `Use the existing workflow file API_OLB_UAT_Login_Smoke-Newman.yml as the exact format reference. Include:\n` +
+                `- name: and run-name fields matching the pipeline name\n` +
+                `- workflow_dispatch inputs for: COLLECTION_ID, ENVIRONMENT_ID, COLLECTION_SUBFOLDER, RUN_FULL_COLLECTION, HOSTS_UAT_ENV, MAX_RETRIES, JOB_TIMEOUT, RUNNER_LABEL, CUSTOM_RUNNER_LABEL\n` +
+                `- permissions block (contents: read, checks: write, actions: read)\n` +
+                `- jobs.run calling _newman-template.yml with secrets mapping for NPM_AUTH (optional)\n` +
+                `  - pass COLLECTION_SUBFOLDER as: \${{ inputs.RUN_FULL_COLLECTION && ' ' || inputs.COLLECTION_SUBFOLDER }}\n` +
+                `- jobs.test-results running on ubuntu-latest using dorny/test-reporter@v3 against reports/**/junit.xml`;
+
+            if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
+            else prompt += `\n\nKeep the schedule block commented out.`;
+
+            if (p.renamedFrom) prompt += `\n\nAlso delete the old workflow file: .github/workflows/${p.renamedFrom}`;
+            return prompt;
+        }
+
         let prompt = `Create or update a Testim pipeline workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
             `This file should call the reusable template _testim-template.yml with these settings:\n\n` +
             `PIPELINE_NAME: ${p.name}\n` +
@@ -3218,7 +3331,9 @@
             ? 'BrowserStack mobile pipeline'
             : (isOrchestratorPipeline(p)
                 ? 'Orchestrator workflow'
-                : ((isCryptoPipeline(p) || repoName === 'Axos.QE.Web') ? 'Playwright pipeline' : 'Testim pipeline'));
+                : (repoName === 'Axos.QE.API_OLB'
+                    ? 'Newman pipeline'
+                    : ((isCryptoPipeline(p) || repoName === 'Axos.QE.Web') ? 'Playwright pipeline' : 'Testim pipeline')));
         let html = `<div class="main-header">
             <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
                 <div style="min-width:0;">
@@ -3248,10 +3363,14 @@
                     <input type="text" id="fCustomSuffix" placeholder="e.g. IBD, External, Internal" value="${(() => {
                         const fd = String(p.featureDetail || '').trim();
                         if (!fd) return '';
+                        if (repoName === 'Axos.QE.API_OLB') {
+                            // For API pipelines, derive suffix after the feature is selected (avoids feature duplication).
+                            return '';
+                        }
                         const parts = fd.split('_').filter(Boolean);
                         if (parts[0] === 'OLB') return parts.slice(2).join('_') || '';
                         return parts.slice(1).join('_') || '';
-                    })()}" oninput="updateNamePreview()" ${isView ? 'disabled' : ''}>
+                    })()}" oninput="onCustomSuffixInput()" ${isView ? 'disabled' : ''}>
                 </div>
             </div>
         </div>`;
@@ -3391,6 +3510,125 @@
                     </div>
                 </div>
             </div>`;
+        } else {
+        if (repoName === 'Axos.QE.API_OLB') {
+            // API (Newman/Postman) form
+            html += `<div class="section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title"><span class="section-icon">&#128193;</span> Location & Category <span class="section-badge" style="background:rgba(56,189,248,0.12);color:#38bdf8;">Required</span></div>
+                <div class="section-toggle">&#9660;</div>
+            </div>
+            <div class="section-content">
+                <div class="form-row-3">
+                    <div class="form-group">
+                        <label class="form-label">Platform <span class="req">*</span></label>
+                        <select id="fPlatform" ${isView ? 'disabled' : ''}>
+                            <option value="03 API" selected>03 API</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Domain <span class="req">*</span></label>
+                        <select id="fBrand" onchange="updateApiFeatureSuggestions(); updateNamePreview()" ${isView ? 'disabled' : ''}>
+                            <option value="">Select...</option>
+                            ${Object.keys(FOLDER_STRUCTURE['03 API'] || {}).map(b => `<option value="${b}" ${p.brand === b ? 'selected' : ''}>${b}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Environment <span class="req">*</span></label>
+                        <select id="fEnv" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
+                            <option value="">Select...</option>
+                            ${ENVIRONMENTS.map(e => `<option value="${e}" ${p.env === e ? 'selected' : ''}>${e}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Feature <span class="req">*</span></label>
+                        <select id="fFeature" onchange="onApiFeatureChange(); updateNamePreview()" ${isView ? 'disabled' : ''}>
+                            <option value="">Select...</option>
+                            ${(() => {
+                                const brand = String(p.brand || '').trim();
+                                const options = (API_FEATURE_SUGGESTIONS && API_FEATURE_SUGGESTIONS[brand]) ? API_FEATURE_SUGGESTIONS[brand] : [];
+                                const optionValues = options.map(v => normalizeApiFeatureValue(v));
+
+                                let selectedRaw = String(p.feature || '').trim();
+                                const detail = String(p.featureDetail || '').trim();
+                                // Older API filenames may store feature as just the numeric prefix (e.g. "01").
+                                if (/^\d+$/.test(selectedRaw) && detail) selectedRaw = detail;
+                                let selected = normalizeApiFeatureValue(selectedRaw);
+                                const selectedUnderscoreAsSpace = selected.replace(/_/g, ' ');
+                                if (optionValues.includes(selectedUnderscoreAsSpace)) selected = selectedUnderscoreAsSpace;
+                                let html = '';
+                                if (selected && !optionValues.includes(selected)) {
+                                    html += `<option value="${escapeHtml(selected)}" selected>${escapeHtml(selected)}</option>`;
+                                }
+                                html += options.map(v => {
+                                    const value = normalizeApiFeatureValue(v);
+                                    return `<option value="${escapeHtml(value)}" ${selected === value ? 'selected' : ''}>${escapeHtml(v)}</option>`;
+                                }).join('');
+                                html += '<option value="__custom__">+ Custom...</option>';
+                                return html;
+                            })()}
+                        </select>
+                        <span class="field-help">Used for naming/grouping (often matches the collection prefix).</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Test Type <span class="req">*</span></label>
+                        <select id="fTestType" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
+                            <option value="">Select...</option>
+                            ${['Regression','Sanity','Smoke','Health Check'].map(t => `<option value="${t}" ${p.testType === t ? 'selected' : ''}>${t}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+
+            html += `<div class="section" id="newmanConfigSection">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title"><span class="section-icon">&#9881;</span> Newman / Postman Configuration <span class="section-badge" style="background:rgba(56,189,248,0.12);color:#38bdf8;">Required</span></div>
+                <div class="section-toggle">&#9660;</div>
+            </div>
+            <div class="section-content">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Collection File <span class="req">*</span></label>
+                        <input type="text" id="fCollectionId" placeholder="99_Smoke.postman_collection.json" value="${p.collectionId || ''}" oninput="updateFormStatus()" ${isView ? 'disabled' : ''}>
+                        <span class="field-help">Filename under <code>src/collection/</code></span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Environment File <span class="req">*</span></label>
+                        <input type="text" id="fEnvironmentId" placeholder="uat-app-olbapi-Sanity.postman_environment.json" value="${p.environmentId || ''}" oninput="updateFormStatus()" ${isView ? 'disabled' : ''}>
+                        <span class="field-help">Filename under <code>src/environment/</code></span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Collection Subfolder / Extra Args <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional)</span></label>
+                    <input type="text" id="fCollectionSubfolder" placeholder="--folder &quot;s.b.investment&quot;" value="${escapeHtml(p.collectionSubfolder || '')}" ${isView ? 'disabled' : ''}>
+                    <span class="field-help">Raw Newman args to append (leave blank for full run).</span>
+                </div>
+                <div class="form-row-3">
+                    <div class="form-group">
+                        <label class="form-label">HOSTS_UAT_ENV <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(na disables)</span></label>
+                        <input type="text" id="fHostsUatEnv" placeholder="na or 5" value="${p.hostsUatEnv || 'na'}" ${isView ? 'disabled' : ''}>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Max Retries</label>
+                        <input type="number" id="fMaxRetries" min="0" max="5" value="${p.maxRetries || '0'}" ${isView ? 'disabled' : ''}>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Runner Label</label>
+                        <select id="fRunnerLabel" ${isView ? 'disabled' : ''}>
+                            ${['qsdw-tfsba06','qsdw-tfsba09','qsdw-tfsba10','qsdw-tfsba11','qsdw-tfsba12','qsdw-tfsba13','qsdw-tfsba14','qsdw-tfsba15'].map(r => `<option value="${r}" ${(p.runnerLabel || 'qsdw-tfsba06') === r ? 'selected' : ''}>${r}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Custom Runner Label <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional)</span></label>
+                    <input type="text" id="fCustomRunnerLabel" placeholder="e.g. axos-gh-qe-runner-QSDW-TFSBA06" value="${p.customRunnerLabel || ''}" ${isView ? 'disabled' : ''}>
+                    <span class="field-help">Overrides the dropdown value (use when you need a runner label not listed).</span>
+                </div>
+            </div>
+        </div>`;
         } else {
         const cryptoForm = repoName === 'Axos.QE.Crypto.Web' || isCryptoPipeline(p);
         if (cryptoForm) {
@@ -3922,6 +4160,7 @@
             </div>
         </div>`;
         } // end Playwright repo branch
+        } // end non-API repo branch
         } // end web form
 
         // Execution Settings
@@ -3945,10 +4184,10 @@
                 </div>
 
                 <div style="background:var(--bg-tertiary); border-radius:10px; padding:12px 16px; display:flex; align-items:center; gap:10px;">
-                    <span style="font-size:16px;">${(formIsMobile || repoName === 'Axos.QE.Crypto.Web') ? '&#128187;' : '&#129302;'}</span>
+                    <span style="font-size:16px;">${(formIsMobile || repoName === 'Axos.QE.Crypto.Web' || repoName === 'Axos.QE.API_OLB') ? '&#128187;' : '&#129302;'}</span>
                     <div>
-                        <div style="font-size:12px; font-weight:600; color:var(--success);">Runner: ${(formIsMobile || repoName === 'Axos.QE.Crypto.Web') ? 'QSDW-TFSBA (Windows)' : 'dsdl (Linux)'}</div>
-                        <div style="font-size:11px; color:var(--text-muted);">${(formIsMobile || repoName === 'Axos.QE.Crypto.Web') ? 'Picks from QSDW-TFSBA01–05 Windows runners (same pool as Mobile)' : 'Selects a self-hosted Linux runner by label (no wildcard runner-name matching)'}</div>
+                        <div style="font-size:12px; font-weight:600; color:var(--success);">Runner: ${(formIsMobile || repoName === 'Axos.QE.Crypto.Web' || repoName === 'Axos.QE.API_OLB') ? 'Self-hosted Windows' : 'dsdl (Linux)'}</div>
+                        <div style="font-size:11px; color:var(--text-muted);">${repoName === 'Axos.QE.API_OLB' ? 'Runs Newman on a self-hosted Windows runner (ensure it has network access to the target env).' : ((formIsMobile || repoName === 'Axos.QE.Crypto.Web') ? 'Picks from QSDW-TFSBA01–05 Windows runners (same pool as Mobile)' : 'Selects a self-hosted Linux runner by label (no wildcard runner-name matching)')}</div>
                     </div>
                 </div>
 
@@ -4181,8 +4420,18 @@
 
         html += '<div style="height:80px;"></div>';
         document.getElementById('mainContent').innerHTML = html;
+        const suffixEl = document.getElementById('fCustomSuffix');
+        if (suffixEl && suffixEl.dataset) delete suffixEl.dataset.userEdited;
         if (p.scheduleEnabled && p.schedule) initScheduleFromCron(p.schedule);
-        onBrandChange(p.feature || '');
+        if (repoName === 'Axos.QE.API_OLB') {
+            const rawFeature = String(p.feature || '').trim();
+            const seed = (/^\d+$/.test(rawFeature) && String(p.featureDetail || '').trim())
+                ? String(p.featureDetail || '').trim()
+                : rawFeature;
+            updateApiFeatureSuggestions(seed);
+        }
+        else onBrandChange(p.feature || '');
+        if (repoName === 'Axos.QE.API_OLB') initApiSuffixFromFeatureDetail(p.featureDetail || '');
         toggleOrchestratorSections();
         updateOrchestratorTargetsPreview();
         toggleCryptoRunTargetSections();
@@ -4705,6 +4954,102 @@
 
     function toggleCryptoRunTargetSections() { /* no-op (keep BS section visible) */ }
 
+    function updateApiFeatureSuggestions(initialSelectedFeature) {
+        const repo = document.getElementById('fRepo')?.value || '';
+        if (repo !== 'Axos.QE.API_OLB') return;
+
+        const brand = document.getElementById('fBrand')?.value || '';
+        const featureSelect = document.getElementById('fFeature');
+        if (!featureSelect) return;
+
+        const options = API_FEATURE_SUGGESTIONS[brand] || [];
+        const sig = `${brand}::${options.join('|')}`;
+        if (featureSelect.dataset.sig === sig && typeof initialSelectedFeature !== 'string') return;
+        featureSelect.dataset.sig = sig;
+
+        let selectedRaw = typeof initialSelectedFeature === 'string'
+            ? String(initialSelectedFeature || '').trim()
+            : String(featureSelect.value || '').trim();
+        const standardNumericPrefixes = options
+            .map(v => (String(v || '').match(/^(\d+)\s+/) || [])[1])
+            .filter(Boolean);
+        const selectedNumericPrefix = (selectedRaw.match(/^(\d+)(?:[\s_]+.+)?$/) || [])[1] || '';
+        const preserveNumericPrefix = !!selectedNumericPrefix && !standardNumericPrefixes.includes(selectedNumericPrefix);
+        if (!preserveNumericPrefix) selectedRaw = normalizeApiFeatureValue(selectedRaw);
+        const optionValues = options.map(v => normalizeApiFeatureValue(v));
+        const selectedUnderscoreAsSpace = selectedRaw.replace(/_/g, ' ');
+        const selected = optionValues.includes(selectedUnderscoreAsSpace) ? selectedUnderscoreAsSpace : selectedRaw;
+
+        featureSelect.innerHTML = '<option value="">Select...</option>';
+
+        if (selected && selected !== '__custom__' && !optionValues.includes(selected)) {
+            const opt = document.createElement('option');
+            opt.value = selected;
+            opt.textContent = selected;
+            opt.selected = true;
+            featureSelect.appendChild(opt);
+        }
+
+        for (const v of options) {
+            const opt = document.createElement('option');
+            const value = normalizeApiFeatureValue(v);
+            opt.value = value;
+            opt.textContent = v;
+            if (selected === value) opt.selected = true;
+            featureSelect.appendChild(opt);
+        }
+
+        const customOpt = document.createElement('option');
+        customOpt.value = '__custom__';
+        customOpt.textContent = '+ Custom...';
+        featureSelect.appendChild(customOpt);
+    }
+
+    function onCustomSuffixInput() {
+        const suffixEl = document.getElementById('fCustomSuffix');
+        if (suffixEl && suffixEl.dataset) suffixEl.dataset.userEdited = 'true';
+        updateNamePreview();
+    }
+
+    function onApiFeatureChange() {
+        const repo = document.getElementById('fRepo')?.value || '';
+        if (repo !== 'Axos.QE.API_OLB') return;
+
+        const featureSelect = document.getElementById('fFeature');
+        if (!featureSelect) return;
+        if (featureSelect.value !== '__custom__') return;
+
+        const custom = prompt('Enter custom feature (e.g. 99 or 201_Registration):');
+        if (!custom || !custom.trim()) {
+            featureSelect.value = '';
+            return;
+        }
+
+        const val = custom.trim();
+        if (val === '__custom__') {
+            showToast('That value is reserved. Please choose a different feature name.', true);
+            featureSelect.value = '';
+            return;
+        }
+
+        const existing = Array.from(featureSelect.options || [])
+            .filter(o => String(o.value || '').trim() !== '__custom__')
+            .find(o => String(o.value || '').trim() === val);
+        if (existing) {
+            featureSelect.value = existing.value;
+            return;
+        }
+
+        const opt = document.createElement('option');
+        opt.value = val;
+        opt.textContent = val;
+        opt.selected = true;
+        const customOpt = featureSelect.querySelector('option[value="__custom__"]');
+        if (customOpt) featureSelect.insertBefore(opt, customOpt);
+        else featureSelect.appendChild(opt);
+        featureSelect.value = val;
+    }
+
     function onEnvChange() {
         const env = document.getElementById('fEnv').value;
         const urlInput = document.getElementById('fBaseUrl');
@@ -4748,6 +5093,45 @@
         }
 
         const repo = document.getElementById('fRepo')?.value || '';
+        if (repo === 'Axos.QE.API_OLB') {
+            const brand = document.getElementById('fBrand')?.value;
+            const suffix = document.getElementById('fCustomSuffix')?.value?.trim();
+            const feature = document.getElementById('fFeature')?.value?.trim();
+            if (!brand || !env || !testType || !feature || feature === '__custom__') {
+                document.getElementById('namePreview').innerHTML = '<span class="dim">Select all required fields to generate pipeline name...</span>';
+                updateFormStatus();
+                return;
+            }
+
+            const bKey = BRAND_KEY_MAP[brand] || brand.replace(/\s+/g, '');
+            const fKey = feature.replace(/\s+/g, '_');
+            let sKey = suffix ? suffix.replace(/\s+/g, '_') : '';
+            const tKey = testType.replace(/\s+/g, '');
+            const fLower = fKey.toLowerCase();
+            const sLower = sKey.toLowerCase();
+            if (sKey && (fLower === sLower || fLower.endsWith(`_${sLower}`))) {
+                // Avoid duplicating suffix when feature already includes it (e.g. "201_Registration" + "Registration").
+                sKey = '';
+            }
+            const featureStr = sKey ? `${fKey}_${sKey}` : `${fKey}`;
+
+            const name = (fKey === tKey)
+                ? `API_${bKey}_${env}_${featureStr}-Newman`
+                : `API_${bKey}_${env}_${featureStr}_${tKey}-Newman`;
+
+            const previewEl = document.getElementById('namePreview');
+            const currentRepo = String(document.getElementById('fRepo')?.value || '').trim() || 'Axos.QE.API_OLB';
+            const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
+            if (duplicate) {
+                previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:var(--font-b);">&#9888; A pipeline with this exact name already exists.</div>`;
+                previewEl.style.borderColor = 'var(--error)';
+            } else {
+                previewEl.textContent = name;
+                previewEl.style.borderColor = '';
+            }
+            updateFormStatus();
+            return;
+        }
         if (repo === 'Axos.QE.Crypto.Web') {
             const brand = document.getElementById('fBrand')?.value;
             const suffix = document.getElementById('fCustomSuffix')?.value?.trim();
@@ -4953,6 +5337,13 @@
             fieldsOk = el('fPlatform')?.value && el('fBrand')?.value && el('fFeature')?.value && el('fTestType')?.value && el('fEnv')?.value;
         } else {
             const repo = (el('fRepo')?.value || '').trim();
+            if (repo === 'Axos.QE.API_OLB') {
+                fieldsOk =
+                    el('fBrand')?.value && el('fEnv')?.value &&
+                    el('fFeature')?.value && el('fTestType')?.value &&
+                    el('fCollectionId')?.value && el('fEnvironmentId')?.value;
+                return fieldsOk && !isNameDuplicate();
+            }
             if (repo === 'Axos.QE.Crypto.Web' || repo === 'Axos.QE.Web') {
                 fieldsOk =
                     el('fBrand')?.value && el('fEnv')?.value &&
@@ -5013,7 +5404,33 @@
             base.jobTimeout = n('fJobTimeout', 120);
         } else {
             const repo = v('fRepo');
-            if (repo === 'Axos.QE.Web') {
+            if (repo === 'Axos.QE.API_OLB') {
+                base.brand = v('fBrand') || base.brand;
+                base.env = v('fEnv') || base.env;
+                const rawFeature = v('fFeature') || base.feature || 'Login';
+                const rawSuffix = v('fCustomSuffix');
+                const normalizedFeature = rawFeature.replace(/\s+/g, '_');
+                let normalizedSuffix = (rawSuffix || '').replace(/\s+/g, '_');
+                const fLower = normalizedFeature.toLowerCase();
+                const sLower = normalizedSuffix.toLowerCase();
+                if (normalizedSuffix && (fLower === sLower || fLower.endsWith(`_${sLower}`))) {
+                    normalizedSuffix = '';
+                }
+                const featureDetail = normalizedSuffix ? `${normalizedFeature}_${normalizedSuffix}` : normalizedFeature;
+                const numericPrefix = (featureDetail.match(/^(\d+)(?:_.+)?$/) || [])[1] || '';
+                base.feature = numericPrefix || normalizedFeature;
+                base.featureDetail = featureDetail;
+                base.testType = v('fTestType') || base.testType || 'Smoke';
+
+                base.collectionId = v('fCollectionId');
+                base.environmentId = v('fEnvironmentId');
+                base.collectionSubfolder = v('fCollectionSubfolder');
+                base.hostsUatEnv = v('fHostsUatEnv') || 'na';
+                base.maxRetries = v('fMaxRetries') || '0';
+                base.runnerLabel = v('fRunnerLabel') || 'qsdw-tfsba06';
+                base.customRunnerLabel = v('fCustomRunnerLabel');
+                base.jobTimeout = n('fJobTimeout', 120);
+            } else if (repo === 'Axos.QE.Web') {
                 base.brand = v('fBrand') || base.brand;
                 base.env = v('fEnv') || base.env;
                 base.feature = v('fFeature') || base.feature || 'Login';
@@ -5235,6 +5652,36 @@ ${targets}
 
 Each target element supports: enabled, name, owner, repo, workflow, ref, inputs.`;
 
+        } else if (el('fRepo') === 'Axos.QE.API_OLB') {
+            prompt = `Create or update a Newman pipeline workflow file in the repo Axos.QE.API_OLB at:
+.github/workflows/${name}.yml
+
+This file should call the reusable template _newman-template.yml with these exact settings:
+
+PIPELINE_NAME: ${name}
+COLLECTION_ID: ${el('fCollectionId')}
+ENVIRONMENT_ID: ${el('fEnvironmentId')}
+COLLECTION_SUBFOLDER: ${el('fCollectionSubfolder')}
+HOSTS_UAT_ENV: ${el('fHostsUatEnv') || 'na'}
+MAX_RETRIES: ${el('fMaxRetries') || '0'}
+RUNNER_LABEL: ${el('fRunnerLabel') || 'qsdw-tfsba06'}
+CUSTOM_RUNNER_LABEL: ${el('fCustomRunnerLabel') || ''}
+JOB_TIMEOUT: ${el('fJobTimeout') || '120'}`;
+
+            if (scheduleEnabled && scheduleCron) {
+                prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron}`;
+            } else {
+                prompt += `\n\nKeep the schedule block commented out.`;
+            }
+
+            prompt += `\n\nUse the existing workflow file API_OLB_UAT_Login_Smoke-Newman.yml as the exact format reference. Include:
+- name: and run-name: fields matching the pipeline name
+- workflow_dispatch inputs for: COLLECTION_ID, ENVIRONMENT_ID, COLLECTION_SUBFOLDER, RUN_FULL_COLLECTION, HOSTS_UAT_ENV, MAX_RETRIES, JOB_TIMEOUT, RUNNER_LABEL, CUSTOM_RUNNER_LABEL (each with the correct default value from above)
+- permissions block (contents: read, checks: write, actions: read)
+- a jobs.run section calling _newman-template.yml
+- pass COLLECTION_SUBFOLDER as: \${{ inputs.RUN_FULL_COLLECTION && ' ' || inputs.COLLECTION_SUBFOLDER }}
+- a jobs.test-results section running on ubuntu-latest that downloads artifacts and publishes JUnit using dorny/test-reporter@v3 on reports/**/junit.xml`;
+
         } else if (el('fRepo') === 'Axos.QE.Web') {
             const brand = el('fBrand') || 'Enrollment';
             const projMap = { 'Enrollment': 'Axos.Enr.Web', 'OutSystems': 'Axos.OutSys.Web', 'Crypto': 'Axos.Crypto.Web' };
@@ -5370,7 +5817,8 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
     const DEFAULT_SYNC_REPOS = [
         { owner: 'axos-financial', repo: 'Axos.QE.TestIM' },
         { owner: 'axos-financial', repo: 'Axos.QE.Mobile' },
-        { owner: 'axos-financial', repo: 'Axos.QE.Web' }
+        { owner: 'axos-financial', repo: 'Axos.QE.Web' },
+        { owner: 'axos-financial', repo: 'Axos.QE.API_OLB' }
     ];
 
     function cloneRepos(repos) {
@@ -5470,6 +5918,24 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
 
     function repoDefaults(repoName) {
         const repo = String(repoName || '').trim();
+        if (repo === 'Axos.QE.API_OLB') {
+            return {
+                repo,
+                platform: '03 API',
+                brand: 'OLB API',
+                env: 'UAT',
+                feature: '99',
+                testType: 'Smoke',
+                collectionId: '99_Smoke.postman_collection.json',
+                environmentId: 'uat-app-olbapi-Sanity.postman_environment.json',
+                collectionSubfolder: '',
+                hostsUatEnv: 'na',
+                maxRetries: '0',
+                runnerLabel: 'qsdw-tfsba06',
+                customRunnerLabel: '',
+                jobTimeout: 120,
+            };
+        }
         if (repo === 'Axos.QE.Mobile') {
             return {
                 repo,
@@ -5566,7 +6032,7 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
         if (!sel) return;
         const repos = loadSyncRepos().map(r => r.repo);
         const unique = [...new Set(repos.filter(Boolean))];
-        const baseList = unique.length ? unique : ['Axos.QE.TestIM', 'Axos.QE.Mobile', 'Axos.QE.Crypto.Web', 'Axos.QE.Web'];
+        const baseList = unique.length ? unique : ['Axos.QE.TestIM', 'Axos.QE.Mobile', 'Axos.QE.Crypto.Web', 'Axos.QE.Web', 'Axos.QE.API_OLB'];
         const current = String(prefill?.repo || '').trim() || '';
         sel.innerHTML = baseList.map(r => `<option value="${r}" ${current === r ? 'selected' : ''}>${r}</option>`).join('');
         document.getElementById('repoSelectModal').classList.add('show');
@@ -5797,6 +6263,17 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
         entry.deviceName = merged.IOS_DEVICE_NAME || merged.ANDROID_DEVICE_NAME || '';
         entry.deviceOS = merged.IOS_DEVICE_OS || merged.ANDROID_DEVICE_OS || '';
 
+        const newmanMap = {
+            COLLECTION_ID: 'collectionId',
+            ENVIRONMENT_ID: 'environmentId',
+            COLLECTION_SUBFOLDER: 'collectionSubfolder',
+            HOSTS_UAT_ENV: 'hostsUatEnv',
+            MAX_RETRIES: 'maxRetries'
+        };
+        for (const [k, outKey] of Object.entries(newmanMap)) {
+            if (merged[k] !== undefined && merged[k] !== null && String(merged[k]).trim() !== '') entry[outKey] = merged[k];
+        }
+
         entry.schedule = scheduleCron;
         entry.scheduleEnabled = !!scheduleCron;
 
@@ -5964,6 +6441,7 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
                 if (entry.browserTimeout) parsed.browserTimeout = entry.browserTimeout;
                 if (entry.jobTimeout) parsed.jobTimeout = entry.jobTimeout;
                 if (entry.runnerLabel) parsed.runnerLabel = entry.runnerLabel;
+                if (entry.customRunnerLabel !== undefined) parsed.customRunnerLabel = entry.customRunnerLabel;
                 if (entry.env) parsed.env = entry.env;
                 if (entry.grep !== undefined) parsed.grep = entry.grep;
                 if (entry.suite !== undefined) parsed.suite = entry.suite;
@@ -5984,6 +6462,12 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
                 if (entry.deviceOS !== undefined) parsed.deviceOS = entry.deviceOS;
                 if (entry.bsUsername !== undefined) parsed.bsUsername = entry.bsUsername;
                 if (entry.bsAccessKey !== undefined) parsed.bsAccessKey = entry.bsAccessKey;
+                // API (Newman) fields
+                if (entry.collectionId !== undefined) parsed.collectionId = entry.collectionId;
+                if (entry.environmentId !== undefined) parsed.environmentId = entry.environmentId;
+                if (entry.collectionSubfolder !== undefined) parsed.collectionSubfolder = entry.collectionSubfolder;
+                if (entry.hostsUatEnv !== undefined) parsed.hostsUatEnv = entry.hostsUatEnv;
+                if (entry.maxRetries !== undefined) parsed.maxRetries = entry.maxRetries;
                 if (entry.schedule) parsed.schedule = entry.schedule;
                 if (entry.scheduleEnabled !== undefined) parsed.scheduleEnabled = entry.scheduleEnabled;
                 if (entry.repeatUnit !== undefined) parsed.repeatUnit = entry.repeatUnit;
@@ -6115,6 +6599,59 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
     function parseFilename(filename) {
         const name = filename.replace('.yml', '');
         const lower = name.toLowerCase();
+
+        // API (Newman) pipelines (Axos.QE.API_OLB):
+        // API_{Domain}_{Env}_{Feature}[_{Suffix}]_{TestType}-Newman
+        // e.g. API_OLB_UAT_MoveMoney_Smoke-Newman
+        const apiRawMatch = name.match(/^API_([^_]+)_(DEV|QA|STG|UAT|PROD)_(.+)-Newman$/i);
+        if (apiRawMatch) {
+            const domainRaw = String(apiRawMatch[1] || '').trim();
+            const domainKey = domainRaw.toLowerCase();
+            const env = String(apiRawMatch[2] || 'UAT').toUpperCase();
+            const restRaw = String(apiRawMatch[3] || '').trim(); // feature + optional suffix + optional testType
+            const segsRaw = restRaw.split('_').filter(Boolean);
+            let testType = 'Regression';
+            let featureSegsRaw = segsRaw;
+            if (segsRaw.length) {
+                const last = segsRaw[segsRaw.length - 1];
+                if (/^(smoke|sanity|regression|healthcheck|health)$/i.test(last)) {
+                    const ttMap = { smoke: 'Smoke', sanity: 'Sanity', regression: 'Regression', healthcheck: 'Health Check', health: 'Health Check' };
+                    testType = ttMap[last.toLowerCase()] || 'Regression';
+                    featureSegsRaw = segsRaw.slice(0, -1);
+                    // If the filename omits the duplicate testType segment (feature == testType),
+                    // the remaining feature can be empty. Preserve the original segment as feature.
+                    if (featureSegsRaw.length === 0) featureSegsRaw = [last];
+                }
+            }
+            const fullFeature = featureSegsRaw.join('_') || 'API';
+            const firstSeg = featureSegsRaw[0] || '';
+            const hasNumericPrefix = featureSegsRaw.length >= 2 && /^\d+$/.test(firstSeg);
+            const feature = hasNumericPrefix ? firstSeg : fullFeature;
+            const featureDetail = fullFeature;
+            const brand = domainKey === 'olb' ? 'OLB API' : domainKey === 'udb' ? 'UDB API' : domainRaw.toUpperCase();
+            return {
+                filename,
+                name,
+                repo: 'Axos.QE.API_OLB',
+                platform: '03 API',
+                brand,
+                env,
+                feature,
+                featureDetail,
+                testType,
+                // Newman-specific fields (configured in the form)
+                collectionId: '',
+                environmentId: '',
+                collectionSubfolder: '',
+                hostsUatEnv: 'na',
+                maxRetries: '0',
+                runnerLabel: 'qsdw-tfsba06',
+                customRunnerLabel: '',
+                jobTimeout: 120,
+                schedule: '',
+                scheduleEnabled: false
+            };
+        }
 
         // Web Monorepo pipelines (Axos.QE.Web): Web_{Team}_{Env}-OLB_{Feature}_{TestType}-Playwright
         // e.g. Web_Enrollment_UAT-OLB_Login_Smoke-Playwright → team=Enrollment, env=UAT, feature=Login, testType=Smoke
