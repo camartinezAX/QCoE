@@ -1169,7 +1169,6 @@
         .ud-id { font-size:11px; color:#94a3b8; font-family:'SF Mono','Courier New',monospace; margin-top:2px; padding:2px 6px; background:#f1f5f9; border-radius:4px; display:inline-block; }
         .ud-name { font-size:11px; color:#475569; margin-top:4px; font-weight:600; }
         .ud-ssn { font-family:'SF Mono','Courier New',monospace; font-size:13px; white-space:nowrap; font-weight:500; }
-        .ud-prods { }
         .ud-tag { display:inline-block; padding:3px 8px; border-radius:6px; font-size:12px; font-weight:600; margin:2px 3px 2px 0; border:1px solid transparent; line-height:1.5; word-break:break-word; }
         .ud-prods-lines .ud-tag { display:block; margin:4px 0; width:fit-content; max-width:100%; }
         .ud-bank { background:#e8eef7; color:#1E3860; border-color:#a3b8d4; }
@@ -1800,8 +1799,11 @@
         function udRowVisibleByProductPresence(r) {
             const lowerCount = udFilterProducts(r.up).length;
             const prodCount = udFilterProducts(r.pp).length;
-            if (udHideNoLowerProducts && lowerCount === 0) return false;
-            if (udHideNoProdProducts && prodCount === 0) return false;
+            // Hide-empty rules:
+            // - If only one side is enabled, do NOT hide the row if the other side has products.
+            // - If both sides are enabled, require products on BOTH sides.
+            if (udHideNoLowerProducts && lowerCount === 0 && (udHideNoProdProducts || prodCount === 0)) return false;
+            if (udHideNoProdProducts && prodCount === 0 && (udHideNoLowerProducts || lowerCount === 0)) return false;
             return true;
         }
 
