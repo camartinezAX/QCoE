@@ -5815,10 +5815,7 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
     // ══════════════════════════════════════════
     const SYNC_REPOS_KEY = 'axos_sync_repos';
     const DEFAULT_SYNC_REPOS = [
-        { owner: 'axos-financial', repo: 'Axos.QE.TestIM' },
-        { owner: 'axos-financial', repo: 'Axos.QE.Mobile' },
-        { owner: 'axos-financial', repo: 'Axos.QE.Web' },
-        { owner: 'axos-financial', repo: 'Axos.QE.API_OLB' }
+        { owner: 'axos-financial', repo: 'Axos.QE.Web' }
     ];
 
     function cloneRepos(repos) {
@@ -6032,8 +6029,10 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
         if (!sel) return;
         const repos = loadSyncRepos().map(r => r.repo);
         const unique = [...new Set(repos.filter(Boolean))];
-        const baseList = unique.length ? unique : ['Axos.QE.TestIM', 'Axos.QE.Mobile', 'Axos.QE.Crypto.Web', 'Axos.QE.Web', 'Axos.QE.API_OLB'];
-        const current = String(prefill?.repo || '').trim() || '';
+        const defaultRepo = 'Axos.QE.Web';
+        const baseList = unique.length ? unique : ['Axos.QE.TestIM', 'Axos.QE.Mobile', 'Axos.QE.Crypto.Web', defaultRepo, 'Axos.QE.API_OLB'];
+        if (!baseList.includes(defaultRepo)) baseList.unshift(defaultRepo);
+        const current = String(prefill?.repo || '').trim() || defaultRepo;
         sel.innerHTML = baseList.map(r => `<option value="${r}" ${current === r ? 'selected' : ''}>${r}</option>`).join('');
         document.getElementById('repoSelectModal').classList.add('show');
     }
@@ -6504,7 +6503,6 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
             }
         }
 
-        closeModal('syncModal');
         selectedPipelines.clear();
         buildTree();
         showFolderPipelines(selectedFolder);
@@ -6518,6 +6516,12 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
         if (updated > 0) parts.push(`${updated} updated`);
         if (removed > 0) parts.push(`${removed} removed`);
         if (parts.length === 0) parts.push('already up to date');
+        const statusEl = document.getElementById('syncStatus');
+        const statusText = document.getElementById('syncStatusText');
+        if (statusEl && statusText) {
+            statusEl.style.display = 'block';
+            statusText.innerHTML = `<span style="color:var(--success); font-weight:800;">Synced!</span> ${pipelines.length} pipeline(s) total (${parts.join(', ')}).<br><span style="color:var(--text-muted); font-size:12px;">Close this window when you’re ready.</span>`;
+        }
         showToast(`Synced! ${pipelines.length} pipeline(s) total (${parts.join(', ')}).`);
         updateSaveStatus();
     }
