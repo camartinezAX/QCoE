@@ -1223,6 +1223,17 @@
                     <span class="field-help">Set this to your feature branch to sync workflows before they’re merged.</span>
                 </div>
 
+                <div style="display:flex; align-items:flex-start; gap:10px; margin-bottom:12px; padding:12px 14px; border:1px solid var(--border-color); border-radius:12px; background:var(--bg-tertiary);">
+                    <input type="checkbox" id="syncReplaceMode" checked style="margin-top:2px; accent-color: var(--axos-orange); width: 16px; height: 16px;">
+                    <div style="min-width:0;">
+                        <div style="font-size:12px; font-weight:800; color:var(--text-primary); letter-spacing:0.2px;">Replace pipeline list on sync</div>
+                        <div style="font-size:11px; color:var(--text-muted); margin-top:6px; line-height:1.5;">
+                            When enabled, syncing will remove pipelines that are not part of the synced repos (recommended when you only want to see the repo(s) you’re working on).
+                            Disable to merge/add without removing other repos.
+                        </div>
+                    </div>
+                </div>
+
                 <div id="syncStatus" style="display:none; background:var(--bg-tertiary); border:1px solid var(--border-color); border-radius:10px; padding:14px 18px; margin-bottom:14px;">
                     <div id="syncStatusText" style="font-size:13px; color:var(--text-secondary);"></div>
                 </div>
@@ -6445,7 +6456,7 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
         reader.readAsText(file);
     }
 
-    function processSyncInput() {
+    function processSyncInput(opts = null) {
         const input = (syncFileContent || document.getElementById('syncInput').value || '').trim();
         syncFileContent = null;
 
@@ -6453,13 +6464,48 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
         try { jsonData = JSON.parse(input); } catch(e) { /* not JSON */ }
 
         let added = 0, removed = 0, updated = 0;
+        const replaceMode = (() => {
+            try {
+                if (opts && typeof opts === 'object' && typeof opts.replace === 'boolean') return !!opts.replace;
+                const cb = document.getElementById('syncReplaceMode');
+                return cb ? !!cb.checked : true;
+            } catch {
+                return true;
+            }
+        })();
+
+        // Guard: don't allow accidental wipes on empty manual input.
+        // (Common case: user clicks "Import Manual Input" without pasting anything.)
+        if (!input && !Array.isArray(jsonData)) {
+            showToast('Nothing to import — paste filenames or use "Sync from GitHub".', true);
+            return;
+        }
 
         if (Array.isArray(jsonData)) {
             const repoKeys = new Set(jsonData.map(j => pipelineKeyFrom(j.repo, j.filename)));
 
-            removed = pipelines.filter(p => !repoKeys.has(pipelineKey(p))).length;
-            for (let i = pipelines.length - 1; i >= 0; i--) {
-                if (!repoKeys.has(pipelineKey(pipelines[i]))) pipelines.splice(i, 1);
+            if (replaceMode) {
+                // Replace mode: make the local list match the sync payload (destructive by design).
+                removed = pipelines.filter(p => !repoKeys.has(pipelineKey(p))).length;
+                for (let i = pipelines.length - 1; i >= 0; i--) {
+                    if (!repoKeys.has(pipelineKey(pipelines[i]))) pipelines.splice(i, 1);
+                }
+            } else {
+                const incomingRepos = new Set(
+                    jsonData
+                        .map(j => String(j?.repo || '').trim())
+                        .filter(Boolean)
+                );
+                // Merge mode: only prune pipelines for repos that were actually synced.
+                const shouldPrune = (p) => {
+                    const r = normRepoForPipeline(p);
+                    return incomingRepos.size > 0 && incomingRepos.has(r);
+                };
+
+                removed = pipelines.filter(p => shouldPrune(p) && !repoKeys.has(pipelineKey(p))).length;
+                for (let i = pipelines.length - 1; i >= 0; i--) {
+                    if (shouldPrune(pipelines[i]) && !repoKeys.has(pipelineKey(pipelines[i]))) pipelines.splice(i, 1);
+                }
             }
 
             for (const entry of jsonData) {
@@ -6526,15 +6572,19 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
                 else { pipelines.push(parsed); added++; }
             }
         } else {
+            // Manual text import is merge-only (repo cannot be identified reliably from filenames).
+            // Replace mode requires JSON (from Sync-from-GitHub or JSON file import).
+            if (replaceMode) {
+                showToast('Replace mode requires JSON sync data (so repos can be identified). Use "Sync from GitHub" or import a JSON file.', true);
+                return;
+            }
             const repoFiles = input
                 ? input.split('\n').map(l => l.trim()).filter(l => l.endsWith('.yml') && !l.startsWith('_') && !l.startsWith('#'))
                 : [];
             const repoFilenames = new Set(repoFiles.map(l => l.replace(/^.*\//, '')));
 
-            removed = pipelines.filter(p => !repoFilenames.has(p.filename)).length;
-            for (let i = pipelines.length - 1; i >= 0; i--) {
-                if (!repoFilenames.has(pipelines[i].filename)) pipelines.splice(i, 1);
-            }
+            // Merge mode + manual text input: never remove existing pipelines.
+            removed = 0;
 
             for (const fn of repoFilenames) {
                 if (!pipelines.some(p => p.filename === fn)) {
@@ -6561,6 +6611,7 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
         const statusText = document.getElementById('syncStatusText');
         if (statusEl && statusText) {
             let detailsHtml = '';
+            const modeLabel = replaceMode ? 'Replace' : 'Merge';
             try {
                 if (Array.isArray(jsonData)) {
                     const byRepo = new Map();
@@ -6604,6 +6655,7 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
 <details style="margin-top:12px;">
   <summary style="cursor:pointer; font-weight:800; color:var(--text-primary); outline:none;">Details</summary>
   <div style="margin-top:10px; color:var(--text-secondary); font-size:12px;">
+    <div style="margin-bottom:6px;"><span style="color:var(--text-muted);">Mode:</span> <code>${escapeHtml(modeLabel)}</code></div>
     <div style="margin-bottom:6px;"><span style="color:var(--text-muted);">Ref:</span> <code>${escapeHtml(refLabel)}</code></div>
     <div style="margin-bottom:6px;"><span style="color:var(--text-muted);">Workflows by repo:</span></div>
     ${repoBlocks || `<div style="color:var(--text-muted);">No repo details found in the sync payload.</div>`}
@@ -6614,6 +6666,7 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
 <details style="margin-top:12px;">
   <summary style="cursor:pointer; font-weight:800; color:var(--text-primary); outline:none;">Details</summary>
   <div style="margin-top:10px; color:var(--text-secondary); font-size:12px;">
+    <div style="margin-bottom:6px;"><span style="color:var(--text-muted);">Mode:</span> <code>Merge</code></div>
     Imported from manual input (repo information isn’t available in this mode).
   </div>
 </details>`;
