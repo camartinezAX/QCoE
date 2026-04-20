@@ -6519,8 +6519,71 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
         const statusEl = document.getElementById('syncStatus');
         const statusText = document.getElementById('syncStatusText');
         if (statusEl && statusText) {
+            let detailsHtml = '';
+            try {
+                if (Array.isArray(jsonData)) {
+                    const byRepo = new Map();
+                    for (const entry of jsonData) {
+                        const repo = String(entry?.repo || '').trim() || '(unknown repo)';
+                        const fn = String(entry?.filename || '').trim();
+                        if (!fn) continue;
+                        if (!byRepo.has(repo)) byRepo.set(repo, []);
+                        byRepo.get(repo).push(fn);
+                    }
+
+                    const ref = String(getEffectiveSyncRef() || '').trim();
+                    const refLabel = ref ? `@${ref}` : '(default branch)';
+
+                    const MAX_FILES_PER_REPO = 60;
+                    const repoBlocks = [...byRepo.entries()]
+                        .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+                        .map(([repo, files]) => {
+                            const safeRepo = escapeHtml(repo);
+                            const list = (files || []).slice().sort();
+                            const shown = list.slice(0, MAX_FILES_PER_REPO);
+                            const extra = Math.max(0, list.length - shown.length);
+                            const items = shown.map(f => `<li style="margin:2px 0;"><code>${escapeHtml(f)}</code></li>`).join('');
+                            const more = extra > 0
+                                ? `<div style="margin-top:6px; color:var(--text-muted);">+ ${extra} more…</div>`
+                                : '';
+                            return `
+<details style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:800; color:var(--text-primary); outline:none;">
+    ${safeRepo} <span style="color:var(--text-muted); font-weight:700;">(${list.length})</span>
+  </summary>
+  <div style="margin-top:8px; color:var(--text-secondary); font-size:12px;">
+    <ul style="margin:0 0 0 18px; padding:0;">${items}</ul>
+    ${more}
+  </div>
+</details>`;
+                        })
+                        .join('');
+
+                    detailsHtml = `
+<details style="margin-top:12px;">
+  <summary style="cursor:pointer; font-weight:800; color:var(--text-primary); outline:none;">Details</summary>
+  <div style="margin-top:10px; color:var(--text-secondary); font-size:12px;">
+    <div style="margin-bottom:6px;"><span style="color:var(--text-muted);">Ref:</span> <code>${escapeHtml(refLabel)}</code></div>
+    <div style="margin-bottom:6px;"><span style="color:var(--text-muted);">Workflows by repo:</span></div>
+    ${repoBlocks || `<div style="color:var(--text-muted);">No repo details found in the sync payload.</div>`}
+  </div>
+</details>`;
+                } else if (input) {
+                    detailsHtml = `
+<details style="margin-top:12px;">
+  <summary style="cursor:pointer; font-weight:800; color:var(--text-primary); outline:none;">Details</summary>
+  <div style="margin-top:10px; color:var(--text-secondary); font-size:12px;">
+    Imported from manual input (repo information isn’t available in this mode).
+  </div>
+</details>`;
+                }
+            } catch { /* best-effort only */ }
+
             statusEl.style.display = 'block';
-            statusText.innerHTML = `<span style="color:var(--success); font-weight:800;">Synced!</span> ${pipelines.length} pipeline(s) total (${parts.join(', ')}).<br><span style="color:var(--text-muted); font-size:12px;">Close this window when you’re ready.</span>`;
+            statusText.innerHTML =
+                `<span style="color:var(--success); font-weight:800;">Synced!</span> ${pipelines.length} pipeline(s) total (${parts.join(', ')}).` +
+                `<br><span style="color:var(--text-muted); font-size:12px;">Close this window when you’re ready.</span>` +
+                detailsHtml;
         }
         showToast(`Synced! ${pipelines.length} pipeline(s) total (${parts.join(', ')}).`);
         updateSaveStatus();
