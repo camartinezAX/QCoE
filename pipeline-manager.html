@@ -1538,6 +1538,7 @@
         '02 Web': {
             'Admin Portal': null,
             'Axos Bank': null,
+            'OLB 3.0': null,
             'Core Services': null,
             'Crypto': null,
             'Enrollment': null,
@@ -1592,11 +1593,12 @@
 
     const TEST_TYPES = ['Regression', 'Sanity', 'Smoke', 'Health Check', 'Orchestrator'];
 
-    const WEB_MONOREPO_TEAMS = ['Enrollment', 'OutSystems', 'Crypto'];
+    const WEB_MONOREPO_TEAMS = ['Enrollment', 'OutSystems', 'Crypto', 'OLB 3.0'];
 
     const BRAND_KEY_MAP = {
         'Admin Portal': 'AdminPortal',
         'Axos Bank': 'AxosBank',
+        'OLB 3.0': 'OLB3',
         'Core Services': 'CoreServices',
         'Crypto': 'Crypto',
         'Enrollment': 'Enrollment',
@@ -1726,23 +1728,25 @@
         if (p.repo && isCryptoRepo(p.repo)) return false;
         if (isWebMonorepo(p.repo)) return true;
         const fn = String(p.filename || '').toLowerCase();
-        return /^web_(enrollment|outsystems|crypto)_/.test(fn) && fn.includes('-playwright');
+        return /^web_(enrollment|outsystems|crypto|olb3)_/.test(fn) && fn.includes('-playwright');
     }
     function getWebMonorepoTeam(p) {
         if (!p) return null;
         const fn = String(p.filename || '');
-        const m = fn.match(/^Web_(Enrollment|OutSystems|Crypto)_/i);
+        const m = fn.match(/^Web_(Enrollment|OutSystems|Crypto|OLB3)_/i);
         if (m) {
             const raw = m[1].toLowerCase();
             if (raw === 'enrollment') return 'Enrollment';
             if (raw === 'outsystems') return 'OutSystems';
             if (raw === 'crypto') return 'Crypto';
+            if (raw === 'olb3') return 'OLB 3.0';
         }
         if (p.brand) {
             const b = String(p.brand).toLowerCase();
             if (b.includes('enr') || b.includes('enrollment')) return 'Enrollment';
             if (b.includes('outsys') || b.includes('outsystems')) return 'OutSystems';
             if (b.includes('crypto')) return 'Crypto';
+            if (b.replace(/[^a-z0-9]/g, '').includes('olb3')) return 'OLB 3.0';
         }
         return null;
     }
@@ -1894,11 +1898,43 @@
                 const backfillRepo = (p) => {
                     if (!p || String(p.repo || '').trim()) return;
                     const fn = String(p.filename || '').toLowerCase();
-                    if (/^web_(enrollment|outsystems|crypto)_/.test(fn) && fn.includes('-playwright')) p.repo = 'Axos.QE.Web';
+                    if (/^web_(enrollment|outsystems|crypto|olb3)_/.test(fn) && fn.includes('-playwright')) p.repo = 'Axos.QE.Web';
                     else if (fn.includes('-playwright') || fn.startsWith('crypto-web-') || fn.startsWith('crypto-web_')) p.repo = 'Axos.QE.Crypto.Web';
                     else if (fn.startsWith('mobile_')) p.repo = 'Axos.QE.Mobile';
                     else if (fn.includes('-newman') || fn.startsWith('api_') || fn.startsWith('api-')) p.repo = 'Axos.QE.API_OLB';
                     else p.repo = 'Axos.QE.TestIM';
+                };
+                // Auto-heal Web monorepo team display names (e.g. OLB3 → OLB 3.0) for older cached entries.
+                const backfillWebMonorepoTeams = (p) => {
+                    if (!p) return;
+                    const repo = String(p.repo || '').trim();
+                    if (repo !== 'Axos.QE.Web') return;
+                    const fn = String(p.filename || '');
+                    const b = String(p.brand || '').trim();
+                    const bNorm = b.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    const fnNorm = fn.toLowerCase();
+                    if (bNorm === 'olb3' || fnNorm.startsWith('web_olb3_')) p.brand = 'OLB 3.0';
+                };
+                // Auto-heal missing Web monorepo fields from filename conventions (best-effort).
+                const backfillWebMonorepoDefaults = (p) => {
+                    if (!p) return;
+                    const repo = String(p.repo || '').trim();
+                    if (repo !== 'Axos.QE.Web') return;
+                    if (!isWebMonorepoPipeline(p)) return;
+                    try {
+                        const parsed = parseFilename(p.filename || '');
+                        if (!parsed) return;
+                        const keys = [
+                            'brand', 'env', 'feature', 'featureDetail', 'testType',
+                            'grep', 'parallel', 'retries', 'runTarget', 'localBrowser',
+                            'pwVideo', 'pwHeadless', 'runnerLabel', 'jobTimeout'
+                        ];
+                        for (const k of keys) {
+                            if (p[k] === undefined || p[k] === null || String(p[k]).trim() === '') {
+                                if (parsed[k] !== undefined) p[k] = parsed[k];
+                            }
+                        }
+                    } catch { /* ignore */ }
                 };
                 // Backfill Crypto Web feature to the actual suite area (Login, Accounts, etc.)
                 // Older versions stored feature as "Crypto Web" which breaks the dropdown UX.
@@ -1940,6 +1976,10 @@
                 };
                 (pipelines || []).forEach(backfillRepo);
                 (savedSnapshot || []).forEach(backfillRepo);
+                (pipelines || []).forEach(backfillWebMonorepoTeams);
+                (savedSnapshot || []).forEach(backfillWebMonorepoTeams);
+                (pipelines || []).forEach(backfillWebMonorepoDefaults);
+                (savedSnapshot || []).forEach(backfillWebMonorepoDefaults);
                 (pipelines || []).forEach(backfillCryptoFeature);
                 (savedSnapshot || []).forEach(backfillCryptoFeature);
                 (pipelines || []).forEach(backfillCryptoDefaults);
@@ -3126,7 +3166,7 @@
                 `This is a monorepo workflow for the ${team} team.\n` +
                 `The repo uses a reusable workflow (_reusable-playwright.yml) called by thin project-specific workflows.\n\n` +
                 `Settings:\n` +
-                `PROJECT_DIR: projects/Axos.${team === 'Enrollment' ? 'Enr' : team === 'OutSystems' ? 'OutSys' : team === 'Crypto' ? 'Crypto' : 'UNKNOWN_TEAM'}.Web\n` +
+                `PROJECT_DIR: projects/Axos.${team === 'Enrollment' ? 'Enr' : team === 'OutSystems' ? 'OutSys' : team === 'Crypto' ? 'Crypto' : team === 'OLB 3.0' ? 'OLB_3.0' : 'UNKNOWN_TEAM'}.Web\n` +
                 `RUN_TARGET: ${p.runTarget || 'local'}\n` +
                 `LOCAL_BROWSER: ${p.localBrowser || 'chromium'}\n` +
                 `TEST_ENV: ${p.env || 'UAT'}\n` +
@@ -5174,14 +5214,15 @@
                 return;
             }
 
+            const teamKey = (String(brand) === 'OLB 3.0') ? 'OLB3' : String(brand);
             const fKey = feature.replace(/\s+/g, '');
             const sKey = suffix ? suffix.replace(/\s+/g, '') : '';
             const tKey = testType.replace(/\s+/g, '');
             const featureStr = sKey ? `OLB_${fKey}_${sKey}` : `OLB_${fKey}`;
-            const name = `Web_${brand}_${env}-${featureStr}_${tKey}-Playwright`;
+            const name = `Web_${teamKey}_${env}-${featureStr}_${tKey}-Playwright`;
 
-            const teamShortMap = { Enrollment: 'Enr', OutSystems: 'OutSys', Crypto: 'Crypto' };
-            const teamShort = teamShortMap[brand] || brand;
+            const teamShortMap = { Enrollment: 'Enr', OutSystems: 'OutSys', Crypto: 'Crypto', 'OLB 3.0': 'OLB3' };
+            const teamShort = teamShortMap[brand] || teamKey;
             const grepInput = document.getElementById('fGrep');
             if (grepInput && !grepInput.dataset.userEdited) {
                 grepInput.value = `@${teamShort}_${tKey}_${fKey}`;
@@ -5684,7 +5725,7 @@ JOB_TIMEOUT: ${el('fJobTimeout') || '120'}`;
 
         } else if (el('fRepo') === 'Axos.QE.Web') {
             const brand = el('fBrand') || 'Enrollment';
-            const projMap = { 'Enrollment': 'Axos.Enr.Web', 'OutSystems': 'Axos.OutSys.Web', 'Crypto': 'Axos.Crypto.Web' };
+            const projMap = { 'Enrollment': 'Axos.Enr.Web', 'OutSystems': 'Axos.OutSys.Web', 'Crypto': 'Axos.Crypto.Web', 'OLB 3.0': 'Axos.OLB_3.0.Web' };
             const projDir = projMap[brand] || `Axos.${brand}.Web`;
             prompt = `Create or update a Playwright pipeline workflow file in the Axos.QE.Web monorepo at:
 .github/workflows/${name}.yml
@@ -6722,9 +6763,10 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
 
         // Web Monorepo pipelines (Axos.QE.Web): Web_{Team}_{Env}-OLB_{Feature}_{TestType}-Playwright
         // e.g. Web_Enrollment_UAT-OLB_Login_Smoke-Playwright → team=Enrollment, env=UAT, feature=Login, testType=Smoke
-        const webMonoMatch = lower.match(/^web_(enrollment|outsystems|crypto)_(.+)-playwright$/);
+        // e.g. Web_OLB3_UAT-OLB_Smoke-Playwright → team=OLB 3.0, env=UAT, feature=Login (default), testType=Smoke
+        const webMonoMatch = lower.match(/^web_(enrollment|outsystems|crypto|olb3)_(.+)-playwright$/);
         if (webMonoMatch) {
-            const teamMap = { enrollment: 'Enrollment', outsystems: 'OutSystems', crypto: 'Crypto' };
+            const teamMap = { enrollment: 'Enrollment', outsystems: 'OutSystems', crypto: 'Crypto', olb3: 'OLB 3.0' };
             const team = teamMap[webMonoMatch[1]] || webMonoMatch[1];
             const rest = webMonoMatch[2]; // e.g. "uat-olb_login_smoke"
             const envMatch = rest.match(/^(dev|qa|stg|uat|prod)-/i);
@@ -6756,7 +6798,7 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
                     feature = seg.charAt(0).toUpperCase() + seg.slice(1);
                 }
             }
-            const teamShortMap = { Enrollment: 'Enr', OutSystems: 'OutSys', Crypto: 'Crypto' };
+            const teamShortMap = { Enrollment: 'Enr', OutSystems: 'OutSys', Crypto: 'Crypto', 'OLB 3.0': 'OLB3' };
             const teamShort = teamShortMap[team] || team;
             return {
                 filename, name,
@@ -6773,6 +6815,7 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
                 runTarget: 'local',
                 localBrowser: 'chromium',
                 pwVideo: '1',
+                pwHeadless: 'inherit',
                 runnerLabel: 'QSDW-TFSBA01',
                 jobTimeout: 120,
                 schedule: '',
