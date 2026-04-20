@@ -2156,18 +2156,20 @@
                 const t = udProductTypeOf(p);
                 const pass = t.closed ? !!udProductTypeFilters.closed : !!udProductTypeFilters[t.type];
                 if (!pass) continue;
+                const pipe = udPipeValue(p);
                 out.push({
                     id: udClean(idList[i]),
                     number: udClean(numList[i]),
+                    pipe,
                     type: t.type,
                     closed: !!t.closed,
                     product: String(p || '')
                 });
             }
-            // de-dupe (prefer id when present, otherwise product string)
+            // de-dupe: the pipe value is what users care about (account # for banking, ID for investments).
             const seen = new Set();
             return out.filter(a => {
-                const key = (a.id ? `id:${a.id}` : (a.number ? `n:${a.number}` : `p:${a.product}`));
+                const key = (a.pipe ? `pipe:${a.pipe}` : (a.number ? `n:${a.number}` : (a.id ? `id:${a.id}` : `p:${a.product}`)));
                 if (seen.has(key)) return false;
                 seen.add(key);
                 return true;
@@ -2420,7 +2422,7 @@
                                             ${typeChip(a.type, a.closed)}
                                         </div>
                                         <div style="font-family:'SF Mono',monospace;font-weight:950;color:#0f172a;letter-spacing:0.2px;">
-                                            ${udPipeValue(a.product) || a.number || a.id || '<span style="color:#94a3b8;">—</span>'}
+                                            ${a.pipe || a.number || a.id || '<span style="color:#94a3b8;">—</span>'}
                                         </div>
                                     </div>
                                     <div style="font-size:12px;color:#475569;font-weight:700;word-break:break-word;">${a.product ? udStripPipeSuffix(a.product) : ''}</div>
