@@ -2458,7 +2458,7 @@
                         </div>
                     </div>
                     <div class="ud-card">
-                        <h4>Account IDs</h4>
+                        <h4>Accounts</h4>
                         <div class="ud-addr-list">
                             ${idsHtml}
                         </div>
@@ -4735,29 +4735,33 @@
             if (Array.isArray(accountIdsRows)) {
                 const lowerAcc = udVisibleAccounts(r.up, r.upIds, r.upNums);
                 const prodAcc = udVisibleAccounts(r.pp, r.ppIds, r.ppNums);
-                const lowerIds = lowerAcc.map(a => (a.type === 'aas' || a.type === 'trading') ? (udPipeValue(a.product) || a.id || a.number) : '').filter(Boolean);
-                const lowerNums = lowerAcc.map(a => (a.type === 'aas' || a.type === 'trading') ? '' : (udPipeValue(a.product) || a.number)).filter(Boolean);
-                const prodIds = prodAcc.map(a => (a.type === 'aas' || a.type === 'trading') ? (udPipeValue(a.product) || a.id || a.number) : '').filter(Boolean);
-                const prodNums = prodAcc.map(a => (a.type === 'aas' || a.type === 'trading') ? '' : (udPipeValue(a.product) || a.number)).filter(Boolean);
+                const lowerAccounts = lowerAcc.map(a => udPipeValue(a.product) || a.number || a.id).filter(Boolean);
+                const prodAccounts = prodAcc.map(a => udPipeValue(a.product) || a.number || a.id).filter(Boolean);
+                const uniq = (arr) => {
+                    const seen = new Set();
+                    const out = [];
+                    for (const v of arr) { if (!seen.has(v)) { seen.add(v); out.push(v); } }
+                    return out;
+                };
+                const lowerUniq = uniq(lowerAccounts);
+                const prodUniq = uniq(prodAccounts);
 
-                if (lowerIds.length > 0 || lowerNums.length > 0) {
+                if (lowerUniq.length > 0) {
                     accountIdsRows.push([
                         r.u || '',
                         r.c || '',
                         (r.le || '').toUpperCase(),
                         'Lower',
-                        truncateForExcelCell(lowerIds.join('\n'), '…'),
-                        truncateForExcelCell(lowerNums.join('\n'), '…')
+                        truncateForExcelCell(lowerUniq.join('\n'), '…')
                     ]);
                 }
-                if (prodIds.length > 0 || prodNums.length > 0) {
+                if (prodUniq.length > 0) {
                     accountIdsRows.push([
                         r.u || '',
                         r.c || '',
                         'PROD',
                         'Prod',
-                        truncateForExcelCell(prodIds.join('\n'), '…'),
-                        truncateForExcelCell(prodNums.join('\n'), '…')
+                        truncateForExcelCell(prodUniq.join('\n'), '…')
                     ]);
                 }
             }
@@ -4908,11 +4912,11 @@
                 }
 
                 {
-                    const ws = XLSX.utils.aoa_to_sheet([['Username', 'CIF', 'Env', 'Side', 'Account IDs', 'Account Numbers'], ...accountIdsSheetRows]);
-                    ws['!cols'] = [{ wch: 28 }, { wch: 10 }, { wch: 8 }, { wch: 8 }, { wch: 28 }, { wch: 34 }];
-                    const idsName = makeUniqueSheetName(wb, 'Account IDs', 'Account IDs');
-                    XLSX.utils.book_append_sheet(wb, ws, idsName);
-                    const idx = wb.SheetNames.indexOf(idsName);
+                    const ws = XLSX.utils.aoa_to_sheet([['Username', 'CIF', 'Env', 'Side', 'Accounts'], ...accountIdsSheetRows]);
+                    ws['!cols'] = [{ wch: 28 }, { wch: 10 }, { wch: 8 }, { wch: 8 }, { wch: 44 }];
+                    const accountsName = makeUniqueSheetName(wb, 'Accounts', 'Accounts');
+                    XLSX.utils.book_append_sheet(wb, ws, accountsName);
+                    const idx = wb.SheetNames.indexOf(accountsName);
                     if (idx > 0) wb.SheetNames.unshift(wb.SheetNames.splice(idx, 1)[0]);
                     sheetsAdded++;
                 }
@@ -5006,9 +5010,9 @@
             XLSX.utils.book_append_sheet(wb, ws, 'User Details');
 
             {
-                const wsIds = XLSX.utils.aoa_to_sheet([['Username', 'CIF', 'Env', 'Side', 'Account IDs', 'Account Numbers'], ...accountIdsSheetRows]);
-                wsIds['!cols'] = [{ wch: 28 }, { wch: 10 }, { wch: 8 }, { wch: 8 }, { wch: 28 }, { wch: 34 }];
-                XLSX.utils.book_append_sheet(wb, wsIds, 'Account IDs');
+                const wsIds = XLSX.utils.aoa_to_sheet([['Username', 'CIF', 'Env', 'Side', 'Accounts'], ...accountIdsSheetRows]);
+                wsIds['!cols'] = [{ wch: 28 }, { wch: 10 }, { wch: 8 }, { wch: 8 }, { wch: 44 }];
+                XLSX.utils.book_append_sheet(wb, wsIds, 'Accounts');
             }
 
             {
