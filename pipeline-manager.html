@@ -1578,7 +1578,8 @@
         { id: '09', name: 'Alerts' },
         { id: '10', name: 'Support' },
         { id: '11', name: 'Profile and Settings' },
-        { id: '12', name: 'Registration' }
+        { id: '12', name: 'Registration' },
+        { id: '99', name: 'Orchestrators' }
     ];
 
     // Outsystems features (from the canonical QCoE list).
@@ -1634,7 +1635,8 @@
             '09 Alerts',
             '10 Support',
             '11 Profile & Settings',
-            '12 Registration'
+            '12 Registration',
+            'Orchestrators'
         ],
         'UDB API': [
             '01 Registration',
@@ -1645,17 +1647,21 @@
             '06 Bank',
             '07 Borrow',
             '08 Invest',
-            '09 Plan'
+            '09 Plan',
+            'Orchestrators'
         ]
     };
 
     function normalizeApiFeatureValue(raw) {
         const s = String(raw || '').trim();
         if (!s) return '';
-        // Convert "01 Login" or "01_Login" to "Login" for naming.
+        // Convert numeric ordering prefixes like "01 Login" / "01_Login" / "15 EndToEnd" → "Login" / "EndToEnd".
+        // Preserve meaningful IDs like "201_Registration" (used as a real feature key in some suites).
+        if (/^\d+$/.test(s)) return s;
+        if (/^\d{3,}_/.test(s)) return s;
         return s
             .replace(/^\d+\s+/, '')
-            .replace(/^\d+_+/, '')
+            .replace(/^\d{1,2}_+/, '')
             .trim();
     }
 
@@ -1679,10 +1685,10 @@
         const featureKey = featureVal.replace(/\s+/g, '_').trim();
         if (!featureKey) { suffixEl.value = ''; return; }
 
-        // Strip numeric prefix like "01_" for legacy filenames, but only when the selected
+        // Strip numeric ordering prefix like "01_" / "15_" for legacy filenames, but only when the selected
         // feature does NOT intentionally preserve its own numeric prefix (e.g. "201_Registration").
-        const featurePreservesNumericPrefix = /^\d+(?:\s+|_+)/.test(featureKey);
-        if (!featurePreservesNumericPrefix) rest = rest.replace(/^\d+_+/, '');
+        const featurePreservesNumericPrefix = /^\d{3,}_/.test(featureKey);
+        if (!featurePreservesNumericPrefix) rest = rest.replace(/^\d{1,2}_+/, '');
 
         const restLower = rest.toLowerCase();
         const featureLower = featureKey.toLowerCase();
@@ -2992,10 +2998,21 @@
         if (field === 'env') return p.env || '';
         if (field === 'repo') return normRepoForPipeline(p) || '';
         if (field === 'scheduled') return p.scheduleEnabled ? 'true' : 'false';
-        if (field === 'suiteOrFeature') return isOrchestratorPipeline(p)
-            ? (p.orchestratorSet || p.featureDetail || p.feature || '')
-            : (p.testSuite || p.feature || '');
-        if (field === 'feature') return p.feature || '';
+        if (field === 'suiteOrFeature') {
+            if (isOrchestratorPipeline(p)) return (p.orchestratorSet || p.featureDetail || p.feature || '');
+            const repo = normRepoForPipeline(p) || '';
+            const f = String(p.feature || '').trim();
+            const fd = String(p.featureDetail || '').trim();
+            if (repo === 'Axos.QE.API_OLB' && /^\d+$/.test(f) && fd) return normalizeApiFeatureValue(fd);
+            return (p.testSuite || p.feature || '');
+        }
+        if (field === 'feature') {
+            const repo = normRepoForPipeline(p) || '';
+            const f = String(p.feature || '').trim();
+            const fd = String(p.featureDetail || '').trim();
+            if (repo === 'Axos.QE.API_OLB' && /^\d+$/.test(f) && fd) return normalizeApiFeatureValue(fd);
+            return p.feature || '';
+        }
         if (field === 'brand') return p.brand || '';
         if (field === 'filename') return p.filename || '';
         if (field === 'grep') return p.grep || '';
@@ -3009,11 +3026,16 @@
             p.testType === 'Smoke' ? 'badge-smoke' :
             p.testType === 'Orchestrator' ? 'badge-orchestrator' :
             'badge-health';
-        const suiteOrFeature = isOrchestratorPipeline(p)
+        let suiteOrFeature = isOrchestratorPipeline(p)
             ? (p.orchestratorSet || p.featureDetail || p.feature || '')
             : (p.testSuite || p.feature || '');
-        const ghRepo = normRepoForPipeline(p);
-        const repoPill = ghRepo ? `<span class="section-badge" style="background:rgba(255,255,255,0.06);color:var(--text-muted); font-weight:800; letter-spacing:0.2px;">${ghRepo}</span>` : '';
+        const ghRepo = normRepoForPipeline(p) || '';
+        if (!isOrchestratorPipeline(p) && ghRepo === 'Axos.QE.API_OLB') {
+            const f = String(p.feature || '').trim();
+            const fd = String(p.featureDetail || '').trim();
+            if (/^\d+$/.test(f) && fd) suiteOrFeature = normalizeApiFeatureValue(fd);
+        }
+        const ghRepoPill = ghRepo ? `<span class="section-badge" style="background:rgba(255,255,255,0.06);color:var(--text-muted); font-weight:800; letter-spacing:0.2px;">${ghRepo}</span>` : '';
         const pKey = pipelineKeyFrom(ghRepo, p.filename);
         return `<div class="pipeline-card" data-pkey="${pKey}" onclick="viewPipeline('${pKey}')">
             <div class="pipeline-card-header">
@@ -3023,7 +3045,7 @@
                     ${p.name}
                 </div>
                 <div class="pipeline-card-actions">
-                    ${repoPill}
+                    ${ghRepoPill}
                     <a class="card-btn" href="${getGhWorkflowUrl(p.name, ghRepo)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Open in GitHub">
                         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:middle">
                             <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
@@ -3595,7 +3617,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Feature <span class="req">*</span></label>
-                        <select id="fFeature" onchange="onApiFeatureChange(); updateNamePreview()" ${isView ? 'disabled' : ''}>
+                        <select id="fFeature" onchange="onApiFeatureChange(); toggleOrchestratorSections(); updateNamePreview()" ${isView ? 'disabled' : ''}>
                             <option value="">Select...</option>
                             ${(() => {
                                 const brand = String(p.brand || '').trim();
@@ -3625,9 +3647,9 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Test Type <span class="req">*</span></label>
-                        <select id="fTestType" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
+                        <select id="fTestType" onchange="toggleOrchestratorSections(); updateNamePreview()" ${isView ? 'disabled' : ''}>
                             <option value="">Select...</option>
-                            ${['Regression','Sanity','Smoke','Health Check'].map(t => `<option value="${t}" ${p.testType === t ? 'selected' : ''}>${t}</option>`).join('')}
+                            ${['Regression','Sanity','Smoke','Health Check','Orchestrator'].map(t => `<option value="${t}" ${p.testType === t ? 'selected' : ''}>${t}</option>`).join('')}
                         </select>
                     </div>
                 </div>
@@ -3677,6 +3699,37 @@
                     <label class="form-label">Custom Runner Label <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional)</span></label>
                     <input type="text" id="fCustomRunnerLabel" placeholder="e.g. axos-gh-qe-runner-QSDW-TFSBA06" value="${p.customRunnerLabel || ''}" ${isView ? 'disabled' : ''}>
                     <span class="field-help">Overrides the dropdown value (use when you need a runner label not listed).</span>
+                </div>
+            </div>
+        </div>`;
+
+            const orchRefsPrefill = orchestratorTargetsToRefs(p.orchestratorTargets || []);
+            html += `<div class="section" id="orchestratorConfigSection" style="display:none;">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title"><span class="section-icon">&#129517;</span> Orchestrator Targets <span class="section-badge" style="background:rgba(167,139,250,0.14);color:#a78bfa;">Orchestrator</span></div>
+                <div class="section-toggle">&#9660;</div>
+            </div>
+            <div class="section-content">
+                <div class="form-group">
+                    <label class="form-label">Team / Set Name <span class="req">*</span></label>
+                    <input type="text" id="fOrchSetName" placeholder="e.g. OLBAPISanity" value="${(p.orchestratorSet || '').trim() || (p.featureDetail || '').split('Orchestrators_')[1]?.split('-')[0] || (p.featureDetail || '').split('Orchestrators_')[1]?.split('_')[0] || (p.customSuffix || '')}" ${isView ? 'disabled' : ''}>
+                    <span class="field-help">This should match the team name you put in Custom Suffix. Each team gets its own orchestrator set.</span>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Targets <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(simple mode)</span></label>
+                    <textarea id="fOrchTargetRefs" rows="10" placeholder="axos-financial/Axos.QE.API_OLB:API_OLB_UAT_Login_Sanity-Newman.yml@main" oninput="updateOrchestratorTargetsPreview()" ${isView ? 'disabled' : ''}>${escapeHtml(orchRefsPrefill)}</textarea>
+                    <span class="field-help">One per line. Formats: <code>owner/repo:workflow.yml@ref</code> or <code>repo:workflow.yml@ref</code> or just <code>workflow.yml</code> (defaults to axos-financial/Axos.QE.TestIM @ main).</span>
+                </div>
+
+                <div class="form-group">
+                    <details>
+                      <summary style="cursor:pointer; color:var(--text-secondary); font-size:12px; font-weight:700;">Advanced: Targets JSON (auto-generated)</summary>
+                      <div style="margin-top:10px;">
+                        <textarea id="fOrchTargets" rows="10" ${isView ? 'disabled' : ''}>${escapeHtml(JSON.stringify(p.orchestratorTargets || [], null, 2))}</textarea>
+                        <span class="field-help">You usually don’t need to touch this. Pipeline Manager will generate it from the simple list above.</span>
+                      </div>
+                    </details>
                 </div>
             </div>
         </div>`;
@@ -5155,7 +5208,37 @@
             }
 
             const bKey = BRAND_KEY_MAP[brand] || brand.replace(/\s+/g, '');
-            const fKey = feature.replace(/\s+/g, '_');
+            const isOrch = testType === 'Orchestrator' || feature === 'Orchestrators';
+            if (isOrch) {
+                if (feature !== 'Orchestrators') {
+                    document.getElementById('namePreview').innerHTML = '<span class="dim">For orchestrators, set Feature to <b>Orchestrators</b> and enter a team name in <b>Custom Suffix</b>.</span>';
+                    updateFormStatus();
+                    return;
+                }
+                if (!suffix) {
+                    document.getElementById('namePreview').innerHTML = '<span class="dim">Enter a team name in <b>Custom Suffix</b> (example: OLBAPISanity) to name this orchestrator.</span>';
+                    updateFormStatus();
+                    return;
+                }
+
+                const suffixKey = String(suffix).replace(/\s+/g, '');
+                const name = `API_${bKey}_${env}_Orchestrators_${suffixKey}-Orchestrator`;
+
+                const previewEl = document.getElementById('namePreview');
+                const currentRepo = String(document.getElementById('fRepo')?.value || '').trim() || 'Axos.QE.API_OLB';
+                const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
+                if (duplicate) {
+                    previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:var(--font-b);">&#9888; An orchestrator with this name already exists.</div>`;
+                    previewEl.style.borderColor = 'var(--error)';
+                } else {
+                    previewEl.textContent = name;
+                    previewEl.style.borderColor = '';
+                }
+                updateFormStatus();
+                return;
+            }
+
+            const fKey = normalizeApiFeatureValue(feature).replace(/\s+/g, '_');
             let sKey = suffix ? suffix.replace(/\s+/g, '_') : '';
             const tKey = testType.replace(/\s+/g, '');
             const fLower = fKey.toLowerCase();
@@ -5321,9 +5404,11 @@
         const isOrch = testType === 'Orchestrator' || feature === 'Orchestrators';
 
         const testim = document.getElementById('testimConfigSection');
+        const newman = document.getElementById('newmanConfigSection');
         const orch = document.getElementById('orchestratorConfigSection');
         if (orch) orch.style.display = isOrch ? '' : 'none';
         if (testim) testim.style.display = isOrch ? 'none' : '';
+        if (newman) newman.style.display = isOrch ? 'none' : '';
 
         // Keep the set name in sync with Custom Suffix (team), since the suffix is part of the orchestrator name.
         const suffix = (document.getElementById('fCustomSuffix')?.value || '').trim();
@@ -5390,10 +5475,20 @@
         } else {
             const repo = (el('fRepo')?.value || '').trim();
             if (repo === 'Axos.QE.API_OLB') {
-                fieldsOk =
-                    el('fBrand')?.value && el('fEnv')?.value &&
-                    el('fFeature')?.value && el('fTestType')?.value &&
-                    el('fCollectionId')?.value && el('fEnvironmentId')?.value;
+                const isOrch = (el('fTestType')?.value || '') === 'Orchestrator' || (el('fFeature')?.value || '') === 'Orchestrators';
+                if (isOrch) {
+                    fieldsOk =
+                        el('fBrand')?.value && el('fEnv')?.value &&
+                        (el('fFeature')?.value === 'Orchestrators') &&
+                        (el('fTestType')?.value === 'Orchestrator') &&
+                        (el('fCustomSuffix')?.value || '').trim() &&
+                        (el('fOrchTargetRefs')?.value || '').trim();
+                } else {
+                    fieldsOk =
+                        el('fBrand')?.value && el('fEnv')?.value &&
+                        el('fFeature')?.value && el('fTestType')?.value &&
+                        el('fCollectionId')?.value && el('fEnvironmentId')?.value;
+                }
                 return fieldsOk && !isNameDuplicate();
             }
             if (repo === 'Axos.QE.Crypto.Web' || repo === 'Axos.QE.Web') {
@@ -5461,27 +5556,50 @@
                 base.env = v('fEnv') || base.env;
                 const rawFeature = v('fFeature') || base.feature || 'Login';
                 const rawSuffix = v('fCustomSuffix');
-                const normalizedFeature = rawFeature.replace(/\s+/g, '_');
-                let normalizedSuffix = (rawSuffix || '').replace(/\s+/g, '_');
-                const fLower = normalizedFeature.toLowerCase();
-                const sLower = normalizedSuffix.toLowerCase();
-                if (normalizedSuffix && (fLower === sLower || fLower.endsWith(`_${sLower}`))) {
-                    normalizedSuffix = '';
-                }
-                const featureDetail = normalizedSuffix ? `${normalizedFeature}_${normalizedSuffix}` : normalizedFeature;
-                const numericPrefix = (featureDetail.match(/^(\d+)(?:_.+)?$/) || [])[1] || '';
-                base.feature = numericPrefix || normalizedFeature;
-                base.featureDetail = featureDetail;
-                base.testType = v('fTestType') || base.testType || 'Smoke';
+                const chosenTestType = v('fTestType') || base.testType || 'Smoke';
+                const isOrch = chosenTestType === 'Orchestrator' || rawFeature === 'Orchestrators';
 
-                base.collectionId = v('fCollectionId');
-                base.environmentId = v('fEnvironmentId');
-                base.collectionSubfolder = v('fCollectionSubfolder');
-                base.hostsUatEnv = v('fHostsUatEnv') || 'na';
-                base.maxRetries = v('fMaxRetries') || '0';
-                base.runnerLabel = v('fRunnerLabel') || 'qsdw-tfsba06';
-                base.customRunnerLabel = v('fCustomRunnerLabel');
-                base.jobTimeout = n('fJobTimeout', 120);
+                if (isOrch) {
+                    const team = (rawSuffix || '').replace(/\s+/g, '');
+                    base.feature = 'Orchestrators';
+                    base.featureDetail = `Orchestrators_${team}`;
+                    base.testType = 'Orchestrator';
+                    base.jobTimeout = n('fJobTimeout', 30);
+
+                    base.orchestratorSet = (v('fOrchSetName') || v('fCustomSuffix')).trim();
+                    const refs = (document.getElementById('fOrchTargetRefs')?.value || '').trim();
+                    base.orchestratorTargets = refs ? orchestratorRefsToTargets(refs) : [];
+
+                    // Clear Newman fields (not used by orchestrators)
+                    base.collectionId = '';
+                    base.environmentId = '';
+                    base.collectionSubfolder = '';
+                    base.hostsUatEnv = 'na';
+                    base.maxRetries = '0';
+                    base.runnerLabel = v('fRunnerLabel') || 'qsdw-tfsba06';
+                    base.customRunnerLabel = v('fCustomRunnerLabel');
+                } else {
+                    const normalizedFeature = normalizeApiFeatureValue(rawFeature).replace(/\s+/g, '_');
+                    let normalizedSuffix = (rawSuffix || '').replace(/\s+/g, '_');
+                    const fLower = normalizedFeature.toLowerCase();
+                    const sLower = normalizedSuffix.toLowerCase();
+                    if (normalizedSuffix && (fLower === sLower || fLower.endsWith(`_${sLower}`))) {
+                        normalizedSuffix = '';
+                    }
+                    const featureDetail = normalizedSuffix ? `${normalizedFeature}_${normalizedSuffix}` : normalizedFeature;
+                    base.feature = normalizedFeature;
+                    base.featureDetail = featureDetail;
+                    base.testType = chosenTestType;
+
+                    base.collectionId = v('fCollectionId');
+                    base.environmentId = v('fEnvironmentId');
+                    base.collectionSubfolder = v('fCollectionSubfolder');
+                    base.hostsUatEnv = v('fHostsUatEnv') || 'na';
+                    base.maxRetries = v('fMaxRetries') || '0';
+                    base.runnerLabel = v('fRunnerLabel') || 'qsdw-tfsba06';
+                    base.customRunnerLabel = v('fCustomRunnerLabel');
+                    base.jobTimeout = n('fJobTimeout', 120);
+                }
             } else if (repo === 'Axos.QE.Web') {
                 base.brand = v('fBrand') || base.brand;
                 base.env = v('fEnv') || base.env;
@@ -6375,29 +6493,35 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
             return;
         }
 
-        // Use the first repo matching Axos.QE.TestIM as the orchestrator source (targets.json), else fall back to first repo.
-        const orchestratorRepo = repos.find(r => String(r.repo || '').toLowerCase() === 'axos.qe.testim') || repos[0];
-
-        // Optional: load orchestrator sets so orchestrator workflows can show/edit their targets.
-        let orchestratorSets = null;
-        try {
-            const refQ = ref ? `?ref=${encodeURIComponent(ref)}` : '';
-            const resp = await fetch(`https://api.github.com/repos/${orchestratorRepo.owner}/${orchestratorRepo.repo}/contents/.github/orchestrator/targets.json${refQ}`, {
-                headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/vnd.github.v3+json' }
-            });
-            if (resp.ok) {
+        // Optional: load orchestrator sets per-repo so orchestrator workflows can show/edit their targets.
+        const orchestratorSetsByRepo = {};
+        async function loadOrchestratorSetsForRepo(r) {
+            const key = String(r.repo || '');
+            if (Object.prototype.hasOwnProperty.call(orchestratorSetsByRepo, key)) return orchestratorSetsByRepo[key];
+            orchestratorSetsByRepo[key] = null;
+            try {
+                const refQ = ref ? `?ref=${encodeURIComponent(ref)}` : '';
+                const resp = await fetch(`https://api.github.com/repos/${r.owner}/${r.repo}/contents/.github/orchestrator/targets.json${refQ}`, {
+                    headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/vnd.github.v3+json' }
+                });
+                if (!resp.ok) return null;
                 const j = await resp.json();
                 const b64 = (j.content || '').replace(/\n/g, '');
                 const jsonText = b64 ? atob(b64) : '';
                 const parsed = JSON.parse(jsonText);
-                orchestratorSets = parsed && parsed.sets && typeof parsed.sets === 'object' ? parsed.sets : null;
+                const sets = parsed && parsed.sets && typeof parsed.sets === 'object' ? parsed.sets : null;
+                orchestratorSetsByRepo[key] = sets;
+                return sets;
+            } catch {
+                return null;
             }
-        } catch { /* optional */ }
+        }
 
         const allFiles = [];
         try {
             for (const r of repos) {
                 statusText.innerHTML += `<br>  ${r.owner}/${r.repo}...`;
+                const orchSets = await loadOrchestratorSetsForRepo(r);
                 const refQ = ref ? `?ref=${encodeURIComponent(ref)}` : '';
                 const resp = await fetch(`https://api.github.com/repos/${r.owner}/${r.repo}/contents/.github/workflows${refQ}`, {
                     headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/vnd.github.v3+json' }
@@ -6412,8 +6536,8 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
                     if (f.name.startsWith('_') || !f.name.endsWith('.yml')) continue;
                     try {
                         const entry = await fetchWorkflowEntry(r, f.name, pat);
-                        if (r.repo === orchestratorRepo.repo && entry && entry.orchestratorSet && orchestratorSets) {
-                            entry.orchestratorTargets = orchestratorSets[entry.orchestratorSet] || [];
+                        if (entry && entry.orchestratorSet && orchSets) {
+                            entry.orchestratorTargets = orchSets[entry.orchestratorSet] || [];
                         }
                         allFiles.push(entry);
                     } catch (e) {
@@ -6784,10 +6908,9 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
                     if (featureSegsRaw.length === 0) featureSegsRaw = [last];
                 }
             }
-            const fullFeature = featureSegsRaw.join('_') || 'API';
-            const firstSeg = featureSegsRaw[0] || '';
-            const hasNumericPrefix = featureSegsRaw.length >= 2 && /^\d+$/.test(firstSeg);
-            const feature = hasNumericPrefix ? firstSeg : fullFeature;
+            const fullFeatureRaw = featureSegsRaw.join('_') || 'API';
+            const fullFeature = normalizeApiFeatureValue(fullFeatureRaw) || 'API';
+            const feature = fullFeature;
             const featureDetail = fullFeature;
             const brand = domainKey === 'olb' ? 'OLB API' : domainKey === 'udb' ? 'UDB API' : domainRaw.toUpperCase();
             return {
