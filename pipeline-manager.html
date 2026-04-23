@@ -1633,6 +1633,9 @@
         if (t === 'OutSystems' || t === 'Outsystems') {
             const fKey = f.toLowerCase().replace(/[^a-z0-9_-]/g, '');
             if (fKey === 'aml') return 'projects/Axos.OutSys.Web/wfo/aml';
+            if (fKey === 'relationshipmaster' || fKey === 'relationship-master' || fKey === 'relationship_master') {
+                return 'projects/Axos.OutSys.Web/wfo/axos-aml';
+            }
             if (fKey === 'ucat') return 'projects/Axos.OutSys.Web/wfo/ucat';
             if (fKey.includes('template')) return 'projects/Axos.OutSys.Web/wfo/template-project';
             // Default container project (historically points to AML via wfo/playwright.config.js).
@@ -1982,6 +1985,18 @@
                     const signal = `${p.name || ''} ${p.grep || ''}`.toLowerCase();
                     const looksLikeRelationshipMaster = signal.includes('relationshipmaster');
                     if (!looksLikeRelationshipMaster) return;
+
+                    // Defaults for RelationshipMaster: BrowserStack + axos-aml subproject.
+                    // Apply only when unset/legacy, so explicit user overrides still win.
+                    const rt = String(p.runTarget || '').trim().toLowerCase();
+                    const runTargetUserEdited = p.runTargetUserEdited === true || String(p.runTargetUserEdited || '').trim().toLowerCase() === 'true';
+                    if (!rt || (!runTargetUserEdited && rt === 'local')) {
+                        p.runTarget = 'browserstack';
+                    }
+                    if (!p.projectDir || String(p.projectDir || '').trim() === '' || String(p.projectDir || '').trim() === 'projects/Axos.OutSys.Web/wfo') {
+                        p.projectDir = 'projects/Axos.OutSys.Web/wfo/axos-aml';
+                    }
+
                     if (fn === 'Web_OutSystems_UAT-OLB_Smoke-Playwright.yml') {
                         const newFilename = 'Web_OutSystems_UAT-RelationshipMaster_Sanity-Playwright.yml';
                         const oldParsed = parseFilename(fn) || {};
@@ -3892,7 +3907,7 @@
                 <div class="form-row-3">
                     <div class="form-group">
                         <label class="form-label">Run Target</label>
-                        <select id="fRunTarget" onchange="toggleCryptoRunTargetSections()" ${isView ? 'disabled' : ''}>
+                        <select id="fRunTarget" onchange="toggleCryptoRunTargetSections(); this.dataset.userEdited='1'" ${isView ? 'disabled' : ''}>
                             <option value="local" ${String(p.runTarget || 'local') === 'local' ? 'selected' : ''}>Local runner</option>
                             <option value="browserstack" ${String(p.runTarget || 'local') === 'browserstack' ? 'selected' : ''}>BrowserStack</option>
                         </select>
@@ -4022,6 +4037,7 @@
         } else if (repoName === 'Axos.QE.Web') {
         // Web Monorepo (Playwright) form
         const webMonoTeamBrand = p.brand || 'Enrollment';
+        const webMonoDefaultRunTarget = isOutsystemsBrand(webMonoTeamBrand) ? 'browserstack' : 'local';
         html += `<div class="section">
             <div class="section-header" onclick="toggleSection(this)">
                 <div class="section-title"><span class="section-icon">&#128193;</span> Location & Category <span class="section-badge" style="background:rgba(59,130,246,0.1);color:#60a5fa;">Required</span></div>
@@ -4087,9 +4103,9 @@
                 <div class="form-row-3">
                     <div class="form-group">
                         <label class="form-label">Run Target</label>
-                        <select id="fRunTarget" onchange="toggleCryptoRunTargetSections()" ${isView ? 'disabled' : ''}>
-                            <option value="local" ${String(p.runTarget || 'local') === 'local' ? 'selected' : ''}>Local runner</option>
-                            <option value="browserstack" ${String(p.runTarget || 'local') === 'browserstack' ? 'selected' : ''}>BrowserStack</option>
+                        <select id="fRunTarget" onchange="toggleCryptoRunTargetSections(); this.dataset.userEdited='1'" ${isView ? 'disabled' : ''}>
+                            <option value="local" ${String(p.runTarget || webMonoDefaultRunTarget) === 'local' ? 'selected' : ''}>Local runner</option>
+                            <option value="browserstack" ${String(p.runTarget || webMonoDefaultRunTarget) === 'browserstack' ? 'selected' : ''}>BrowserStack</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -4680,6 +4696,18 @@
             } else {
                 projectDirEl.dataset.autoComputed = '1';
                 projectDirEl.dataset.lastComputed = computedDir;
+            }
+        }
+        const runTargetEl = document.getElementById('fRunTarget');
+        if (runTargetEl && repoName === 'Axos.QE.Web') {
+            const team = String(p.brand || 'Enrollment');
+            const computedRt = isOutsystemsBrand(team) ? 'browserstack' : 'local';
+            const runTargetUserEdited = p.runTargetUserEdited === true || String(p.runTargetUserEdited || '').trim().toLowerCase() === 'true';
+            if (runTargetUserEdited) {
+                runTargetEl.dataset.userEdited = '1';
+            } else {
+                runTargetEl.dataset.autoComputed = '1';
+                runTargetEl.dataset.lastComputed = computedRt;
             }
         }
         if (p.scheduleEnabled && p.schedule) initScheduleFromCron(p.schedule);
@@ -5487,6 +5515,20 @@
                 }
             }
 
+            const runTargetEl = document.getElementById('fRunTarget');
+            if (runTargetEl && !runTargetEl.dataset.userEdited) {
+                const computedRt = isOutsystemsBrand(brand) ? 'browserstack' : 'local';
+                const current = String(runTargetEl.value || '').trim().toLowerCase();
+                const last = String(runTargetEl.dataset.lastComputed || '').trim().toLowerCase();
+                const shouldUpdate = !current || runTargetEl.dataset.autoComputed === '1' || (!!last && current === last);
+                if (shouldUpdate && current !== computedRt) {
+                    runTargetEl.value = computedRt;
+                    runTargetEl.dataset.autoComputed = '1';
+                    runTargetEl.dataset.lastComputed = computedRt;
+                    toggleCryptoRunTargetSections();
+                }
+            }
+
             const teamKey = (String(brand) === 'OLB 3.0') ? 'OLB3' : String(brand);
             const fKey = feature.replace(/\s+/g, '');
             const sKey = suffix ? suffix.replace(/\s+/g, '') : '';
@@ -5785,7 +5827,13 @@
                 base.brand = v('fBrand') || base.brand;
                 base.env = v('fEnv') || base.env;
                 base.feature = v('fFeature') || base.feature || 'Login';
-                base.runTarget = v('fRunTarget') || 'local';
+                {
+                    const rtEl = document.getElementById('fRunTarget');
+                    const computedRt = isOutsystemsBrand(base.brand) ? 'browserstack' : 'local';
+                    const rawRt = v('fRunTarget');
+                    base.runTarget = rawRt || computedRt;
+                    base.runTargetUserEdited = !!(rtEl && String(rtEl.dataset.userEdited || '') === '1');
+                }
                 base.localBrowser = v('fLocalBrowser') || 'chromium';
                 base.grep = v('fGrep');
                 base.suite = v('fSuite');
