@@ -1944,7 +1944,11 @@
                         const keys = [
                             'brand', 'env', 'feature', 'featureDetail', 'testType',
                             'grep', 'parallel', 'retries', 'runTarget', 'localBrowser',
-                            'pwVideo', 'pwHeadless', 'runnerLabel', 'jobTimeout'
+                            'pwVideo', 'pwHeadless',
+                            'runnerLabel', 'customRunnerLabel',
+                            'runnerLabelLinux', 'customRunnerLabelLinux',
+                            'runnerLabelWindows', 'customRunnerLabelWindows',
+                            'jobTimeout'
                         ];
                         for (const k of keys) {
                             if (p[k] === undefined || p[k] === null || String(p[k]).trim() === '') {
@@ -2174,6 +2178,10 @@
             browserTimeout: 'Browser wait (min)',
             runnerLabel: 'Runner label',
             customRunnerLabel: 'Custom runner label',
+            runnerLabelLinux: 'Runner label (Linux - BrowserStack)',
+            customRunnerLabelLinux: 'Custom runner label (Linux)',
+            runnerLabelWindows: 'Runner label (Windows - local)',
+            customRunnerLabelWindows: 'Custom runner label (Windows)',
             jobTimeout: 'Pipeline timeout (min)',
 
             // BrowserStack
@@ -2181,7 +2189,7 @@
             grep: 'Grep filter',
             suite: 'Suite folder',
             spec: 'Spec file',
-            parallels: 'Parallels',
+            parallels: 'Parallels (tests at the same time)',
             parallelSplit: 'Parallel split',
             tunnel: 'BrowserStack tunnel',
             appId: 'App ID',
@@ -3195,6 +3203,14 @@
 
         if (repoName === 'Axos.QE.Web' || isWebMonorepoPipeline(p)) {
             const team = getWebMonorepoTeam(p) || 'Unknown';
+            const linuxRunners = ['dsdl-timab21','dsdl-timab24','dsdl-timab27','dsdl-timab28','dsdl-timab29','dsdl-timab30','dsdl-timab31'];
+            const winRunners = ['QSDW-TFSBA01','QSDW-TFSBA02','QSDW-TFSBA03','QSDW-TFSBA04','QSDW-TFSBA05'];
+            const rawLinux = String(p.runnerLabelLinux || p.runnerLabel || '').trim();
+            const rawWin = String(p.runnerLabelWindows || p.runnerLabel || '').trim();
+            const runnerLinux = linuxRunners.includes(rawLinux) ? rawLinux : 'dsdl-timab28';
+            const runnerWin = winRunners.includes(rawWin) ? rawWin : 'QSDW-TFSBA01';
+            const customLinux = String(p.customRunnerLabelLinux || (String(p.runTarget || 'local') === 'browserstack' ? (p.customRunnerLabel || '') : '') || '').trim();
+            const customWin = String(p.customRunnerLabelWindows || (String(p.runTarget || 'local') === 'local' ? (p.customRunnerLabel || '') : '') || '').trim();
             let prompt = `Create or update a Playwright pipeline workflow file in the repo Axos.QE.Web at:\n${filePath}\n\n` +
                 `This is a monorepo workflow for the ${team} team.\n` +
                 `The repo uses a reusable workflow (_reusable-playwright.yml) called by thin project-specific workflows.\n\n` +
@@ -3204,7 +3220,7 @@
                 `LOCAL_BROWSER: ${p.localBrowser || 'chromium'}\n` +
                 `TEST_ENV: ${p.env || 'UAT'}\n` +
                 `GREP: ${p.grep || ''}\n` +
-                `PARALLELS: ${p.parallel || '1'}\n` +
+                `PARALLELS: ${p.parallel || '3'}\n` +
                 `RETRIES: ${p.retries || '1'}\n` +
                 `BS_RANDOM_BROWSER: ${p.bsRandomBrowser || 'true'}\n` +
                 `BS_BROWSER_NAME: ${p.bsBrowserName || ''}\n` +
@@ -3216,12 +3232,15 @@
                 `PW_VIDEO: ${p.pwVideo || '1'}\n` +
                 `PW_HEADLESS: ${p.pwHeadless || 'inherit'}\n` +
                 `JOB_TIMEOUT: ${p.jobTimeout || 120}\n` +
-                `RUNNER_LABEL: ${p.runnerLabel || 'QSDW-TFSBA01'}`;
+                `RUNNER_LABEL_LINUX: ${runnerLinux}\n` +
+                `CUSTOM_RUNNER_LABEL_LINUX: ${customLinux}\n` +
+                `RUNNER_LABEL_WINDOWS: ${runnerWin}\n` +
+                `CUSTOM_RUNNER_LABEL_WINDOWS: ${customWin}`;
             if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
             else prompt += `\n\nKeep the schedule block commented out.`;
             prompt += `\n\nUse the existing workflow file Web_Enrollment_UAT-OLB_Smoke-Playwright.yml as the exact format reference. Include:\n` +
                 `- name: and run-name fields matching the pipeline name\n` +
-                `- workflow_dispatch inputs for run_target, local_browser, test_env, grep, parallels, retries, runner_label, pw_video, pw_headless (choice: inherit, 0, 1), browserstack_username, browserstack_access_key, bs_random_browser, bs_browser_name, bs_browser_version, bs_os_name, and bs_os_version with correct defaults\n` +
+                `- workflow_dispatch inputs for run_target, local_browser, test_env, grep, parallels, retries, runner_label_linux (dsdl-timab*), custom_runner_label_linux (string), runner_label_windows (QSDW-TFSBA*), custom_runner_label_windows (string), pw_video, pw_headless (choice: inherit, 0, 1), browserstack_username, browserstack_access_key, bs_random_browser, bs_browser_name, bs_browser_version, bs_os_name, and bs_os_version with correct defaults\n` +
                 `- permissions block (contents: read, checks: write, actions: write)\n` +
                 `- jobs.smoke calling ./.github/workflows/_reusable-playwright.yml with secrets: inherit and with: passing the settings above with fallback defaults`;
             if (p.renamedFrom) prompt += `\n\nAlso delete the old workflow file: .github/workflows/${p.renamedFrom}`;
@@ -3990,7 +4009,7 @@
                 <div class="form-row-3">
                     <div class="form-group">
                         <label class="form-label">Run Target</label>
-                        <select id="fRunTarget" ${isView ? 'disabled' : ''}>
+                        <select id="fRunTarget" onchange="toggleCryptoRunTargetSections()" ${isView ? 'disabled' : ''}>
                             <option value="local" ${String(p.runTarget || 'local') === 'local' ? 'selected' : ''}>Local runner</option>
                             <option value="browserstack" ${String(p.runTarget || 'local') === 'browserstack' ? 'selected' : ''}>BrowserStack</option>
                         </select>
@@ -4024,8 +4043,8 @@
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">Parallels</label>
-                        <input type="number" id="fParallel" min="1" max="25" value="${p.parallel || '1'}" ${isView ? 'disabled' : ''}>
+                        <label class="form-label">Parallels (tests at the same time)</label>
+                        <input type="number" id="fParallel" min="1" max="25" value="${p.parallel || '3'}" ${isView ? 'disabled' : ''}>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Retries</label>
@@ -4108,13 +4127,52 @@
                             <input type="text" id="fBsOsVersion" value="${p.bsOsVersion || ''}" ${isView ? 'disabled' : ''}>
                         </div>
                     </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Runner Label (Linux - BrowserStack)</label>
+                            <select id="fRunnerLabelLinux" ${isView ? 'disabled' : ''}>
+                                ${(() => {
+                                    const webRunners = ['dsdl-timab21','dsdl-timab24','dsdl-timab27','dsdl-timab28','dsdl-timab29','dsdl-timab30','dsdl-timab31'];
+                                    const raw = String(p.runnerLabelLinux || p.runnerLabel || '').trim();
+                                    const selected = webRunners.includes(raw) ? raw : 'dsdl-timab28';
+                                    return webRunners.map(r => `<option value="${r}" ${(selected === r) ? 'selected' : ''}>${r}</option>`).join('');
+                                })()}
+                            </select>
+                            <span class="field-help">Used when <b>Run Target</b> is <code>browserstack</code>.</span>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Custom Runner Label (Linux) <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional)</span></label>
+                            <input type="text" id="fCustomRunnerLabelLinux" value="${p.customRunnerLabelLinux || (String(p.runTarget || 'local') === 'browserstack' ? (p.customRunnerLabel || '') : '')}" ${isView ? 'disabled' : ''}>
+                            <span class="field-help">Overrides the Linux dropdown when set.</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Runner Label</label>
-                    <select id="fRunnerLabel" ${isView ? 'disabled' : ''}>
-                        ${['QSDW-TFSBA01','QSDW-TFSBA02','QSDW-TFSBA03','QSDW-TFSBA04','QSDW-TFSBA05','QAAutomationMobile'].map(r => `<option value="${r}" ${(p.runnerLabel || 'QSDW-TFSBA01') === r ? 'selected' : ''}>${r}</option>`).join('')}
-                    </select>
-                    <span class="field-help">Windows self-hosted runner from the same pool used by Mobile pipelines</span>
+                <div id="cryptoLocalOnly">
+                    <div style="margin-top:14px; margin-bottom:6px; font-size:12px; font-weight:900; letter-spacing:0.2px; color:var(--text-secondary);">
+                        Local-only settings
+                    </div>
+                    <div style="margin-bottom:10px; font-size:11px; color:var(--text-muted); font-weight:700;">
+                        These inputs are used only when <b>Run Target</b> is <code>local</code>.
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Runner Label (Windows - local)</label>
+                            <select id="fRunnerLabelWindows" ${isView ? 'disabled' : ''}>
+                                ${(() => {
+                                    const winRunners = ['QSDW-TFSBA01','QSDW-TFSBA02','QSDW-TFSBA03','QSDW-TFSBA04','QSDW-TFSBA05'];
+                                    const raw = String(p.runnerLabelWindows || p.runnerLabel || '').trim();
+                                    const selected = winRunners.includes(raw) ? raw : 'QSDW-TFSBA01';
+                                    return winRunners.map(r => `<option value="${r}" ${(selected === r) ? 'selected' : ''}>${r}</option>`).join('');
+                                })()}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Custom Runner Label (Windows) <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional)</span></label>
+                            <input type="text" id="fCustomRunnerLabelWindows" value="${p.customRunnerLabelWindows || (String(p.runTarget || 'local') === 'local' ? (p.customRunnerLabel || '') : '')}" ${isView ? 'disabled' : ''}>
+                            <span class="field-help">Overrides the Windows dropdown when set.</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>`;
@@ -5063,7 +5121,17 @@
         updateNamePreview();
     }
 
-    function toggleCryptoRunTargetSections() { /* no-op (keep BS section visible) */ }
+    function toggleCryptoRunTargetSections() {
+        const repo = String(document.getElementById('fRepo')?.value || '').trim();
+        // Only toggle sections for the Axos.QE.Web monorepo Playwright form.
+        // The standalone Crypto.Web form historically kept BrowserStack settings visible for both targets.
+        if (repo !== 'Axos.QE.Web') return;
+        const rt = String(document.getElementById('fRunTarget')?.value || 'local').trim().toLowerCase();
+        const bs = document.getElementById('cryptoBsOnly');
+        const local = document.getElementById('cryptoLocalOnly');
+        if (bs) bs.style.display = (rt === 'browserstack') ? '' : 'none';
+        if (local) local.style.display = (rt === 'local') ? '' : 'none';
+    }
 
     function updateApiFeatureSuggestions(initialSelectedFeature) {
         const repo = document.getElementById('fRepo')?.value || '';
@@ -5616,7 +5684,7 @@
                 base.grep = v('fGrep');
                 base.suite = v('fSuite');
                 base.spec = v('fSpec');
-                base.parallel = v('fParallel') || '1';
+                base.parallel = v('fParallel') || '3';
                 base.retries = v('fRetries') || '1';
                 base.tunnel = v('fTunnel') || 'false';
                 base.bsRandomBrowser = v('fBsRandomBrowser') || 'true';
@@ -5628,7 +5696,14 @@
                 base.pwHeadless = v('fPwHeadless') || 'inherit';
                 base.bsUsername = v('fBsUsername');
                 base.bsAccessKey = v('fBsAccessKey');
-                base.runnerLabel = v('fRunnerLabel') || 'QSDW-TFSBA01';
+                base.runnerLabelLinux = v('fRunnerLabelLinux') || 'dsdl-timab28';
+                base.customRunnerLabelLinux = v('fCustomRunnerLabelLinux') || '';
+                base.runnerLabelWindows = v('fRunnerLabelWindows') || 'QSDW-TFSBA01';
+                base.customRunnerLabelWindows = v('fCustomRunnerLabelWindows') || '';
+                // Back-compat: keep the legacy runnerLabel/customRunnerLabel fields in sync with the selected run target.
+                const rt = String(base.runTarget || 'local').toLowerCase();
+                base.runnerLabel = rt === 'browserstack' ? base.runnerLabelLinux : base.runnerLabelWindows;
+                base.customRunnerLabel = rt === 'browserstack' ? base.customRunnerLabelLinux : base.customRunnerLabelWindows;
                 base.jobTimeout = n('fJobTimeout', 120);
             } else if (repo === 'Axos.QE.Crypto.Web') {
                 base.feature = v('fFeature') || cryptoScenarioPrefill || base.feature || 'Login';
@@ -5875,7 +5950,7 @@ RUN_TARGET: ${el('fRunTarget') || 'local'}
 LOCAL_BROWSER: ${el('fLocalBrowser') || 'chromium'}
 TEST_ENV: ${el('fEnv') || 'UAT'}
 GREP: ${el('fGrep') || ''}
-PARALLELS: ${el('fParallel') || '1'}
+PARALLELS: ${el('fParallel') || '3'}
 RETRIES: ${el('fRetries') || '1'}
 BS_RANDOM_BROWSER: ${el('fBsRandomBrowser') || 'true'}
 BS_BROWSER_NAME: ${el('fBsBrowserName') || ''}
@@ -5887,7 +5962,10 @@ BROWSERSTACK_ACCESS_KEY: ''  # leave blank to use repo secret BROWSERSTACK_ACCES
 PW_VIDEO: ${el('fPwVideo') || '1'}
 PW_HEADLESS: ${el('fPwHeadless') || 'inherit'}
 JOB_TIMEOUT: ${el('fJobTimeout') || '120'}
-RUNNER_LABEL: ${el('fRunnerLabel') || 'QSDW-TFSBA01'}`;
+RUNNER_LABEL_LINUX: ${el('fRunnerLabelLinux') || 'dsdl-timab28'}
+CUSTOM_RUNNER_LABEL_LINUX: ${el('fCustomRunnerLabelLinux') || ''}
+RUNNER_LABEL_WINDOWS: ${el('fRunnerLabelWindows') || 'QSDW-TFSBA01'}
+CUSTOM_RUNNER_LABEL_WINDOWS: ${el('fCustomRunnerLabelWindows') || ''}`;
 
             if (scheduleEnabled && scheduleCron) {
                 prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron}`;
@@ -5896,7 +5974,7 @@ RUNNER_LABEL: ${el('fRunnerLabel') || 'QSDW-TFSBA01'}`;
             }
             prompt += `\n\nUse the existing workflow file Web_Enrollment_UAT-OLB_Smoke-Playwright.yml as the exact format reference. Include:\n` +
                 `- name: and run-name fields matching the pipeline name\n` +
-                `- workflow_dispatch inputs for run_target, local_browser, test_env, grep, parallels, retries, runner_label, pw_video, pw_headless (choice: inherit, 0, 1), browserstack_username, browserstack_access_key, bs_random_browser, bs_browser_name, bs_browser_version, bs_os_name, and bs_os_version with correct defaults\n` +
+                `- workflow_dispatch inputs for run_target, local_browser, test_env, grep, parallels, retries, runner_label_linux (dsdl-timab*), custom_runner_label_linux (string), runner_label_windows (QSDW-TFSBA*), custom_runner_label_windows (string), pw_video, pw_headless (choice: inherit, 0, 1), browserstack_username, browserstack_access_key, bs_random_browser, bs_browser_name, bs_browser_version, bs_os_name, and bs_os_version with correct defaults\n` +
                 `- permissions block (contents: read, checks: write, actions: write)\n` +
                 `- jobs.smoke calling ./.github/workflows/_reusable-playwright.yml with secrets: inherit and with: passing the settings above with fallback defaults`;
 
@@ -6144,14 +6222,19 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
                 feature: 'Login',
                 testType: 'Smoke',
                 grep: '@Enr_Smoke_Login',
-                parallel: '1',
+                parallel: '3',
                 retries: '1',
                 runTarget: 'local',
                 localBrowser: 'chromium',
                 pwVideo: '1',
                 pwHeadless: 'inherit',
                 jobTimeout: 120,
+                runnerLabelLinux: 'dsdl-timab28',
+                customRunnerLabelLinux: '',
+                runnerLabelWindows: 'QSDW-TFSBA01',
+                customRunnerLabelWindows: '',
                 runnerLabel: 'QSDW-TFSBA01',
+                customRunnerLabel: '',
             };
         }
         if (repo === 'Axos.QE.Crypto.Web') {
@@ -7001,13 +7084,14 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
                 featureDetail: `OLB_${feature}`,
                 testType,
                 grep: `@${teamShort}_${testType}_${feature.replace(/\s+/g, '')}`,
-                parallel: '1',
+                parallel: '3',
                 retries: '1',
                 runTarget: 'local',
                 localBrowser: 'chromium',
                 pwVideo: '1',
                 pwHeadless: 'inherit',
-                runnerLabel: 'QSDW-TFSBA01',
+                runnerLabel: 'dsdl-timab28',
+                customRunnerLabel: '',
                 jobTimeout: 120,
                 schedule: '',
                 scheduleEnabled: false
