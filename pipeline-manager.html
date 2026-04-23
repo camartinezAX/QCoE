@@ -1585,6 +1585,8 @@
     // Outsystems features (from the canonical QCoE list).
     // Display as plain names (no numeric prefix).
     const OUTSYSTEMS_FEATURES = [
+        'AML',
+        'RelationshipMaster',
         'VM',
         'EWM',
         'EHP',
@@ -1603,9 +1605,44 @@
         'Orchestrators'
     ];
 
+    function normalizeOutSystemsFeature(raw) {
+        const s = String(raw || '').trim();
+        if (!s) return '';
+        const key = s.toLowerCase().replace(/[^a-z0-9]/g, '');
+        // Canonicalize casing using the OutSystems feature list.
+        for (const name of OUTSYSTEMS_FEATURES) {
+            const nKey = String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (nKey === key) return name;
+        }
+        // If it isn't in the canonical list, preserve input (supports custom features).
+        return s;
+    }
+
     const TEST_TYPES = ['Regression', 'Sanity', 'Smoke', 'Health Check', 'Orchestrator'];
 
     const WEB_MONOREPO_TEAMS = ['Enrollment', 'OutSystems', 'Crypto', 'OLB 3.0'];
+
+    function computeWebMonorepoProjectDir(team, feature) {
+        const t = String(team || '').trim();
+        const f = String(feature || '').trim();
+
+        if (t === 'Enrollment') return 'projects/Axos.Enr.Web';
+        if (t === 'Crypto') return 'projects/Axos.Crypto.Web';
+        if (t === 'OLB 3.0' || t === 'OLB3') return 'projects/Axos.OLB_3.0.Web';
+
+        if (t === 'OutSystems' || t === 'Outsystems') {
+            const fKey = f.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+            if (fKey === 'aml') return 'projects/Axos.OutSys.Web/wfo/aml';
+            if (fKey === 'ucat') return 'projects/Axos.OutSys.Web/wfo/ucat';
+            if (fKey.includes('template')) return 'projects/Axos.OutSys.Web/wfo/template-project';
+            // Default container project (historically points to AML via wfo/playwright.config.js).
+            return 'projects/Axos.OutSys.Web/wfo';
+        }
+
+        // Fallback to conventional location when team is unknown/custom.
+        const tKey = t.replace(/\s+/g, '');
+        return tKey ? `projects/Axos.${tKey}.Web` : 'projects';
+    }
 
     const BRAND_KEY_MAP = {
         'Admin Portal': 'AdminPortal',
@@ -1932,6 +1969,36 @@
                     const fnNorm = fn.toLowerCase();
                     if (bNorm === 'olb3' || fnNorm.startsWith('web_olb3_')) p.brand = 'OLB 3.0';
                 };
+                // Auto-heal known workflow filename renames for Web monorepo entries.
+                // GitHub Actions uses the workflow filename/path as the workflow identity.
+                const backfillWebMonorepoWorkflowRenames = (p) => {
+                    if (!p) return;
+                    const repo = String(p.repo || '').trim();
+                    if (repo !== 'Axos.QE.Web') return;
+                    const fn = String(p.filename || '').trim();
+                    if (!fn) return;
+                    // Only rename when the entry clearly targets the RelationshipMaster workflow.
+                    // Do NOT use projectDir as a signal (users may point other pipelines at axos-aml).
+                    const signal = `${p.name || ''} ${p.grep || ''}`.toLowerCase();
+                    const looksLikeRelationshipMaster = signal.includes('relationshipmaster');
+                    if (!looksLikeRelationshipMaster) return;
+                    if (fn === 'Web_OutSystems_UAT-OLB_Smoke-Playwright.yml') {
+                        const newFilename = 'Web_OutSystems_UAT-RelationshipMaster_Sanity-Playwright.yml';
+                        const oldParsed = parseFilename(fn) || {};
+                        const newParsed = parseFilename(newFilename) || {};
+                        p.filename = newFilename;
+
+                        // Keep name/fields aligned with the renamed workflow so the change persists through the UI.
+                        if (!p.name || String(p.name) === String(oldParsed.name || '')) {
+                            p.name = String(newParsed.name || newFilename.replace(/\.yml$/i, ''));
+                        }
+                        for (const k of ['brand', 'env', 'feature', 'featureDetail', 'testType', 'grep']) {
+                            if (p[k] === undefined || p[k] === null || String(p[k]).trim() === '' || String(p[k]) === String(oldParsed[k] || '')) {
+                                if (newParsed[k] !== undefined) p[k] = newParsed[k];
+                            }
+                        }
+                    }
+                };
                 // Auto-heal missing Web monorepo fields from filename conventions (best-effort).
                 const backfillWebMonorepoDefaults = (p) => {
                     if (!p) return;
@@ -1945,6 +2012,7 @@
                             'brand', 'env', 'feature', 'featureDetail', 'testType',
                             'grep', 'parallel', 'retries', 'runTarget', 'localBrowser',
                             'pwVideo', 'pwHeadless',
+                            'projectDir',
                             'runnerLabel', 'customRunnerLabel',
                             'runnerLabelLinux', 'customRunnerLabelLinux',
                             'runnerLabelWindows', 'customRunnerLabelWindows',
@@ -1999,6 +2067,8 @@
                 (savedSnapshot || []).forEach(backfillRepo);
                 (pipelines || []).forEach(backfillWebMonorepoTeams);
                 (savedSnapshot || []).forEach(backfillWebMonorepoTeams);
+                (pipelines || []).forEach(backfillWebMonorepoWorkflowRenames);
+                (savedSnapshot || []).forEach(backfillWebMonorepoWorkflowRenames);
                 (pipelines || []).forEach(backfillWebMonorepoDefaults);
                 (savedSnapshot || []).forEach(backfillWebMonorepoDefaults);
                 (pipelines || []).forEach(backfillCryptoFeature);
@@ -2178,6 +2248,7 @@
             browserTimeout: 'Browser wait (min)',
             runnerLabel: 'Runner label',
             customRunnerLabel: 'Custom runner label',
+            projectDir: 'Project directory',
             runnerLabelLinux: 'Runner label (Linux - BrowserStack)',
             customRunnerLabelLinux: 'Custom runner label (Linux)',
             runnerLabelWindows: 'Runner label (Windows - local)',
@@ -3203,6 +3274,7 @@
 
         if (repoName === 'Axos.QE.Web' || isWebMonorepoPipeline(p)) {
             const team = getWebMonorepoTeam(p) || 'Unknown';
+            const projectDir = String(p.projectDir || '').trim() || computeWebMonorepoProjectDir(team, p.feature || '');
             const linuxRunners = ['dsdl-timab21','dsdl-timab24','dsdl-timab27','dsdl-timab28','dsdl-timab29','dsdl-timab30','dsdl-timab31'];
             const winRunners = ['QSDW-TFSBA01','QSDW-TFSBA02','QSDW-TFSBA03','QSDW-TFSBA04','QSDW-TFSBA05'];
             const rawLinux = String(p.runnerLabelLinux || p.runnerLabel || '').trim();
@@ -3215,7 +3287,7 @@
                 `This is a monorepo workflow for the ${team} team.\n` +
                 `The repo uses a reusable workflow (_reusable-playwright.yml) called by thin project-specific workflows.\n\n` +
                 `Settings:\n` +
-                `PROJECT_DIR: projects/Axos.${team === 'Enrollment' ? 'Enr' : team === 'OutSystems' ? 'OutSys' : team === 'Crypto' ? 'Crypto' : team === 'OLB 3.0' ? 'OLB_3.0' : 'UNKNOWN_TEAM'}.Web\n` +
+                `PROJECT_DIR: ${projectDir}\n` +
                 `RUN_TARGET: ${p.runTarget || 'local'}\n` +
                 `LOCAL_BROWSER: ${p.localBrowser || 'chromium'}\n` +
                 `TEST_ENV: ${p.env || 'UAT'}\n` +
@@ -4006,6 +4078,12 @@
                 <div class="section-toggle">&#9660;</div>
             </div>
             <div class="section-content">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Project Directory</label>
+                        <input type="text" id="fProjectDir" placeholder="projects/Axos.OutSys.Web/wfo/aml  (or projects/Axos.OutSys.Web/wfo/axos-aml, projects/Axos.OLB_3.0.Web)" value="${escapeHtml(p.projectDir || computeWebMonorepoProjectDir(webMonoTeamBrand, p.feature || 'Login'))}" oninput="this.dataset.userEdited='1'" ${isView ? 'disabled' : ''}>
+                    </div>
+                </div>
                 <div class="form-row-3">
                     <div class="form-group">
                         <label class="form-label">Run Target</label>
@@ -4591,6 +4669,19 @@
         document.getElementById('mainContent').innerHTML = html;
         const suffixEl = document.getElementById('fCustomSuffix');
         if (suffixEl && suffixEl.dataset) delete suffixEl.dataset.userEdited;
+        const projectDirEl = document.getElementById('fProjectDir');
+        if (projectDirEl && repoName === 'Axos.QE.Web') {
+            const savedDir = String(p.projectDir || '').trim();
+            const team = String(p.brand || 'Enrollment');
+            const feature = String(p.feature || 'Login');
+            const computedDir = computeWebMonorepoProjectDir(team, feature);
+            if (savedDir && savedDir !== computedDir) {
+                projectDirEl.dataset.userEdited = '1';
+            } else {
+                projectDirEl.dataset.autoComputed = '1';
+                projectDirEl.dataset.lastComputed = computedDir;
+            }
+        }
         if (p.scheduleEnabled && p.schedule) initScheduleFromCron(p.schedule);
         if (repoName === 'Axos.QE.API_OLB') {
             const rawFeature = String(p.feature || '').trim();
@@ -5383,11 +5474,26 @@
                 return;
             }
 
+            const projectDirEl = document.getElementById('fProjectDir');
+            if (projectDirEl && !projectDirEl.dataset.userEdited) {
+                const computedDir = computeWebMonorepoProjectDir(brand, feature);
+                const current = String(projectDirEl.value || '').trim();
+                const last = String(projectDirEl.dataset.lastComputed || '').trim();
+                const shouldUpdate = !current || projectDirEl.dataset.autoComputed === '1' || (!!last && current === last);
+                if (shouldUpdate) {
+                    projectDirEl.value = computedDir;
+                    projectDirEl.dataset.autoComputed = '1';
+                    projectDirEl.dataset.lastComputed = computedDir;
+                }
+            }
+
             const teamKey = (String(brand) === 'OLB 3.0') ? 'OLB3' : String(brand);
             const fKey = feature.replace(/\s+/g, '');
             const sKey = suffix ? suffix.replace(/\s+/g, '') : '';
             const tKey = testType.replace(/\s+/g, '');
-            const featureStr = sKey ? `OLB_${fKey}_${sKey}` : `OLB_${fKey}`;
+            const includeOlbPrefix = String(brand || '').trim().toLowerCase() !== 'outsystems';
+            const featureBase = sKey ? `${fKey}_${sKey}` : `${fKey}`;
+            const featureStr = includeOlbPrefix ? `OLB_${featureBase}` : featureBase;
             const name = `Web_${teamKey}_${env}-${featureStr}_${tKey}-Playwright`;
 
             const teamShortMap = { Enrollment: 'Enr', OutSystems: 'OutSys', Crypto: 'Crypto', 'OLB 3.0': 'OLB3' };
@@ -5696,6 +5802,13 @@
                 base.pwHeadless = v('fPwHeadless') || 'inherit';
                 base.bsUsername = v('fBsUsername');
                 base.bsAccessKey = v('fBsAccessKey');
+                {
+                    const rawDir = (v('fProjectDir') || '').trim();
+                    const computedDir = computeWebMonorepoProjectDir(base.brand, base.feature);
+                    // Persist projectDir only when it's a true override.
+                    // If the user leaves it at the computed default, store empty so future mapping updates apply.
+                    base.projectDir = (rawDir && rawDir !== computedDir) ? rawDir : '';
+                }
                 base.runnerLabelLinux = v('fRunnerLabelLinux') || 'dsdl-timab28';
                 base.customRunnerLabelLinux = v('fCustomRunnerLabelLinux') || '';
                 base.runnerLabelWindows = v('fRunnerLabelWindows') || 'QSDW-TFSBA01';
@@ -5937,15 +6050,16 @@ JOB_TIMEOUT: ${el('fJobTimeout') || '120'}`;
 
         } else if (el('fRepo') === 'Axos.QE.Web') {
             const brand = el('fBrand') || 'Enrollment';
-            const projMap = { 'Enrollment': 'Axos.Enr.Web', 'OutSystems': 'Axos.OutSys.Web', 'Crypto': 'Axos.Crypto.Web', 'OLB 3.0': 'Axos.OLB_3.0.Web' };
-            const projDir = projMap[brand] || `Axos.${brand}.Web`;
+            const feature = el('fFeature') || '';
+            const projectDirRaw = String(el('fProjectDir') || '').trim();
+            const projectDir = projectDirRaw || computeWebMonorepoProjectDir(brand, feature);
             prompt = `Create or update a Playwright pipeline workflow file in the Axos.QE.Web monorepo at:
 .github/workflows/${name}.yml
 
 This repo is a monorepo using npm workspaces. It uses a reusable workflow (_reusable-playwright.yml) called by thin project-specific caller workflows.
 
 Team: ${brand}
-PROJECT_DIR: projects/${projDir}
+PROJECT_DIR: ${projectDir}
 RUN_TARGET: ${el('fRunTarget') || 'local'}
 LOCAL_BROWSER: ${el('fLocalBrowser') || 'chromium'}
 TEST_ENV: ${el('fEnv') || 'UAT'}
@@ -6229,6 +6343,7 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
                 pwVideo: '1',
                 pwHeadless: 'inherit',
                 jobTimeout: 120,
+                projectDir: '',
                 runnerLabelLinux: 'dsdl-timab28',
                 customRunnerLabelLinux: '',
                 runnerLabelWindows: 'QSDW-TFSBA01',
@@ -7036,7 +7151,9 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
         }
 
         // Web Monorepo pipelines (Axos.QE.Web): Web_{Team}_{Env}-OLB_{Feature}_{TestType}-Playwright
+        // NOTE: The "OLB_" prefix is legacy; some teams may omit it (e.g. OutSystems).
         // e.g. Web_Enrollment_UAT-OLB_Login_Smoke-Playwright → team=Enrollment, env=UAT, feature=Login, testType=Smoke
+        // e.g. Web_OutSystems_UAT-AML_Smoke-Playwright → team=OutSystems, env=UAT, feature=AML, testType=Smoke
         // e.g. Web_OLB3_UAT-OLB_Smoke-Playwright → team=OLB 3.0, env=UAT, feature=Login (default), testType=Smoke
         const webMonoMatch = lower.match(/^web_(enrollment|outsystems|crypto|olb3)_(.+)-playwright$/);
         if (webMonoMatch) {
@@ -7072,8 +7189,12 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
                     feature = seg.charAt(0).toUpperCase() + seg.slice(1);
                 }
             }
+            if (String(team || '').trim().toLowerCase() === 'outsystems') {
+                feature = normalizeOutSystemsFeature(feature) || feature;
+            }
             const teamShortMap = { Enrollment: 'Enr', OutSystems: 'OutSys', Crypto: 'Crypto', 'OLB 3.0': 'OLB3' };
             const teamShort = teamShortMap[team] || team;
+            const includeOlbPrefix = String(team || '').trim().toLowerCase() !== 'outsystems';
             return {
                 filename, name,
                 repo: 'Axos.QE.Web',
@@ -7081,7 +7202,7 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
                 brand: team,
                 env,
                 feature,
-                featureDetail: `OLB_${feature}`,
+                featureDetail: includeOlbPrefix ? `OLB_${feature}` : feature,
                 testType,
                 grep: `@${teamShort}_${testType}_${feature.replace(/\s+/g, '')}`,
                 parallel: '3',
