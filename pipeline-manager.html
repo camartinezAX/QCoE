@@ -365,6 +365,7 @@
         .toast { position: fixed; bottom: 80px; right: 20px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 14px 18px; display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); transform: translateX(120%); transition: transform 0.3s; z-index: 1001; }
         .toast.show { transform: translateX(0); }
         .toast.success { border-left: 4px solid var(--success); }
+        .toast.error { border-left: 4px solid var(--error); }
 
         /* Selection toolbar */
         .selection-bar {
@@ -1605,6 +1606,136 @@
         'Orchestrators'
     ];
 
+    // Custom Feature persistence (per-browser).
+    // Keeps user-added features available across refreshes and improves parsing/grouping for custom workflows.
+    const CUSTOM_FEATURES_KEY = 'axos_pipeline_manager_custom_features_v1';
+
+    function _featureKey(s) {
+        return String(s || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+
+    function readCustomFeatureStore() {
+        try {
+            const raw = localStorage.getItem(CUSTOM_FEATURES_KEY);
+            const parsed = raw ? JSON.parse(raw) : null;
+            const web = Array.isArray(parsed?.web) ? parsed.web : [];
+            const outsystems = Array.isArray(parsed?.outsystems) ? parsed.outsystems : [];
+            return { web, outsystems };
+        } catch {
+            return { web: [], outsystems: [] };
+        }
+    }
+
+    function writeCustomFeatureStore(store) {
+        try { localStorage.setItem(CUSTOM_FEATURES_KEY, JSON.stringify(store || { web: [], outsystems: [] })); } catch { /* ignore */ }
+    }
+
+    function computeNextWebFeatureId() {
+        const used = new Set((FEATURES || []).map(f => String(f?.id || '').trim()).filter(Boolean));
+        for (let i = 0; i < 99; i++) {
+            const id = String(i).padStart(2, '0');
+            if (!used.has(id)) return id;
+        }
+        return 'C' + String((FEATURES || []).length + 1);
+    }
+
+    function initCustomFeatures() {
+        const store = readCustomFeatureStore();
+        let changed = false;
+
+        // Normalize web custom entries to {id,name} and merge into FEATURES
+        const usedIds = new Set((FEATURES || []).map(f => String(f?.id || '').trim()).filter(Boolean));
+        const allocId = () => {
+            for (let i = 0; i < 99; i++) {
+                const id = String(i).padStart(2, '0');
+                if (!usedIds.has(id)) { usedIds.add(id); return id; }
+            }
+            const id = 'C' + String(usedIds.size + 1);
+            usedIds.add(id);
+            return id;
+        };
+        const existingWebKeys = new Set((FEATURES || []).map(f => _featureKey(f?.name)));
+        const normalizedWeb = [];
+        for (const entry of (store.web || [])) {
+            const name = (typeof entry === 'string') ? entry : String(entry?.name || '');
+            const n = String(name || '').trim();
+            if (!n) continue;
+            const k = _featureKey(n);
+            if (!k) continue;
+            let id = (typeof entry === 'object' && entry && entry.id) ? String(entry.id).trim() : '';
+            if (!id || usedIds.has(id)) id = allocId();
+            else usedIds.add(id);
+            normalizedWeb.push({ id, name: n });
+        }
+        for (const cf of normalizedWeb) {
+            const k = _featureKey(cf.name);
+            if (existingWebKeys.has(k)) continue;
+            FEATURES.push({ id: String(cf.id || computeNextWebFeatureId()), name: String(cf.name) });
+            existingWebKeys.add(k);
+        }
+        try {
+            if (JSON.stringify(store.web || []) !== JSON.stringify(normalizedWeb)) { store.web = normalizedWeb; changed = true; }
+        } catch {
+            // best-effort
+        }
+
+        // Normalize OutSystems custom feature names and merge into OUTSYSTEMS_FEATURES
+        const existingOsKeys = new Set((OUTSYSTEMS_FEATURES || []).map(n => _featureKey(n)));
+        const normalizedOs = [];
+        for (const entry of (store.outsystems || [])) {
+            const n = String(entry || '').trim();
+            if (!n) continue;
+            const k = _featureKey(n);
+            if (!k) continue;
+            normalizedOs.push(n);
+        }
+        for (const n of normalizedOs) {
+            const k = _featureKey(n);
+            if (existingOsKeys.has(k)) continue;
+            OUTSYSTEMS_FEATURES.push(n);
+            existingOsKeys.add(k);
+        }
+        try {
+            if (JSON.stringify(store.outsystems || []) !== JSON.stringify(normalizedOs)) { store.outsystems = normalizedOs; changed = true; }
+        } catch {
+            // best-effort
+        }
+
+        if (changed) writeCustomFeatureStore(store);
+    }
+
+    function addCustomOutsystemsFeature(name) {
+        const n = String(name || '').trim();
+        if (!n) return null;
+        const k = _featureKey(n);
+        if (!k) return null;
+        const existing = OUTSYSTEMS_FEATURES.find(x => _featureKey(x) === k);
+        if (existing) return existing;
+        OUTSYSTEMS_FEATURES.push(n);
+        const store = readCustomFeatureStore();
+        store.outsystems = Array.isArray(store.outsystems) ? store.outsystems : [];
+        if (!store.outsystems.some(x => _featureKey(x) === k)) store.outsystems.push(n);
+        writeCustomFeatureStore(store);
+        return n;
+    }
+
+    function addCustomWebFeature(name) {
+        const n = String(name || '').trim();
+        if (!n) return null;
+        const k = _featureKey(n);
+        if (!k) return null;
+        const existing = FEATURES.find(f => _featureKey(f?.name) === k);
+        if (existing) return existing;
+        const id = computeNextWebFeatureId();
+        const obj = { id, name: n };
+        FEATURES.push(obj);
+        const store = readCustomFeatureStore();
+        store.web = Array.isArray(store.web) ? store.web : [];
+        if (!store.web.some(x => _featureKey(typeof x === 'string' ? x : x?.name) === k)) store.web.push(obj);
+        writeCustomFeatureStore(store);
+        return obj;
+    }
+
     function normalizeOutSystemsFeature(raw) {
         const s = String(raw || '').trim();
         if (!s) return '';
@@ -1616,6 +1747,28 @@
         }
         // If it isn't in the canonical list, preserve input (supports custom features).
         return s;
+    }
+
+    function recoverFeatureFromDetail(featureDetail, brand) {
+        let fd = String(featureDetail || '').trim();
+        if (!fd) return '';
+        if (/^OLB_/i.test(fd)) fd = fd.replace(/^OLB_/i, '');
+        const segs = fd.split('_').filter(Boolean);
+        if (!segs.length) return '';
+
+        // If the "feature" is only a 1-2 digit ordering prefix (e.g. "01"), treat it as unknown.
+        // Ordering prefixes are display-only and must not become feature keys.
+        if (segs.length === 1 && /^\d{1,2}$/.test(segs[0])) return '';
+
+        // Preserve meaningful numeric IDs like "201_Registration" (3+ digits followed by `_`).
+        // Strip display-only ordering prefixes like "01_" / "15_" (1-2 digits).
+        let base = '';
+        if (/^\d{3,}$/.test(segs[0]) && segs[1]) base = `${segs[0]}_${segs[1]}`;
+        else if (/^\d{1,2}$/.test(segs[0]) && segs[1]) base = segs[1];
+        else base = segs[0];
+
+        const b = String(brand || '').trim();
+        return isOutsystemsBrand(b) ? (normalizeOutSystemsFeature(base) || base) : base;
     }
 
     const TEST_TYPES = ['Regression', 'Sanity', 'Smoke', 'Health Check', 'Orchestrator'];
@@ -2090,6 +2243,20 @@
                 (savedSnapshot || []).forEach(backfillCryptoFeature);
                 (pipelines || []).forEach(backfillCryptoDefaults);
                 (savedSnapshot || []).forEach(backfillCryptoDefaults);
+
+                // Auto-heal: if a workflow filename contains a feature not in the hardcoded lists,
+                // older parses may have left p.feature blank. Recover it from featureDetail.
+                const backfillMissingFeatureFromDetail = (p) => {
+                    if (!p) return;
+                    const cur = String(p.feature || '').trim();
+                    if (cur) return;
+                    const fdRaw = String(p.featureDetail || '').trim();
+                    if (!fdRaw) return;
+                    const recovered = recoverFeatureFromDetail(fdRaw, p.brand);
+                    if (recovered) p.feature = recovered;
+                };
+                (pipelines || []).forEach(backfillMissingFeatureFromDetail);
+                (savedSnapshot || []).forEach(backfillMissingFeatureFromDetail);
                 // Load persisted tree open/close state (never auto-expand on first load).
                 try {
                     const t = localStorage.getItem(TREE_STATE_KEY);
@@ -2620,11 +2787,23 @@
             p.testType === 'Smoke' ? 'type-smoke' :
             p.testType === 'Orchestrator' ? 'type-orchestrator' :
             'type-health';
+        const rawName = String(p?.name || '').trim() || String(p?.filename || '').trim().replace(/\.yml$/i, '');
+        const short = rawName.replace(/[-_](Testim|Newman|Playwright|BrowserStack)$/i, '');
+        // UI labels: strip display-only numeric ordering prefixes like "_01_" but preserve meaningful IDs like "201_".
+        const label = (short || '')
+            // Remove any run of ordering segments like "_15_01_" (single-pass regex avoids overlap issues).
+            .replace(/_(?:\d{1,2}_)+/g, '_')
+            // Also handle isolated ordering segments.
+            .replace(/_(\d{1,2})_/g, '_')
+            .replace(/^(?:\d{1,2}_)+/g, '')
+            .replace(/__+/g, '_')
+            .replace(/^_+|_+$/g, '') || String(p?.testType || '').trim() || 'Pipeline';
+        const title = (p?.testType ? `${p.testType} — ` : '') + rawName;
         return `<div class="tree-node tree-pipeline ${typeClass}">
             <div class="tree-row" onclick="viewPipeline('${pipelineKey(p)}')" style="padding-left:${indent}px;">
                 <span class="tree-arrow hidden">&#9654;</span>
                 <span class="tree-icon">&#9679;</span>
-                <span class="tree-label" title="${p.name}">${p.testType}</span>
+                <span class="tree-label" title="${escapeHtml(title)}">${escapeHtml(label)}</span>
             </div>
         </div>`;
     }
@@ -7412,6 +7591,13 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
             }
         }
 
+        // Fallback: if the feature isn't in the canonical list, still recover it from featureDetail.
+        // This prevents "blank feature" which breaks the edit form + tree grouping.
+        if (!feature && featureDetail) {
+            const recovered = recoverFeatureFromDetail(featureDetail, brand);
+            if (recovered) feature = recovered;
+        }
+
         if (isPlaywright) {
             // Playwright workflows use the same Axos Bank suite features (Login, Accounts, etc.)
             // so keep the feature parsed from the filename (e.g., OLB_Login → Login).
@@ -7452,10 +7638,25 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
     }
     function cancelCreate() { selectedFolder = null; showFolderPipelines(null); }
 
-    function showToast(msg) {
+    function showToast(msg, opts = null) {
         const t = document.getElementById('toast');
-        document.getElementById('toastMsg').textContent = msg;
-        t.className = 'toast success show';
+        const m = document.getElementById('toastMsg');
+        if (!t || !m) return;
+
+        // Backward-compatible:
+        // - showToast("hi") => success
+        // - showToast("oops", true) => error
+        // - showToast("oops", "error") => error
+        let type = 'success';
+        if (opts === true) type = 'error';
+        else if (typeof opts === 'string' && opts.trim()) type = opts.trim().toLowerCase();
+        else if (opts && typeof opts === 'object') {
+            const tOpt = String(opts.type || '').trim().toLowerCase();
+            if (tOpt) type = tOpt;
+        }
+
+        m.textContent = String(msg ?? '');
+        t.className = `toast ${type} show`;
         setTimeout(() => t.classList.remove('show'), 3000);
     }
 
@@ -7551,16 +7752,46 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
     document.addEventListener('change', e => {
         if (e.target.closest('.section')) updateFormStatus();
         if (e.target.id === 'fFeature' && e.target.value === '__custom__') {
-            const custom = prompt('Enter new feature name:');
+            const repo = String(document.getElementById('fRepo')?.value || '').trim();
+            // API uses its own custom feature flow; don't double-prompt here.
+            if (repo === 'Axos.QE.API_OLB') { e.target.value = ''; updateNamePreview(); return; }
+
+            const brand = String(document.getElementById('fBrand')?.value || '').trim();
+            const isOs = isOutsystemsBrand(brand);
+
+            const custom = prompt(isOs ? 'Enter new OutSystems feature name:' : 'Enter new feature name:');
             if (custom && custom.trim()) {
                 const val = custom.trim();
-                const nextId = String(FEATURES.length).padStart(2, '0');
-                FEATURES.push({ id: nextId, name: val });
-                const opt = document.createElement('option');
-                opt.value = val;
-                opt.textContent = `${nextId} ${val}`;
-                opt.selected = true;
-                e.target.insertBefore(opt, e.target.querySelector('option[value="__custom__"]'));
+                if (val === '__custom__') {
+                    showToast('That value is reserved. Please choose a different feature name.', true);
+                    e.target.value = '';
+                    updateNamePreview();
+                    return;
+                }
+
+                let insertedValue = val;
+                let insertedLabel = val;
+                if (isOs) {
+                    const added = addCustomOutsystemsFeature(val) || val;
+                    insertedValue = String(added);
+                    insertedLabel = String(added);
+                } else {
+                    const added = addCustomWebFeature(val);
+                    const id = String(added?.id || computeNextWebFeatureId());
+                    insertedValue = String(added?.name || val);
+                    insertedLabel = `${id} ${insertedValue}`;
+                }
+
+                const existing = Array.from(e.target.options || []).find(o => String(o.value || '').trim() === insertedValue);
+                if (existing) {
+                    e.target.value = existing.value;
+                } else {
+                    const opt = document.createElement('option');
+                    opt.value = insertedValue;
+                    opt.textContent = insertedLabel;
+                    opt.selected = true;
+                    e.target.insertBefore(opt, e.target.querySelector('option[value="__custom__"]'));
+                }
             } else {
                 e.target.value = '';
             }
@@ -8977,6 +9208,29 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
             if (!synced) throw new Error('sync did not add pipeline');
             if (String(synced.repeatEvery) !== '2') throw new Error(`sync repeatEvery expected 2, got "${synced.repeatEvery}"`);
 
+            // Parse fallback: unknown/custom OutSystems features must NOT come back as blank.
+            syncFileContent = JSON.stringify([
+                { filename: 'Web_Outsystems_UAT_FooBar_Regression-Testim.yml', repo: 'Axos.QE.TestIM', name: 'Web_Outsystems_UAT_FooBar_Regression-Testim' },
+                { filename: 'Web_Outsystems_UAT_FooBar_Baz_Regression-Testim.yml', repo: 'Axos.QE.TestIM', name: 'Web_Outsystems_UAT_FooBar_Baz_Regression-Testim' }
+            ]);
+            processSyncInput({ replace: false });
+            const u1 = findPipeline('Axos.QE.TestIM::Web_Outsystems_UAT_FooBar_Regression-Testim.yml');
+            if (!u1) throw new Error('sync did not add unknown feature pipeline');
+            if (String(u1.feature || '').trim() !== 'FooBar') throw new Error(`expected unknown feature FooBar, got "${u1.feature}"`);
+            const u2 = findPipeline('Axos.QE.TestIM::Web_Outsystems_UAT_FooBar_Baz_Regression-Testim.yml');
+            if (!u2) throw new Error('sync did not add unknown feature+suffix pipeline');
+            if (String(u2.feature || '').trim() !== 'FooBar') throw new Error(`expected feature FooBar for suffix pipeline, got "${u2.feature}"`);
+            if (String(u2.featureDetail || '').trim() !== 'FooBar_Baz') throw new Error(`expected featureDetail FooBar_Baz, got "${u2.featureDetail}"`);
+
+            // Parse fallback: preserve meaningful numeric feature IDs like "201_Registration".
+            syncFileContent = JSON.stringify([
+                { filename: 'Web_Outsystems_UAT_201_Registration_Regression-Testim.yml', repo: 'Axos.QE.TestIM', name: 'Web_Outsystems_UAT_201_Registration_Regression-Testim' }
+            ]);
+            processSyncInput({ replace: false });
+            const u3 = findPipeline('Axos.QE.TestIM::Web_Outsystems_UAT_201_Registration_Regression-Testim.yml');
+            if (!u3) throw new Error('sync did not add numeric feature pipeline');
+            if (String(u3.feature || '').trim() !== '201_Registration') throw new Error(`expected numeric feature 201_Registration, got "${u3.feature}"`);
+
             // Seed minimal deterministic data.
             const repo = 'Axos.QE.TestIM';
             resultsPipelines = [
@@ -9141,6 +9395,7 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
     // ══════════════════════════════════════════
     //  INIT
     // ══════════════════════════════════════════
+    initCustomFeatures();
     initPipelines();
     buildTree();
     showFolderPipelines(null);
