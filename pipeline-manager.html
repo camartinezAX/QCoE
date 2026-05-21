@@ -1492,6 +1492,50 @@
 
     const SYNC_REF_KEY = 'axos_sync_ref';
 
+    // ══════════════════════════════════════════
+    //  RUNNERS (label vs runner group)
+    // ══════════════════════════════════════════
+    const DEFAULT_RUNNER_GROUP = 'axos-qe-gh-runners';
+
+    function normalizeRunnerStrategy(v) {
+        const s = String(v || '').trim().toLowerCase();
+        if (s === 'group' || s === 'runner-group' || s === 'runner_group') return 'group';
+        return 'label';
+    }
+
+    function getRunnerStrategy(p) {
+        const explicit = normalizeRunnerStrategy(p?.runnerStrategy);
+        if (explicit === 'group') return 'group';
+        // Back-compat: if a runnerGroup exists but runnerStrategy is missing.
+        const g = String(p?.runnerGroup || '').trim();
+        if (g) return 'group';
+        return 'label';
+    }
+
+    function getRunnerGroup(p) {
+        return String(p?.runnerGroup || '').trim() || DEFAULT_RUNNER_GROUP;
+    }
+
+    function runnerLabelsForOs(os) {
+        const o = String(os || '').trim().toLowerCase();
+        return o === 'windows'
+            ? '[self-hosted, windows, x64]'
+            : '[self-hosted, linux, x64]';
+    }
+
+    function getRunnerOsForRepo(repoName, runTarget) {
+        const repo = String(repoName || '').trim();
+        if (repo === 'Axos.QE.TestIM') return 'linux';
+        if (repo === 'Axos.QE.API_OLB') return 'windows';
+        if (repo === 'Axos.QE.Mobile') return 'windows';
+        if (repo === 'Axos.QE.Crypto.Web') return 'windows';
+        if (repo === 'Axos.QE.Web') {
+            const rt = String(runTarget || '').trim().toLowerCase() || 'local';
+            return rt === 'browserstack' ? 'linux' : 'windows';
+        }
+        return 'linux';
+    }
+
     function getStoredSyncRef() {
         try { return String(localStorage.getItem(SYNC_REF_KEY) || '').trim(); } catch { return ''; }
     }
@@ -2428,6 +2472,8 @@
             retries: 'Retries',
             timeoutMin: 'Per-test timeout (min)',
             browserTimeout: 'Browser wait (min)',
+            runnerStrategy: 'Runner selection',
+            runnerGroup: 'Runner group',
             runnerLabel: 'Runner label',
             customRunnerLabel: 'Custom runner label',
             projectDir: 'Project directory',
@@ -3393,6 +3439,8 @@
             (isWebMonorepoPipeline(p) ? 'Axos.QE.Web' : (isCryptoPipeline(p) ? 'Axos.QE.Crypto.Web' : (isMobile ? 'Axos.QE.Mobile' : 'Axos.QE.TestIM')))
         ).trim();
         const filePath = `.github/workflows/${p.filename || (p.name + '.yml')}`;
+        const runnerStrategy = getRunnerStrategy(p);
+        const runnerGroup = getRunnerGroup(p);
 
         if (!isMobile && isOrchestratorPipeline(p)) {
             const setName = (p.orchestratorSet || '').trim() || (p.featureDetail || '').split('Orchestrators_')[1]?.split('_')[0] || 'WFO';
@@ -3446,7 +3494,9 @@
                 `BROWSERSTACK_USERNAME: ''  # leave blank to use repo secret BROWSERSTACK_USERNAME\n` +
                 `BROWSERSTACK_ACCESS_KEY: ''  # leave blank to use repo secret BROWSERSTACK_ACCESS_KEY\n` +
                 `JOB_TIMEOUT: ${p.jobTimeout || 120}\n` +
-                `RUNNER_LABEL: ${p.runnerLabel || 'QSDW-TFSBA01'}`;
+                (runnerStrategy === 'group'
+                    ? `RUNNER_STRATEGY: group\nRUNNER_GROUP: ${runnerGroup}\nRUNNER_LABELS: ${runnerLabelsForOs('windows')}`
+                    : `RUNNER_LABEL: ${p.runnerLabel || 'QSDW-TFSBA01'}`);
 
             if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
             else prompt += `\n\nKeep the schedule block commented out.`;
@@ -3456,6 +3506,13 @@
                 `- workflow_dispatch inputs for all required variables (including ${appField}, ${deviceNameField}, ${deviceOsField}) with correct defaults\n` +
                 `- permissions block (contents: read, checks: write, actions: write)\n` +
                 `- jobs section calling _mobile-template.yml passing inputs with fallback defaults`;
+            if (runnerStrategy === 'group') {
+                prompt += `\n- Runner targeting: use runner group + labels:\n` +
+                    `  runs-on:\n` +
+                    `    group: ${runnerGroup}\n` +
+                    `    labels: [self-hosted, windows, x64]\n` +
+                    `  (do NOT target a runner by machine name)`;
+            }
 
             if (p.scheduleEnabled && (p.repeatUnit || 'weeks') === 'weeks' && parseInt(p.repeatEvery || '1', 10) > 1) {
                 const n = parseInt(p.repeatEvery || '1', 10);
@@ -3498,10 +3555,9 @@
                 `PW_VIDEO: ${p.pwVideo || '1'}\n` +
                 `PW_HEADLESS: ${p.pwHeadless || 'inherit'}\n` +
                 `JOB_TIMEOUT: ${p.jobTimeout || 120}\n` +
-                `RUNNER_LABEL_LINUX: ${runnerLinux}\n` +
-                `CUSTOM_RUNNER_LABEL_LINUX: ${customLinux}\n` +
-                `RUNNER_LABEL_WINDOWS: ${runnerWin}\n` +
-                `CUSTOM_RUNNER_LABEL_WINDOWS: ${customWin}`;
+                (runnerStrategy === 'group'
+                    ? `RUNNER_STRATEGY: group\nRUNNER_GROUP: ${runnerGroup}\nRUNNER_LABELS_LINUX: ${runnerLabelsForOs('linux')}\nRUNNER_LABELS_WINDOWS: ${runnerLabelsForOs('windows')}`
+                    : `RUNNER_LABEL_LINUX: ${runnerLinux}\nCUSTOM_RUNNER_LABEL_LINUX: ${customLinux}\nRUNNER_LABEL_WINDOWS: ${runnerWin}\nCUSTOM_RUNNER_LABEL_WINDOWS: ${customWin}`);
             if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
             else prompt += `\n\nKeep the schedule block commented out.`;
             prompt += `\n\nUse the existing workflow file Web_Enrollment_UAT-OLB_Smoke-Playwright.yml as the exact format reference. Include:\n` +
@@ -3509,6 +3565,14 @@
                 `- workflow_dispatch inputs for run_target, local_browser, test_env, grep, parallels, retries, runner_label_linux (dsdl-timab*), custom_runner_label_linux (string), runner_label_windows (QSDW-TFSBA*), custom_runner_label_windows (string), pw_video, pw_headless (choice: inherit, 0, 1), browserstack_username, browserstack_access_key, bs_random_browser, bs_browser_name, bs_browser_version, bs_os_name, and bs_os_version with correct defaults\n` +
                 `- permissions block (contents: read, checks: write, actions: write)\n` +
                 `- jobs.smoke calling ./.github/workflows/_reusable-playwright.yml with secrets: inherit and with: passing the settings above with fallback defaults`;
+            if (runnerStrategy === 'group') {
+                prompt += `\n\nRunner targeting (runner group mode):\n` +
+                    `- Use runner group: ${runnerGroup}\n` +
+                    `- Select labels by RUN_TARGET:\n` +
+                    `  - browserstack => [self-hosted, linux, x64]\n` +
+                    `  - local => [self-hosted, windows, x64]\n` +
+                    `- Implement runner selection via runs-on.group + labels (do NOT target a runner by machine name)`;
+            }
             if (p.renamedFrom) prompt += `\n\nAlso delete the old workflow file: .github/workflows/${p.renamedFrom}`;
             return prompt;
         }
@@ -3535,13 +3599,21 @@
                 `PW_VIDEO: ${p.pwVideo || '1'}\n` +
                 `PW_HEADLESS: ${p.pwHeadless || 'inherit'}\n` +
                 `JOB_TIMEOUT: ${p.jobTimeout || 120}\n` +
-                `RUNNER_LABEL: ${p.runnerLabel || 'QSDW-TFSBA01'}`;
+                (runnerStrategy === 'group'
+                    ? `RUNNER_STRATEGY: group\nRUNNER_GROUP: ${runnerGroup}\nRUNNER_LABELS: ${runnerLabelsForOs('windows')}`
+                    : `RUNNER_LABEL: ${p.runnerLabel || 'QSDW-TFSBA01'}`);
 
             if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
             else prompt += `\n\nKeep the schedule block commented out.`;
 
             prompt += `\n\nUse the existing workflow file Web_AxosBank_UAT-OLB_Login_Smoke-Playwright.yml as the exact format reference. Include:\n` +
                 `- permissions block (contents: read, checks: write, actions: write)`;
+            if (runnerStrategy === 'group') {
+                prompt += `\n- Runner targeting: use runner group + labels:\n` +
+                    `  runs-on:\n` +
+                    `    group: ${runnerGroup}\n` +
+                    `    labels: [self-hosted, windows, x64]`;
+            }
             if (p.renamedFrom) prompt += `\n\nAlso delete the old workflow file: .github/workflows/${p.renamedFrom}`;
             return prompt;
         }
@@ -3555,8 +3627,9 @@
                 `COLLECTION_SUBFOLDER: ${p.collectionSubfolder || ''}\n` +
                 `HOSTS_UAT_ENV: ${p.hostsUatEnv || 'na'}\n` +
                 `MAX_RETRIES: ${p.maxRetries || '0'}\n` +
-                `RUNNER_LABEL: ${p.runnerLabel || 'qsdw-tfsba06'}\n` +
-                `CUSTOM_RUNNER_LABEL: ${p.customRunnerLabel || ''}\n` +
+                (runnerStrategy === 'group'
+                    ? `RUNNER_STRATEGY: group\nRUNNER_GROUP: ${runnerGroup}\nRUNNER_LABELS: ${runnerLabelsForOs('windows')}\n`
+                    : `RUNNER_LABEL: ${p.runnerLabel || 'qsdw-tfsba06'}\nCUSTOM_RUNNER_LABEL: ${p.customRunnerLabel || ''}\n`) +
                 `JOB_TIMEOUT: ${p.jobTimeout || 120}\n\n` +
                 `Use the existing workflow file API_OLB_UAT_Login_Smoke-Newman.yml as the exact format reference. Include:\n` +
                 `- name: and run-name fields matching the pipeline name\n` +
@@ -3569,6 +3642,12 @@
             if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
             else prompt += `\n\nKeep the schedule block commented out.`;
 
+            if (runnerStrategy === 'group') {
+                prompt += `\n\nRunner targeting: use runner group + labels:\n` +
+                    `  runs-on:\n` +
+                    `    group: ${runnerGroup}\n` +
+                    `    labels: [self-hosted, windows, x64]`;
+            }
             if (p.renamedFrom) prompt += `\n\nAlso delete the old workflow file: .github/workflows/${p.renamedFrom}`;
             return prompt;
         }
@@ -3587,8 +3666,9 @@
             `TIMEOUTMIN: ${p.timeoutMin || '30'}\n` +
             `BROWSER_TIMEOUT: ${p.browserTimeout || '30'}\n` +
             `JOB_TIMEOUT: ${p.jobTimeout || 120}\n` +
-            `RUNNER_LABEL: ${p.runnerLabel || 'dsdl-timab31'}\n` +
-            `CUSTOM_RUNNER_LABEL: ${p.customRunnerLabel || ''}`;
+            (runnerStrategy === 'group'
+                ? `RUNNER_STRATEGY: group\nRUNNER_GROUP: ${runnerGroup}\nRUNNER_LABELS: ${runnerLabelsForOs('linux')}`
+                : `RUNNER_LABEL: ${p.runnerLabel || 'dsdl-timab31'}\nCUSTOM_RUNNER_LABEL: ${p.customRunnerLabel || ''}`);
 
         if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
         else prompt += `\n\nKeep the schedule block commented out.`;
@@ -3600,6 +3680,12 @@
             `- permissions block (contents: read, checks: write, actions: write)\n` +
             `- jobs section calling _testim-template.yml passing all inputs with fallback defaults using the \${{ inputs.VAR || 'default' }} pattern\n` +
             `- secrets mapping should pass TESTIM_TOKEN dynamically from TOKEN: \${{ secrets[inputs.TOKEN] || secrets.TESTIM_TOKEN }}`;
+        if (runnerStrategy === 'group') {
+            prompt += `\n- Runner targeting: use runner group + labels:\n` +
+                `  runs-on:\n` +
+                `    group: ${runnerGroup}\n` +
+                `    labels: [self-hosted, linux, x64]`;
+        }
 
         if (p.scheduleEnabled && (p.repeatUnit || 'weeks') === 'weeks' && parseInt(p.repeatEvery || '1', 10) > 1) {
             const n = parseInt(p.repeatEvery || '1', 10);
@@ -3684,6 +3770,9 @@
             (isWebMonorepoPipeline(p) ? 'Axos.QE.Web' : (isCryptoPipeline(p) ? 'Axos.QE.Crypto.Web' : (isMobilePipeline(p) ? 'Axos.QE.Mobile' : 'Axos.QE.TestIM')))
         ).trim();
         p.repo = repoName;
+        const runnerStrategyUi = getRunnerStrategy(p);
+        const runnerGroupUi = getRunnerGroup(p);
+        const runnerOsUi = getRunnerOsForRepo(repoName, p.runTarget);
         const cryptoScenarioPrefill = (repoName === 'Axos.QE.Crypto.Web')
             ? (String(p.cryptoScenario || '').trim() || (() => {
                 const fd = String(p.featureDetail || '').trim();
@@ -3867,11 +3956,26 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Runner Label</label>
-                        <select id="fRunnerLabel" ${isView ? 'disabled' : ''}>
-                            ${['QSDW-TFSBA01','QSDW-TFSBA02','QSDW-TFSBA03','QSDW-TFSBA04','QSDW-TFSBA05','QAAutomationMobile'].map(r => `<option value="${r}" ${(p.runnerLabel || 'QSDW-TFSBA01') === r ? 'selected' : ''}>${r}</option>`).join('')}
+                        <label class="form-label">Runner Selection</label>
+                        <select id="fRunnerStrategy" onchange="toggleRunnerStrategyUI()" ${isView ? 'disabled' : ''}>
+                            <option value="label" ${runnerStrategyUi === 'label' ? 'selected' : ''}>Specific runner label (legacy)</option>
+                            <option value="group" ${runnerStrategyUi === 'group' ? 'selected' : ''}>Runner group (recommended)</option>
                         </select>
-                        <span class="field-help">Windows self-hosted runner from the QAAutomationMobile pool</span>
+                        <span class="field-help">Runner group mode uses <code>runs-on.group</code> + OS labels (Windows here). Existing pipelines remain label-based unless you switch.</span>
+                    </div>
+                    <div class="form-group" id="runnerGroupBlock" style="display:${runnerStrategyUi === 'group' ? 'block' : 'none'};">
+                        <label class="form-label">Runner Group</label>
+                        <input type="text" id="fRunnerGroup" value="${escapeHtml(runnerGroupUi)}" ${isView ? 'disabled' : ''}>
+                        <span class="field-help">Default: <code>${escapeHtml(DEFAULT_RUNNER_GROUP)}</code></span>
+                    </div>
+                    <div id="runnerLabelFields" style="display:${runnerStrategyUi === 'label' ? 'block' : 'none'};">
+                        <div class="form-group">
+                            <label class="form-label">Runner Label</label>
+                            <select id="fRunnerLabel" ${isView ? 'disabled' : ''}>
+                                ${['QSDW-TFSBA01','QSDW-TFSBA02','QSDW-TFSBA03','QSDW-TFSBA04','QSDW-TFSBA05','QAAutomationMobile'].map(r => `<option value="${r}" ${(p.runnerLabel || 'QSDW-TFSBA01') === r ? 'selected' : ''}>${r}</option>`).join('')}
+                            </select>
+                            <span class="field-help">Windows self-hosted runner from the QAAutomationMobile pool</span>
+                        </div>
                     </div>
                 </div>
             </div>`;
@@ -3981,16 +4085,30 @@
                         <input type="number" id="fMaxRetries" min="0" max="5" value="${p.maxRetries || '0'}" ${isView ? 'disabled' : ''}>
                     </div>
                     <div class="form-group">
+                        <label class="form-label">Runner Selection</label>
+                        <select id="fRunnerStrategy" onchange="toggleRunnerStrategyUI()" ${isView ? 'disabled' : ''}>
+                            <option value="label" ${runnerStrategyUi === 'label' ? 'selected' : ''}>Specific runner label (legacy)</option>
+                            <option value="group" ${runnerStrategyUi === 'group' ? 'selected' : ''}>Runner group (recommended)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group" id="runnerGroupBlock" style="display:${runnerStrategyUi === 'group' ? 'block' : 'none'};">
+                    <label class="form-label">Runner Group</label>
+                    <input type="text" id="fRunnerGroup" value="${escapeHtml(runnerGroupUi)}" ${isView ? 'disabled' : ''}>
+                    <span class="field-help">Default: <code>${escapeHtml(DEFAULT_RUNNER_GROUP)}</code></span>
+                </div>
+                <div id="runnerLabelFields" style="display:${runnerStrategyUi === 'label' ? 'block' : 'none'};">
+                    <div class="form-group">
                         <label class="form-label">Runner Label</label>
                         <select id="fRunnerLabel" ${isView ? 'disabled' : ''}>
                             ${['qsdw-tfsba06','qsdw-tfsba09','qsdw-tfsba10','qsdw-tfsba11','qsdw-tfsba12','qsdw-tfsba13','qsdw-tfsba14','qsdw-tfsba15'].map(r => `<option value="${r}" ${(p.runnerLabel || 'qsdw-tfsba06') === r ? 'selected' : ''}>${r}</option>`).join('')}
                         </select>
                     </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Custom Runner Label <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional)</span></label>
-                    <input type="text" id="fCustomRunnerLabel" placeholder="e.g. axos-gh-qe-runner-QSDW-TFSBA06" value="${p.customRunnerLabel || ''}" ${isView ? 'disabled' : ''}>
-                    <span class="field-help">Overrides the dropdown value (use when you need a runner label not listed).</span>
+                    <div class="form-group">
+                        <label class="form-label">Custom Runner Label <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional)</span></label>
+                        <input type="text" id="fCustomRunnerLabel" placeholder="e.g. axos-gh-qe-runner-QSDW-TFSBA06" value="${p.customRunnerLabel || ''}" ${isView ? 'disabled' : ''}>
+                        <span class="field-help">Overrides the dropdown value (use when you need a runner label not listed).</span>
+                    </div>
                 </div>
             </div>
         </div>`;
@@ -4205,11 +4323,26 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Runner Label</label>
-                    <select id="fRunnerLabel" ${isView ? 'disabled' : ''}>
-                        ${['QSDW-TFSBA01','QSDW-TFSBA02','QSDW-TFSBA03','QSDW-TFSBA04','QSDW-TFSBA05','QAAutomationMobile'].map(r => `<option value="${r}" ${(p.runnerLabel || 'QSDW-TFSBA01') === r ? 'selected' : ''}>${r}</option>`).join('')}
+                    <label class="form-label">Runner Selection</label>
+                    <select id="fRunnerStrategy" onchange="toggleRunnerStrategyUI()" ${isView ? 'disabled' : ''}>
+                        <option value="label" ${runnerStrategyUi === 'label' ? 'selected' : ''}>Specific runner label (legacy)</option>
+                        <option value="group" ${runnerStrategyUi === 'group' ? 'selected' : ''}>Runner group (recommended)</option>
                     </select>
-                    <span class="field-help">Windows self-hosted runner from the same pool used by Mobile pipelines</span>
+                    <span class="field-help">Runner group mode uses <code>runs-on.group</code> + OS labels (Windows here). Existing pipelines remain label-based unless you switch.</span>
+                </div>
+                <div class="form-group" id="runnerGroupBlock" style="display:${runnerStrategyUi === 'group' ? 'block' : 'none'};">
+                    <label class="form-label">Runner Group</label>
+                    <input type="text" id="fRunnerGroup" value="${escapeHtml(runnerGroupUi)}" ${isView ? 'disabled' : ''}>
+                    <span class="field-help">Default: <code>${escapeHtml(DEFAULT_RUNNER_GROUP)}</code></span>
+                </div>
+                <div id="runnerLabelFields" style="display:${runnerStrategyUi === 'label' ? 'block' : 'none'};">
+                    <div class="form-group">
+                        <label class="form-label">Runner Label</label>
+                        <select id="fRunnerLabel" ${isView ? 'disabled' : ''}>
+                            ${['QSDW-TFSBA01','QSDW-TFSBA02','QSDW-TFSBA03','QSDW-TFSBA04','QSDW-TFSBA05','QAAutomationMobile'].map(r => `<option value="${r}" ${(p.runnerLabel || 'QSDW-TFSBA01') === r ? 'selected' : ''}>${r}</option>`).join('')}
+                        </select>
+                        <span class="field-help">Windows self-hosted runner from the same pool used by Mobile pipelines</span>
+                    </div>
                 </div>
             </div>
         </div>`;
@@ -4364,6 +4497,22 @@
                     </div>
                 </div>
 
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Runner Selection</label>
+                        <select id="fRunnerStrategy" onchange="toggleRunnerStrategyUI()" ${isView ? 'disabled' : ''}>
+                            <option value="label" ${runnerStrategyUi === 'label' ? 'selected' : ''}>Specific runner label (legacy)</option>
+                            <option value="group" ${runnerStrategyUi === 'group' ? 'selected' : ''}>Runner group (recommended)</option>
+                        </select>
+                        <span class="field-help">When using runner group: <code>browserstack</code> runs on Linux; <code>local</code> runs on Windows.</span>
+                    </div>
+                    <div class="form-group" id="runnerGroupBlock" style="display:${runnerStrategyUi === 'group' ? 'block' : 'none'};">
+                        <label class="form-label">Runner Group</label>
+                        <input type="text" id="fRunnerGroup" value="${escapeHtml(runnerGroupUi)}" ${isView ? 'disabled' : ''}>
+                        <span class="field-help">Default: <code>${escapeHtml(DEFAULT_RUNNER_GROUP)}</code></span>
+                    </div>
+                </div>
+
                 <div id="cryptoBsOnly">
                     <div style="margin-top:14px; margin-bottom:6px; font-size:12px; font-weight:900; letter-spacing:0.2px; color:var(--text-secondary);">
                         BrowserStack-only settings
@@ -4401,7 +4550,7 @@
                         </div>
                     </div>
 
-                    <div class="form-row">
+                    <div class="form-row" data-runner-label-fields="1">
                         <div class="form-group">
                             <label class="form-label">Runner Label (Linux - BrowserStack)</label>
                             <select id="fRunnerLabelLinux" ${isView ? 'disabled' : ''}>
@@ -4428,7 +4577,7 @@
                     <div style="margin-bottom:10px; font-size:11px; color:var(--text-muted); font-weight:700;">
                         These inputs are used only when <b>Run Target</b> is <code>local</code>.
                     </div>
-                    <div class="form-row">
+                    <div class="form-row" data-runner-label-fields="1">
                         <div class="form-group">
                             <label class="form-label">Runner Label (Windows - local)</label>
                             <select id="fRunnerLabelWindows" ${isView ? 'disabled' : ''}>
@@ -4556,16 +4705,31 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Runner Label</label>
-                    <select id="fRunnerLabel" ${isView ? 'disabled' : ''}>
-                        ${['dsdl-timab21','dsdl-timab24','dsdl-timab27','dsdl-timab28','dsdl-timab29','dsdl-timab30','dsdl-timab31','QAAutomationTestIM'].map(r => `<option value="${r}" ${(p.runnerLabel || 'dsdl-timab31') === r ? 'selected' : ''}>${r}</option>`).join('')}
+                    <label class="form-label">Runner Selection</label>
+                    <select id="fRunnerStrategy" onchange="toggleRunnerStrategyUI()" ${isView ? 'disabled' : ''}>
+                        <option value="label" ${runnerStrategyUi === 'label' ? 'selected' : ''}>Specific runner label (legacy)</option>
+                        <option value="group" ${runnerStrategyUi === 'group' ? 'selected' : ''}>Runner group (recommended)</option>
                     </select>
-                    <span class="field-help">Linux self-hosted runner from the QAAutomationTestIM pool. QAAutomationTestIM auto-selects any available runner (requires admin setup).</span>
+                    <span class="field-help">Runner group mode uses <code>runs-on.group</code> + OS labels (Linux here). Existing pipelines remain label-based unless you switch.</span>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Custom Runner Label <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional)</span></label>
-                    <input type="text" id="fCustomRunnerLabel" placeholder="e.g. dsdl-timab26" value="${p.customRunnerLabel || ''}" ${isView ? 'disabled' : ''}>
-                    <span class="field-help">Overrides the dropdown in the generated workflow (use when you need a runner label not listed).</span>
+                <div class="form-group" id="runnerGroupBlock" style="display:${runnerStrategyUi === 'group' ? 'block' : 'none'};">
+                    <label class="form-label">Runner Group</label>
+                    <input type="text" id="fRunnerGroup" value="${escapeHtml(runnerGroupUi)}" ${isView ? 'disabled' : ''}>
+                    <span class="field-help">Default: <code>${escapeHtml(DEFAULT_RUNNER_GROUP)}</code></span>
+                </div>
+                <div id="runnerLabelFields" style="display:${runnerStrategyUi === 'label' ? 'block' : 'none'};">
+                    <div class="form-group">
+                        <label class="form-label">Runner Label</label>
+                        <select id="fRunnerLabel" ${isView ? 'disabled' : ''}>
+                            ${['dsdl-timab21','dsdl-timab24','dsdl-timab27','dsdl-timab28','dsdl-timab29','dsdl-timab30','dsdl-timab31','QAAutomationTestIM'].map(r => `<option value="${r}" ${(p.runnerLabel || 'dsdl-timab31') === r ? 'selected' : ''}>${r}</option>`).join('')}
+                        </select>
+                        <span class="field-help">Linux self-hosted runner from the QAAutomationTestIM pool. QAAutomationTestIM auto-selects any available runner (requires admin setup).</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Custom Runner Label <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional)</span></label>
+                        <input type="text" id="fCustomRunnerLabel" placeholder="e.g. dsdl-timab26" value="${p.customRunnerLabel || ''}" ${isView ? 'disabled' : ''}>
+                        <span class="field-help">Overrides the dropdown in the generated workflow (use when you need a runner label not listed).</span>
+                    </div>
                 </div>
             </div>
         </div>`;
@@ -4628,8 +4792,8 @@
                 <div style="background:var(--bg-tertiary); border-radius:10px; padding:12px 16px; display:flex; align-items:center; gap:10px;">
                     <span style="font-size:16px;">${(formIsMobile || repoName === 'Axos.QE.Crypto.Web' || repoName === 'Axos.QE.API_OLB') ? '&#128187;' : '&#129302;'}</span>
                     <div>
-                        <div style="font-size:12px; font-weight:600; color:var(--success);">Runner: ${(formIsMobile || repoName === 'Axos.QE.Crypto.Web' || repoName === 'Axos.QE.API_OLB') ? 'Self-hosted Windows' : 'dsdl (Linux)'}</div>
-                        <div style="font-size:11px; color:var(--text-muted);">${repoName === 'Axos.QE.API_OLB' ? 'Runs Newman on a self-hosted Windows runner (ensure it has network access to the target env).' : ((formIsMobile || repoName === 'Axos.QE.Crypto.Web') ? 'Picks from QSDW-TFSBA01–05 Windows runners (same pool as Mobile)' : 'Selects a self-hosted Linux runner by label (no wildcard runner-name matching)')}</div>
+                        <div style="font-size:12px; font-weight:600; color:var(--success);">Runner: ${runnerStrategyUi === 'group' ? `Runner group ${escapeHtml(runnerGroupUi)} (${runnerOsUi})` : (runnerOsUi === 'windows' ? 'Self-hosted Windows' : 'Self-hosted Linux')}</div>
+                        <div style="font-size:11px; color:var(--text-muted);">${runnerStrategyUi === 'group' ? 'Targets runners via runner group + OS labels (no machine-name pinning).' : (repoName === 'Axos.QE.API_OLB' ? 'Runs Newman on a self-hosted Windows runner (ensure it has network access to the target env).' : ((formIsMobile || repoName === 'Axos.QE.Crypto.Web') ? 'Picks from QSDW-TFSBA01–05 Windows runners (same pool as Mobile)' : 'Selects a self-hosted runner by label (no wildcard runner-name matching)'))}</div>
                     </div>
                 </div>
 
@@ -4904,6 +5068,7 @@
         toggleCryptoRunTargetSections();
         updateNamePreview();
         updateFormStatus();
+        toggleRunnerStrategyUI();
     }
 
     function initScheduleFromCron(cronStr) {
@@ -5001,6 +5166,26 @@
         const show = document.getElementById('fScheduleEnabled').checked;
         document.getElementById('scheduleConfig').style.display = show ? 'flex' : 'none';
         if (show) updateSchedPreview();
+    }
+
+    function toggleRunnerStrategyUI() {
+        const mode = normalizeRunnerStrategy(document.getElementById('fRunnerStrategy')?.value || 'label');
+        const showGroup = mode === 'group';
+
+        const groupBlock = document.getElementById('runnerGroupBlock');
+        if (groupBlock) groupBlock.style.display = showGroup ? 'block' : 'none';
+
+        const labelBlock = document.getElementById('runnerLabelFields');
+        if (labelBlock) labelBlock.style.display = showGroup ? 'none' : 'block';
+
+        document.querySelectorAll('[data-runner-label-fields="1"]').forEach(el => {
+            el.style.display = showGroup ? 'none' : '';
+        });
+
+        const groupEl = document.getElementById('fRunnerGroup');
+        if (showGroup && groupEl && !String(groupEl.value || '').trim()) {
+            groupEl.value = DEFAULT_RUNNER_GROUP;
+        }
     }
 
     function toggleDay(el) {
@@ -5935,6 +6120,18 @@
         base.name = name;
         base.filename = filename;
         base.repo = v('fRepo') || base.repo;
+        {
+            const runnerStrategyEl = document.getElementById('fRunnerStrategy');
+            if (runnerStrategyEl) {
+                const strategy = normalizeRunnerStrategy(v('fRunnerStrategy'));
+                base.runnerStrategy = strategy;
+                if (strategy === 'group') {
+                    base.runnerGroup = v('fRunnerGroup') || DEFAULT_RUNNER_GROUP;
+                } else {
+                    base.runnerGroup = '';
+                }
+            }
+        }
 
         if (isMobileForm()) {
             base.grep = v('fGrep');
@@ -6180,6 +6377,8 @@
         const deleteOld = document.getElementById('fDeleteOld').checked;
         const scheduleEnabled = document.getElementById('fScheduleEnabled').checked;
         const scheduleCron = el('fScheduleCron');
+        const runnerStrategy = normalizeRunnerStrategy(el('fRunnerStrategy') || 'label');
+        const runnerGroup = String(el('fRunnerGroup') || DEFAULT_RUNNER_GROUP).trim() || DEFAULT_RUNNER_GROUP;
         let prompt;
 
         if (isMobileForm()) {
@@ -6204,7 +6403,10 @@ PARALLEL_SPLIT: ${el('fParallelSplit')}
 RETRIES: ${el('fRetries')}
 ${appField}: ${el('fAppId')}
 USE_BS_LOCAL_TUNNEL: ${el('fTunnel')}
-JOB_TIMEOUT: ${el('fJobTimeout')}`;
+JOB_TIMEOUT: ${el('fJobTimeout')}
+${runnerStrategy === 'group'
+    ? `RUNNER_STRATEGY: group\nRUNNER_GROUP: ${runnerGroup}\nRUNNER_LABELS: ${runnerLabelsForOs('windows')}`
+    : `RUNNER_LABEL: ${el('fRunnerLabel') || 'QSDW-TFSBA01'}`}`;
 
             if (scheduleEnabled && scheduleCron) {
                 prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron}`;
@@ -6218,6 +6420,12 @@ JOB_TIMEOUT: ${el('fJobTimeout')}`;
 - permissions block (contents: read, checks: write, actions: write)
 - The jobs section calling _mobile-template.yml passing all inputs with fallback defaults
 - BrowserStack creds should be provided via repo secrets; keep inputs optional (blank defaults) for flexibility.`;
+            if (runnerStrategy === 'group') {
+                prompt += `\n\nRunner targeting: use runner group + labels:\n` +
+                    `runs-on:\n` +
+                    `  group: ${runnerGroup}\n` +
+                    `  labels: [self-hosted, windows, x64]`;
+            }
 
         } else if ((document.getElementById('fTestType')?.value || '') === 'Orchestrator') {
             const setName = (document.getElementById('fOrchSetName')?.value || el('fCustomSuffix') || '').trim();
@@ -6257,8 +6465,9 @@ ENVIRONMENT_ID: ${el('fEnvironmentId')}
 COLLECTION_SUBFOLDER: ${el('fCollectionSubfolder')}
 HOSTS_UAT_ENV: ${el('fHostsUatEnv') || 'na'}
 MAX_RETRIES: ${el('fMaxRetries') || '0'}
-RUNNER_LABEL: ${el('fRunnerLabel') || 'qsdw-tfsba06'}
-CUSTOM_RUNNER_LABEL: ${el('fCustomRunnerLabel') || ''}
+${runnerStrategy === 'group'
+    ? `RUNNER_STRATEGY: group\nRUNNER_GROUP: ${runnerGroup}\nRUNNER_LABELS: ${runnerLabelsForOs('windows')}`
+    : `RUNNER_LABEL: ${el('fRunnerLabel') || 'qsdw-tfsba06'}\nCUSTOM_RUNNER_LABEL: ${el('fCustomRunnerLabel') || ''}`}
 JOB_TIMEOUT: ${el('fJobTimeout') || '120'}`;
 
             if (scheduleEnabled && scheduleCron) {
@@ -6274,6 +6483,12 @@ JOB_TIMEOUT: ${el('fJobTimeout') || '120'}`;
 - a jobs.run section calling _newman-template.yml
 - pass COLLECTION_SUBFOLDER as: \${{ inputs.RUN_FULL_COLLECTION && ' ' || inputs.COLLECTION_SUBFOLDER }}
 - a jobs.test-results section running on ubuntu-latest that downloads artifacts and publishes JUnit using dorny/test-reporter@v3 on reports/**/junit.xml`;
+            if (runnerStrategy === 'group') {
+                prompt += `\n\nRunner targeting: use runner group + labels:\n` +
+                    `runs-on:\n` +
+                    `  group: ${runnerGroup}\n` +
+                    `  labels: [self-hosted, windows, x64]`;
+            }
 
         } else if (el('fRepo') === 'Axos.QE.Web') {
             const brand = el('fBrand') || 'Enrollment';
@@ -6303,10 +6518,9 @@ BROWSERSTACK_ACCESS_KEY: ''  # leave blank to use repo secret BROWSERSTACK_ACCES
 PW_VIDEO: ${el('fPwVideo') || '1'}
 PW_HEADLESS: ${el('fPwHeadless') || 'inherit'}
 JOB_TIMEOUT: ${el('fJobTimeout') || '120'}
-RUNNER_LABEL_LINUX: ${el('fRunnerLabelLinux') || 'dsdl-timab28'}
-CUSTOM_RUNNER_LABEL_LINUX: ${el('fCustomRunnerLabelLinux') || ''}
-RUNNER_LABEL_WINDOWS: ${el('fRunnerLabelWindows') || 'QSDW-TFSBA01'}
-CUSTOM_RUNNER_LABEL_WINDOWS: ${el('fCustomRunnerLabelWindows') || ''}`;
+${runnerStrategy === 'group'
+    ? `RUNNER_STRATEGY: group\nRUNNER_GROUP: ${runnerGroup}\nRUNNER_LABELS_LINUX: ${runnerLabelsForOs('linux')}\nRUNNER_LABELS_WINDOWS: ${runnerLabelsForOs('windows')}`
+    : `RUNNER_LABEL_LINUX: ${el('fRunnerLabelLinux') || 'dsdl-timab28'}\nCUSTOM_RUNNER_LABEL_LINUX: ${el('fCustomRunnerLabelLinux') || ''}\nRUNNER_LABEL_WINDOWS: ${el('fRunnerLabelWindows') || 'QSDW-TFSBA01'}\nCUSTOM_RUNNER_LABEL_WINDOWS: ${el('fCustomRunnerLabelWindows') || ''}`}`;
 
             if (scheduleEnabled && scheduleCron) {
                 prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron}`;
@@ -6318,6 +6532,14 @@ CUSTOM_RUNNER_LABEL_WINDOWS: ${el('fCustomRunnerLabelWindows') || ''}`;
                 `- workflow_dispatch inputs for run_target, local_browser, test_env, grep, parallels, retries, runner_label_linux (dsdl-timab*), custom_runner_label_linux (string), runner_label_windows (QSDW-TFSBA*), custom_runner_label_windows (string), pw_video, pw_headless (choice: inherit, 0, 1), browserstack_username, browserstack_access_key, bs_random_browser, bs_browser_name, bs_browser_version, bs_os_name, and bs_os_version with correct defaults\n` +
                 `- permissions block (contents: read, checks: write, actions: write)\n` +
                 `- jobs.smoke calling ./.github/workflows/_reusable-playwright.yml with secrets: inherit and with: passing the settings above with fallback defaults`;
+            if (runnerStrategy === 'group') {
+                prompt += `\n\nRunner targeting (runner group mode):\n` +
+                    `- Use runner group: ${runnerGroup}\n` +
+                    `- Select labels by RUN_TARGET:\n` +
+                    `  - browserstack => [self-hosted, linux, x64]\n` +
+                    `  - local => [self-hosted, windows, x64]\n` +
+                    `- Implement runner selection via runs-on.group + labels (do NOT target a runner by machine name)`;
+            }
 
         } else if (el('fRepo') === 'Axos.QE.Crypto.Web') {
             prompt = `Create or update a Playwright pipeline workflow file in the repo Axos.QE.Crypto.Web at:
@@ -6345,7 +6567,9 @@ BROWSERSTACK_ACCESS_KEY: ''  # leave blank to use repo secret BROWSERSTACK_ACCES
 PW_VIDEO: ${el('fPwVideo') || '1'}
 PW_HEADLESS: ${el('fPwHeadless') || 'inherit'}
 JOB_TIMEOUT: ${el('fJobTimeout') || '120'}
-RUNNER_LABEL: ${el('fRunnerLabel') || 'QSDW-TFSBA01'}`;
+${runnerStrategy === 'group'
+    ? `RUNNER_STRATEGY: group\nRUNNER_GROUP: ${runnerGroup}\nRUNNER_LABELS: ${runnerLabelsForOs('windows')}`
+    : `RUNNER_LABEL: ${el('fRunnerLabel') || 'QSDW-TFSBA01'}`}`;
 
             if (scheduleEnabled && scheduleCron) {
                 prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron}`;
@@ -6355,6 +6579,12 @@ RUNNER_LABEL: ${el('fRunnerLabel') || 'QSDW-TFSBA01'}`;
 
             prompt += `\n\nUse the existing workflow file Web_AxosBank_UAT-OLB_Login_Smoke-Playwright.yml as the exact format reference. Include:\n` +
                 `- permissions block (contents: read, checks: write, actions: write)`;
+            if (runnerStrategy === 'group') {
+                prompt += `\n- Runner targeting: use runner group + labels:\n` +
+                    `runs-on:\n` +
+                    `  group: ${runnerGroup}\n` +
+                    `  labels: [self-hosted, windows, x64]`;
+            }
 
         } else {
             prompt = `Create a new Testim pipeline workflow file in the repo Axos.QE.TestIM at:
@@ -6375,10 +6605,9 @@ TIMEOUTMIN: ${el('fTimeoutMin')}
 BROWSER_TIMEOUT: ${el('fBrowserTimeout')}
 JOB_TIMEOUT: ${el('fJobTimeout')}
 
-RUNNER_LABEL: ${el('fRunnerLabel') || 'dsdl-timab31'}
-CUSTOM_RUNNER_LABEL: ${el('fCustomRunnerLabel') || ''}
-
-Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-hosted runner label), not by runner name.`;
+${runnerStrategy === 'group'
+    ? `RUNNER_STRATEGY: group\nRUNNER_GROUP: ${runnerGroup}\nRUNNER_LABELS: ${runnerLabelsForOs('linux')}\n\nRunner: Selected by runner group + OS labels (Linux).`
+    : `RUNNER_LABEL: ${el('fRunnerLabel') || 'dsdl-timab31'}\nCUSTOM_RUNNER_LABEL: ${el('fCustomRunnerLabel') || ''}\n\nRunner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-hosted runner label), not by runner name.`}`;
 
             if (scheduleEnabled && scheduleCron) {
                 prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron}`;
@@ -6532,6 +6761,8 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
                 collectionSubfolder: '',
                 hostsUatEnv: 'na',
                 maxRetries: '0',
+                runnerStrategy: 'group',
+                runnerGroup: DEFAULT_RUNNER_GROUP,
                 runnerLabel: 'qsdw-tfsba06',
                 customRunnerLabel: '',
                 jobTimeout: 120,
@@ -6551,6 +6782,8 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
                 tunnel: 'true',
                 parallelSplit: 'true',
                 jobTimeout: 120,
+                runnerStrategy: 'group',
+                runnerGroup: DEFAULT_RUNNER_GROUP,
                 runnerLabel: 'QSDW-TFSBA01',
             };
         }
@@ -6571,6 +6804,8 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
                 pwHeadless: 'inherit',
                 jobTimeout: 120,
                 projectDir: '',
+                runnerStrategy: 'group',
+                runnerGroup: DEFAULT_RUNNER_GROUP,
                 runnerLabelLinux: 'dsdl-timab28',
                 customRunnerLabelLinux: '',
                 runnerLabelWindows: 'QSDW-TFSBA01',
@@ -6606,6 +6841,8 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
                 bsUsername: '',
                 bsAccessKey: '',
                 jobTimeout: 120,
+                runnerStrategy: 'group',
+                runnerGroup: DEFAULT_RUNNER_GROUP,
                 runnerLabel: 'QSDW-TFSBA01',
             };
         }
@@ -6626,6 +6863,8 @@ Runner: Selected by CUSTOM_RUNNER_LABEL (if provided) else RUNNER_LABEL (self-ho
             parallel: '5',
             retries: '1',
             browserTimeout: '30',
+            runnerStrategy: 'group',
+            runnerGroup: DEFAULT_RUNNER_GROUP,
             runnerLabel: 'dsdl-timab31',
             customRunnerLabel: '',
             jobTimeout: 120,
