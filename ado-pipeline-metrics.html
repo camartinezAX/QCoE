@@ -125,6 +125,12 @@ canvas#particles{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;po
 .btn-icon{width:34px;height:34px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:.9rem}
 .btn-lg{padding:.7rem 1.4rem;font-size:.85rem;border-radius:10px}
 
+/* PAT chip (top bar) */
+.pat-chip{display:inline-flex;align-items:center;gap:.45rem;padding:.42rem .7rem;border-radius:10px;border:1px solid var(--glass-border);background:var(--glass-bg);cursor:pointer;color:var(--text-dim);font-size:.72rem;font-weight:700;transition:all .2s var(--ease)}
+.pat-chip:hover{border-color:rgba(250,167,74,0.25);background:rgba(250,167,74,0.08);color:var(--text)}
+.pat-dot{width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 0 2px rgba(220,38,38,0.15)}
+.pat-dot.ok{background:var(--green);box-shadow:0 0 0 2px rgba(16,185,129,0.15)}
+
 /* Form inputs */
 .field{margin-bottom:1rem}
 .field-label{display:block;font-size:.68rem;font-weight:600;color:var(--text-dim);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.8px}
@@ -396,6 +402,42 @@ kbd{background:rgba(250,167,74,0.12);padding:1px 5px;border-radius:4px;font-size
 .chip-count{font-size:.62rem;color:var(--text-muted);margin-top:.25rem;font-family:var(--mono);display:flex;align-items:center;gap:.35rem}
 .chip-count .cc-num{color:var(--accent);font-weight:600}
 
+/* Segmented control (panel mode switch) */
+.seg{display:flex;gap:2px;background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:10px;padding:3px}
+.seg-btn{padding:.35rem .75rem;border-radius:8px;font-size:.68rem;font-weight:700;cursor:pointer;border:none;background:transparent;color:var(--text-dim);transition:all .2s var(--ease);font-family:var(--font)}
+.seg-btn:hover:not(.active){color:var(--text);background:rgba(250,167,74,0.08)}
+.seg-btn.active{background:var(--gradient-orange);color:#000;box-shadow:0 6px 18px rgba(0,0,0,0.08)}
+
+/* Picker (tree) */
+.picker-shell{background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.picker-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:.75rem .9rem;background:rgba(250,167,74,0.04);border-bottom:1px solid var(--glass-border);flex-wrap:wrap}
+.picker-title{font-family:var(--heading);font-weight:800;letter-spacing:-.3px;font-size:.92rem}
+.picker-sub{font-size:.72rem;color:var(--text-dim);max-width:650px}
+.picker-actions{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap}
+.picker-body{padding:.8rem .9rem}
+.picker-search{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+.picker-search input{flex:1;min-width:220px}
+.picker-meta{font-size:.62rem;color:var(--text-muted);margin-top:.35rem;font-family:var(--mono)}
+.tree-wrap{margin-top:.75rem;max-height:360px;overflow:auto;padding-right:.25rem}
+.tree-node{user-select:none}
+.tree-row{display:flex;align-items:flex-start;gap:.5rem;padding:.35rem .35rem;border-radius:10px;cursor:pointer;transition:background .15s var(--ease)}
+.tree-row:hover{background:rgba(250,167,74,0.06)}
+.tree-row .arrow{width:16px;flex-shrink:0;color:var(--text-muted);font-size:.65rem;transform-origin:center;transition:transform .15s var(--ease);margin-top:.15rem}
+.tree-row .arrow.open{transform:rotate(90deg)}
+.tree-row .icon{width:18px;flex-shrink:0;opacity:.85;margin-top:.05rem}
+.tree-row .count{margin-left:auto;font-family:var(--mono);font-size:.62rem;color:var(--text-muted);flex-shrink:0}
+.tree-row .folder-actions{display:flex;gap:.35rem;align-items:center;margin-left:auto;flex-shrink:0}
+.tree-mini{border:1px solid var(--glass-border);background:var(--glass-bg);color:var(--text-dim);border-radius:999px;padding:.12rem .45rem;font-size:.6rem;font-weight:800;cursor:pointer;transition:all .15s var(--ease);user-select:none}
+.tree-mini:hover{background:rgba(250,167,74,0.08);border-color:rgba(250,167,74,0.25);color:var(--text)}
+.tree-children{display:none}
+.tree-children.open{display:block}
+.tree-leaf{cursor:default}
+.tree-leaf:hover{background:rgba(59,130,246,0.06)}
+.leaf-check{margin-top:.2rem;flex-shrink:0;accent-color:var(--accent);width:16px;height:16px;cursor:pointer}
+.leaf-text{min-width:0;flex:1}
+.leaf-name{font-family:var(--mono);font-size:.72rem;color:var(--text);white-space:normal;word-break:break-word;line-height:1.3}
+.leaf-path{font-family:var(--mono);font-size:.62rem;color:var(--text-muted);white-space:normal;word-break:break-word;line-height:1.3;margin-top:.15rem}
+
 /* Step nav indicator */
 .nav-tab .step-dot{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;font-size:.55rem;font-weight:700;margin-right:.3rem;background:rgba(30,56,96,0.08);color:var(--text-muted);flex-shrink:0}
 [data-theme="dark"] .nav-tab .step-dot{background:rgba(250,167,74,0.12)}
@@ -430,6 +472,10 @@ kbd{background:rgba(250,167,74,0.12);padding:1px 5px;border-radius:4px;font-size
     <button class="nav-tab" data-view="email" onclick="switchView('email')"><span class="step-dot">4</span>Email Report</button>
   </div>
   <div class="topbar-right">
+    <button class="pat-chip" onclick="openPatPanel()" title="Configure Azure DevOps PAT (saved only in your browser)">
+      <span class="pat-dot" id="adoPatDot"></span>
+      PAT
+    </button>
     <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle Light/Dark Mode">&#9788;</button>
   </div>
 </nav>
@@ -446,6 +492,7 @@ kbd{background:rgba(250,167,74,0.12);padding:1px 5px;border-radius:4px;font-size
 
   <div class="toolbar">
     <button class="btn btn-primary" onclick="openAddPanel()">+ Add Pipeline</button>
+    <button class="btn btn-secondary" onclick="openSyncPanel()">Sync from ADO</button>
     <div class="toolbar-spacer"></div>
     <button class="btn btn-secondary" onclick="importConfigs()">Import</button>
     <button class="btn btn-secondary" onclick="exportConfigs()">Export</button>
@@ -464,7 +511,7 @@ kbd{background:rgba(250,167,74,0.12);padding:1px 5px;border-radius:4px;font-size
     <button class="btn btn-primary" onclick="openAddPanel()">+ Add Your First Pipeline</button>
   </div>
   <div id="pipelinesNext" class="next-step hidden">
-    <div class="ns-text"><strong>Pipelines configured.</strong> Next, generate a script to fetch the data.</div>
+    <div class="ns-text"><strong>Pipelines configured.</strong> Next, fetch the data.</div>
     <button class="btn btn-primary" onclick="switchView('fetch')">Next: Fetch Data &rarr;</button>
   </div>
 </div>
@@ -474,7 +521,7 @@ kbd{background:rgba(250,167,74,0.12);padding:1px 5px;border-radius:4px;font-size
   <div class="sh">
     <div class="sh-overline">Data Collection</div>
     <div class="sh-title">Fetch Pipeline Data</div>
-    <div class="sh-desc">Generate a console script, run it in Azure DevOps, then paste or load the results.</div>
+    <div class="sh-desc">Fetch runs and test results directly via PAT, or use the console-script fallback.</div>
   </div>
 
   <div id="noConfigsWarning" class="info-box error hidden">
@@ -482,7 +529,6 @@ kbd{background:rgba(250,167,74,0.12);padding:1px 5px;border-radius:4px;font-size
   </div>
 
   <div id="fetchContent">
-    <div class="sh-overline" style="margin-top:1rem">Step 1 &mdash; Run the Script</div>
     <div class="controls-bar glass-solid" style="margin-top:.9rem">
       <div class="field" style="min-width:320px;flex:1">
         <div class="field-label">Runs to fetch (per pipeline)</div>
@@ -501,42 +547,78 @@ kbd{background:rgba(250,167,74,0.12);padding:1px 5px;border-radius:4px;font-size
         <div class="field-hint">If set, the script only fetches runs whose finish time is within that month (e.g. 2025-12, 2026-03).</div>
       </div>
     </div>
-    <div class="steps">
-      <div class="step"><div class="step-num">1</div><div>Open <a href="https://bofaz.visualstudio.com" target="_blank">Azure DevOps</a> in your browser (make sure you're logged in).</div></div>
-      <div class="step"><div class="step-num">2</div><div>Press <kbd>F12</kbd> to open DevTools, then go to the <strong style="color:var(--text)">Console</strong> tab.</div></div>
-      <div class="step"><div class="step-num">3</div><div>Copy the script below and paste it into the console. Press <strong style="color:var(--text)">Enter</strong>.</div></div>
-    </div>
 
-    <div class="script-container">
-      <div class="script-header">
-        <span class="lang">JavaScript</span>
-        <button class="btn btn-ghost" onclick="copyScript()" style="font-size:.7rem">Copy Script</button>
-      </div>
-      <div class="script-body"><pre id="consoleScript"></pre></div>
-    </div>
-
-    <div class="sh-overline" style="margin-top:1.5rem">Step 2 &mdash; Load Results</div>
-    <p style="font-size:.82rem;color:var(--text-dim);margin:.5rem 0">After the script finishes, a JSON file will be downloaded. Load it below or paste the clipboard data.</p>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:.75rem">
-      <div>
-        <div class="field-label">Paste from clipboard</div>
-        <textarea class="field-input" id="dataInput" placeholder="Ctrl+V / Cmd+V here..." style="min-height:130px"></textarea>
-      </div>
-      <div>
-        <div class="field-label">Or load a file</div>
-        <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="event.preventDefault();this.classList.remove('drag-over');handleFileDrop(event)" style="height:130px;display:flex;flex-direction:column;align-items:center;justify-content:center">
-          <input type="file" id="fileInput" accept=".json" style="display:none" onchange="handleFileSelect(this)">
-          <div class="dz-icon">&#128194;</div>
-          <div class="dz-text">Click or drag & drop</div>
-          <div class="dz-sub" id="fileStatus">Accepts .json files</div>
+    <!-- Direct fetch via PAT -->
+    <div class="glass-solid" style="padding:1rem 1.1rem;margin-top:.75rem">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+        <div style="min-width:280px;flex:1">
+          <div style="font-family:var(--heading);font-weight:800;letter-spacing:-.3px">Fetch directly from Azure DevOps</div>
+          <div style="font-size:.8rem;color:var(--text-dim);margin-top:.15rem;max-width:650px">
+            Uses your Azure DevOps PAT to call the REST API. No DevTools console script, no copy/paste.
+          </div>
+          <div class="field-hint" id="adoPatFetchStatus" style="margin-top:.35rem"></div>
+        </div>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-secondary" onclick="openPatPanel()">Set PAT</button>
+          <button class="btn btn-primary" id="btnFetchNow" onclick="fetchNowFromAdo()">Fetch Now</button>
         </div>
       </div>
+
+      <div id="fetchNowError" class="info-box error hidden" style="margin-top:.85rem"></div>
+
+      <div id="fetchLogWrap" class="script-container hidden" style="margin-top:.85rem">
+        <div class="script-header">
+          <span class="lang">Fetch Log</span>
+          <div style="display:flex;gap:.4rem;align-items:center">
+            <button class="btn btn-ghost" id="btnCopyFetched" onclick="copyFetchedJson()" style="font-size:.7rem" disabled>Copy JSON</button>
+            <button class="btn btn-ghost" id="btnDownloadFetched" onclick="downloadFetchedJson()" style="font-size:.7rem" disabled>Download JSON</button>
+          </div>
+        </div>
+        <div class="script-body"><pre id="fetchLog"></pre></div>
+      </div>
     </div>
-    <div style="display:flex;gap:.75rem;margin-top:.75rem">
-      <button class="btn btn-primary btn-lg" onclick="loadData()">Load Data & View Results &rarr;</button>
-    </div>
-    <div id="loadError" class="info-box error hidden"></div>
+
+    <!-- Fallback: manual console script -->
+    <details class="glass-solid" style="padding:1rem 1.1rem;margin-top:1rem">
+      <summary style="cursor:pointer;font-family:var(--heading);font-weight:800;letter-spacing:-.3px">Manual fetch (console script fallback)</summary>
+      <div style="margin-top:.85rem">
+        <div class="sh-overline">Step 1 &mdash; Run the Script</div>
+        <div class="steps">
+          <div class="step"><div class="step-num">1</div><div>Open <a href="https://bofaz.visualstudio.com" target="_blank">Azure DevOps</a> in your browser (make sure you're logged in).</div></div>
+          <div class="step"><div class="step-num">2</div><div>Press <kbd>F12</kbd> to open DevTools, then go to the <strong style="color:var(--text)">Console</strong> tab.</div></div>
+          <div class="step"><div class="step-num">3</div><div>Copy the script below and paste it into the console. Press <strong style="color:var(--text)">Enter</strong>.</div></div>
+        </div>
+        <div class="script-container">
+          <div class="script-header">
+            <span class="lang">JavaScript</span>
+            <button class="btn btn-ghost" onclick="copyScript()" style="font-size:.7rem">Copy Script</button>
+          </div>
+          <div class="script-body"><pre id="consoleScript"></pre></div>
+        </div>
+
+        <div class="sh-overline" style="margin-top:1.25rem">Step 2 &mdash; Load Results</div>
+        <p style="font-size:.82rem;color:var(--text-dim);margin:.5rem 0">After the script finishes, a JSON file will be downloaded. Load it below or paste the clipboard data.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:.75rem">
+          <div>
+            <div class="field-label">Paste from clipboard</div>
+            <textarea class="field-input" id="dataInput" placeholder="Ctrl+V / Cmd+V here..." style="min-height:130px"></textarea>
+          </div>
+          <div>
+            <div class="field-label">Or load a file</div>
+            <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="event.preventDefault();this.classList.remove('drag-over');handleFileDrop(event)" style="height:130px;display:flex;flex-direction:column;align-items:center;justify-content:center">
+              <input type="file" id="fileInput" accept=".json" style="display:none" onchange="handleFileSelect(this)">
+              <div class="dz-icon">&#128194;</div>
+              <div class="dz-text">Click or drag & drop</div>
+              <div class="dz-sub" id="fileStatus">Accepts .json files</div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:.75rem;margin-top:.75rem">
+          <button class="btn btn-primary btn-lg" onclick="loadData()">Load Data & View Results &rarr;</button>
+        </div>
+        <div id="loadError" class="info-box error hidden"></div>
+      </div>
+    </details>
   </div>
 </div>
 
@@ -700,15 +782,50 @@ kbd{background:rgba(250,167,74,0.12);padding:1px 5px;border-radius:4px;font-size
     </div>
 
     <div class="field">
-      <div class="field-label">Pipeline URLs
-        <span class="info-trigger">i<span class="info-tip"><strong>Paste pipeline URLs</strong> from Azure DevOps. You can paste one at a time or paste multiple at once (they'll be split automatically).<br><br>Example:<br><code>https://bofaz.visualstudio.com/.../_build?definitionId=123</code></span></span>
+      <div class="field-label" style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap">
+        <span>Pipelines</span>
+        <div class="seg" id="cfgModeSeg">
+          <button class="seg-btn active" id="segUrls" onclick="setPipelineEditorMode('urls')">URLs</button>
+          <button class="seg-btn" id="segPicker" onclick="setPipelineEditorMode('picker')">Picker</button>
+        </div>
       </div>
-      <div class="chip-box" id="chipBox" onclick="document.getElementById('chipInput').focus()">
-        <div class="chip-list" id="chipList"></div>
-        <input class="chip-input" id="chipInput" placeholder="Paste a pipeline URL..." onpaste="handleChipPaste(event)" onkeydown="handleChipKeydown(event)">
+
+      <div id="cfgUrlsWrap">
+        <div class="field-label" style="margin-top:.35rem;font-size:.62rem;color:var(--text-muted);text-transform:none;letter-spacing:0">
+          Paste pipeline URLs (quick add).
+          <span class="info-trigger">i<span class="info-tip"><strong>Paste pipeline URLs</strong> from Azure DevOps. You can paste one at a time or paste multiple at once (they'll be split automatically).<br><br>Example:<br><code>https://bofaz.visualstudio.com/.../_build?definitionId=123</code></span></span>
+        </div>
+        <div class="chip-box" id="chipBox" onclick="document.getElementById('chipInput').focus()">
+          <div class="chip-list" id="chipList"></div>
+          <input class="chip-input" id="chipInput" placeholder="Paste a pipeline URL..." onpaste="handleChipPaste(event)" onkeydown="handleChipKeydown(event)">
+        </div>
+        <div class="chip-count" id="chipCount">
+          <span class="cc-num">0</span> pipeline(s) added
+        </div>
       </div>
-      <div class="chip-count" id="chipCount">
-        <span class="cc-num">0</span> pipeline(s) added
+
+      <div id="cfgPickerWrap" class="hidden">
+        <div class="picker-shell" style="margin-top:.55rem">
+          <div class="picker-head">
+            <div>
+              <div class="picker-title" id="pickerTitle">Pick pipelines</div>
+              <div class="picker-sub" id="pickerSubtitle">Shows pipelines by folder path and full name (no IDs).</div>
+            </div>
+            <div class="picker-actions">
+              <button class="btn btn-ghost" onclick="pickerSelectAll(true)">Select all</button>
+              <button class="btn btn-ghost" onclick="pickerSelectAll(false)">Deselect all</button>
+              <button class="btn btn-secondary" onclick="openPatPanel()">PAT</button>
+            </div>
+          </div>
+          <div class="picker-body">
+            <div class="picker-search">
+              <input class="field-input" id="pickerSearch" placeholder="Search (name or path)..." oninput="renderPicker()">
+            </div>
+            <div class="picker-meta" id="pickerMeta"></div>
+            <div id="pickerError" class="info-box error hidden"></div>
+            <div class="tree-wrap" id="pickerTree"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -749,6 +866,87 @@ kbd{background:rgba(250,167,74,0.12);padding:1px 5px;border-radius:4px;font-size
   <div class="panel-footer">
     <button class="btn btn-secondary" onclick="closePanel()">Cancel</button>
     <button class="btn btn-primary" id="panelSaveBtn" onclick="saveConfig()">Add Pipelines</button>
+  </div>
+</div>
+
+<!-- Slide Panel: PAT settings -->
+<div class="slide-panel" id="patPanel" aria-hidden="true">
+  <div class="panel-header">
+    <h3>Azure DevOps PAT</h3>
+    <button class="btn btn-ghost btn-icon" onclick="closePanel()">&times;</button>
+  </div>
+  <div class="panel-body">
+    <div class="info-box info" style="margin-top:0">
+      <div>
+        <strong>Stored only in your browser.</strong> Used to call Azure DevOps REST APIs directly. Never included in exports.
+      </div>
+    </div>
+    <div class="field">
+      <div class="field-label">Personal Access Token</div>
+      <input class="field-input" id="adoPatInput" type="password" placeholder="********" autocomplete="off" spellcheck="false" style="font-family:var(--mono)">
+      <div class="field-hint">Needs permission to read pipelines and builds (e.g. Build: Read, Test: Read).</div>
+    </div>
+    <div class="field">
+      <div class="field-label">Default Org URL</div>
+      <input class="field-input" id="adoDefaultOrg" placeholder="https://bofaz.visualstudio.com" value="https://bofaz.visualstudio.com" style="font-family:var(--mono)">
+      <div class="field-hint">Used by “Sync from ADO” and direct fetch when your configs don’t specify a value.</div>
+    </div>
+    <div class="field">
+      <div class="field-label">Default Project</div>
+      <input class="field-input" id="adoDefaultProject" placeholder="Automation Architecture" value="Automation Architecture">
+    </div>
+  </div>
+  <div class="panel-footer">
+    <button class="btn btn-danger" onclick="clearAdoPat()">Clear</button>
+    <div class="toolbar-spacer"></div>
+    <button class="btn btn-secondary" onclick="closePanel()">Cancel</button>
+    <button class="btn btn-primary" onclick="saveAdoPatFromUi()">Save</button>
+  </div>
+</div>
+
+<!-- Slide Panel: Sync pipelines from ADO folders -->
+<div class="slide-panel" id="syncPanel" aria-hidden="true">
+  <div class="panel-header">
+    <h3>Sync from Azure DevOps</h3>
+    <button class="btn btn-ghost btn-icon" onclick="closePanel()">&times;</button>
+  </div>
+  <div class="panel-body">
+    <div class="info-box info" style="margin-top:0">
+      <div>
+        Pulls <strong>all pipeline definitions</strong> from a project, then lets you choose the top-level folders to track (e.g. <code>\01 Mobile</code>, <code>\02 Web</code>, <code>\03 API</code>).
+      </div>
+    </div>
+    <div class="field">
+      <div class="field-label">Organization URL</div>
+      <input class="field-input" id="syncOrgUrl" placeholder="https://bofaz.visualstudio.com" value="https://bofaz.visualstudio.com" style="font-family:var(--mono)">
+    </div>
+    <div class="field">
+      <div class="field-label">Project</div>
+      <input class="field-input" id="syncProject" placeholder="Automation Architecture" value="Automation Architecture">
+    </div>
+    <div style="display:flex;gap:.5rem;align-items:center;margin:.75rem 0 0">
+      <button class="btn btn-primary" id="btnSyncLoad" onclick="syncLoadFolders()">Load folders</button>
+      <button class="btn btn-secondary" onclick="openPatPanel()">PAT settings</button>
+      <span class="field-hint" id="syncStatus" style="margin:0"></span>
+    </div>
+    <div id="syncError" class="info-box error hidden"></div>
+    <div id="syncFoldersWrap" class="glass-solid hidden" style="padding:1rem;margin-top:1rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+        <div>
+          <div style="font-family:var(--heading);font-weight:800">Top-level folders</div>
+          <div style="font-size:.78rem;color:var(--text-dim)">Select which folders you want to track. All subfolders and pipelines under them are included.</div>
+        </div>
+        <div style="display:flex;gap:.5rem;align-items:center">
+          <button class="btn btn-ghost" onclick="syncToggleAll(true)">Select all</button>
+          <button class="btn btn-ghost" onclick="syncToggleAll(false)">Deselect all</button>
+        </div>
+      </div>
+      <div id="syncFolders" style="display:grid;gap:.55rem;margin-top:.9rem"></div>
+    </div>
+  </div>
+  <div class="panel-footer">
+    <button class="btn btn-secondary" onclick="closePanel()">Cancel</button>
+    <button class="btn btn-primary" id="btnSyncApply" onclick="syncApplySelectedFolders()" disabled>Create/Update Configs</button>
   </div>
 </div>
 
@@ -796,7 +994,7 @@ function toggleTheme(){
 }
 function initTheme(){
   const saved=localStorage.getItem('qcoe-vision-theme');
-  const theme=saved||'light';
+  const theme=saved||'dark';
   document.documentElement.setAttribute('data-theme',theme);
   updateThemeIcon(theme);
 }
@@ -836,6 +1034,19 @@ const FETCH_MONTH_KEY = 'ado-pipeline-metrics-fetch-month'; // "YYYY-MM"
 const PIPELINE_INCLUDE_KEY = 'ado-pipeline-metrics-included-pipelines'; // JSON array of definition ids
 const PEOPLE_INCLUDE_KEY = 'ado-pipeline-metrics-included-people'; // JSON array of people display names
 
+const ADO_PAT_KEY = 'ado-pipeline-metrics-pat';
+const ADO_DEFAULT_ORG_KEY = 'ado-pipeline-metrics-default-org';
+const ADO_DEFAULT_PROJECT_KEY = 'ado-pipeline-metrics-default-project';
+const ADO_SYNC_SELECTED_FOLDERS_KEY = 'ado-pipeline-metrics-sync-folders'; // JSON string array
+
+let lastFetchedDataObj = null; // {meta,definitions,builds,testResults}
+let _syncAllDefinitions = null; // cached for sync panel
+let pipelineEditorMode = 'urls'; // 'urls' | 'picker'
+let _pickerDefinitions = []; // filtered definition objects for picker
+let _pickerContext = null; // { orgUrl, project, folder?: string|null, configName?: string }
+let _adoDefCatalogCache = new Map(); // key: apiPrefix -> { fetchedAt, defs, byId }
+let _pickerExpanded = new Set(); // expanded folder keys
+
 // ─── Init ───
 (function init() {
   const saved = localStorage.getItem(LS_KEY);
@@ -846,6 +1057,9 @@ const PEOPLE_INCLUDE_KEY = 'ado-pipeline-metrics-included-people'; // JSON array
   renderConfigs();
   updateScript();
   applyFetchMonthToInput();
+  initAdoDefaults();
+  updateAdoPatUi();
+  updateAdoPatFetchStatus();
 
   // Apply saved executions preference (Results filter) if present.
   const execEl = document.getElementById('filterExec');
@@ -853,6 +1067,79 @@ const PEOPLE_INCLUDE_KEY = 'ado-pipeline-metrics-included-people'; // JSON array
   if (execEl && pref === 'all') execEl.value = '';
   else if (execEl && pref) execEl.value = String(pref);
 })();
+
+// ─── Azure DevOps PAT + Defaults ───
+function getAdoPat() {
+  return (localStorage.getItem(ADO_PAT_KEY) || '').trim();
+}
+function setAdoPat(token) {
+  const t = String(token || '').trim();
+  if (t) localStorage.setItem(ADO_PAT_KEY, t);
+  else localStorage.removeItem(ADO_PAT_KEY);
+  updateAdoPatUi();
+  updateAdoPatFetchStatus();
+}
+function getDefaultOrgUrl() {
+  return (localStorage.getItem(ADO_DEFAULT_ORG_KEY) || 'https://bofaz.visualstudio.com').trim().replace(/\/+$/, '');
+}
+function getDefaultProject() {
+  return (localStorage.getItem(ADO_DEFAULT_PROJECT_KEY) || 'Automation Architecture').trim();
+}
+function initAdoDefaults() {
+  const org = getDefaultOrgUrl();
+  const proj = getDefaultProject();
+  const orgEl = document.getElementById('adoDefaultOrg');
+  const projEl = document.getElementById('adoDefaultProject');
+  if (orgEl) orgEl.value = org;
+  if (projEl) projEl.value = proj;
+  const syncOrg = document.getElementById('syncOrgUrl');
+  const syncProj = document.getElementById('syncProject');
+  if (syncOrg) syncOrg.value = org;
+  if (syncProj) syncProj.value = proj;
+}
+function updateAdoPatUi() {
+  const dot = document.getElementById('adoPatDot');
+  if (!dot) return;
+  const ok = !!getAdoPat();
+  dot.classList.toggle('ok', ok);
+  dot.title = ok ? 'PAT configured' : 'No PAT configured';
+}
+function updateAdoPatFetchStatus() {
+  const el = document.getElementById('adoPatFetchStatus');
+  if (!el) return;
+  const ok = !!getAdoPat();
+  const org = getDefaultOrgUrl();
+  const proj = getDefaultProject();
+  el.innerHTML = ok
+    ? `PAT: <strong style="color:var(--green)">configured</strong> &middot; Default: <span style="font-family:var(--mono)">${esc(org)}</span> / <strong>${esc(proj)}</strong>`
+    : `PAT: <strong style="color:var(--red)">missing</strong> &middot; Click <strong>Set PAT</strong> to enable direct fetch.`;
+}
+function openPatPanel() {
+  const patEl = document.getElementById('adoPatInput');
+  if (patEl) patEl.value = getAdoPat();
+  const orgEl = document.getElementById('adoDefaultOrg');
+  const projEl = document.getElementById('adoDefaultProject');
+  if (orgEl) orgEl.value = getDefaultOrgUrl();
+  if (projEl) projEl.value = getDefaultProject();
+  openPanel('patPanel');
+}
+function saveAdoPatFromUi() {
+  const pat = (document.getElementById('adoPatInput')?.value || '').trim();
+  const org = (document.getElementById('adoDefaultOrg')?.value || '').trim().replace(/\/+$/, '');
+  const proj = (document.getElementById('adoDefaultProject')?.value || '').trim();
+  if (org) localStorage.setItem(ADO_DEFAULT_ORG_KEY, org);
+  if (proj) localStorage.setItem(ADO_DEFAULT_PROJECT_KEY, proj);
+  setAdoPat(pat);
+  initAdoDefaults();
+  closePanel();
+  showToast(pat ? 'ADO PAT saved to your browser.' : 'ADO PAT cleared.');
+}
+function clearAdoPat() {
+  setAdoPat('');
+  const patEl = document.getElementById('adoPatInput');
+  if (patEl) patEl.value = '';
+  showToast('ADO PAT cleared.');
+}
 
 function getPreferredExecutions() {
   const raw = (localStorage.getItem(EXEC_PREF_KEY) || '').trim();
@@ -924,6 +1211,7 @@ function switchView(view) {
     if (hasSelected) updateScript();
     applyPreferredExecToInputs();
     applyFetchMonthToInput();
+    updateAdoPatFetchStatus();
   }
   if (view === 'results') {
     const hasData = pipelines.length > 0;
@@ -985,10 +1273,14 @@ function renderConfigs() {
   empty.classList.add('hidden');
   selectBar?.classList.remove('hidden');
   container.innerHTML = configs.map(c => {
-    const hasUrls = c.definitionIds && c.definitionIds.length > 0;
+    const hasIds = c.definitionIds && c.definitionIds.length > 0;
     const hasFilters = c.pathFilter || c.nameFilter;
-    const urlCount = hasUrls ? c.definitionIds.length : 0;
-    const modeLabel = hasUrls ? `${urlCount} pipeline${urlCount !== 1 ? 's' : ''} (by URL)` : 'Filter mode';
+    const hasPipelineUrls = c.pipelineUrls && c.pipelineUrls.length > 0;
+    const count = hasIds ? c.definitionIds.length : 0;
+    const isSyncedFolder = c.syncType === 'folder' && (c.syncFolder || c.syncFolder === null);
+    const modeLabel = hasFilters
+      ? 'Filter mode'
+      : (hasPipelineUrls ? `${count} pipeline${count !== 1 ? 's' : ''} (by URL)` : (isSyncedFolder ? `${count} pipeline${count !== 1 ? 's' : ''} (synced)` : `${count} pipeline${count !== 1 ? 's' : ''} (by ID)`));
     const checked = selectedConfigIds.has(c.id);
     return `
     <div class="config-card glass ${checked ? 'selected' : ''}" data-config-id="${c.id}">
@@ -1009,7 +1301,8 @@ function renderConfigs() {
       ${c.nameFilter ? `<div class="config-detail"><span class="label">Name</span><span class="val">${esc(c.nameFilter)}</span></div>` : ''}
       <div class="config-meta">
         <span class="config-tag tag-builds">Runs set in Fetch Data</span>
-        ${hasUrls ? `<span class="config-tag tag-filter">${urlCount} URL${urlCount !== 1 ? 's' : ''}</span>` : ''}
+        ${hasIds && !hasFilters ? `<span class="config-tag tag-filter">${count} pipeline${count !== 1 ? 's' : ''}</span>` : ''}
+        ${isSyncedFolder && c.syncFolder ? `<span class="config-tag tag-filter">\\${esc(c.syncFolder)}</span>` : ''}
         ${c.nameFilter ? `<span class="config-tag tag-filter">${esc(c.nameFilter)}</span>` : ''}
       </div>
     </div>`;
@@ -1045,7 +1338,7 @@ function updateSelectionCount() {
     else {
       nextBtn.classList.remove('hidden');
       const txt = nextBtn.querySelector('.ns-text');
-      if (txt) txt.innerHTML = `<strong>${sel} pipeline${sel !== 1 ? 's' : ''} selected.</strong> Next, generate a script to fetch the data.`;
+      if (txt) txt.innerHTML = `<strong>${sel} pipeline${sel !== 1 ? 's' : ''} selected.</strong> Next, fetch the data.`;
     }
   }
 }
@@ -1125,10 +1418,350 @@ function removeChip(idx) {
 function renderChips() {
   const list = document.getElementById('chipList');
   list.innerHTML = chipUrls.map((u, i) => {
-    const label = u.project ? `${u.project} #${u.definitionId}` : `Pipeline #${u.definitionId}`;
-    return `<span class="chip"><span class="chip-text" title="${esc(u.raw)}">${esc(label)}</span><button class="chip-x" onclick="removeChip(${i})">&times;</button></span>`;
+    const label = u.name ? u.name : (u.project ? `${u.project} #${u.definitionId}` : `Pipeline #${u.definitionId}`);
+    const title = [u.name, u.path, u.raw].filter(Boolean).join('\n');
+    return `<span class="chip"><span class="chip-text" title="${esc(title)}">${esc(label)}</span><button class="chip-x" onclick="removeChip(${i})">&times;</button></span>`;
   }).join('');
   document.getElementById('chipCount').innerHTML = `<span class="cc-num">${chipUrls.length}</span> pipeline(s) added`;
+}
+
+function getEditingConfig() {
+  if (!editingConfigId) return null;
+  return configs.find(x => x.id === editingConfigId) || null;
+}
+
+function inferSyncFolderFromConfig(c) {
+  const name = String(c?.name || '').trim();
+  if (!name) return null;
+  const persisted = new Set(getPersistedSyncFolders());
+  if (persisted.has(name)) return name;
+  if (/^\d{2}\s+/.test(name)) return name; // e.g. "01 Mobile"
+  return null;
+}
+
+function setPipelineEditorMode(mode) {
+  const m = mode === 'picker' ? 'picker' : 'urls';
+  pipelineEditorMode = m;
+  const urlsWrap = document.getElementById('cfgUrlsWrap');
+  const pickerWrap = document.getElementById('cfgPickerWrap');
+  const bUrls = document.getElementById('segUrls');
+  const bPick = document.getElementById('segPicker');
+  if (bUrls) bUrls.classList.toggle('active', m === 'urls');
+  if (bPick) bPick.classList.toggle('active', m === 'picker');
+  if (urlsWrap) urlsWrap.classList.toggle('hidden', m !== 'urls');
+  if (pickerWrap) pickerWrap.classList.toggle('hidden', m !== 'picker');
+
+  if (m === 'picker') {
+    // Kick off async load + render, but don't block UI.
+    preparePickerForCurrentConfig().catch(() => {});
+  } else {
+    const s = document.getElementById('pickerSearch');
+    if (s) s.value = '';
+    const err = document.getElementById('pickerError');
+    if (err) err.classList.add('hidden');
+  }
+}
+
+async function getAdoDefinitionCatalog(orgUrl, project) {
+  const apiPrefix = buildAdoApiPrefix(orgUrl, project);
+  if (!apiPrefix) throw new Error('Invalid Org URL or Project');
+  const cached = _adoDefCatalogCache.get(apiPrefix);
+  if (cached && (Date.now() - cached.fetchedAt) < 5 * 60 * 1000) return cached; // 5 min TTL
+  const defs = await adoFetchJson(`${apiPrefix}/build/definitions?$top=2000&api-version=7.0`);
+  const all = (defs?.value || []).filter(Boolean);
+  const byId = new Map(all.map(d => [String(d.id), d]));
+  const cat = { fetchedAt: Date.now(), defs: all, byId, apiPrefix };
+  _adoDefCatalogCache.set(apiPrefix, cat);
+  return cat;
+}
+
+function setPickerError(msg) {
+  const el = document.getElementById('pickerError');
+  if (!el) return;
+  if (!msg) { el.classList.add('hidden'); el.textContent = ''; return; }
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+
+function getSelectedDefIdSet() {
+  return new Set((chipUrls || []).map(u => String(u.definitionId)));
+}
+
+function upsertChipForDefinition(def, orgUrl, project, checked) {
+  const id = String(def?.id ?? '');
+  if (!id) return;
+  const before = chipUrls.length;
+  if (checked) {
+    if (chipUrls.find(u => String(u.definitionId) === id)) return;
+    const projEnc = encodeURIComponent(project);
+    chipUrls.push({
+      orgUrl,
+      project,
+      definitionId: def.id,
+      raw: `${orgUrl}/${projEnc}/_build?definitionId=${def.id}`,
+      name: def.name || '',
+      path: def.path || ''
+    });
+  } else {
+    chipUrls = chipUrls.filter(u => String(u.definitionId) !== id);
+  }
+  if (before !== chipUrls.length) {
+    renderChips();
+    // Keep picker view in sync.
+    if (pipelineEditorMode === 'picker') renderPicker();
+  }
+}
+
+async function preparePickerForCurrentConfig() {
+  const c = getEditingConfig();
+  const orgUrl = (document.getElementById('cfgOrg')?.value || getDefaultOrgUrl()).trim().replace(/\/+$/, '');
+  const project = (document.getElementById('cfgProject')?.value || getDefaultProject()).trim();
+  const folder = (c?.syncFolder ?? inferSyncFolderFromConfig(c)) || null;
+  _pickerContext = { orgUrl, project, folder, configName: c?.name || '' };
+
+  const title = document.getElementById('pickerTitle');
+  const sub = document.getElementById('pickerSubtitle');
+  if (title) title.textContent = folder ? `Pipelines in \\${folder}` : 'Pick pipelines';
+  if (sub) sub.textContent = folder
+    ? 'Shows the same folder structure as Azure DevOps. Full pipeline names are always shown.'
+    : 'Tip: Picker mode is best for synced folder configs (01 Mobile / 02 Web / 03 API).';
+
+  if (!getAdoPat()) {
+    _pickerDefinitions = [];
+    const meta = document.getElementById('pickerMeta');
+    if (meta) meta.textContent = '';
+    const tree = document.getElementById('pickerTree');
+    if (tree) tree.innerHTML = '';
+    setPickerError('Missing PAT. Click “PAT” and save your token to load pipeline names + folders.');
+    return;
+  }
+  if (!c && !folder) {
+    _pickerDefinitions = [];
+    const meta = document.getElementById('pickerMeta');
+    if (meta) meta.textContent = '';
+    const tree = document.getElementById('pickerTree');
+    if (tree) tree.innerHTML = '';
+    setPickerError('Picker mode is intended for synced folders. Use “Sync from ADO” (01 Mobile / 02 Web / 03 API), then edit that config.');
+    return;
+  }
+  if (!orgUrl || !project) {
+    setPickerError('Org URL and Project are required.');
+    return;
+  }
+
+  setPickerError('');
+  const meta = document.getElementById('pickerMeta');
+  if (meta) meta.textContent = 'Loading pipelines...';
+
+  const cat = await getAdoDefinitionCatalog(orgUrl, project);
+  // Hydrate existing selections with names/paths.
+  chipUrls = chipUrls.map(u => {
+    const def = cat.byId.get(String(u.definitionId));
+    if (!def) return u;
+    return { ...u, name: def.name || u.name, path: def.path || u.path };
+  });
+  renderChips();
+
+  let defs = cat.defs;
+  if (folder) defs = defs.filter(d => parseTopFolder(d.path || '') === folder);
+  _pickerDefinitions = defs;
+  renderPicker();
+}
+
+function buildPickerTree(defs, dropFolder) {
+  const root = { key: '', name: '', children: new Map(), pipelines: [] };
+  defs.forEach(d => {
+    const parts = String(d.path || '').split('\\').filter(Boolean);
+    if (dropFolder && parts[0] === dropFolder) parts.shift();
+    let node = root;
+    for (const p of parts) {
+      if (!node.children.has(p)) node.children.set(p, { key: '', name: p, children: new Map(), pipelines: [] });
+      node = node.children.get(p);
+    }
+    node.pipelines.push(d);
+  });
+  return root;
+}
+
+function countPipelinesInNode(node) {
+  let total = (node.pipelines || []).length;
+  node.children?.forEach(ch => { total += countPipelinesInNode(ch); });
+  return total;
+}
+
+function normalizeAdoPath(p) {
+  const s = String(p || '').trim();
+  if (!s) return '';
+  // Ensure a single leading backslash, normalize consecutive slashes.
+  const noLead = s.replace(/^\\+/, '');
+  return '\\' + noLead.replace(/\\+/g, '\\');
+}
+
+function getFullPrefixForFolderKey(key) {
+  const k = String(key || '').trim().replace(/^\\+/, '').replace(/\\+/g, '\\');
+  const drop = String(_pickerContext?.folder || '').trim().replace(/^\\+/, '').replace(/\\+/g, '\\');
+  if (drop) return normalizeAdoPath(drop + (k ? ('\\' + k) : ''));
+  return normalizeAdoPath(k);
+}
+
+function pickerSelectFolder(folderKey, select) {
+  const prefix = getFullPrefixForFolderKey(folderKey);
+  const prefixNorm = prefix.toLowerCase();
+  const orgUrl = _pickerContext?.orgUrl || getDefaultOrgUrl();
+  const project = _pickerContext?.project || getDefaultProject();
+  const targets = (_pickerDefinitions || []).filter(d => {
+    const p = normalizeAdoPath(d.path || '').toLowerCase();
+    if (p === prefixNorm) return true;
+    return p.startsWith(prefixNorm + '\\');
+  });
+  if (!targets.length) return;
+  if (select) {
+    const selected = getSelectedDefIdSet();
+    targets.forEach(d => { if (!selected.has(String(d.id))) upsertChipForDefinition(d, orgUrl, project, true); });
+  } else {
+    const targetIds = new Set(targets.map(d => String(d.id)));
+    chipUrls = chipUrls.filter(u => !targetIds.has(String(u.definitionId)));
+    renderChips();
+    renderPicker();
+  }
+}
+
+function togglePickerExpand(key) {
+  const k = String(key || '');
+  if (!k) return;
+  if (_pickerExpanded.has(k)) _pickerExpanded.delete(k);
+  else _pickerExpanded.add(k);
+  renderPicker();
+}
+
+function renderPickerNode(node, depth, keyPrefix, dropFolder, selectedSet) {
+  const indent = depth * 14;
+  let html = '';
+  const childEntries = [...(node.children?.entries() || [])].sort((a, b) => a[0].localeCompare(b[0]));
+  for (const [name, ch] of childEntries) {
+    const key = (keyPrefix ? keyPrefix + '\\' : '') + name;
+    const isOpen = _pickerExpanded.has(key);
+    const cnt = countPipelinesInNode(ch);
+    html += `
+      <div class="tree-node">
+        <div class="tree-row" style="padding-left:${indent}px" onclick='togglePickerExpand(${JSON.stringify(key)})'>
+          <span class="arrow ${isOpen ? 'open' : ''}">&#9654;</span>
+          <span class="icon">&#128193;</span>
+          <div class="leaf-text"><div class="leaf-name" style="font-family:var(--font);font-weight:800">${esc(name)}</div></div>
+          <div class="folder-actions" onclick="event.stopPropagation()">
+            <span class="tree-mini" title="Select all pipelines in this folder" onclick='pickerSelectFolder(${JSON.stringify(key)}, true)'>All</span>
+            <span class="tree-mini" title="Deselect all pipelines in this folder" onclick='pickerSelectFolder(${JSON.stringify(key)}, false)'>None</span>
+            <span class="count">${cnt}</span>
+          </div>
+        </div>
+        <div class="tree-children ${isOpen ? 'open' : ''}">
+          ${renderPickerNode(ch, depth + 1, key, dropFolder, selectedSet)}
+        </div>
+      </div>
+    `;
+  }
+
+  const pipes = (node.pipelines || []).slice().sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+  for (const d of pipes) {
+    const id = String(d.id);
+    const checked = selectedSet.has(id);
+    html += `
+      <div class="tree-node">
+        <div class="tree-row tree-leaf" style="padding-left:${indent}px" onclick="event.stopPropagation()">
+          <span class="arrow" style="visibility:hidden">&#9654;</span>
+          <span class="icon">&#128295;</span>
+          <input class="leaf-check" type="checkbox" ${checked ? 'checked' : ''} onchange='togglePickerPipeline(${JSON.stringify(id)}, this.checked);event.stopPropagation()'>
+          <div class="leaf-text">
+            <div class="leaf-name">${esc(d.name || ('Pipeline #' + id))}</div>
+            <div class="leaf-path">${esc(d.path || '')}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  return html;
+}
+
+function togglePickerPipeline(defId, checked) {
+  const id = String(defId || '');
+  const def = _pickerDefinitions.find(d => String(d.id) === id);
+  if (!def) return;
+  const orgUrl = _pickerContext?.orgUrl || getDefaultOrgUrl();
+  const project = _pickerContext?.project || getDefaultProject();
+  upsertChipForDefinition(def, orgUrl, project, checked);
+}
+
+function pickerSelectAll(select) {
+  const q = String(document.getElementById('pickerSearch')?.value || '').trim().toLowerCase();
+  const orgUrl = _pickerContext?.orgUrl || getDefaultOrgUrl();
+  const project = _pickerContext?.project || getDefaultProject();
+  const targets = q
+    ? _pickerDefinitions.filter(d => (String(d.name || '').toLowerCase().includes(q) || String(d.path || '').toLowerCase().includes(q)))
+    : _pickerDefinitions;
+  if (select) {
+    const selected = getSelectedDefIdSet();
+    targets.forEach(d => {
+      if (!selected.has(String(d.id))) upsertChipForDefinition(d, orgUrl, project, true);
+    });
+  } else {
+    const targetIds = new Set(targets.map(d => String(d.id)));
+    chipUrls = chipUrls.filter(u => !targetIds.has(String(u.definitionId)));
+    renderChips();
+    renderPicker();
+  }
+}
+
+function renderPicker() {
+  const tree = document.getElementById('pickerTree');
+  const meta = document.getElementById('pickerMeta');
+  if (!tree || !meta) return;
+  const defs = _pickerDefinitions || [];
+  const q = String(document.getElementById('pickerSearch')?.value || '').trim().toLowerCase();
+  const selected = getSelectedDefIdSet();
+
+  const shown = q
+    ? defs.filter(d => (String(d.name || '').toLowerCase().includes(q) || String(d.path || '').toLowerCase().includes(q)))
+    : defs;
+
+  meta.textContent = `${shown.length} shown · ${selected.size} selected`;
+
+  if (!defs.length) {
+    tree.innerHTML = `<div class="no-data">No pipelines loaded yet.</div>`;
+    return;
+  }
+  if (q) {
+    const rows = shown
+      .slice()
+      .sort((a, b) => String(a.path || '').localeCompare(String(b.path || '')) || String(a.name || '').localeCompare(String(b.name || '')))
+      .map(d => {
+        const id = String(d.id);
+        const checked = selected.has(id);
+        return `
+          <div class="tree-node">
+            <div class="tree-row tree-leaf" onclick="event.stopPropagation()">
+              <span class="arrow" style="visibility:hidden">&#9654;</span>
+              <span class="icon">&#128295;</span>
+              <input class="leaf-check" type="checkbox" ${checked ? 'checked' : ''} onchange='togglePickerPipeline(${JSON.stringify(id)}, this.checked);event.stopPropagation()'>
+              <div class="leaf-text">
+                <div class="leaf-name">${esc(d.name || ('Pipeline #' + id))}</div>
+                <div class="leaf-path">${esc(d.path || '')}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    tree.innerHTML = rows || `<div class="no-data">No matches.</div>`;
+    return;
+  }
+
+  // Tree view
+  const drop = _pickerContext?.folder || null;
+  const root = buildPickerTree(defs, drop);
+  // Expand the first level by default (once) for a nicer UX.
+  if (_pickerExpanded.size === 0) {
+    [...root.children.keys()].slice(0, 2).forEach(k => _pickerExpanded.add(k));
+  }
+  tree.innerHTML = renderPickerNode(root, 0, '', drop, selected) || `<div class="no-data">No pipelines.</div>`;
 }
 
 function autoFillFromChips() {
@@ -1150,6 +1783,44 @@ function toggleAdvanced() {
   chevron.classList.toggle('open');
 }
 
+function openPanel(panelId) {
+  const overlay = document.getElementById('panelOverlay');
+  if (overlay) overlay.classList.add('open');
+  if (panelId !== 'addPanel') editingConfigId = null;
+  ['addPanel', 'patPanel', 'syncPanel'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('open');
+  });
+  const panel = document.getElementById(panelId);
+  if (panel) panel.classList.add('open');
+}
+
+function closePanel() {
+  const overlay = document.getElementById('panelOverlay');
+  if (overlay) overlay.classList.remove('open');
+  ['addPanel', 'patPanel', 'syncPanel'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('open');
+  });
+  editingConfigId = null;
+}
+
+function openSyncPanel() {
+  initAdoDefaults();
+  const err = document.getElementById('syncError');
+  const status = document.getElementById('syncStatus');
+  const wrap = document.getElementById('syncFoldersWrap');
+  const btnApply = document.getElementById('btnSyncApply');
+  const btnLoad = document.getElementById('btnSyncLoad');
+  if (err) err.classList.add('hidden');
+  if (status) status.textContent = '';
+  if (wrap) wrap.classList.add('hidden');
+  if (btnApply) btnApply.disabled = true;
+  if (btnLoad) btnLoad.disabled = false;
+  _syncAllDefinitions = null;
+  openPanel('syncPanel');
+}
+
 function openAddPanel() {
   editingConfigId = null;
   document.getElementById('panelTitle').textContent = 'Add Pipelines';
@@ -1158,16 +1829,16 @@ function openAddPanel() {
   chipUrls = [];
   renderChips();
   document.getElementById('chipInput').value = '';
-  document.getElementById('cfgOrg').value = 'https://bofaz.visualstudio.com';
+  setPipelineEditorMode('urls');
+  document.getElementById('cfgOrg').value = getDefaultOrgUrl();
   document.getElementById('cfgOrg')._userEdited = false;
-  document.getElementById('cfgProject').value = 'Automation Architecture';
+  document.getElementById('cfgProject').value = getDefaultProject();
   document.getElementById('cfgProject')._userEdited = false;
   document.getElementById('cfgPath').value = '';
   document.getElementById('cfgNameFilter').value = '';
   document.getElementById('advSection').classList.remove('open');
   document.getElementById('advChevron').classList.remove('open');
-  document.getElementById('panelOverlay').classList.add('open');
-  document.getElementById('addPanel').classList.add('open');
+  openPanel('addPanel');
   setTimeout(() => document.getElementById('cfgName').focus(), 350);
 }
 
@@ -1197,6 +1868,10 @@ function editConfig(id) {
   renderChips();
   document.getElementById('chipInput').value = '';
 
+  // Prefer picker mode for synced folder configs or large ID lists.
+  const preferPicker = (c.syncType === 'folder') || ((c.definitionIds || []).length >= 25 && !(c.pipelineUrls && c.pipelineUrls.length));
+  setPipelineEditorMode(preferPicker ? 'picker' : 'urls');
+
   if (c.pathFilter || c.nameFilter) {
     document.getElementById('advSection').classList.add('open');
     document.getElementById('advChevron').classList.add('open');
@@ -1205,14 +1880,7 @@ function editConfig(id) {
     document.getElementById('advChevron').classList.remove('open');
   }
 
-  document.getElementById('panelOverlay').classList.add('open');
-  document.getElementById('addPanel').classList.add('open');
-}
-
-function closePanel() {
-  document.getElementById('panelOverlay').classList.remove('open');
-  document.getElementById('addPanel').classList.remove('open');
-  editingConfigId = null;
+  openPanel('addPanel');
 }
 
 function saveConfig() {
@@ -1225,7 +1893,7 @@ function saveConfig() {
   if (!name) { showToast('Please enter a configuration name'); return; }
 
   const definitionIds = chipUrls.map(u => u.definitionId);
-  const pipelineUrls = chipUrls.map(u => u.raw);
+  const pipelineUrls = (pipelineEditorMode === 'urls') ? chipUrls.map(u => u.raw) : [];
 
   const effectiveOrg = (chipUrls.length > 0 && chipUrls[0].orgUrl) ? chipUrls[0].orgUrl : orgUrl;
   const effectiveProject = (chipUrls.length > 0 && chipUrls[0].project) ? chipUrls[0].project : project;
@@ -1233,10 +1901,13 @@ function saveConfig() {
   if (!effectiveOrg || !effectiveProject) { showToast('Could not determine organization or project. Add URLs or fill in Advanced Settings.'); return; }
   if (definitionIds.length === 0 && !pathFilter) { showToast('Add at least one pipeline URL or set a Path Filter in Advanced Settings'); return; }
 
+  const existing = editingConfigId ? (configs.find(x => x.id === editingConfigId) || null) : null;
   const config = {
     id: editingConfigId || generateId(),
     name, orgUrl: effectiveOrg, project: effectiveProject,
-    pipelineUrls, definitionIds, pathFilter, nameFilter
+    pipelineUrls, definitionIds, pathFilter, nameFilter,
+    syncFolder: existing?.syncFolder ?? undefined,
+    syncType: existing?.syncType ?? undefined
   };
 
   if (editingConfigId) {
@@ -1307,6 +1978,228 @@ function handleImportFile(input) {
     input.value = '';
   };
   reader.readAsText(file);
+}
+
+// ─── Azure DevOps REST helpers (PAT) ───
+function normalizeOrgUrlForApi(orgUrl) {
+  const raw = String(orgUrl || '').trim().replace(/\/+$/, '');
+  if (!raw) return '';
+  try {
+    const u = new URL(raw);
+    const host = u.hostname || '';
+    if (host.endsWith('.visualstudio.com')) {
+      const org = host.split('.')[0];
+      return `https://dev.azure.com/${org}`;
+    }
+    return raw;
+  } catch (e) {
+    return raw;
+  }
+}
+function buildAdoApiPrefix(orgUrl, project) {
+  const apiOrg = normalizeOrgUrlForApi(orgUrl).replace(/\/+$/, '');
+  const proj = encodeURIComponent(String(project || '').trim());
+  if (!apiOrg || !proj) return '';
+  return `${apiOrg}/${proj}/_apis`;
+}
+function getAdoAuthHeaders() {
+  const pat = getAdoPat();
+  if (!pat) return null;
+  const basic = btoa(':' + pat);
+  return { 'Authorization': `Basic ${basic}`, 'Accept': 'application/json' };
+}
+async function adoFetchJson(url) {
+  const headers = getAdoAuthHeaders();
+  if (!headers) throw new Error('Missing PAT');
+  let r;
+  try {
+    r = await fetch(url, { headers, cache: 'no-store' });
+  } catch (e) {
+    const msg = String(e?.message || e || '');
+    if (/failed to fetch/i.test(msg)) {
+      throw new Error('Request blocked (network/CORS). Try opening this page via a local server (e.g. `python3 -m http.server`) and retry.');
+    }
+    throw e;
+  }
+  const ct = r.headers.get('content-type') || '';
+  if (!r.ok) {
+    let msg = `${r.status} ${r.statusText}`;
+    if (ct.includes('json')) {
+      try { const j = await r.json(); msg += (j?.message ? ` — ${j.message}` : ''); } catch {}
+    }
+    throw new Error(msg);
+  }
+  if (!ct.includes('json')) throw new Error('Unexpected response (not JSON). Check PAT or URL.');
+  return await r.json();
+}
+
+// ─── Sync from ADO (folder selection) ───
+function parseTopFolder(path) {
+  const parts = String(path || '').split('\\').filter(Boolean);
+  return parts[0] || '(root)';
+}
+function getPersistedSyncFolders() {
+  const raw = (localStorage.getItem(ADO_SYNC_SELECTED_FOLDERS_KEY) || '').trim();
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.map(String) : [];
+  } catch { return []; }
+}
+function persistSyncFolders(folders) {
+  try { localStorage.setItem(ADO_SYNC_SELECTED_FOLDERS_KEY, JSON.stringify([...(folders || [])])); } catch {}
+}
+function syncSetStatus(text) {
+  const el = document.getElementById('syncStatus');
+  if (el) el.textContent = text || '';
+}
+function syncShowError(msg) {
+  const el = document.getElementById('syncError');
+  if (!el) return;
+  if (!msg) { el.classList.add('hidden'); el.textContent = ''; return; }
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+function syncToggleAll(select) {
+  document.querySelectorAll('#syncFolders input[type="checkbox"][data-folder]').forEach(cb => { cb.checked = !!select; });
+  syncUpdateApplyButton();
+}
+function syncUpdateApplyButton() {
+  const btn = document.getElementById('btnSyncApply');
+  if (!btn) return;
+  const selected = [...document.querySelectorAll('#syncFolders input[type="checkbox"][data-folder]')].filter(cb => cb.checked);
+  btn.disabled = selected.length === 0;
+}
+function syncRenderFolders(groups) {
+  const wrap = document.getElementById('syncFoldersWrap');
+  const container = document.getElementById('syncFolders');
+  if (!wrap || !container) return;
+
+  const persisted = new Set(getPersistedSyncFolders());
+  const preferred = ['01 Mobile', '02 Web', '03 API'];
+  container.innerHTML = Object.keys(groups)
+    .sort((a, b) => {
+      const ai = preferred.indexOf(a), bi = preferred.indexOf(b);
+      if (ai !== -1 || bi !== -1) return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+      return a.localeCompare(b);
+    })
+    .map(folder => {
+      const defs = groups[folder] || [];
+      const shouldCheck = persisted.size ? persisted.has(folder) : preferred.includes(folder);
+      return `
+        <label class="glass" style="padding:.75rem .9rem;border-radius:12px;display:flex;align-items:center;gap:.65rem;cursor:pointer">
+          <input type="checkbox" data-folder="${encodeURIComponent(folder)}" ${shouldCheck ? 'checked' : ''} onchange="syncUpdateApplyButton()" style="accent-color:var(--accent);width:16px;height:16px;cursor:pointer">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:800;font-size:.85rem;letter-spacing:-.2px">${esc(folder)}</div>
+            <div style="font-size:.7rem;color:var(--text-dim);font-family:var(--mono)">${defs.length} pipeline${defs.length !== 1 ? 's' : ''}</div>
+          </div>
+          <div style="font-family:var(--mono);font-size:.65rem;color:var(--text-muted)">${esc(folder === '(root)' ? '\\\\' : ('\\\\' + folder))}</div>
+        </label>`;
+    })
+    .join('');
+
+  wrap.classList.remove('hidden');
+  syncUpdateApplyButton();
+}
+async function syncLoadFolders() {
+  syncShowError('');
+  syncSetStatus('');
+  const btn = document.getElementById('btnSyncLoad');
+  if (btn) btn.disabled = true;
+  const orgUrl = (document.getElementById('syncOrgUrl')?.value || getDefaultOrgUrl()).trim().replace(/\/+$/, '');
+  const project = (document.getElementById('syncProject')?.value || getDefaultProject()).trim();
+  if (!getAdoPat()) {
+    if (btn) btn.disabled = false;
+    syncShowError('Missing PAT. Click “PAT settings” and save your token first.');
+    return;
+  }
+  if (!orgUrl || !project) {
+    if (btn) btn.disabled = false;
+    syncShowError('Org URL and Project are required.');
+    return;
+  }
+  localStorage.setItem(ADO_DEFAULT_ORG_KEY, orgUrl);
+  localStorage.setItem(ADO_DEFAULT_PROJECT_KEY, project);
+  updateAdoPatFetchStatus();
+
+  const api = buildAdoApiPrefix(orgUrl, project);
+  if (!api) {
+    if (btn) btn.disabled = false;
+    syncShowError('Invalid Org URL or Project.');
+    return;
+  }
+
+  try {
+    syncSetStatus('Fetching pipelines...');
+    const defs = await adoFetchJson(`${api}/build/definitions?$top=2000&api-version=7.0`);
+    const all = (defs?.value || []).filter(Boolean);
+    _syncAllDefinitions = all;
+    const groups = {};
+    all.forEach(d => {
+      const folder = parseTopFolder(d.path || '');
+      if (!groups[folder]) groups[folder] = [];
+      groups[folder].push(d);
+    });
+    syncRenderFolders(groups);
+    syncSetStatus(`Loaded ${all.length} pipelines`);
+  } catch (e) {
+    syncShowError(`Failed to fetch pipelines: ${e.message || e}`);
+    syncSetStatus('');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+function syncApplySelectedFolders() {
+  const orgUrl = (document.getElementById('syncOrgUrl')?.value || getDefaultOrgUrl()).trim().replace(/\/+$/, '');
+  const project = (document.getElementById('syncProject')?.value || getDefaultProject()).trim();
+  if (!_syncAllDefinitions || !_syncAllDefinitions.length) {
+    syncShowError('No pipelines loaded. Click “Load folders” first.');
+    return;
+  }
+  const selected = [...document.querySelectorAll('#syncFolders input[type="checkbox"][data-folder]')]
+    .filter(cb => cb.checked)
+    .map(cb => decodeURIComponent(String(cb.getAttribute('data-folder') || '').trim()))
+    .filter(Boolean);
+  if (!selected.length) { syncShowError('Select at least one folder.'); return; }
+  persistSyncFolders(selected);
+
+  const byFolder = {};
+  _syncAllDefinitions.forEach(d => {
+    const folder = parseTopFolder(d.path || '');
+    if (!byFolder[folder]) byFolder[folder] = [];
+    byFolder[folder].push(d);
+  });
+
+  let touched = 0;
+  selected.forEach(folder => {
+    const defs = byFolder[folder] || [];
+    const ids = defs.map(d => d.id).filter(Boolean);
+    if (!ids.length) return;
+    const name = folder === '(root)' ? 'ADO Root' : folder;
+    const existingIdx = configs.findIndex(c => c.name === name && c.orgUrl === orgUrl && c.project === project);
+    const cfg = {
+      id: existingIdx > -1 ? configs[existingIdx].id : generateId(),
+      name,
+      orgUrl,
+      project,
+      pipelineUrls: [],
+      definitionIds: ids,
+      pathFilter: '',
+      nameFilter: '',
+      syncFolder: folder === '(root)' ? null : folder,
+      syncType: 'folder'
+    };
+    if (existingIdx > -1) configs[existingIdx] = cfg;
+    else configs.push(cfg);
+    selectedConfigIds.add(cfg.id);
+    touched++;
+  });
+
+  saveConfigs();
+  renderConfigs();
+  updateScript();
+  closePanel();
+  showToast(`Synced ${touched} folder config${touched !== 1 ? 's' : ''} from ADO.`);
 }
 
 // ─── Script Generation ───
@@ -1528,19 +2421,25 @@ function loadData() {
     errEl.textContent = 'Expected format: {definitions:[...], builds:[...], testResults:{...}}';
     errEl.classList.remove('hidden'); return;
   }
+  applyLoadedData(data, { toast: true });
+}
 
-  pipelines = data.definitions.map(parsePipeline).filter(Boolean);
+function applyLoadedData(data, opts) {
+  const toast = opts?.toast !== false;
+  pipelines = (data.definitions || []).map(parsePipeline).filter(Boolean);
   testsByBuild = data.testResults || {};
   initIncludedPipelines();
 
   buildsByDef = {};
-  data.builds.forEach(b => {
+  const defaultOrg = data?.meta?.orgUrl || configs[0]?.orgUrl || getDefaultOrgUrl();
+  const defaultProject = data?.meta?.project || configs[0]?.project || getDefaultProject();
+  const projEnc = encodeURIComponent(defaultProject);
+
+  (data.builds || []).forEach(b => {
     const defId = b.definition?.id;
     if (!defId) return;
     if (!buildsByDef[defId]) buildsByDef[defId] = [];
-    const orgUrl = configs[0]?.orgUrl || 'https://bofaz.visualstudio.com';
-    const projEnc = encodeURIComponent(configs[0]?.project || 'Automation Architecture');
-    const webUrl = b._links?.web?.href || `${orgUrl}/${projEnc}/_build/results?buildId=${b.id}&view=results`;
+    const webUrl = b._links?.web?.href || `${defaultOrg}/${projEnc}/_build/results?buildId=${b.id}&view=results`;
     buildsByDef[defId].push({
       id: b.id, number: b.buildNumber,
       result: b.result || b.status || 'unknown',
@@ -1548,7 +2447,7 @@ function loadData() {
       duration: parseDuration(b.startTime, b.finishTime),
       requestedBy: b.requestedFor?.displayName || b.requestedBy?.displayName || 'Scheduled',
       reason: b.reason, url: webUrl,
-      testUrl: `${orgUrl}/${projEnc}/_build/results?buildId=${b.id}&view=ms.vss-test-web.build-test-results-tab`
+      testUrl: `${defaultOrg}/${projEnc}/_build/results?buildId=${b.id}&view=ms.vss-test-web.build-test-results-tab`
     });
   });
   Object.values(buildsByDef).forEach(arr => arr.sort((a, b) => new Date(b.startTime) - new Date(a.startTime)));
@@ -1556,7 +2455,309 @@ function loadData() {
   selectedFeatures = new Set();
   switchView('results');
   renderDashboard();
-  showToast(`Loaded ${pipelines.length} pipelines, ${data.builds.length} builds`);
+  if (toast) showToast(`Loaded ${pipelines.length} pipelines, ${(data.builds || []).length} builds`);
+}
+
+// ─── Direct fetch via PAT (no console script) ───
+function setFetchUiBusy(busy) {
+  const btn = document.getElementById('btnFetchNow');
+  if (btn) btn.disabled = !!busy;
+}
+function clearFetchLog() {
+  const wrap = document.getElementById('fetchLogWrap');
+  const pre = document.getElementById('fetchLog');
+  if (wrap) wrap.classList.remove('hidden');
+  if (pre) pre.textContent = '';
+  const err = document.getElementById('fetchNowError');
+  if (err) { err.classList.add('hidden'); err.textContent = ''; }
+  const copyBtn = document.getElementById('btnCopyFetched');
+  const dlBtn = document.getElementById('btnDownloadFetched');
+  if (copyBtn) copyBtn.disabled = true;
+  if (dlBtn) dlBtn.disabled = true;
+  lastFetchedDataObj = null;
+}
+function logFetch(line) {
+  const pre = document.getElementById('fetchLog');
+  if (!pre) return;
+  pre.textContent += (pre.textContent ? '\n' : '') + String(line || '');
+  pre.parentElement?.scrollTo?.({ top: pre.parentElement.scrollHeight, behavior: 'smooth' });
+}
+function showFetchError(msg) {
+  const err = document.getElementById('fetchNowError');
+  if (!err) return;
+  if (!msg) { err.classList.add('hidden'); err.textContent = ''; return; }
+  err.textContent = msg;
+  err.classList.remove('hidden');
+}
+function parseMonthRange(ym) {
+  if (!ym) return null;
+  const m = /^(\d{4})-(\d{2})$/.exec(String(ym).trim());
+  if (!m) return null;
+  const y = parseInt(m[1], 10);
+  const mo = parseInt(m[2], 10);
+  if (!Number.isFinite(y) || !Number.isFinite(mo) || mo < 1 || mo > 12) return null;
+  const start = new Date(Date.UTC(y, mo - 1, 1, 0, 0, 0));
+  const end = new Date(Date.UTC(y, mo, 1, 0, 0, 0));
+  return { ym, startIso: start.toISOString(), endIso: end.toISOString(), startMs: start.getTime(), endMs: end.getTime() };
+}
+function getActiveConfigsWithDefaults() {
+  const active = configs.filter(c => selectedConfigIds.has(c.id));
+  const defOrg = getDefaultOrgUrl();
+  const defProj = getDefaultProject();
+  return active.map(c => ({
+    ...c,
+    orgUrl: (c.orgUrl || defOrg).trim().replace(/\/+$/, ''),
+    project: (c.project || defProj).trim(),
+    definitionIds: c.definitionIds || [],
+    pathFilter: c.pathFilter || '',
+    nameFilter: c.nameFilter || ''
+  }));
+}
+async function fetchNowFromAdo() {
+  clearFetchLog();
+  setFetchUiBusy(true);
+  try {
+    if (!getAdoPat()) {
+      showFetchError('Missing PAT. Click “Set PAT”, save your token, then retry.');
+      return;
+    }
+    const active = getActiveConfigsWithDefaults();
+    if (!active.length) {
+      showFetchError('No pipeline configurations selected. Go to “Pipelines” and select at least one.');
+      return;
+    }
+
+    const pref = getPreferredExecutions();
+    const perPipeline = pref === 'all' ? 0 : (pref || 10);
+    const wantAll = pref === 'all';
+    const month = getFetchMonth();
+    const range = parseMonthRange(month);
+    logFetch(`[ADO] Starting fetch — per pipeline: ${wantAll ? 'ALL' : perPipeline}${range ? `, month: ${range.ym}` : ''}`);
+
+    const defCache = new Map(); // apiPrefix -> { allDefs: [], byId: Map }
+    const resolveAllDefs = async (orgUrl, project) => {
+      const apiPrefix = buildAdoApiPrefix(orgUrl, project);
+      if (!apiPrefix) throw new Error('Invalid Org URL or Project');
+      if (defCache.has(apiPrefix)) return defCache.get(apiPrefix);
+      const defs = await adoFetchJson(`${apiPrefix}/build/definitions?$top=2000&api-version=7.0`);
+      const allDefs = (defs?.value || []).filter(Boolean);
+      const byId = new Map(allDefs.map(d => [String(d.id), d]));
+      const cached = { apiPrefix, allDefs, byId, orgUrl, project };
+      defCache.set(apiPrefix, cached);
+      return cached;
+    };
+
+    // Resolve definitions for each config
+    const matchedByConfig = [];
+    for (const c of active) {
+      logFetch(`\n[Config] ${c.name} — ${c.project}`);
+      const { apiPrefix, allDefs, byId } = await resolveAllDefs(c.orgUrl, c.project);
+      let matched = [];
+
+      if (c.definitionIds && c.definitionIds.length) {
+        matched = c.definitionIds
+          .map(id => byId.get(String(id)))
+          .filter(Boolean);
+        const missing = c.definitionIds.filter(id => !byId.has(String(id)));
+        if (missing.length) logFetch(`- Warning: ${missing.length} definition id(s) not found in list (still continuing).`);
+      }
+      if (c.pathFilter) {
+        let pathRx = null;
+        try { pathRx = new RegExp(c.pathFilter, 'i'); } catch (e) { throw new Error(`Invalid path regex for "${c.name}": ${e.message}`); }
+        let nameRx = null;
+        if (c.nameFilter) {
+          try { nameRx = new RegExp(c.nameFilter, 'i'); } catch (e) { throw new Error(`Invalid name regex for "${c.name}": ${e.message}`); }
+        }
+        const filtered = allDefs.filter(d => {
+          const p = d.path || '';
+          if (!pathRx.test(p)) return false;
+          if (nameRx && !nameRx.test(p) && !nameRx.test(d.name || '')) return false;
+          return true;
+        });
+        const existingIds = new Set(matched.map(d => String(d.id)));
+        filtered.forEach(d => { if (!existingIds.has(String(d.id))) matched.push(d); });
+      }
+
+      // Unique
+      const uniq = [];
+      const seen = new Set();
+      matched.forEach(d => {
+        const k = String(d.id);
+        if (k && !seen.has(k)) { seen.add(k); uniq.push(d); }
+      });
+      logFetch(`- Matched: ${uniq.length} pipelines`);
+      matchedByConfig.push({ c, apiPrefix, defs: uniq });
+    }
+
+    const allDefs = [];
+    const seenDef = new Set();
+    matchedByConfig.forEach(x => {
+      x.defs.forEach(d => {
+        const k = String(d.id);
+        if (k && !seenDef.has(k)) { seenDef.add(k); allDefs.push(d); }
+      });
+    });
+    if (!allDefs.length) throw new Error('No pipelines matched your selected configs.');
+
+    // Builds fetch helpers
+    const mapLimit = async (items, limit, worker) => {
+      const out = new Array(items.length);
+      let idx = 0;
+      const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+        while (true) {
+          const cur = idx++;
+          if (cur >= items.length) break;
+          out[cur] = await worker(items[cur], cur);
+        }
+      });
+      await Promise.all(runners);
+      return out;
+    };
+
+    const fetchBuildsForDefinition = async (apiPrefix, defId, limit, rangeObj) => {
+      const out = [];
+      let token = '';
+      let guard = 0;
+      while (true) {
+        guard++;
+        if (guard > 5000) break;
+        const top = limit === 0 ? 200 : (rangeObj ? 200 : Math.min(200, Math.max(1, limit - out.length)));
+        let url = `${apiPrefix}/build/builds?definitions=${encodeURIComponent(defId)}&$top=${top}&queryOrder=finishTimeDescending&api-version=7.0`;
+        if (rangeObj) {
+          url += `&minTime=${encodeURIComponent(rangeObj.startIso)}&maxTime=${encodeURIComponent(rangeObj.endIso)}`;
+        }
+        if (token) url += `&continuationToken=${encodeURIComponent(token)}`;
+        const r = await fetch(url, { headers: getAdoAuthHeaders(), cache: 'no-store' });
+        if (!r.ok) break;
+        const d = await r.json();
+        const valsAll = (d?.value || []);
+        let vals = valsAll;
+        if (rangeObj && valsAll.length) {
+          vals = valsAll.filter(b => {
+            const t = Date.parse(b.finishTime || b.startTime || b.queueTime || '');
+            return Number.isFinite(t) && t >= rangeObj.startMs && t < rangeObj.endMs;
+          });
+          const last = valsAll[valsAll.length - 1];
+          const lastT = last ? Date.parse(last.finishTime || last.startTime || last.queueTime || '') : NaN;
+          if (Number.isFinite(lastT) && lastT < rangeObj.startMs) { if (vals.length) out.push(...vals); break; }
+        }
+        if (vals.length) out.push(...vals);
+        token = r.headers.get('x-ms-continuationtoken') || '';
+        if (limit !== 0 && out.length >= limit) break;
+        if (!token || valsAll.length === 0) break;
+        // If CORS blocks header access, token will be empty even when more pages exist.
+        if (limit === 0 && !token && valsAll.length === 200) break;
+      }
+      return limit === 0 ? out : out.slice(0, limit);
+    };
+
+    logFetch(`\n[Builds] Fetching ${wantAll ? 'ALL' : ('last ' + perPipeline)} runs per pipeline...`);
+    const defsForBuildFetch = allDefs.map(d => ({ id: d.id, apiPrefix: matchedByConfig.find(x => x.defs.some(dd => dd.id === d.id))?.apiPrefix }));
+    const buildArrays = await mapLimit(defsForBuildFetch, 6, async (it) => {
+      const apiPrefix = it.apiPrefix || buildAdoApiPrefix(getDefaultOrgUrl(), getDefaultProject());
+      try { return await fetchBuildsForDefinition(apiPrefix, it.id, wantAll ? 0 : Math.max(1, perPipeline), range); } catch { return []; }
+    });
+    let allBuilds = [];
+    buildArrays.forEach(arr => { if (arr && arr.length) allBuilds = allBuilds.concat(arr); });
+    logFetch(`[Builds] Got ${allBuilds.length} builds. Fetching test runs...`);
+
+    // Fetch test runs summary per build
+    const tMap = {};
+    const runIds = [];
+    await mapLimit(allBuilds, 10, async (b) => {
+      try {
+        // Prefer the org/project of the first active config
+        const orgUrl = active[0]?.orgUrl || getDefaultOrgUrl();
+        const project = active[0]?.project || getDefaultProject();
+        const apiPrefix = buildAdoApiPrefix(orgUrl, project);
+        const r = await fetch(`${apiPrefix}/test/runs?buildUri=${encodeURIComponent('vstfs:///Build/Build/' + b.id)}&api-version=7.0`, { headers: getAdoAuthHeaders(), cache: 'no-store' });
+        if (!r.ok) return;
+        const d = await r.json();
+        if (d?.value && d.value.length > 0) {
+          let tot = 0, pass = 0, fail = 0;
+          d.value.forEach(tr => {
+            tot += tr.totalTests || 0;
+            pass += tr.passedTests || 0;
+            fail += (tr.totalTests || 0) - (tr.passedTests || 0) - (tr.notApplicableTests || 0) - (tr.incompleteTests || 0);
+            runIds.push({ runId: tr.id, buildId: b.id, apiPrefix });
+          });
+          tMap[b.id] = { total: tot, passed: pass, failed: Math.max(0, fail), tests: [] };
+        }
+      } catch {}
+    });
+
+    logFetch(`[Tests] Fetching test details for ${runIds.length} run(s)...`);
+    await mapLimit(runIds, 10, async ({ runId, buildId, apiPrefix }) => {
+      try {
+        const r = await fetch(`${apiPrefix}/test/runs/${runId}/results?api-version=7.0`, { headers: getAdoAuthHeaders(), cache: 'no-store' });
+        if (!r.ok) return;
+        const d = await r.json();
+        if (d?.value && tMap[buildId]) {
+          d.value.forEach(tc => {
+            tMap[buildId].tests.push({
+              name: tc.testCaseTitle || tc.automatedTestName || 'Unnamed',
+              outcome: tc.outcome || 'Unknown',
+              duration: tc.durationInMs || 0
+            });
+          });
+        }
+      } catch {}
+    });
+
+    const out = {
+      meta: {
+        fetchMonth: month || null,
+        generatedAt: new Date().toISOString(),
+        orgUrl: active[0]?.orgUrl || getDefaultOrgUrl(),
+        project: active[0]?.project || getDefaultProject()
+      },
+      definitions: allDefs,
+      builds: allBuilds,
+      testResults: tMap
+    };
+    lastFetchedDataObj = out;
+    const copyBtn = document.getElementById('btnCopyFetched');
+    const dlBtn = document.getElementById('btnDownloadFetched');
+    if (copyBtn) copyBtn.disabled = false;
+    if (dlBtn) dlBtn.disabled = false;
+
+    logFetch(`\n[Done] ${allDefs.length} pipelines, ${allBuilds.length} builds.`);
+    applyLoadedData(out, { toast: false });
+    showToast(`Fetched ${allDefs.length} pipelines, ${allBuilds.length} builds`);
+  } catch (e) {
+    let msg = e?.message || String(e);
+    if (/failed to fetch/i.test(String(msg))) {
+      msg = 'Request blocked (network/CORS). Try opening this page via a local server (e.g. `python3 -m http.server`) and retry.';
+    }
+    showFetchError(msg);
+    logFetch(`\n[Error] ${msg}`);
+  } finally {
+    setFetchUiBusy(false);
+  }
+}
+async function copyFetchedJson() {
+  if (!lastFetchedDataObj) { showToast('No fetched JSON available yet'); return; }
+  try {
+    await navigator.clipboard.writeText(JSON.stringify(lastFetchedDataObj));
+    showToast('Fetched JSON copied to clipboard');
+  } catch (e) {
+    showToast('Copy failed — try Download JSON instead');
+  }
+}
+function downloadFetchedJson() {
+  if (!lastFetchedDataObj) { showToast('No fetched JSON available yet'); return; }
+  const out = JSON.stringify(lastFetchedDataObj);
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const bl = new Blob([out], { type: 'application/json' });
+  const u = URL.createObjectURL(bl);
+  const a = document.createElement('a');
+  a.href = u;
+  a.download = `pipeline-data_${ts}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(u);
+  showToast('Fetched JSON downloaded');
 }
 
 function detectCategory(path, name) {
