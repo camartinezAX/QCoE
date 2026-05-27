@@ -97,6 +97,39 @@
         .stat { background: rgba(255,255,255,0.08); border-radius: 8px; padding: 6px 12px; font-size: 12px; }
         .stat-val { font-weight: 700; color: var(--axos-orange); }
 
+        .sidebar-repo-filter{
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(0,0,0,0.02);
+        }
+        [data-theme="dark"] .sidebar-repo-filter{background: rgba(255,255,255,0.02);}
+        .sidebar-repo-label{
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.7px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.72);
+            margin-bottom: 6px;
+        }
+        [data-theme="light"] .sidebar-repo-label{color: rgba(30,56,96,0.65);}
+        .sidebar-repo-filter select{
+            width: 100%;
+            padding: 9px 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.10);
+            background: rgba(0,0,0,0.25);
+            color: var(--text-primary);
+            font-size: 12px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        [data-theme="light"] .sidebar-repo-filter select{
+            background:#fff;
+            border-color:rgba(30,56,96,0.20);
+            color:var(--navy);
+        }
+        .sidebar-repo-filter select:focus{border-color: var(--axos-orange);}
+
         .sidebar-actions { padding: 12px 16px; border-bottom: 1px solid var(--border-color); display: flex; gap: 8px; }
         .sidebar-actions .btn-sm {
             flex: 1; padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 600;
@@ -332,6 +365,10 @@
             background: linear-gradient(to top, var(--bg-primary), rgba(10,14,26,0.95));
             backdrop-filter: blur(10px); padding: 16px 40px; border-top: 1px solid var(--border-color); z-index: 100;
         }
+        [data-theme="light"] .action-bar{
+            background: linear-gradient(to top, rgba(248,250,252,0.98), rgba(248,250,252,0.72));
+            border-top: 1px solid rgba(30,56,96,0.14);
+        }
         .action-bar-inner { max-width: 900px; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
         .action-status { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-secondary); }
         .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-muted); }
@@ -434,11 +471,205 @@
         .top-tab { flex:1; padding:12px 18px; text-align:center; font-weight:700; cursor:pointer; color:var(--text-dim); border-bottom:3px solid transparent; transition:all .25s var(--ease); background:transparent; border:none; text-transform:uppercase; font-size:11px; letter-spacing:1px; border-radius:10px; }
         .top-tab:hover { color:var(--text-primary); background:rgba(250,167,74,0.08); }
         .top-tab.active { background:rgba(250,167,74,0.12); color:var(--orange); border-bottom-color:transparent; }
+        .top-tab.break-in{ position:relative; animation:tabBreakIn 760ms cubic-bezier(.22,1,.36,1) both; }
+        .top-tab.break-in::after{
+            content:'';
+            position:absolute;
+            inset:-8px -10px;
+            border-radius:14px;
+            background:radial-gradient(circle at 50% 50%, rgba(250,167,74,0.22), transparent 60%);
+            opacity:0;
+            pointer-events:none;
+            animation:tabFlash 760ms ease-out both;
+            filter:blur(0.2px);
+        }
+        @keyframes tabBreakIn{
+            0%{opacity:0;transform:translateY(-10px) scale(0.84) rotate(-1.6deg);filter:blur(0.6px);}
+            55%{opacity:1;transform:translateY(0) scale(1.08) rotate(0.6deg);filter:blur(0);}
+            75%{transform:translateY(-2px) scale(0.98) rotate(-0.2deg);}
+            100%{transform:translateY(0) scale(1) rotate(0);}
+        }
+        @keyframes tabFlash{
+            0%{opacity:0;transform:scale(0.85);}
+            35%{opacity:1;transform:scale(1);}
+            100%{opacity:0;transform:scale(1.12);}
+        }
+
+        /* Extra: dramatic "break through" FX overlay */
+        .dash-break-fx{
+            position:fixed;
+            top:0; left:0; right:0;
+            height:74px;
+            z-index:9999;
+            pointer-events:none;
+            overflow:hidden;
+        }
+        .dash-break-fx .shock{
+            position:absolute;
+            inset:-40px -40px -10px -40px;
+            background:
+                radial-gradient(circle at 30% 60%, rgba(250,167,74,0.30), transparent 55%),
+                radial-gradient(circle at 70% 40%, rgba(96,165,250,0.18), transparent 58%),
+                linear-gradient(90deg, transparent, rgba(250,167,74,0.16), transparent);
+            filter:blur(0.4px);
+            opacity:0;
+            transform:translateY(-14px) scale(0.98);
+            animation:dashShock 1100ms cubic-bezier(.22,1,.36,1) both;
+        }
+        .dash-break-fx .shards{
+            position:absolute;
+            inset:0;
+            opacity:0;
+            animation:dashShards 1100ms cubic-bezier(.22,1,.36,1) both;
+        }
+        .dash-break-fx .shard{
+            position:absolute;
+            width:10px; height:10px;
+            background:linear-gradient(135deg, rgba(250,167,74,0.85), rgba(250,167,74,0.12));
+            border:1px solid rgba(250,167,74,0.25);
+            border-radius:3px;
+            box-shadow:0 10px 24px rgba(250,167,74,0.12);
+            transform:translateY(-20px) scale(0.9) rotate(0deg);
+            opacity:0.0;
+            animation:dashShardFly 900ms cubic-bezier(.22,1,.36,1) both;
+        }
+        @keyframes dashShock{
+            0%{opacity:0;transform:translateY(-18px) scale(0.96);}
+            22%{opacity:1;transform:translateY(0) scale(1.02);}
+            55%{opacity:0.55;transform:translateY(0) scale(1.01);}
+            100%{opacity:0;transform:translateY(6px) scale(1.04);}
+        }
+        @keyframes dashShards{
+            0%{opacity:0;}
+            18%{opacity:1;}
+            100%{opacity:0;}
+        }
+        @keyframes dashShardFly{
+            0%{opacity:0;transform:translateY(-18px) scale(0.92) rotate(-12deg);}
+            20%{opacity:1;}
+            100%{opacity:0;transform:translateY(78px) scale(0.55) rotate(26deg);}
+        }
 
         .theme-toggle{width:38px;height:38px;border-radius:10px;border:1px solid var(--glass-border);background:var(--glass-bg);color:var(--text-dim);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s var(--ease);flex:0 0 auto}
         .theme-toggle:hover{background:rgba(250,167,74,0.1);color:var(--orange);border-color:var(--orange)}
         .tab-content { display:none; }
         .tab-content.active { display:block; }
+
+        /* ═══════════════════════════════════════════ */
+        /*  DASHBOARDS TAB                             */
+        /* ═══════════════════════════════════════════ */
+        #panelDashboards .sidebar { border-right: none; max-width: 44vw; }
+        .dash-list-title{font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted);margin:2px 0 10px;}
+        .dash-list-actions{display:flex;gap:8px;margin:10px 0 14px;flex-wrap:wrap;}
+        .dash-list-actions button{flex:1;min-width:120px;}
+        .dash-item{
+            padding:10px 12px;
+            border-radius:12px;
+            border:1px solid rgba(255,255,255,0.08);
+            background:rgba(0,0,0,0.20);
+            cursor:pointer;
+            transition:all .18s var(--ease);
+            margin-bottom:8px;
+        }
+        [data-theme="light"] .dash-item{background:#fff;border-color:rgba(30,56,96,0.14);}
+        .dash-item:hover{border-color:rgba(250,167,74,0.55);transform:translateY(-1px);}
+        .dash-item.active{border-color:rgba(250,167,74,0.85);box-shadow:0 10px 28px rgba(250,167,74,0.10);}
+        .dash-item-name{font-size:12px;font-weight:800;color:var(--text-primary);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        .dash-item-sub{font-size:11px;color:var(--text-muted);display:flex;gap:10px;flex-wrap:wrap;}
+
+        .dash-head{
+            display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:16px;
+        }
+        .dash-head h1{font-size:20px;font-weight:800;margin:0;}
+        .dash-head .dash-meta{font-size:11px;color:var(--text-muted);margin-top:6px;}
+        .dash-head-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
+        .dash-group{
+            background:linear-gradient(135deg, rgba(22,29,46,0.85), rgba(31,41,55,0.78));
+            border:1px solid rgba(255,255,255,0.06);
+            border-radius:18px;
+            padding:14px 14px 10px;
+            margin-bottom:16px;
+            backdrop-filter:blur(12px);
+        }
+        [data-theme="light"] .dash-group{
+            background:#fff;
+            border-color:rgba(30,56,96,0.12);
+            box-shadow:0 8px 22px rgba(0,0,0,0.05);
+        }
+        .dash-group-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;}
+        .dash-group-title{font-size:13px;font-weight:900;letter-spacing:.2px;color:var(--text-primary);}
+        .dash-group-actions{display:flex;gap:8px;flex-wrap:wrap;}
+        .dash-pipes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;}
+        .dash-pipe-card{
+            padding:12px 12px 10px;
+            border-radius:14px;
+            border:1px solid rgba(255,255,255,0.06);
+            background:rgba(0,0,0,0.18);
+            transition:all .18s var(--ease);
+        }
+        [data-theme="light"] .dash-pipe-card{background:#ffffff;border-color:rgba(30,56,96,0.12);}
+        .dash-pipe-name{font-size:12px;font-weight:800;color:var(--text-primary);margin-bottom:8px;white-space:normal;overflow:visible;text-overflow:unset;word-break:break-word;line-height:1.25;}
+        .run-strip{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+        .run-dot{width:12px;height:12px;border-radius:4px;background:rgba(148,163,184,0.35);border:1px solid rgba(255,255,255,0.06);cursor:pointer;transition:transform .12s var(--ease);}
+        [data-theme="light"] .run-dot{border-color:rgba(30,56,96,0.14);}
+        .run-dot:hover{transform:translateY(-1px) scale(1.06);}
+        .run-dot.success{background:rgba(22,163,74,0.9);}
+        .run-dot.failure{background:rgba(220,38,38,0.9);}
+        .run-dot.cancelled{background:rgba(107,114,128,0.9);}
+        .run-dot.skipped{background:rgba(250,167,74,0.9);}
+        .run-dot.unknown{background:rgba(59,130,246,0.9);}
+        .run-dot.attn{box-shadow:0 0 0 2px rgba(250,167,74,0.40), 0 10px 24px rgba(250,167,74,0.14);}
+        /* Dashboard graphs removed (status dots only). */
+        .dash-pipe-foot{display:flex;justify-content:space-between;gap:10px;margin-top:10px;font-size:11px;color:var(--text-muted);}
+        .dash-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);font-weight:800;}
+        [data-theme="light"] .dash-pill{background:#fff;border-color:rgba(30,56,96,0.16);color:var(--navy);}
+
+        .dash-select{
+            padding:10px 12px;
+            border-radius:12px;
+            border:1px solid rgba(255,255,255,0.08);
+            background:rgba(0,0,0,0.25);
+            color:var(--text-primary);
+            font-size:12px;
+            outline:none;
+        }
+        [data-theme="light"] .dash-select{
+            background:#fff;
+            color:var(--navy);
+            border-color:rgba(30,56,96,0.22);
+            box-shadow:0 1px 0 rgba(30,56,96,0.04);
+        }
+
+        .dash-repo-card{
+            border-radius:16px;
+            border:1px solid rgba(255,255,255,0.06);
+            background:rgba(0,0,0,0.18);
+        }
+        [data-theme="light"] .dash-repo-card{
+            background:#fff;
+            border-color:rgba(30,56,96,0.12);
+            box-shadow:0 16px 36px rgba(0,0,0,0.08);
+        }
+
+        .dash-xfer-textarea{
+            width:100%;
+            min-height:180px;
+            resize:vertical;
+            padding:12px 12px;
+            border-radius:14px;
+            border:1px solid rgba(255,255,255,0.08);
+            background:rgba(0,0,0,0.22);
+            color:var(--text-primary);
+            font-size:12px;
+            font-family:'JetBrains Mono',monospace;
+            line-height:1.5;
+            outline:none;
+        }
+        [data-theme="light"] .dash-xfer-textarea{
+            background:#fff;
+            border-color:rgba(30,56,96,0.18);
+            color:var(--navy);
+        }
 
         /* Results: resizable "Filter Pipelines" sidebar */
         #panelResults .sidebar { border-right: none; max-width: 72vw; }
@@ -896,6 +1127,23 @@
             border-color:rgba(30,56,96,0.28) !important;
             color:var(--navy) !important;
         }
+        /* Light mode: Results fetch controls (mode/preset/date inputs) */
+        html[data-theme="light"] #resultsFetchMode,
+        html[data-theme="light"] #resultsDatePreset,
+        html[data-theme="light"] #resultsDateStart,
+        html[data-theme="light"] #resultsDateEnd{
+            background:#fff !important;
+            border-color:rgba(30,56,96,0.28) !important;
+            color:var(--navy) !important;
+            box-shadow:0 1px 0 rgba(30,56,96,0.04) !important;
+        }
+        html[data-theme="light"] #resultsFetchMode:focus,
+        html[data-theme="light"] #resultsDatePreset:focus,
+        html[data-theme="light"] #resultsDateStart:focus,
+        html[data-theme="light"] #resultsDateEnd:focus{
+            border-color:rgba(250,167,74,0.70) !important;
+            outline:none !important;
+        }
 
         /* Light mode: funnel rings visibility */
         html[data-theme="light"] .funnel-arrow{color:rgba(30,56,96,0.25)}
@@ -918,6 +1166,7 @@
         <div class="top-tabs-left">
             <button class="top-tab active" onclick="switchTopTab('pipelines')" id="tabPipelines">Pipelines</button>
             <button class="top-tab" onclick="switchTopTab('results')" id="tabResults">Results & Metrics</button>
+            <button class="top-tab" onclick="switchTopTab('dashboards')" id="tabDashboards" style="display:none;">Dashboards</button>
             <button class="top-tab" onclick="switchTopTab('email')" id="tabEmail">Email Report</button>
         </div>
         <div class="top-tabs-right">
@@ -940,6 +1189,12 @@
                     <span style="font-size:13px;">&#9881;</span> Settings
                     <span id="patDot" style="width:6px;height:6px;border-radius:50%;background:var(--error);flex-shrink:0;"></span>
                 </button>
+            </div>
+            <div class="sidebar-repo-filter">
+                <div class="sidebar-repo-label">Repo</div>
+                <select id="globalRepoFilter" onchange="onGlobalRepoFilterChange()">
+                    <option value="all">All Repos</option>
+                </select>
             </div>
             <div class="sidebar-actions">
                 <button class="btn-sm active" onclick="setView('tree')" id="viewTreeBtn">Folders</button>
@@ -1013,10 +1268,31 @@
             <div class="pat-bar">
                 <span style="font-size:15px;">&#128274;</span>
                 <span id="resultsTokenStatus" style="font-size:11px; font-weight:700; padding:6px 10px; border-radius:999px; white-space:nowrap;"></span>
-                <div style="display:flex; align-items:center; gap:4px;">
-                    <span style="font-size:11px; color:var(--text-muted); white-space:nowrap;">Last</span>
-                    <input type="number" id="ghRunCount" value="3" min="1" max="100" style="width:52px; padding:8px 6px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.3); color:var(--text-primary); font-size:12px; text-align:center; font-family:'JetBrains Mono',monospace;" onfocus="this.style.borderColor='var(--axos-orange)'" onblur="this.style.borderColor='rgba(255,255,255,0.08)'">
-                    <span style="font-size:11px; color:var(--text-muted); white-space:nowrap;">runs</span>
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <select id="resultsFetchMode" onchange="onResultsFetchModeChange()" style="padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); color:var(--text-primary); font-size:12px;">
+                        <option value="count">Last N runs</option>
+                        <option value="range">Date range</option>
+                    </select>
+
+                    <div id="resultsFetchCountWrap" style="display:flex; align-items:center; gap:4px;">
+                        <span style="font-size:11px; color:var(--text-muted); white-space:nowrap;">Last</span>
+                        <input type="number" id="ghRunCount" value="7" min="1" max="100" style="width:52px; padding:8px 6px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.3); color:var(--text-primary); font-size:12px; text-align:center; font-family:'JetBrains Mono',monospace;" onfocus="this.style.borderColor='var(--axos-orange)'" onblur="this.style.borderColor='rgba(255,255,255,0.08)'">
+                        <span style="font-size:11px; color:var(--text-muted); white-space:nowrap;">runs</span>
+                    </div>
+
+                    <div id="resultsFetchRangeWrap" style="display:none; align-items:center; gap:8px; flex-wrap:wrap;">
+                        <select id="resultsDatePreset" onchange="onResultsDatePresetChange()" style="padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); color:var(--text-primary); font-size:12px;">
+                            <option value="today">Today</option>
+                            <option value="week" selected>This week</option>
+                            <option value="month">This month</option>
+                            <option value="custom">Custom range</option>
+                        </select>
+                        <div id="resultsCustomDates" style="display:none; align-items:center; gap:6px; flex-wrap:wrap;">
+                            <input type="date" id="resultsDateStart" style="padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); color:var(--text-primary); font-size:12px;">
+                            <span style="font-size:11px; color:var(--text-muted);">to</span>
+                            <input type="date" id="resultsDateEnd" style="padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); color:var(--text-primary); font-size:12px;">
+                        </div>
+                    </div>
                 </div>
                 <button class="btn btn-orange" onclick="fetchAllResults()" id="fetchBtn" style="background:linear-gradient(135deg, #FAA74A, #f59e0b); font-weight:700; letter-spacing:0.3px; box-shadow:0 4px 14px rgba(250,167,74,0.25); transition:all 0.2s;">Fetch Results</button>
                 <span class="pat-status" id="patStatus"></span>
@@ -1095,6 +1371,26 @@
         </div>
     </div>
     </div><!-- /panelResults -->
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!--  DASHBOARDS TAB                                -->
+    <!-- ═══════════════════════════════════════════════ -->
+    <div class="tab-content" id="panelDashboards">
+        <div class="app" id="dashboardsApp">
+            <div class="sidebar" id="dashboardsSidebar" style="padding-top:18px;">
+                <div style="padding:0 16px 14px; border-bottom:1px solid rgba(255,255,255,0.06);">
+                    <div style="font-size:13px; font-weight:700; color:var(--text-primary); margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+                        <span style="font-size:16px;">&#128202;</span> Dashboards
+                    </div>
+                    <div style="font-size:11px; color:var(--text-muted); line-height:1.6;">
+                        Dashboards are saved in your browser (localStorage) and scoped per repo.
+                    </div>
+                </div>
+                <div id="dashboardsList" style="padding:14px 16px; overflow:auto; flex:1;"></div>
+            </div>
+            <div class="main" id="dashboardsContent" style="padding:24px 30px;"></div>
+        </div>
+    </div><!-- /panelDashboards -->
 
     <!-- ═══════════════════════════════════════════════ -->
     <!--  EMAIL REPORT TAB                              -->
@@ -2149,11 +2445,127 @@
         return html;
     }
 
+    const SELECTED_FOLDER_KEY = 'pm.pipelines.selectedFolder.v1';
+    const NO_FOLDER_SELECTED = '__none__'; // means "no default selection" (not "All Pipelines")
+    const GLOBAL_REPO_FILTER_KEY = 'pm.globalRepoFilter.v1';
+
+    function loadGlobalRepoFilterPref() {
+        // Always default to All Repos on page load.
+        // (Repo selection is a session action; we do not restore the last repo automatically.)
+        return 'all';
+    }
+
+    function persistGlobalRepoFilterPref(v) {
+        try { localStorage.setItem(GLOBAL_REPO_FILTER_KEY, String(v || 'all')); } catch { /* ignore */ }
+    }
+
+    let globalRepoFilter = loadGlobalRepoFilterPref();
+
+    function getRepoFilteredPipelines(list) {
+        const repo = String(globalRepoFilter || 'all').trim() || 'all';
+        const arr = Array.isArray(list) ? list : [];
+        if (repo === 'all') return arr;
+        return arr.filter(p => normRepoForPipeline(p) === repo);
+    }
+
+    function getKnownRepoNames() {
+        const fromSync = (loadSyncRepos?.() || []).map(r => String(r?.repo || '').trim()).filter(Boolean);
+        const fromPipes = (pipelines || []).map(p => normRepoForPipeline(p)).filter(Boolean);
+        return [...new Set([...fromSync, ...fromPipes])].sort((a, b) => a.localeCompare(b));
+    }
+
+    function populateGlobalRepoFilter() {
+        const sel = document.getElementById('globalRepoFilter');
+        if (!sel) return;
+        const repos = getKnownRepoNames();
+        const prev = String(globalRepoFilter || 'all').trim() || 'all';
+        sel.innerHTML = `<option value="all">All Repos</option>` + repos.map(r => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join('');
+        sel.value = (prev === 'all' || repos.includes(prev)) ? prev : 'all';
+    }
+
+    function setGlobalRepoFilter(next, opts) {
+        const o = opts && typeof opts === 'object' ? opts : {};
+        const requested = String(next || 'all').trim() || 'all';
+        const known = getKnownRepoNames();
+        const v = (requested !== 'all' && !known.includes(requested)) ? 'all' : requested;
+        globalRepoFilter = v;
+        if (o.persist !== false) persistGlobalRepoFilterPref(globalRepoFilter);
+
+        // Sync UI controls across tabs (even if hidden).
+        try { populateGlobalRepoFilter(); } catch { /* ignore */ }
+        const gSel = document.getElementById('globalRepoFilter');
+        if (gSel && gSel.value !== globalRepoFilter) gSel.value = globalRepoFilter;
+        const rSel = document.getElementById('resultsRepoFilter');
+        if (rSel && rSel.value !== globalRepoFilter && (globalRepoFilter === 'all' || Array.from(rSel.options || []).some(o => o.value === globalRepoFilter))) {
+            rSel.value = globalRepoFilter;
+        }
+        const eSel = document.getElementById('emailRepoFilter');
+        if (eSel && eSel.value !== globalRepoFilter && (globalRepoFilter === 'all' || Array.from(eSel.options || []).some(o => o.value === globalRepoFilter))) {
+            eSel.value = globalRepoFilter;
+        }
+
+        // Refresh views.
+        if (currentView === 'list') showAllPipelines();
+        else { buildTree(); showFolderPipelines(selectedFolder); }
+        if (allRuns && allRuns.length) {
+            if (o.skipResults !== true) {
+                try { populateResultsRepoFilter(); } catch { /* ignore */ }
+                try {
+                    const rSel2 = document.getElementById('resultsRepoFilter');
+                    if (rSel2) rSel2.value = globalRepoFilter === 'all' ? 'all' : globalRepoFilter;
+                    onResultsRepoFilterChange();
+                } catch { /* ignore */ }
+            }
+            if (o.skipEmail !== true) {
+                try {
+                    populateEmailRepoFilter();
+                    const eSel2 = document.getElementById('emailRepoFilter');
+                    if (eSel2) eSel2.value = globalRepoFilter === 'all' ? 'all' : globalRepoFilter;
+                    populateEmailPipePicker();
+                } catch { /* ignore */ }
+            }
+        }
+
+        // If Dashboards is visible, re-render immediately (fixes "Continue" doing nothing).
+        try {
+            const dashPanel = document.getElementById('panelDashboards');
+            if (dashPanel && dashPanel.classList.contains('active')) renderDashboards();
+        } catch { /* ignore */ }
+    }
+
+    function onGlobalRepoFilterChange() {
+        const v = document.getElementById('globalRepoFilter')?.value || 'all';
+        setGlobalRepoFilter(v, { persist: true });
+    }
+
+    function loadSelectedFolderPref() {
+        try {
+            const raw = localStorage.getItem(SELECTED_FOLDER_KEY);
+            if (raw === null) return NO_FOLDER_SELECTED;
+            const v = String(raw || '').trim();
+            if (!v) return NO_FOLDER_SELECTED;
+            // Never default to "All Pipelines" on page load.
+            // Users can still click "All Pipelines" explicitly when they want it.
+            if (v === '__all__') return NO_FOLDER_SELECTED;
+            if (v === NO_FOLDER_SELECTED) return NO_FOLDER_SELECTED;
+            return v;
+        } catch {
+            return NO_FOLDER_SELECTED;
+        }
+    }
+
+    function persistSelectedFolderPref(v) {
+        try {
+            if (v === null) localStorage.setItem(SELECTED_FOLDER_KEY, '__all__');
+            else localStorage.setItem(SELECTED_FOLDER_KEY, String(v || '').trim() || NO_FOLDER_SELECTED);
+        } catch { /* ignore */ }
+    }
+
     let pipelines = [];
     let savedSnapshot = [];
     let pendingSaveChanges = [];
     let currentView = 'tree';
-    let selectedFolder = null;
+    let selectedFolder = loadSelectedFolderPref();
     let editingPipeline = null;
     let viewOnlyMode = false;
     const STORAGE_KEY = 'axos_pipeline_manager_data';
@@ -2693,20 +3105,30 @@
     function buildTree() {
         const container = document.getElementById('treeContainer');
         let html = '';
+        const visiblePipelines = getRepoFilteredPipelines(pipelines);
 
         const isOpen = key => !!(treeOpenState && treeOpenState[key]);
 
+        // Explicit "no selection" option so users can unselect All Pipelines anytime.
         html += `<div class="tree-node">
-            <div class="tree-row${!selectedFolder ? ' selected' : ''}" onclick="selectFolder(null)" style="padding-left:12px;">
+            <div class="tree-row${selectedFolder === NO_FOLDER_SELECTED ? ' selected' : ''}" onclick="selectFolder('${NO_FOLDER_SELECTED}')" style="padding-left:12px;">
+                <span class="tree-icon">&#8212;</span>
+                <span class="tree-label" style="font-weight:700; color:var(--text-primary);">No selection</span>
+                <span class="tree-count"> </span>
+            </div>
+        </div>`;
+
+        html += `<div class="tree-node">
+            <div class="tree-row${selectedFolder === null ? ' selected' : ''}" onclick="selectFolder(null)" style="padding-left:12px;">
                 <span class="tree-icon">*</span>
                 <span class="tree-label" style="font-weight:700; color:var(--text-primary);">All Pipelines</span>
-                <span class="tree-count">${pipelines.length}</span>
+                <span class="tree-count">${visiblePipelines.length}</span>
             </div>
         </div>`;
 
         for (const [platform, brands] of Object.entries(FOLDER_STRUCTURE)) {
             const isMobile = platform === '01 Mobile';
-            const platformPipelines = pipelines.filter(p => p.platform === platform);
+            const platformPipelines = visiblePipelines.filter(p => p.platform === platform);
             const platformKey = platform;
             const platformOpen = isOpen(platformKey);
             const pIcon = platform.startsWith('01') ? '&#128241;' : platform.startsWith('02') ? '&#127760;' : '&#9889;';
@@ -2827,7 +3249,7 @@
             html += `</div></div>`;
         }
 
-        const unmatched = pipelines.filter(p => !Object.keys(FOLDER_STRUCTURE).includes(p.platform));
+        const unmatched = visiblePipelines.filter(p => !Object.keys(FOLDER_STRUCTURE).includes(p.platform));
         if (unmatched.length) {
             html += `<div class="tree-node">
                 <div class="tree-row" style="padding-left:12px; margin-top:8px;">
@@ -2840,8 +3262,8 @@
         }
 
         container.innerHTML = html;
-        document.getElementById('statTotal').textContent = pipelines.length;
-        const cats = new Set(pipelines.map(p => `${p.platform}/${p.brand}/${p.env}`));
+        document.getElementById('statTotal').textContent = visiblePipelines.length;
+        const cats = new Set(visiblePipelines.map(p => `${p.platform}/${p.brand}/${p.env}`));
         document.getElementById('statFolders').textContent = cats.size;
     }
 
@@ -2888,9 +3310,11 @@
     }
 
     function selectFolder(key) {
-        selectedFolder = key;
+        const k = (key === 'null' || key === 'undefined') ? null : key;
+        selectedFolder = (k === '' ? NO_FOLDER_SELECTED : k);
+        persistSelectedFolderPref(selectedFolder);
         buildTree();
-        showFolderPipelines(key);
+        showFolderPipelines(selectedFolder);
     }
 
     // ══════════════════════════════════════════
@@ -2901,7 +3325,7 @@
         document.getElementById('viewTreeBtn').classList.toggle('active', v === 'tree');
         document.getElementById('viewListBtn').classList.toggle('active', v === 'list');
         if (v === 'list') showAllPipelines();
-        else { selectedFolder = null; buildTree(); showFolderPipelines(null); }
+        else { buildTree(); showFolderPipelines(selectedFolder); }
     }
 
     let selectedPipelines = new Set();
@@ -2959,7 +3383,32 @@
     function showFolderPipelines(folderKey) {
         document.getElementById('actionBar').style.display = 'none';
         selectedPipelines.clear();
-        let filtered = pipelines;
+        if (folderKey === NO_FOLDER_SELECTED) {
+            document.getElementById('mainContent').innerHTML = `
+                <div class="main-header">
+                    <h1>Pipelines</h1>
+                    <p>Select a folder on the left to start, or click <b>All Pipelines</b> if you want the full list.</p>
+                </div>
+                <div class="empty-state" style="margin-top:18px;">
+                    <div class="empty-icon" style="font-size:56px;">&#128194;</div>
+                    <h3>No folder selected</h3>
+                    <p>Pick a platform/environment/feature in the sidebar to view pipelines for that area.</p>
+                    <div style="display:flex; gap:10px; justify-content:center; margin-top:16px; flex-wrap:wrap;">
+                        <button class="btn btn-secondary" onclick="selectFolder(null)" style="padding:10px 14px;">View All Pipelines</button>
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+                            <button class="btn btn-orange" onclick="showCreateForm()" style="padding:10px 14px;">+ New Pipeline</button>
+                            <div style="font-size:11px; color:var(--text-muted); max-width:360px; line-height:1.4;">
+                                Psst… we usually recommend <b>Clone</b> first — it’s faster and less copy/paste pain.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            buildTree();
+            return;
+        }
+
+        let filtered = getRepoFilteredPipelines(pipelines);
         let breadcrumbParts = ['All Pipelines'];
 
         if (folderKey) {
@@ -3004,8 +3453,9 @@
     function showAllPipelines() {
         document.getElementById('actionBar').style.display = 'none';
         selectedPipelines.clear();
-        const repoList = [...new Set((pipelines || []).map(p => normRepoForPipeline(p)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-        let html = `<div class="main-header"><h1>All Pipelines</h1><p>${pipelines.length} workflows detected</p></div>`;
+        const base = getRepoFilteredPipelines(pipelines);
+        const repoList = [...new Set((base || []).map(p => normRepoForPipeline(p)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+        let html = `<div class="main-header"><h1>All Pipelines</h1><p>${base.length} workflows detected</p></div>`;
         html += `<div class="view-header"><h2>&nbsp;</h2><button class="btn btn-orange" onclick="showCreateForm()">+ New Pipeline</button></div>`;
         html += `<div class="results-controls" style="margin-bottom:14px;">
             <input type="text" id="pipelineSearch" placeholder="Search by name, suite, feature..." oninput="applyPipelineSearch()">
@@ -3054,10 +3504,28 @@
         const search = (document.getElementById('pipelineSearch')?.value || '').toLowerCase();
         const typeFilter = document.getElementById('pipelineFilterType')?.value || 'all';
         const envFilter = document.getElementById('pipelineFilterEnv')?.value || 'all';
-        const repoFilter = document.getElementById('pipelineFilterRepo')?.value || 'all';
+        const repoSel = document.getElementById('pipelineFilterRepo');
+        let repoFilter = repoSel?.value || 'all';
         const schedFilter = document.getElementById('pipelineFilterSchedule')?.value || 'all';
 
-        let filtered = [...pipelines];
+        let filtered = getRepoFilteredPipelines(pipelines).slice();
+        // If a global repo is selected, lock the per-view repo filter to match.
+        if (repoSel) {
+            const g = String(globalRepoFilter || 'all').trim() || 'all';
+            const shouldLock = g !== 'all';
+            if (shouldLock) {
+                repoSel.value = g;
+                repoSel.disabled = true;
+                repoSel.style.opacity = '0.78';
+                repoSel.title = 'Repo is controlled by the global selector in the left sidebar.';
+                repoFilter = g;
+            } else {
+                repoSel.disabled = false;
+                repoSel.style.opacity = '';
+                repoSel.title = '';
+                repoFilter = repoSel.value || 'all';
+            }
+        }
         if (search) filtered = filtered.filter(p =>
             p.name.toLowerCase().includes(search) ||
             (p.testSuite || '').toLowerCase().includes(search) ||
@@ -6712,6 +7180,7 @@ ${runnerStrategy === 'group'
         const cleaned = cloneRepos(repos);
         localStorage.setItem(SYNC_REPOS_KEY, JSON.stringify(cleaned));
         renderSyncReposDisplay();
+        try { populateGlobalRepoFilter(); } catch { /* ignore */ }
     }
 
     function renderSyncReposDisplay() {
@@ -7894,7 +8363,7 @@ ${runnerStrategy === 'group'
         if (!el) return;
         el.classList.remove('show');
     }
-    function cancelCreate() { selectedFolder = null; showFolderPipelines(null); }
+    function cancelCreate() { showFolderPipelines(selectedFolder); }
 
     function showToast(msg, opts = null) {
         const t = document.getElementById('toast');
@@ -8066,6 +8535,7 @@ ${runnerStrategy === 'group'
         document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
         document.getElementById('panel' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
         if (tab === 'results' && allRuns.length) renderResults();
+        if (tab === 'dashboards') renderDashboards();
         if (tab === 'email') {
             document.getElementById(allRuns.length ? 'emailReady' : 'emailNoData').style.display = 'block';
             if (allRuns.length) populateEmailPipePicker();
@@ -8085,6 +8555,202 @@ ${runnerStrategy === 'group'
     let resultsSelectedPipelines = new Set(); // multi-select; empty means "All Pipelines"
 
     const RESULTS_EXCLUDE_CANCELLED_KEY = 'pm.results.excludeCancelledMetrics';
+    const RESULTS_RUN_COUNT_KEY = 'pm.results.runCount.v1';
+    const RESULTS_FETCH_MODE_KEY = 'pm.results.fetchMode.v1'; // 'count' | 'range'
+    const RESULTS_DATE_PRESET_KEY = 'pm.results.datePreset.v1'; // today|week|month|custom
+    const RESULTS_DATE_START_KEY = 'pm.results.dateStart.v1'; // YYYY-MM-DD
+    const RESULTS_DATE_END_KEY = 'pm.results.dateEnd.v1'; // YYYY-MM-DD
+
+    function loadResultsRunCountPref() {
+        try {
+            const raw = localStorage.getItem(RESULTS_RUN_COUNT_KEY);
+            const n = parseInt(String(raw || ''), 10);
+            return (Number.isFinite(n) && n > 0) ? Math.max(1, Math.min(100, n)) : 7;
+        } catch {
+            return 7;
+        }
+    }
+
+    function loadResultsFetchModePref() {
+        try {
+            const raw = localStorage.getItem(RESULTS_FETCH_MODE_KEY);
+            const v = String(raw || '').trim().toLowerCase();
+            return (v === 'range' || v === 'count') ? v : 'count';
+        } catch {
+            return 'count';
+        }
+    }
+    function saveResultsFetchModePref(v) {
+        try { localStorage.setItem(RESULTS_FETCH_MODE_KEY, String(v || 'count')); } catch { /* ignore */ }
+    }
+    function loadResultsDatePresetPref() {
+        try {
+            const raw = localStorage.getItem(RESULTS_DATE_PRESET_KEY);
+            const v = String(raw || '').trim().toLowerCase();
+            return (v === 'today' || v === 'week' || v === 'month' || v === 'custom') ? v : 'week';
+        } catch {
+            return 'week';
+        }
+    }
+    function saveResultsDatePresetPref(v) {
+        try { localStorage.setItem(RESULTS_DATE_PRESET_KEY, String(v || 'week')); } catch { /* ignore */ }
+    }
+    function loadResultsDateStartPref() {
+        try { return String(localStorage.getItem(RESULTS_DATE_START_KEY) || '').trim(); } catch { return ''; }
+    }
+    function loadResultsDateEndPref() {
+        try { return String(localStorage.getItem(RESULTS_DATE_END_KEY) || '').trim(); } catch { return ''; }
+    }
+    function saveResultsDateStartPref(v) { try { localStorage.setItem(RESULTS_DATE_START_KEY, String(v || '').trim()); } catch { /* ignore */ } }
+    function saveResultsDateEndPref(v) { try { localStorage.setItem(RESULTS_DATE_END_KEY, String(v || '').trim()); } catch { /* ignore */ } }
+
+    function saveResultsRunCountPref(n) {
+        try { localStorage.setItem(RESULTS_RUN_COUNT_KEY, String(n)); } catch { /* ignore */ }
+    }
+
+    function fmtShortDate(d) {
+        try { return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch { return ''; }
+    }
+
+    function computePresetRange(preset) {
+        const now = new Date();
+        const end = now.getTime();
+        const start = new Date(now);
+        const p = String(preset || 'week').trim().toLowerCase();
+        if (p === 'today') {
+            start.setHours(0, 0, 0, 0);
+        } else if (p === 'month') {
+            start.setDate(1);
+            start.setHours(0, 0, 0, 0);
+        } else {
+            // week (Monday start)
+            start.setHours(0, 0, 0, 0);
+            const dow = start.getDay(); // 0 Sun .. 6 Sat
+            const offset = (dow + 6) % 7; // Monday=0
+            start.setDate(start.getDate() - offset);
+        }
+        return { startMs: start.getTime(), endMs: end };
+    }
+
+    function getResultsSelectedDateRange() {
+        const presetEl = document.getElementById('resultsDatePreset');
+        const preset = (presetEl?.value || loadResultsDatePresetPref() || 'week').toLowerCase();
+        if (preset !== 'custom') {
+            const r = computePresetRange(preset);
+            const label = preset === 'today' ? 'Today' : preset === 'month' ? 'This month' : 'This week';
+            return { preset, ...r, label };
+        }
+
+        const sEl = document.getElementById('resultsDateStart');
+        const eEl = document.getElementById('resultsDateEnd');
+        const startStr = String(sEl?.value || loadResultsDateStartPref() || '').trim();
+        const endStr = String(eEl?.value || loadResultsDateEndPref() || '').trim();
+        if (!startStr || !endStr) return null;
+        const start = new Date(startStr + 'T00:00:00');
+        const end = new Date(endStr + 'T23:59:59.999');
+        const startMs = start.getTime();
+        const endMs = end.getTime();
+        if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || startMs > endMs) return null;
+        return { preset, startMs, endMs, label: `${fmtShortDate(start)} \u2192 ${fmtShortDate(end)}` };
+    }
+
+    function getResultsFetchWindowLabel() {
+        const mode = (document.getElementById('resultsFetchMode')?.value || loadResultsFetchModePref() || 'count').toLowerCase();
+        if (mode === 'range') {
+            const r = getResultsSelectedDateRange();
+            return r ? `runs in ${r.label}` : 'runs in range';
+        }
+        return `last ${loadResultsRunCountPref()} runs`;
+    }
+
+    function applyResultsFetchModeUi(mode) {
+        const m = (String(mode || 'count').trim().toLowerCase() === 'range') ? 'range' : 'count';
+        const countWrap = document.getElementById('resultsFetchCountWrap');
+        const rangeWrap = document.getElementById('resultsFetchRangeWrap');
+        if (countWrap) countWrap.style.display = (m === 'count') ? 'flex' : 'none';
+        if (rangeWrap) rangeWrap.style.display = (m === 'range') ? 'flex' : 'none';
+        if (m === 'range') {
+            const presetEl = document.getElementById('resultsDatePreset');
+            const preset = presetEl?.value || loadResultsDatePresetPref() || 'week';
+            if (presetEl) presetEl.value = preset;
+            onResultsDatePresetChange(true);
+        }
+    }
+
+    function onResultsFetchModeChange() {
+        const sel = document.getElementById('resultsFetchMode');
+        const mode = sel?.value || 'count';
+        saveResultsFetchModePref(mode);
+        applyResultsFetchModeUi(mode);
+        const status = document.getElementById('patStatus');
+        if (status && allRuns && allRuns.length) {
+            status.innerHTML = `<span style="color:var(--warning); font-weight:800;">Mode changed</span> — click <b>Fetch Results</b> to apply.`;
+            status.className = 'pat-status';
+        }
+    }
+
+    function onResultsDatePresetChange(skipMark) {
+        const presetEl = document.getElementById('resultsDatePreset');
+        const preset = (presetEl?.value || 'week').toLowerCase();
+        saveResultsDatePresetPref(preset);
+        const wrap = document.getElementById('resultsCustomDates');
+        const showCustom = preset === 'custom';
+        if (wrap) wrap.style.display = showCustom ? 'flex' : 'none';
+        const sEl = document.getElementById('resultsDateStart');
+        const eEl = document.getElementById('resultsDateEnd');
+        if (showCustom) {
+            if (sEl && !sEl.value) sEl.value = loadResultsDateStartPref();
+            if (eEl && !eEl.value) eEl.value = loadResultsDateEndPref();
+        }
+        if (!skipMark) {
+            const status = document.getElementById('patStatus');
+            if (status && allRuns && allRuns.length) {
+                status.innerHTML = `<span style="color:var(--warning); font-weight:800;">Range changed</span> — click <b>Fetch Results</b> to apply.`;
+                status.className = 'pat-status';
+            }
+        }
+    }
+
+    function initResultsFetchControls() {
+        const modeEl = document.getElementById('resultsFetchMode');
+        if (modeEl) modeEl.value = loadResultsFetchModePref();
+        applyResultsFetchModeUi(modeEl?.value || 'count');
+        const presetEl = document.getElementById('resultsDatePreset');
+        if (presetEl) presetEl.value = loadResultsDatePresetPref();
+        onResultsDatePresetChange(true);
+        const sEl = document.getElementById('resultsDateStart');
+        const eEl = document.getElementById('resultsDateEnd');
+        if (sEl) {
+            sEl.value = sEl.value || loadResultsDateStartPref();
+            sEl.addEventListener('change', () => saveResultsDateStartPref(sEl.value));
+        }
+        if (eEl) {
+            eEl.value = eEl.value || loadResultsDateEndPref();
+            eEl.addEventListener('change', () => saveResultsDateEndPref(eEl.value));
+        }
+    }
+
+    function initResultsRunCountPref() {
+        const el = document.getElementById('ghRunCount');
+        if (!el) return;
+        const saved = loadResultsRunCountPref();
+        // If the user has a stored preference, always honor it (avoid overwriting on tab switch).
+        try {
+            const raw = localStorage.getItem(RESULTS_RUN_COUNT_KEY);
+            const hasStored = raw !== null && String(raw || '').trim() !== '';
+            if (hasStored) el.value = String(saved);
+            else if (!String(el.value || '').trim()) el.value = String(saved);
+        } catch {
+            if (!String(el.value || '').trim()) el.value = String(saved);
+        }
+        const persist = () => {
+            const v = Math.max(1, Math.min(100, parseInt(String(el.value || ''), 10) || 7));
+            el.value = String(v);
+            saveResultsRunCountPref(v);
+        };
+        el.addEventListener('change', persist);
+        el.addEventListener('blur', persist);
+    }
 
     function getGhOwner() { return GH_OWNER; }
     function getGhAuthHeader(pat) {
@@ -8107,12 +8773,14 @@ ${runnerStrategy === 'group'
     function getResultsPipelineConfigs() {
         const out = [];
         const seen = new Set();
+        const gRepo = String(globalRepoFilter || 'all').trim() || 'all';
         for (const p of (pipelines || [])) {
             if (!p || !p.filename || !p.name) continue;
             const filename = String(p.filename);
             if (!filename.endsWith('.yml')) continue;
             if (filename.startsWith('_')) continue;
             const repo = getPipelineRepo(p);
+            if (gRepo !== 'all' && repo !== gRepo) continue;
             const key = `${repo}::${filename}`;
             if (seen.has(key)) continue;
             seen.add(key);
@@ -8125,10 +8793,129 @@ ${runnerStrategy === 'group'
         const pat = getGitHubToken();
         if (!pat) throw new Error('No GitHub token');
         const resp = await fetch(`https://api.github.com${path}`, {
-            headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/vnd.github+json' }
+            headers: {
+                Authorization: getGhAuthHeader(pat),
+                Accept: 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28'
+            }
         });
         if (!resp.ok) throw new Error(`GitHub API ${resp.status}: ${resp.statusText}`);
         return resp.json();
+    }
+
+    async function ghFetchAny(urlOrPath) {
+        const raw = String(urlOrPath || '').trim();
+        if (!raw) throw new Error('Missing GitHub API URL');
+        if (raw.startsWith('https://api.github.com/')) {
+            return ghFetch(raw.slice('https://api.github.com'.length));
+        }
+        return ghFetch(raw.startsWith('/') ? raw : '/' + raw);
+    }
+
+    async function downloadArtifact(apiUrl, filenameBase) {
+        const url = String(apiUrl || '').trim();
+        const nameBase = String(filenameBase || 'artifact').trim() || 'artifact';
+        const pat = getGitHubToken();
+        if (!url) { showToast('Missing artifact URL.', true); return; }
+        if (!pat) { showToast('Set a GitHub token via Settings first.', true); return; }
+        try {
+            const resp = await fetch(url, {
+                headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/octet-stream' }
+            });
+            if (!resp.ok) throw new Error(`Download failed (${resp.status})`);
+            const blob = await resp.blob();
+            const dlName = nameBase.endsWith('.zip') ? nameBase : (nameBase + '.zip');
+            const a = document.createElement('a');
+            const objUrl = URL.createObjectURL(blob);
+            a.href = objUrl;
+            a.download = dlName;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(objUrl), 30000);
+        } catch {
+            showToast('Could not download artifact (token/scopes or CORS).', true);
+        }
+    }
+
+    function parseTestCountsFromText(text) {
+        const raw = String(text || '');
+        if (!raw.trim()) return null;
+
+        // Normalize markdown/HTML so regexes match real-world summaries like:
+        // "**9** passed, **0** failed and **0** skipped"
+        // "<b>9</b> passed, <b>0</b> failed and <b>0</b> skipped"
+        const s = raw
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/[*_`]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        // Common dorny/test-reporter wording:
+        // "9 passed, 0 failed and 0 skipped"
+        // "9 passed, 0 failed, 0 skipped"
+        // "9 passed, 0 failed, and 0 skipped"
+        const dorny = s.match(/(\d+)\s+passed,\s*(\d+)\s+failed(?:\s*,)?(?:\s*and\s*)?\s*(\d+)\s+skipped/i);
+        if (dorny) {
+            const passed = parseInt(dorny[1], 10);
+            const failed = parseInt(dorny[2], 10);
+            const skipped = parseInt(dorny[3], 10);
+            const total = passed + failed + skipped;
+            if (Number.isFinite(total) && total > 0) {
+                return { passed, failed, skipped, total };
+            }
+        }
+
+        const read = (re) => {
+            const m = s.match(re);
+            if (!m || m[1] == null) return null;
+            const n = parseInt(String(m[1]), 10);
+            return Number.isFinite(n) ? n : null;
+        };
+
+        const passed = read(/(\d+)\s+passed\b/i) ?? read(/\bpassed:\s*(\d+)\b/i);
+        const failed = read(/(\d+)\s+failed\b/i) ?? read(/\bfailures?:\s*(\d+)\b/i);
+        const errors = read(/\berrors?:\s*(\d+)\b/i);
+        const skipped = read(/(\d+)\s+skipped\b/i) ?? read(/\bskips?:\s*(\d+)\b/i);
+        const total = read(/(\d+)\s+tests?\b/i) ?? read(/\btests?:\s*(\d+)\b/i);
+
+        const f = (failed ?? 0) + (errors ?? 0);
+        const p = passed ?? null;
+        const sk = skipped ?? 0;
+        const t = total ?? ((p != null) ? (p + f + sk) : null);
+
+        if (p == null && f === 0 && sk === 0) return null;
+        if (t == null) return null;
+        return {
+            passed: p ?? Math.max(0, t - f - sk),
+            failed: f,
+            skipped: sk,
+            total: t
+        };
+    }
+
+    // Test summary parsing/enrichment removed.
+
+    async function enrichRunArtifacts(run) {
+        const r = run;
+        if (!r || !r.id || r.artifacts) return r?.artifacts || null;
+        const owner = getGhOwner();
+        const repo = String(r.repo || '').trim();
+        if (!repo) return null;
+        try {
+            const data = await ghFetch(`/repos/${owner}/${repo}/actions/runs/${r.id}/artifacts?per_page=100`);
+            const arts = Array.isArray(data?.artifacts) ? data.artifacts : [];
+            r.artifacts = arts.map(a => ({
+                id: a?.id,
+                name: String(a?.name || '').trim(),
+                sizeInBytes: a?.size_in_bytes || 0,
+                expired: !!a?.expired,
+                url: String(a?.archive_download_url || '').trim()
+            })).filter(a => a.name);
+            return r.artifacts;
+        } catch {
+            return null;
+        }
     }
 
     function getRunOutcome(r) {
@@ -8253,6 +9040,32 @@ ${runnerStrategy === 'group'
         });
     }
 
+    async function fetchWorkflowRunsInRange(owner, repo, workflowFilename, startMs, endMs) {
+        const wfIdOrFile = encodeURIComponent(String(workflowFilename || '').trim());
+        const per = 100;
+        const maxPages = 12; // safety cap
+        const out = [];
+        for (let page = 1; page <= maxPages; page++) {
+            const runsData = await ghFetch(`/repos/${owner}/${repo}/actions/workflows/${wfIdOrFile}/runs?per_page=${per}&page=${page}`);
+            const runs = runsData?.workflow_runs || [];
+            if (!runs.length) break;
+
+            for (const r of runs) {
+                const t = new Date(r.created_at).getTime();
+                if (!Number.isFinite(t)) continue;
+                if (t > endMs) continue;
+                if (t < startMs) continue;
+                out.push(r);
+            }
+
+            const oldest = runs[runs.length - 1];
+            const oldestT = oldest?.created_at ? new Date(oldest.created_at).getTime() : NaN;
+            if (Number.isFinite(oldestT) && oldestT < startMs) break;
+            if (runs.length < per) break;
+        }
+        return out;
+    }
+
     async function fetchAllResults() {
         const pat = getGitHubToken();
         if (!pat) { showToast('No GitHub token — set one via Settings in the Pipelines sidebar.', true); return; }
@@ -8262,7 +9075,18 @@ ${runnerStrategy === 'group'
         status.textContent = 'Connecting...'; status.className = 'pat-status';
 
         try {
-            const perPage = Math.max(1, Math.min(100, parseInt(document.getElementById('ghRunCount').value) || 3));
+            const mode = (document.getElementById('resultsFetchMode')?.value || loadResultsFetchModePref() || 'count').toLowerCase();
+            const perPage = Math.max(1, Math.min(100, parseInt(document.getElementById('ghRunCount')?.value) || loadResultsRunCountPref() || 7));
+            let range = null;
+            if (mode === 'range') {
+                range = getResultsSelectedDateRange();
+                if (!range) {
+                    showToast('Pick a valid date range (start/end) first.', true);
+                    status.textContent = 'Select a valid date range first.';
+                    status.className = 'pat-status';
+                    return;
+                }
+            }
             resultsPipelines = getResultsPipelineConfigs();
             missingWorkflows = [];
             allRuns = [];
@@ -8277,7 +9101,8 @@ ${runnerStrategy === 'group'
 
             const owner = getGhOwner();
             const repos = [...new Set(resultsPipelines.map(p => p.repo))];
-            status.innerHTML = `<span style="color:var(--axos-orange); font-weight:600;">Fetching workflows</span> from ${repos.join(', ')}...`;
+            const modeText = (mode === 'range' && range) ? `runs from <b>${escapeHtml(range.label)}</b>` : `last <b>${perPage}</b> runs`;
+            status.innerHTML = `<span style="color:var(--axos-orange); font-weight:600;">Fetching</span> ${modeText} from ${repos.join(', ')}...`;
 
             let totalMatched = 0;
 
@@ -8286,9 +9111,11 @@ ${runnerStrategy === 'group'
                 for (const p of repoPipes) {
                     try {
                         const wfIdOrFile = encodeURIComponent(p.filename);
-                        const runsData = await ghFetch(`/repos/${owner}/${repo}/actions/workflows/${wfIdOrFile}/runs?per_page=${perPage}`);
+                        const list = (mode === 'range' && range)
+                            ? await fetchWorkflowRunsInRange(owner, repo, p.filename, range.startMs, range.endMs)
+                            : (await ghFetch(`/repos/${owner}/${repo}/actions/workflows/${wfIdOrFile}/runs?per_page=${perPage}`))?.workflow_runs || [];
                         totalMatched++;
-                        for (const r of (runsData.workflow_runs || [])) {
+                        for (const r of (list || [])) {
                             const duration = r.updated_at && r.run_started_at
                                 ? Math.round((new Date(r.updated_at) - new Date(r.run_started_at)) / 1000)
                                 : 0;
@@ -8305,7 +9132,9 @@ ${runnerStrategy === 'group'
                                 actor: r.actor?.login || '',
                                 createdAt: r.created_at,
                                 url: r.html_url,
-                                branch: r.head_branch
+                                branch: r.head_branch,
+                                headSha: r.head_sha,
+                                checkSuiteId: r.check_suite_id
                             });
                         }
                     } catch (e) {
@@ -8325,6 +9154,7 @@ ${runnerStrategy === 'group'
             status.innerHTML = `<span style="color:var(--success); font-weight:600;">&#10003; Loaded ${allRuns.length} run(s)</span> across ${resultsPipelines.length} pipeline(s) (${totalMatched} matched in GitHub)${miss}.`;
             status.className = 'pat-status ok';
             renderResults();
+            revealDashboardsTab();
             document.getElementById('emailNoData').style.display = 'none';
             document.getElementById('emailReady').style.display = 'block';
             populateEmailPipePicker();
@@ -8400,6 +9230,12 @@ ${runnerStrategy === 'group'
 
     function onResultsRepoFilterChange() {
         // Keep the UI predictable: switching repo resets pipeline selection to "All".
+        try {
+            const v = getResultsRepoFilterValue();
+            if (String(v || 'all') !== String(globalRepoFilter || 'all')) {
+                setGlobalRepoFilter(v, { persist: true, skipResults: true });
+            }
+        } catch { /* ignore */ }
         resultsSelectedPipelines.clear();
         renderResultsTree();
         filterResults();
@@ -8862,6 +9698,8 @@ ${runnerStrategy === 'group'
         return runs;
     }
 
+    // Tests/test-summary UI intentionally removed (too flaky across repos).
+
     function filterResults() {
         const runs = getFilteredRuns();
         renderMetrics();
@@ -8952,6 +9790,1274 @@ ${runnerStrategy === 'group'
     }
 
     // ══════════════════════════════════════════
+    //  DASHBOARDS
+    // ══════════════════════════════════════════
+    const DASHBOARDS_KEY = 'pm.dashboards.v1';
+    const DASH_SELECTED_KEY_PREFIX = 'pm.dashboards.selected.v1.';
+    // Dashboard view mode (graphs) removed — keep dots only.
+
+    function loadDashboardsState() {
+        try {
+            const raw = localStorage.getItem(DASHBOARDS_KEY);
+            if (!raw) return { version: 1, dashboards: [] };
+            const parsed = JSON.parse(raw);
+            const dashboards = Array.isArray(parsed?.dashboards) ? parsed.dashboards : [];
+            return { version: 1, dashboards: dashboards.map(cleanDashboard).filter(Boolean) };
+        } catch {
+            return { version: 1, dashboards: [] };
+        }
+    }
+
+    function saveDashboardsState() {
+        try { localStorage.setItem(DASHBOARDS_KEY, JSON.stringify(dashboardsState)); } catch { /* ignore */ }
+    }
+
+    function cleanDashboard(d) {
+        if (!d) return null;
+        const id = String(d.id || '').trim();
+        const repo = String(d.repo || '').trim();
+        const name = String(d.name || '').trim();
+        if (!id || !repo || !name) return null;
+        const groups = Array.isArray(d.groups) ? d.groups.map(cleanDashboardGroup).filter(Boolean) : [];
+        return {
+            id, repo, name,
+            groups: groups.length ? groups : [{ id: `g_${id}`, title: 'Pipelines', pipelines: [] }],
+            createdAt: d.createdAt ? String(d.createdAt) : new Date().toISOString()
+        };
+    }
+
+    function cleanDashboardGroup(g) {
+        if (!g) return null;
+        const id = String(g.id || '').trim();
+        const title = String(g.title || '').trim() || 'Pipelines';
+        const pipelines = Array.isArray(g.pipelines) ? g.pipelines.map(x => String(x || '').trim()).filter(Boolean) : [];
+        if (!id) return null;
+        return { id, title, pipelines: [...new Set(pipelines)] };
+    }
+
+    let dashboardsState = loadDashboardsState();
+
+    function dashboardsForRepo(repo) {
+        const r = String(repo || '').trim();
+        return (dashboardsState.dashboards || []).filter(d => d && d.repo === r);
+    }
+
+    function getActiveDashboardId(repo) {
+        const r = String(repo || '').trim();
+        if (!r) return '';
+        try {
+            const stored = localStorage.getItem(DASH_SELECTED_KEY_PREFIX + r);
+            const v = String(stored || '').trim();
+            if (v) return v;
+        } catch { /* ignore */ }
+        const list = dashboardsForRepo(r);
+        return list.length ? list[0].id : '';
+    }
+
+    function setActiveDashboardId(repo, id) {
+        const r = String(repo || '').trim();
+        const v = String(id || '').trim();
+        if (!r) return;
+        try { localStorage.setItem(DASH_SELECTED_KEY_PREFIX + r, v); } catch { /* ignore */ }
+        renderDashboards();
+    }
+
+    function makeDashboardId() {
+        return `d_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+    }
+
+    function cloneJson(v) {
+        try { return JSON.parse(JSON.stringify(v)); } catch { return null; }
+    }
+
+    function sanitizeDashboardForExport(d) {
+        const cleaned = cleanDashboard(cloneJson(d));
+        if (!cleaned) return null;
+        // Ensure groups are normalized
+        cleaned.groups = (cleaned.groups || []).map(cleanDashboardGroup).filter(Boolean);
+        return cleaned;
+    }
+
+    function exportActiveDashboardToJson() {
+        const repo = getDashboardsRepo();
+        if (!repo) { showToast('Select a repo first.', true); return; }
+        const list = dashboardsForRepo(repo);
+        const activeId = getActiveDashboardId(repo);
+        const d = list.find(x => x.id === activeId);
+        if (!d) { showToast('No dashboard selected.', true); return; }
+        const payload = {
+            type: 'pm.dashboard.export',
+            version: 1,
+            exportedAt: new Date().toISOString(),
+            dashboard: sanitizeDashboardForExport(d)
+        };
+        return payload;
+    }
+
+    function downloadJsonObject(obj, filename) {
+        try {
+            const s = JSON.stringify(obj, null, 2);
+            const blob = new Blob([s], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename || 'dashboard.json';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 30000);
+        } catch {
+            showToast('Failed to download export.', true);
+        }
+    }
+
+    async function copyJsonObjectToClipboard(obj) {
+        try {
+            const s = JSON.stringify(obj, null, 2);
+            await navigator.clipboard.writeText(s);
+            showToast('Copied export JSON to clipboard.');
+        } catch {
+            showToast('Could not copy to clipboard.', true);
+        }
+    }
+
+    function ensureDashXferModal() {
+        if (document.getElementById('pmDashXferModal')) return;
+        const wrap = document.createElement('div');
+        wrap.id = 'pmDashXferModal';
+        wrap.className = 'modal-overlay';
+        wrap.innerHTML = `
+            <div class="modal" style="max-width:860px;">
+                <div class="modal-header">
+                    <div class="modal-title" id="pmDashXferTitle">Dashboard Export / Import</div>
+                    <button class="modal-close" onclick="closeModal('pmDashXferModal')">x</button>
+                </div>
+                <div class="modal-body" id="pmDashXferBody"></div>
+                <div class="modal-footer" id="pmDashXferFooter"></div>
+            </div>
+        `;
+        document.body.appendChild(wrap);
+    }
+
+    let pendingDashImport = null;
+
+    function openDashboardXferModal(initialTab) {
+        ensureDashXferModal();
+        const tab = (String(initialTab || 'export').trim().toLowerCase() === 'import') ? 'import' : 'export';
+        pendingDashImport = null;
+        renderDashboardXferModal(tab);
+        document.getElementById('pmDashXferModal').classList.add('show');
+    }
+
+    function renderDashboardXferModal(tab) {
+        const body = document.getElementById('pmDashXferBody');
+        const footer = document.getElementById('pmDashXferFooter');
+        const repo = getDashboardsRepo();
+        const payload = exportActiveDashboardToJson();
+        const dash = payload?.dashboard;
+
+        if (!body || !footer) return;
+
+        const tabs = `
+            <div style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
+                <button class="btn-lite ${tab==='export'?'active':''}" onclick="renderDashboardXferModal('export')">Export</button>
+                <button class="btn-lite ${tab==='import'?'active':''}" onclick="renderDashboardXferModal('import')">Import</button>
+                <div style="margin-left:auto; font-size:11px; color:var(--text-muted); align-self:center;">
+                    Saved locally (localStorage) — use export/import to share.
+                </div>
+            </div>
+        `;
+
+        if (tab === 'export') {
+            if (!dash) {
+                body.innerHTML = tabs + `<div style="color:var(--text-secondary); font-size:12px;">Select a repo + dashboard first.</div>`;
+                footer.innerHTML = `<button class="btn btn-secondary" onclick="closeModal('pmDashXferModal')">Close</button>`;
+                return;
+            }
+            const nameSafe = String(dash.name || 'dashboard').replace(/[^A-Za-z0-9._-]+/g, '_').slice(0, 64);
+            const file = `dashboard_${dash.repo}_${nameSafe}.json`.replace(/__+/g, '_');
+            body.innerHTML = tabs + `
+                <div class="dash-repo-card" style="padding:14px 14px;">
+                    <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:center;">
+                        <div>
+                            <div style="font-size:12px; font-weight:900; color:var(--text-primary);">${escapeHtml(dash.name)}</div>
+                            <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Repo: <b>${escapeHtml(dash.repo)}</b> · Groups: <b>${dash.groups.length}</b></div>
+                        </div>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                            <button class="btn btn-secondary" onclick="copyDashboardExport()">Copy JSON</button>
+                            <button class="btn btn-orange" onclick="downloadDashboardExport()">Download</button>
+                        </div>
+                    </div>
+                </div>
+                <div style="margin-top:12px; font-size:11px; color:var(--text-muted);">
+                    Tip: send this JSON file/text to someone else. They can Import and choose merge/replace.
+                </div>
+                <textarea class="dash-xfer-textarea" readonly style="margin-top:12px;">${escapeHtml(JSON.stringify(payload, null, 2))}</textarea>
+            `;
+            footer.innerHTML = `
+                <button class="btn btn-secondary" onclick="closeModal('pmDashXferModal')">Close</button>
+            `;
+            // stash filename for download
+            body.dataset.exportFilename = file;
+            return;
+        }
+
+        // Import tab
+        body.innerHTML = tabs + `
+            <div style="font-size:12px; color:var(--text-secondary); line-height:1.6; margin-bottom:10px;">
+                Paste dashboard export JSON (or choose a file). If a dashboard with the same <b>repo + name</b> exists, you can merge or replace.
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
+                <input type="file" id="dashImportFile" accept=".json,application/json" onchange="handleDashImportFile(this.files && this.files[0]); this.value='';">
+                <button class="btn btn-secondary" onclick="analyzeDashImport()">Analyze</button>
+                <button class="btn btn-secondary" onclick="clearDashImport()">Clear</button>
+            </div>
+            <textarea class="dash-xfer-textarea" id="dashImportText" placeholder="{ ... }"></textarea>
+            <div id="dashImportAnalysis" style="margin-top:12px;"></div>
+        `;
+        footer.innerHTML = `
+            <button class="btn btn-secondary" onclick="closeModal('pmDashXferModal')">Close</button>
+        `;
+    }
+
+    function copyDashboardExport() {
+        const payload = exportActiveDashboardToJson();
+        if (!payload) return;
+        copyJsonObjectToClipboard(payload);
+    }
+
+    function downloadDashboardExport() {
+        const payload = exportActiveDashboardToJson();
+        if (!payload) return;
+        const body = document.getElementById('pmDashXferBody');
+        const file = body?.dataset?.exportFilename || 'dashboard.json';
+        downloadJsonObject(payload, file);
+    }
+
+    function clearDashImport() {
+        pendingDashImport = null;
+        const ta = document.getElementById('dashImportText');
+        if (ta) ta.value = '';
+        const a = document.getElementById('dashImportAnalysis');
+        if (a) a.innerHTML = '';
+    }
+
+    async function handleDashImportFile(file) {
+        const f = file;
+        if (!f) return;
+        try {
+            const text = await f.text();
+            const ta = document.getElementById('dashImportText');
+            if (ta) ta.value = text;
+            showToast('File loaded. Click Analyze.');
+        } catch {
+            showToast('Could not read file.', true);
+        }
+    }
+
+    function parseDashImportPayload(rawText) {
+        const text = String(rawText || '').trim();
+        if (!text) return null;
+        const parsed = JSON.parse(text);
+        if (!parsed) return null;
+        // Accept our export wrapper or a raw dashboard object.
+        if (parsed.type === 'pm.dashboard.export' && parsed.dashboard) {
+            return { dashboards: [parsed.dashboard] };
+        }
+        // Accept exporting full state.
+        if (Array.isArray(parsed.dashboards)) {
+            return { dashboards: parsed.dashboards };
+        }
+        // Accept single dashboard.
+        if (parsed.id && parsed.repo && parsed.name) {
+            return { dashboards: [parsed] };
+        }
+        return null;
+    }
+
+    function analyzeDashImport() {
+        const ta = document.getElementById('dashImportText');
+        const analysisEl = document.getElementById('dashImportAnalysis');
+        if (!analysisEl) return;
+        analysisEl.innerHTML = '';
+        pendingDashImport = null;
+
+        let payload = null;
+        try {
+            payload = parseDashImportPayload(ta?.value || '');
+        } catch (e) {
+            analysisEl.innerHTML = `<div style="color:var(--error); font-size:12px;">Invalid JSON: ${escapeHtml(e?.message || String(e))}</div>`;
+            return;
+        }
+        if (!payload || !Array.isArray(payload.dashboards) || !payload.dashboards.length) {
+            analysisEl.innerHTML = `<div style="color:var(--error); font-size:12px;">Paste a valid Pipeline Manager dashboard export JSON.</div>`;
+            return;
+        }
+
+        const cleaned = payload.dashboards.map(d => sanitizeDashboardForExport(d)).filter(Boolean);
+        if (!cleaned.length) {
+            analysisEl.innerHTML = `<div style="color:var(--error); font-size:12px;">No valid dashboards found in JSON.</div>`;
+            return;
+        }
+
+        // For now, import one dashboard at a time (keeps UX simple).
+        const dash = cleaned[0];
+        const existing = (dashboardsState.dashboards || []).find(x =>
+            String(x.repo || '').trim() === String(dash.repo || '').trim() &&
+            String(x.name || '').trim().toLowerCase() === String(dash.name || '').trim().toLowerCase()
+        ) || null;
+
+        pendingDashImport = { dash, existing };
+        const totalPipes = (dash.groups || []).reduce((n, g) => n + (g.pipelines || []).length, 0);
+        const conflictTxt = existing ? `<span style="color:var(--warning); font-weight:900;">Conflict:</span> a dashboard with the same repo+name exists.` : `<span style="color:var(--success); font-weight:900;">No conflict:</span> this will create a new dashboard.`;
+
+        analysisEl.innerHTML = `
+            <div class="dash-repo-card" style="padding:14px 14px;">
+                <div style="font-size:12px; font-weight:900; color:var(--text-primary);">${escapeHtml(dash.name)}</div>
+                <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">Repo: <b>${escapeHtml(dash.repo)}</b> · Groups: <b>${dash.groups.length}</b> · Pipelines: <b>${totalPipes}</b></div>
+                <div style="margin-top:8px; font-size:11px; color:var(--text-secondary);">${conflictTxt}</div>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; justify-content:flex-end;">
+                ${existing ? `
+                    <select id="dashImportMode" class="dash-select" style="min-width:240px;">
+                        <option value="replace">Replace existing</option>
+                        <option value="merge" selected>Merge (by group title)</option>
+                        <option value="advanced">Advanced (choose groups)</option>
+                    </select>
+                ` : `
+                    <select id="dashImportMode" class="dash-select" style="min-width:240px;">
+                        <option value="create" selected>Create new</option>
+                    </select>
+                `}
+                <button class="btn btn-orange" onclick="applyDashImport()">Import</button>
+            </div>
+            <div id="dashImportAdvanced" style="margin-top:12px; display:none;"></div>
+        `;
+
+        if (existing) {
+            const modeSel = document.getElementById('dashImportMode');
+            if (modeSel) {
+                modeSel.addEventListener('change', () => renderDashImportAdvanced());
+            }
+            renderDashImportAdvanced();
+        }
+    }
+
+    function renderDashImportAdvanced() {
+        const adv = document.getElementById('dashImportAdvanced');
+        const mode = (document.getElementById('dashImportMode')?.value || '').toLowerCase();
+        if (!adv) return;
+        if (mode !== 'advanced' || !pendingDashImport?.existing) { adv.style.display = 'none'; adv.innerHTML = ''; return; }
+        const dash = pendingDashImport.dash;
+        const existing = pendingDashImport.existing;
+        const existingGroups = (existing.groups || []).map(g => String(g.title || '').trim().toLowerCase());
+        adv.style.display = 'block';
+        adv.innerHTML = `
+            <div style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">
+                Choose what to do for each imported group.
+            </div>
+            ${(dash.groups || []).map((g, idx) => {
+                const title = String(g.title || 'Pipelines').trim();
+                const has = existingGroups.includes(title.toLowerCase());
+                return `<div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding:10px 10px; border-radius:12px; border:1px solid rgba(255,255,255,0.06); background:rgba(0,0,0,0.14); margin-bottom:8px;">
+                    <div style="min-width:220px; font-weight:900; color:var(--text-primary);">${escapeHtml(title)}</div>
+                    <div style="font-size:11px; color:var(--text-muted);">${(g.pipelines||[]).length} pipeline(s) · ${has ? 'matches existing group' : 'new group'}</div>
+                    <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
+                        <select class="dash-select" data-imp-group="${idx}" style="min-width:170px;">
+                            ${has ? `
+                                <option value="merge" selected>Merge</option>
+                                <option value="replace">Replace</option>
+                                <option value="skip">Skip</option>
+                            ` : `
+                                <option value="add" selected>Add</option>
+                                <option value="skip">Skip</option>
+                            `}
+                        </select>
+                    </div>
+                </div>`;
+            }).join('')}
+        `;
+    }
+
+    function summarizeDashboardShape(d) {
+        const dash = sanitizeDashboardForExport(d);
+        if (!dash) return { groups: 0, pipelines: 0, pipelineSet: new Set(), groupTitles: [] };
+        const groups = dash.groups || [];
+        const pipelineSet = new Set();
+        const titles = [];
+        for (const g of groups) {
+            titles.push(String(g.title || '').trim());
+            for (const pk of (g.pipelines || [])) pipelineSet.add(String(pk || '').trim());
+        }
+        return { groups: groups.length, pipelines: pipelineSet.size, pipelineSet, groupTitles: titles };
+    }
+
+    function diffSets(beforeSet, afterSet) {
+        const before = beforeSet instanceof Set ? beforeSet : new Set();
+        const after = afterSet instanceof Set ? afterSet : new Set();
+        const added = [];
+        const removed = [];
+        for (const v of after) if (!before.has(v)) added.push(v);
+        for (const v of before) if (!after.has(v)) removed.push(v);
+        return { added, removed };
+    }
+
+    function showDashImportSummary(summary) {
+        const s = summary || {};
+        const actionLabel =
+            s.action === 'create' ? 'Created new dashboard' :
+            s.action === 'replace' ? 'Replaced existing dashboard' :
+            s.action === 'merge' ? 'Merged into existing dashboard' :
+            s.action === 'advanced' ? 'Imported with advanced group choices' :
+            'Import complete';
+
+        const pills = [];
+        if (Number.isFinite(s.groupsBefore) && Number.isFinite(s.groupsAfter)) {
+            pills.push(`<span class="dash-pill">Groups: <b>${s.groupsBefore}</b> → <b>${s.groupsAfter}</b></span>`);
+        }
+        if (Number.isFinite(s.pipesBefore) && Number.isFinite(s.pipesAfter)) {
+            pills.push(`<span class="dash-pill">Pipelines: <b>${s.pipesBefore}</b> → <b>${s.pipesAfter}</b></span>`);
+        }
+        if (Number.isFinite(s.added) && Number.isFinite(s.removed)) {
+            pills.push(`<span class="dash-pill" style="border-color:rgba(22,163,74,0.25);">Added: <b>${s.added}</b></span>`);
+            pills.push(`<span class="dash-pill" style="border-color:rgba(220,38,38,0.25);">Removed: <b>${s.removed}</b></span>`);
+        }
+
+        const groupRows = (s.groupDetails || []).length ? `
+            <div style="margin-top:14px;">
+                <div style="font-size:11px; font-weight:900; letter-spacing:0.6px; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px;">Group details</div>
+                ${(s.groupDetails || []).slice(0, 20).map(g => `
+                    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding:10px 10px; border-radius:12px; border:1px solid rgba(255,255,255,0.06); background:rgba(0,0,0,0.12); margin-bottom:8px;">
+                        <div style="min-width:220px; font-weight:900; color:var(--text-primary);">${escapeHtml(g.title || '')}</div>
+                        <div style="font-size:11px; color:var(--text-muted);">${escapeHtml(g.action || '')}</div>
+                        <div style="margin-left:auto; font-size:11px; color:var(--text-secondary);">${escapeHtml(g.note || '')}</div>
+                    </div>
+                `).join('')}
+                ${(s.groupDetails || []).length > 20 ? `<div style="font-size:11px; color:var(--text-muted);">Showing 20 of ${(s.groupDetails || []).length} groups.</div>` : ''}
+            </div>
+        ` : '';
+
+        openDashModal(
+            'Import Summary',
+            `
+                <div class="dash-repo-card" style="padding:14px 14px;">
+                    <div style="display:flex; gap:10px; align-items:flex-start; justify-content:space-between; flex-wrap:wrap;">
+                        <div>
+                            <div style="font-size:12px; font-weight:900; color:var(--text-primary);">${escapeHtml(actionLabel)}</div>
+                            <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">
+                                Repo: <b>${escapeHtml(s.repo || '')}</b> · Dashboard: <b>${escapeHtml(s.name || '')}</b>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+                            ${pills.join('')}
+                        </div>
+                    </div>
+                </div>
+                ${groupRows}
+                <div style="margin-top:12px; font-size:11px; color:var(--text-muted);">
+                    Close this window to view your dashboard.
+                </div>
+            `,
+            `
+                <button class="btn btn-secondary" onclick="closeModal('pmDashModal')">Close</button>
+            `
+        );
+    }
+
+    function applyDashImport() {
+        const analysisEl = document.getElementById('dashImportAnalysis');
+        if (!pendingDashImport?.dash) { showToast('Analyze an import first.', true); return; }
+        const dash = pendingDashImport.dash;
+        const existing = pendingDashImport.existing;
+        const mode = (document.getElementById('dashImportMode')?.value || '').toLowerCase();
+
+        const normalize = (d) => sanitizeDashboardForExport(d);
+        const incoming = normalize(dash);
+        if (!incoming) { showToast('Import payload invalid.', true); return; }
+
+        const beforeShape = existing ? summarizeDashboardShape(existing) : { groups: 0, pipelines: 0, pipelineSet: new Set() };
+
+        const applyReplace = () => {
+            const next = normalize(incoming);
+            // Keep existing id so selection stays stable.
+            next.id = existing.id;
+            dashboardsState.dashboards = (dashboardsState.dashboards || []).map(d => d.id === existing.id ? next : d);
+            saveDashboardsState();
+            dashboardsState = loadDashboardsState();
+            setActiveDashboardId(next.repo, next.id);
+            return next;
+        };
+
+        const applyMerge = (groupPlan) => {
+            const target = cloneJson(existing);
+            target.groups = Array.isArray(target.groups) ? target.groups : [];
+
+            const byTitle = new Map(target.groups.map(g => [String(g.title||'').trim().toLowerCase(), g]));
+            const details = [];
+            for (let i = 0; i < (incoming.groups || []).length; i++) {
+                const g = incoming.groups[i];
+                const title = String(g.title || 'Pipelines').trim();
+                const key = title.toLowerCase();
+                const action = groupPlan?.get(i) || (byTitle.has(key) ? 'merge' : 'add');
+                if (action === 'skip') continue;
+                if (action === 'replace' && byTitle.has(key)) {
+                    byTitle.get(key).pipelines = [...new Set((g.pipelines || []).map(String))];
+                    details.push({ title, action: 'Replace', note: `${(g.pipelines || []).length} pipeline(s)` });
+                    continue;
+                }
+                if (action === 'merge' && byTitle.has(key)) {
+                    const cur = byTitle.get(key).pipelines || [];
+                    const merged = [...new Set([...cur, ...(g.pipelines || [])].map(String))];
+                    byTitle.get(key).pipelines = merged;
+                    details.push({ title, action: 'Merge', note: `+${(g.pipelines || []).length} pipeline(s) considered` });
+                    continue;
+                }
+                // add
+                const gid = `g_${makeDashboardId()}_${i}`;
+                target.groups.push({ id: gid, title, pipelines: [...new Set((g.pipelines || []).map(String))] });
+                byTitle.set(key, target.groups[target.groups.length - 1]);
+                details.push({ title, action: 'Add', note: `${(g.pipelines || []).length} pipeline(s)` });
+            }
+            dashboardsState.dashboards = (dashboardsState.dashboards || []).map(d => d.id === existing.id ? normalize(target) : d);
+            saveDashboardsState();
+            dashboardsState = loadDashboardsState();
+            setActiveDashboardId(existing.repo, existing.id);
+            return { next: dashboardsState.dashboards.find(d => d.id === existing.id) || null, details };
+        };
+
+        if (!existing) {
+            // Create new dashboard (avoid id collisions).
+            const newDash = normalize(incoming);
+            const idTaken = (dashboardsState.dashboards || []).some(d => d.id === newDash.id);
+            if (idTaken) newDash.id = makeDashboardId();
+            dashboardsState.dashboards = dashboardsState.dashboards || [];
+            dashboardsState.dashboards.push(newDash);
+            saveDashboardsState();
+            dashboardsState = loadDashboardsState();
+            setActiveDashboardId(newDash.repo, newDash.id);
+            closeModal('pmDashXferModal');
+            // Switch to imported repo so user can see it immediately.
+            setGlobalRepoFilter(newDash.repo, { persist: true, skipResults: true, skipEmail: true });
+            const after = dashboardsState.dashboards.find(d => d.id === newDash.id) || newDash;
+            const afterShape = summarizeDashboardShape(after);
+            const ds = diffSets(beforeShape.pipelineSet, afterShape.pipelineSet);
+            showDashImportSummary({
+                action: 'create',
+                repo: newDash.repo,
+                name: newDash.name,
+                groupsBefore: 0,
+                groupsAfter: afterShape.groups,
+                pipesBefore: 0,
+                pipesAfter: afterShape.pipelines,
+                added: ds.added.length,
+                removed: ds.removed.length,
+                groupDetails: (incoming.groups || []).map(g => ({ title: g.title, action: 'Add', note: `${(g.pipelines || []).length} pipeline(s)` }))
+            });
+            showToast('Dashboard imported.');
+            return;
+        }
+
+        if (mode === 'replace') {
+            closeModal('pmDashXferModal');
+            const next = applyReplace();
+            setGlobalRepoFilter(next.repo, { persist: true, skipResults: true, skipEmail: true });
+            const after = dashboardsState.dashboards.find(d => d.id === next.id) || next;
+            const afterShape = summarizeDashboardShape(after);
+            const ds = diffSets(beforeShape.pipelineSet, afterShape.pipelineSet);
+            showDashImportSummary({
+                action: 'replace',
+                repo: next.repo,
+                name: next.name,
+                groupsBefore: beforeShape.groups,
+                groupsAfter: afterShape.groups,
+                pipesBefore: beforeShape.pipelines,
+                pipesAfter: afterShape.pipelines,
+                added: ds.added.length,
+                removed: ds.removed.length,
+                groupDetails: (incoming.groups || []).map(g => ({ title: g.title, action: 'Replace', note: `${(g.pipelines || []).length} pipeline(s)` }))
+            });
+            showToast('Dashboard replaced.');
+            return;
+        }
+
+        if (mode === 'merge') {
+            closeModal('pmDashXferModal');
+            const res = applyMerge(null);
+            const after = res?.next || dashboardsState.dashboards.find(d => d.id === existing.id) || existing;
+            setGlobalRepoFilter(String(after.repo || ''), { persist: true, skipResults: true, skipEmail: true });
+            const afterShape = summarizeDashboardShape(after);
+            const ds = diffSets(beforeShape.pipelineSet, afterShape.pipelineSet);
+            showDashImportSummary({
+                action: 'merge',
+                repo: after.repo,
+                name: after.name,
+                groupsBefore: beforeShape.groups,
+                groupsAfter: afterShape.groups,
+                pipesBefore: beforeShape.pipelines,
+                pipesAfter: afterShape.pipelines,
+                added: ds.added.length,
+                removed: ds.removed.length,
+                groupDetails: res?.details || []
+            });
+            showToast('Dashboard merged.');
+            return;
+        }
+
+        if (mode === 'advanced') {
+            const plan = new Map();
+            document.querySelectorAll('#dashImportAdvanced select[data-imp-group]').forEach(sel => {
+                const idx = parseInt(sel.dataset.impGroup, 10);
+                const v = String(sel.value || '').trim().toLowerCase();
+                if (Number.isFinite(idx)) plan.set(idx, v);
+            });
+            closeModal('pmDashXferModal');
+            const res = applyMerge(plan);
+            const after = res?.next || dashboardsState.dashboards.find(d => d.id === existing.id) || existing;
+            setGlobalRepoFilter(String(after.repo || ''), { persist: true, skipResults: true, skipEmail: true });
+            const afterShape = summarizeDashboardShape(after);
+            const ds = diffSets(beforeShape.pipelineSet, afterShape.pipelineSet);
+            // Build group details with explicit per-group action.
+            const groupDetails = (incoming.groups || []).map((g, idx) => {
+                const title = String(g.title || 'Pipelines').trim();
+                const action = plan.get(idx) || 'merge';
+                const label = action === 'skip' ? 'Skip' : action === 'replace' ? 'Replace' : action === 'merge' ? 'Merge' : action === 'add' ? 'Add' : action;
+                return { title, action: label, note: `${(g.pipelines || []).length} pipeline(s)` };
+            });
+            showDashImportSummary({
+                action: 'advanced',
+                repo: after.repo,
+                name: after.name,
+                groupsBefore: beforeShape.groups,
+                groupsAfter: afterShape.groups,
+                pipesBefore: beforeShape.pipelines,
+                pipesAfter: afterShape.pipelines,
+                added: ds.added.length,
+                removed: ds.removed.length,
+                groupDetails
+            });
+            showToast('Dashboard imported (advanced).');
+            return;
+        }
+    }
+
+    function revealDashboardsTab() {
+        const btn = document.getElementById('tabDashboards');
+        if (!btn) return;
+        if (btn.style.display === 'none') btn.style.display = '';
+
+        // Dramatic breakthrough animation overlay (one-shot per reveal).
+        try {
+            const existing = document.getElementById('dashBreakFx');
+            if (existing) existing.remove();
+            const fx = document.createElement('div');
+            fx.id = 'dashBreakFx';
+            fx.className = 'dash-break-fx';
+            const shards = [];
+            // Scatter shards across the top bar.
+            for (let i = 0; i < 18; i++) {
+                const left = Math.round((i / 17) * 100);
+                const top = Math.round(8 + (Math.random() * 22));
+                const delay = Math.round(40 + (Math.random() * 120));
+                const size = Math.round(8 + (Math.random() * 10));
+                const rot = Math.round(-18 + (Math.random() * 36));
+                shards.push(`<span class="shard" style="left:${left}%; top:${top}px; width:${size}px; height:${size}px; animation-delay:${delay}ms; transform:translateY(-20px) scale(0.9) rotate(${rot}deg);"></span>`);
+            }
+            fx.innerHTML = `<div class="shock"></div><div class="shards">${shards.join('')}</div>`;
+            document.body.appendChild(fx);
+            setTimeout(() => { try { fx.remove(); } catch { /* ignore */ } }, 1300);
+        } catch { /* ignore */ }
+
+        btn.classList.remove('break-in');
+        // Reflow to restart animation.
+        void btn.offsetWidth;
+        btn.classList.add('break-in');
+        setTimeout(() => btn.classList.remove('break-in'), 900);
+    }
+
+    function getDashboardsRepo() {
+        const r = String(globalRepoFilter || 'all').trim() || 'all';
+        return r === 'all' ? '' : r;
+    }
+
+    function ensureDashModal() {
+        if (document.getElementById('pmDashModal')) return;
+        const wrap = document.createElement('div');
+        wrap.id = 'pmDashModal';
+        wrap.className = 'modal-overlay';
+        wrap.innerHTML = `
+            <div class="modal" style="max-width:680px;">
+                <div class="modal-header">
+                    <div class="modal-title" id="pmDashModalTitle">Dashboard</div>
+                    <button class="modal-close" onclick="closeModal('pmDashModal')">x</button>
+                </div>
+                <div class="modal-body" id="pmDashModalBody"></div>
+                <div class="modal-footer" id="pmDashModalFooter"></div>
+            </div>
+        `;
+        document.body.appendChild(wrap);
+    }
+
+    function openDashModal(title, bodyHtml, footerHtml) {
+        ensureDashModal();
+        const t = document.getElementById('pmDashModalTitle');
+        const b = document.getElementById('pmDashModalBody');
+        const f = document.getElementById('pmDashModalFooter');
+        if (t) t.textContent = title;
+        if (b) b.innerHTML = bodyHtml;
+        if (f) f.innerHTML = footerHtml;
+        document.getElementById('pmDashModal').classList.add('show');
+    }
+
+    function openCreateDashboardModal() {
+        const repo = getDashboardsRepo();
+        if (!repo) { showToast('Select a repo first (Dashboards are repo-scoped).', true); return; }
+        openDashModal(
+            'Create Dashboard',
+            `
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.06); background:rgba(0,0,0,0.18);">
+                    <div style="font-size:11px; color:var(--text-muted); font-weight:900; letter-spacing:0.6px; text-transform:uppercase;">Repo</div>
+                    <div class="dash-pill" style="margin-left:auto;">&#128193; ${escapeHtml(repo)}</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Dashboard name <span class="req">*</span></label>
+                    <input type="text" id="dashCreateName" placeholder="e.g. UAT — Web smoke" style="font-size:13px;">
+                    <span class="field-help">Saved in your browser only (localStorage).</span>
+                </div>
+                <div class="form-group" style="margin-top:12px;">
+                    <label class="form-label">First group title</label>
+                    <input type="text" id="dashCreateGroup" value="Pipelines" style="font-size:13px;">
+                </div>
+            `,
+            `
+                <button class="btn btn-secondary" onclick="closeModal('pmDashModal')">Cancel</button>
+                <button class="btn btn-orange" onclick="confirmCreateDashboard()">Create</button>
+            `
+        );
+    }
+
+    function confirmCreateDashboard() {
+        const repo = getDashboardsRepo();
+        const name = String(document.getElementById('dashCreateName')?.value || '').trim();
+        const groupTitle = String(document.getElementById('dashCreateGroup')?.value || '').trim() || 'Pipelines';
+        if (!repo) { showToast('Select a repo first.', true); return; }
+        if (!name) { showToast('Dashboard name is required.', true); return; }
+        const exists = dashboardsForRepo(repo).some(d => String(d?.name || '').trim().toLowerCase() === name.toLowerCase());
+        if (exists) { showToast('A dashboard with that name already exists for this repo.', true); return; }
+        const id = `d_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+        dashboardsState.dashboards = dashboardsState.dashboards || [];
+        dashboardsState.dashboards.push({ id, repo, name, groups: [{ id: `g_${id}_1`, title: groupTitle, pipelines: [] }], createdAt: new Date().toISOString() });
+        saveDashboardsState();
+        dashboardsState = loadDashboardsState(); // normalize
+        closeModal('pmDashModal');
+        setActiveDashboardId(repo, id);
+        renderDashboards();
+        showToast('Dashboard created.');
+    }
+
+    function deleteDashboard(dashId) {
+        const repo = getDashboardsRepo();
+        const id = String(dashId || '').trim();
+        if (!repo || !id) return;
+        const ok = confirm('Delete this dashboard? This only affects your browser.');
+        if (!ok) return;
+        dashboardsState.dashboards = (dashboardsState.dashboards || []).filter(d => d.id !== id);
+        saveDashboardsState();
+        renderDashboards();
+        showToast('Dashboard deleted.');
+    }
+
+    function renameDashboard(dashId) {
+        const repo = getDashboardsRepo();
+        const d = dashboardsForRepo(repo).find(x => x.id === dashId);
+        if (!d) return;
+        const next = prompt('New dashboard name:', d.name);
+        if (!next || !next.trim()) return;
+        d.name = next.trim();
+        saveDashboardsState();
+        renderDashboards();
+        showToast('Dashboard renamed.');
+    }
+
+    function addGroup(dashId) {
+        const repo = getDashboardsRepo();
+        const d = dashboardsForRepo(repo).find(x => x.id === dashId);
+        if (!d) return;
+        const title = prompt('Group title:', 'Pipelines');
+        if (!title || !title.trim()) return;
+        d.groups = Array.isArray(d.groups) ? d.groups : [];
+        const gid = `g_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+        d.groups.push({ id: gid, title: title.trim(), pipelines: [] });
+        saveDashboardsState();
+        renderDashboards();
+        showToast('Group added.');
+    }
+
+    function deleteGroup(dashId, groupId) {
+        const repo = getDashboardsRepo();
+        const d = dashboardsForRepo(repo).find(x => x.id === dashId);
+        if (!d) return;
+        const ok = confirm('Delete this group?');
+        if (!ok) return;
+        d.groups = (d.groups || []).filter(g => g.id !== groupId);
+        saveDashboardsState();
+        renderDashboards();
+        showToast('Group deleted.');
+    }
+
+    function renameGroup(dashId, groupId) {
+        const repo = getDashboardsRepo();
+        const d = dashboardsForRepo(repo).find(x => x.id === dashId);
+        const g = d?.groups?.find(x => x.id === groupId);
+        if (!g) return;
+        const next = prompt('New group title:', g.title || 'Pipelines');
+        if (!next || !next.trim()) return;
+        g.title = next.trim();
+        saveDashboardsState();
+        renderDashboards();
+        showToast('Group renamed.');
+    }
+
+    function openPipelinePicker(dashId, groupId) {
+        const repo = getDashboardsRepo();
+        if (!repo) { showToast('Select a repo first.', true); return; }
+        const d = dashboardsForRepo(repo).find(x => x.id === dashId);
+        const g = d?.groups?.find(x => x.id === groupId);
+        if (!d || !g) return;
+
+        const eligible = getResultsPipelineConfigs()
+            .filter(p => String(p.repo || '').trim() === repo)
+            .map(p => ({ key: pipelineKey(p), name: p.name, filename: p.filename, repo }));
+
+        if (!eligible.length) {
+            showToast('No pipelines found for this repo. Add/import pipelines first.', true);
+            return;
+        }
+
+        const existing = new Set((g.pipelines || []).map(x => String(x || '').trim()).filter(Boolean));
+        const listHtml = eligible.map(p => {
+            const checked = existing.has(p.key) ? 'checked' : '';
+            const label = escapeHtml(String(p.name || p.filename || p.key).replace(/-Testim$/, ''));
+            const sub = escapeHtml(p.filename || '');
+            return `<label style="display:flex; gap:10px; align-items:flex-start; padding:10px 10px; border-radius:12px; border:1px solid rgba(255,255,255,0.06); background:rgba(0,0,0,0.18); margin-bottom:8px; cursor:pointer;">
+                <input type="checkbox" class="dash-pick" value="${escapeHtml(p.key)}" ${checked} style="margin-top:2px; accent-color: var(--axos-orange); width:16px; height:16px;">
+                <div style="min-width:0;">
+                    <div style="font-size:12px; font-weight:800; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${label}</div>
+                    <div style="font-size:10px; color:var(--text-muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${sub}</div>
+                </div>
+            </label>`;
+        }).join('');
+
+        openDashModal(
+            'Add Pipelines',
+            `
+                <div style="font-size:12px; color:var(--text-secondary); line-height:1.6; margin-bottom:10px;">
+                    Choose pipelines to include in this dashboard group. Only configured pipelines can be added.
+                </div>
+                <input type="text" id="dashPickSearch" placeholder="Search pipelines..." style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); color:var(--text-primary); font-size:12px; margin-bottom:12px;" oninput="filterDashPickList()">
+                <div id="dashPickList" style="max-height:360px; overflow:auto; padding-right:4px;">${listHtml}</div>
+            `,
+            `
+                <button class="btn btn-secondary" onclick="closeModal('pmDashModal')">Cancel</button>
+                <button class="btn btn-orange" onclick="confirmPipelinePicker('${escapeHtml(dashId)}','${escapeHtml(groupId)}')">Save</button>
+            `
+        );
+    }
+
+    function filterDashPickList() {
+        const q = String(document.getElementById('dashPickSearch')?.value || '').toLowerCase();
+        const list = document.getElementById('dashPickList');
+        if (!list) return;
+        list.querySelectorAll('label').forEach(lbl => {
+            const t = (lbl.textContent || '').toLowerCase();
+            lbl.style.display = (!q || t.includes(q)) ? '' : 'none';
+        });
+    }
+
+    function confirmPipelinePicker(dashId, groupId) {
+        const repo = getDashboardsRepo();
+        const d = dashboardsForRepo(repo).find(x => x.id === dashId);
+        const g = d?.groups?.find(x => x.id === groupId);
+        if (!d || !g) return;
+        const picks = Array.from(document.querySelectorAll('#pmDashModal .dash-pick:checked')).map(cb => String(cb.value || '').trim()).filter(Boolean);
+        g.pipelines = [...new Set(picks)];
+        saveDashboardsState();
+        closeModal('pmDashModal');
+        renderDashboards();
+        showToast('Group updated.');
+    }
+
+    function removePipelineFromGroup(dashId, groupId, pkey) {
+        const repo = getDashboardsRepo();
+        const d = dashboardsForRepo(repo).find(x => x.id === dashId);
+        const g = d?.groups?.find(x => x.id === groupId);
+        if (!g) return;
+        const ok = confirm('Remove this pipeline from the group?');
+        if (!ok) return;
+        g.pipelines = (g.pipelines || []).filter(x => String(x || '').trim() !== String(pkey || '').trim());
+        saveDashboardsState();
+        renderDashboards();
+        showToast('Pipeline removed.');
+    }
+
+    function dashboardRunDots(repo, workflowFile) {
+        const mode = (document.getElementById('resultsFetchMode')?.value || loadResultsFetchModePref() || 'count').toLowerCase();
+        const limit = (mode === 'count') ? loadResultsRunCountPref() : 15;
+        let runs = (allRuns || [])
+            .filter(r => r && String(r.repo || '').trim() === repo && String(r.workflowFile || '').trim() === String(workflowFile || '').trim())
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        if (mode === 'range') {
+            const range = getResultsSelectedDateRange();
+            if (range) runs = runs.filter(r => {
+                const t = new Date(r.createdAt).getTime();
+                return Number.isFinite(t) && t >= range.startMs && t <= range.endMs;
+            });
+        }
+        // We fetch newest-first but display oldest→latest (left→right).
+        runs = runs.slice(0, limit).reverse();
+        if (!runs.length) return `<span style="font-size:11px; color:var(--text-muted);">No runs fetched</span>`;
+        return `<div class="run-strip">` + runs.map(r => {
+            const o = getRunOutcome(r);
+            const cls = (o === 'success' ? 'success' : o === 'failure' ? 'failure' : o === 'cancelled' ? 'cancelled' : o === 'skipped' ? 'skipped' : 'unknown');
+            const tip = `${String(r.workflowName || '').replace(/-Testim$/, '')} #${r.runNumber} — ${cls}`;
+            return `<span class="run-dot ${cls}" title="${escapeHtml(tip)}" onclick="openRunDetails(${r.id}); event.stopPropagation();" data-runid="${r.id}"></span>`;
+        }).join('') + `</div>`;
+    }
+    function dashboardRunViz(repo, workflowFile) { return dashboardRunDots(repo, workflowFile); }
+
+    function dashboardPipelinePassRate(repo, workflowFile) {
+        const mode = (document.getElementById('resultsFetchMode')?.value || loadResultsFetchModePref() || 'count').toLowerCase();
+        const limit = (mode === 'count') ? loadResultsRunCountPref() : 200;
+        let runs = (allRuns || [])
+            .filter(r => r && String(r.repo || '').trim() === String(repo || '').trim() && String(r.workflowFile || '').trim() === String(workflowFile || '').trim())
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        if (mode === 'range') {
+            const range = getResultsSelectedDateRange();
+            if (range) runs = runs.filter(r => {
+                const t = new Date(r.createdAt).getTime();
+                return Number.isFinite(t) && t >= range.startMs && t <= range.endMs;
+            });
+        }
+        runs = runs.slice(0, limit);
+        if (!runs.length) return { passRate: null, passed: 0, actionable: 0, total: 0 };
+        const actionable = runs.filter(r => ['success','failure'].includes(getRunOutcome(r))).length;
+        const passed = runs.filter(r => getRunOutcome(r) === 'success').length;
+        const pr = actionable ? (passed / actionable) * 100 : 0;
+        return { passRate: pr, passed, actionable, total: runs.length };
+    }
+
+    function dashboardNeedsAttention(repo, workflowFile) {
+        const limit = loadResultsRunCountPref();
+        const runs = (allRuns || [])
+            .filter(r => r && String(r.repo || '').trim() === String(repo || '').trim() && String(r.workflowFile || '').trim() === String(workflowFile || '').trim())
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+            .slice(0, limit);
+        if (!runs.length) return { needs: false, reason: '' };
+
+        // Count consecutive cancelled/skipped from most recent.
+        let streak = 0;
+        for (const r of runs) {
+            const o = getRunOutcome(r);
+            if (o === 'cancelled' || o === 'skipped') streak++;
+            else break;
+        }
+        if (streak >= 2) {
+            return { needs: true, reason: `${streak} cancelled/skipped in a row — might need to be checked.` };
+        }
+
+        const cancelled = runs.filter(r => getRunOutcome(r) === 'cancelled').length;
+        if (cancelled >= 3) {
+            return { needs: true, reason: `${cancelled} cancelled runs in the last ${runs.length} — might need to be checked.` };
+        }
+
+        return { needs: false, reason: '' };
+    }
+
+    function openRunDetails(runId) {
+        const r = (allRuns || []).find(x => x && x.id === runId);
+        if (!r) return;
+        window.open(r.url, '_blank');
+    }
+
+    function openResultsForDashboardPipeline(repo, pipelineKeyStr) {
+        const r = String(repo || '').trim();
+        const pk = String(pipelineKeyStr || '').trim();
+        const p = findPipeline(pk);
+        if (!p) { showToast('Pipeline not found in configuration.', true); return; }
+        if (!allRuns || !allRuns.length) { showToast('Fetch results first.', true); return; }
+
+        // Ensure global repo + results repo are aligned.
+        if (r) setGlobalRepoFilter(r, { persist: true, skipResults: true, skipEmail: true });
+
+        switchTopTab('results');
+
+        // Select the pipeline in Results (left tree).
+        const wfName = String(p.name || '').trim();
+        if (!wfName) { showToast('Pipeline name missing; cannot select in Results.', true); return; }
+        const key = resultsPipelineKey(r, wfName);
+        resultsSelectedPipelines.clear();
+        resultsSelectedPipelines.add(key);
+
+        const repoSel = document.getElementById('resultsRepoFilter');
+        if (repoSel) repoSel.value = r || 'all';
+        try { renderResultsTree(); } catch { /* ignore */ }
+        try { filterResults(); } catch { /* ignore */ }
+
+        // Scroll selected node into view (after render).
+        setTimeout(() => {
+            try {
+                const tree = document.getElementById('resultsTree');
+                if (!tree) return;
+                const node = tree.querySelector(`[data-pipeline="${CSS.escape(key)}"]`);
+                if (node && typeof node.scrollIntoView === 'function') node.scrollIntoView({ block: 'center' });
+            } catch { /* ignore */ }
+        }, 60);
+    }
+
+    // Dashboard test enrichment removed.
+
+    function renderDashboards() {
+        const listEl = document.getElementById('dashboardsList');
+        const contentEl = document.getElementById('dashboardsContent');
+        if (!listEl || !contentEl) return;
+
+        if (!allRuns || !allRuns.length) {
+            listEl.innerHTML = `<div style="padding:6px 0; color:var(--text-muted); font-size:12px;">Fetch results first to unlock dashboards.</div>`;
+            contentEl.innerHTML = `
+                <div class="empty-state" style="animation:fadeSlideUp 0.5s ease-out both;">
+                    <div class="empty-icon">&#128202;</div>
+                    <h3>No results loaded</h3>
+                    <p>Go to <b>Results & Metrics</b> and click <b>Fetch Results</b> first.</p>
+                </div>`;
+            return;
+        }
+
+        const repo = getDashboardsRepo();
+        if (!repo) {
+            const repos = getKnownRepoNames();
+            const opts = repos.map(r => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join('');
+            listEl.innerHTML = `
+                <div class="dash-list-title">Dashboards</div>
+                <div style="font-size:11px; color:var(--text-muted); line-height:1.6;">
+                    Select a repo to get started. (Repo-scoped, saved in localStorage.)
+                </div>
+            `;
+            contentEl.innerHTML = `
+                <div class="empty-state" style="animation:fadeSlideUp 0.5s ease-out both;">
+                    <div class="empty-icon">&#128205;</div>
+                    <h3>Select a repo to view dashboards</h3>
+                    <p>Pick the repo you want dashboards for. This will also filter the left side across the app.</p>
+                    <div class="dash-repo-card" style="margin-top:16px; max-width:520px; margin-left:auto; margin-right:auto; text-align:left; padding:16px 16px;">
+                        <div style="font-size:11px; font-weight:900; letter-spacing:0.6px; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px;">Repo</div>
+                        <select id="dashRepoPickTop" class="dash-select" style="width:100%;">
+                            ${opts}
+                        </select>
+                        <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; justify-content:flex-end;">
+                            <button class="btn btn-orange" onclick="setGlobalRepoFilter(document.getElementById('dashRepoPickTop')?.value || 'all', {persist:true});">Continue</button>
+                        </div>
+                    </div>
+                </div>`;
+            return;
+        }
+
+        const list = dashboardsForRepo(repo);
+        const activeId = getActiveDashboardId(repo);
+        const active = list.find(d => d.id === activeId) || list[0] || null;
+
+        listEl.innerHTML = `
+            <div class="dash-list-title">${escapeHtml(repo)}</div>
+            <div class="dash-list-actions">
+                <button class="btn btn-orange" onclick="openCreateDashboardModal()">+ Create dashboard</button>
+            </div>
+            ${list.length ? list.map(d => {
+                const pipes = (d.groups || []).reduce((n, g) => n + ((g.pipelines || []).length), 0);
+                return `<div class="dash-item ${active && d.id === active.id ? 'active' : ''}" onclick="setActiveDashboardId('${escapeHtml(repo)}','${escapeHtml(d.id)}')">
+                    <div class="dash-item-name">${escapeHtml(d.name)}</div>
+                    <div class="dash-item-sub"><span>${(d.groups || []).length} group(s)</span><span>${pipes} pipeline(s)</span></div>
+                </div>`;
+            }).join('') : `<div style="padding:10px 2px; color:var(--text-muted); font-size:12px;">No dashboards yet.</div>`}
+        `;
+
+        if (!active) {
+            const reposAll = getKnownRepoNames();
+            const repoSwitchEmpty = `
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:14px;">
+                    <span style="font-size:11px; color:var(--text-muted); font-weight:900; letter-spacing:0.6px; text-transform:uppercase;">Repo</span>
+                    <select id="dashRepoSwitchEmpty" class="dash-select" onchange="setGlobalRepoFilter(this.value || 'all', {persist:true});" style="min-width:260px;">
+                        ${reposAll.map(r => `<option value="${escapeHtml(r)}"${r===repo?' selected':''}>${escapeHtml(r)}</option>`).join('')}
+                    </select>
+                </div>
+            `;
+            contentEl.innerHTML = `
+                <div class="empty-state" style="animation:fadeSlideUp 0.5s ease-out both;">
+                    <div class="empty-icon">&#128202;</div>
+                    <h3>No dashboards for ${escapeHtml(repo)}</h3>
+                    <p>Create one to group pipelines and visualize their last runs.</p>
+                    ${repoSwitchEmpty}
+                    <div style="margin-top:16px;">
+                        <button class="btn btn-orange" onclick="openCreateDashboardModal()">+ Create Dashboard</button>
+                    </div>
+                </div>`;
+            return;
+        }
+
+        const reposAll = getKnownRepoNames();
+        const repoSwitch = `
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px;">
+                <span style="font-size:11px; color:var(--text-muted); font-weight:900; letter-spacing:0.6px; text-transform:uppercase;">Repo</span>
+                <select id="dashRepoSwitch" class="dash-select" onchange="setGlobalRepoFilter(this.value || 'all', {persist:true});" style="min-width:220px;">
+                    ${reposAll.map(r => `<option value="${escapeHtml(r)}"${r===repo?' selected':''}>${escapeHtml(r)}</option>`).join('')}
+                </select>
+                <span style="font-size:11px; color:var(--text-muted);">Switching changes the global repo filter.</span>
+            </div>
+        `;
+
+        const viewMode = 'dots';
+
+        const computeDashboardStats = (dash) => {
+            const repoName = String(repo || '').trim();
+            const limit = loadResultsRunCountPref();
+            const pipelineKeys = [...new Set((dash?.groups || []).flatMap(g => (g?.pipelines || [])))].map(x => String(x || '').trim()).filter(Boolean);
+            const wfFiles = pipelineKeys.map(pk => {
+                const pp = findPipeline(pk);
+                return String(pp?.filename || parsePipelineKey(pk).filename || '').trim();
+            }).filter(Boolean);
+            const uniqueFiles = [...new Set(wfFiles)];
+
+            const consideredRuns = [];
+            for (const wf of uniqueFiles) {
+                const rs = (allRuns || [])
+                    .filter(r => r && String(r.repo || '').trim() === repoName && String(r.workflowFile || '').trim() === wf)
+                    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                    .slice(0, limit);
+                consideredRuns.push(...rs);
+            }
+
+            const outcomes = consideredRuns.map(getRunOutcome);
+            const passed = outcomes.filter(o => o === 'success').length;
+            const failed = outcomes.filter(o => o === 'failure').length;
+            const cancelled = outcomes.filter(o => o === 'cancelled').length;
+            const skipped = outcomes.filter(o => o === 'skipped').length;
+            const actionable = passed + failed;
+            const passRate = actionable ? ((passed / actionable) * 100) : 0;
+
+            return {
+                pipelines: pipelineKeys.length,
+                workflows: uniqueFiles.length,
+                runs: consideredRuns.length,
+                passed, failed, cancelled, skipped,
+                actionable,
+                passRate
+            };
+        };
+
+        const stats = computeDashboardStats(active);
+        const prClass = stats.passRate >= 90 ? 'v-green' : stats.passRate >= 70 ? 'v-orange' : 'v-red';
+        const dashMetrics = `
+            <div class="metrics-grid" style="margin:0 0 18px 0; animation:fadeSlideUp 0.45s ease-out both; animation-delay:0.08s;">
+                <div class="metric-card m-blue">
+                    <div class="metric-icon">&#128736;</div>
+                    <div class="metric-label">Pipelines</div>
+                    <div class="metric-value" data-count="${stats.pipelines}">${stats.pipelines}</div>
+                    <div class="metric-sub">${stats.runs} ${escapeHtml(getResultsFetchWindowLabel())}</div>
+                    <div class="metric-bar"><div class="metric-bar-fill" style="width:100%; background:linear-gradient(90deg,#3b82f6,#60a5fa);"></div></div>
+                </div>
+                <div class="metric-card m-green">
+                    <div class="metric-icon">&#127919;</div>
+                    <div class="metric-label">Pass Rate</div>
+                    <div class="metric-value ${prClass}" data-count="${stats.passRate.toFixed(1)}">${stats.passRate.toFixed(1)}%</div>
+                    <div class="metric-sub">${stats.passed} passed of ${stats.actionable} actionable</div>
+                    <div class="metric-bar"><div class="metric-bar-fill" style="width:${Math.max(0, Math.min(100, stats.passRate))}%; background:linear-gradient(90deg,#10b981,#34d399);"></div></div>
+                </div>
+                <div class="metric-card m-red">
+                    <div class="metric-icon">&#9888;&#65039;</div>
+                    <div class="metric-label">Failures</div>
+                    <div class="metric-value v-red" data-count="${stats.failed}">${stats.failed}</div>
+                    <div class="metric-sub">${stats.cancelled} cancelled${stats.skipped ? `, ${stats.skipped} skipped` : ''}</div>
+                    <div class="metric-bar"><div class="metric-bar-fill" style="width:${stats.runs ? (stats.failed/stats.runs*100) : 0}%; background:linear-gradient(90deg,#ef4444,#f87171);"></div></div>
+                </div>
+            </div>
+            <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin:-6px 0 18px; color:var(--text-muted); font-size:11px;">
+                <span style="font-weight:900; letter-spacing:0.6px; text-transform:uppercase;">Legend</span>
+                <span class="dash-pill" style="padding:6px 10px;"><span class="run-dot success" style="width:10px;height:10px;"></span> Passed</span>
+                <span class="dash-pill" style="padding:6px 10px;"><span class="run-dot failure" style="width:10px;height:10px;"></span> Failed</span>
+                <span class="dash-pill" style="padding:6px 10px;"><span class="run-dot cancelled" style="width:10px;height:10px;"></span> Cancelled</span>
+                <span class="dash-pill" style="padding:6px 10px;"><span class="run-dot skipped" style="width:10px;height:10px;"></span> Skipped</span>
+                <span class="dash-pill" style="padding:6px 10px;"><span class="run-dot unknown" style="width:10px;height:10px;"></span> Other</span>
+                <span style="margin-left:auto; font-size:11px;">Click a dot to open that run in GitHub.</span>
+            </div>
+        `;
+        const header = `
+            <div class="dash-head" style="animation:fadeSlideUp 0.45s ease-out both;">
+                <div>
+                    <h1>${escapeHtml(active.name)}</h1>
+                    <div class="dash-meta">
+                        <span class="dash-pill">&#128193; ${escapeHtml(repo)}</span>
+                        <span style="margin-left:8px;">Showing <b>${escapeHtml(getResultsFetchWindowLabel())}</b> (from Results settings).</span>
+                    </div>
+                    ${repoSwitch}
+                </div>
+                <div class="dash-head-actions">
+                    <button class="btn btn-secondary" onclick="openDashboardXferModal('export')">Export</button>
+                    <button class="btn btn-secondary" onclick="openDashboardXferModal('import')">Import</button>
+                    <button class="btn btn-secondary" onclick="renameDashboard('${escapeHtml(active.id)}')">Rename</button>
+                    <button class="btn btn-secondary" onclick="addGroup('${escapeHtml(active.id)}')">+ Group</button>
+                    <button class="btn" style="background:linear-gradient(135deg, var(--error), #dc2626); color:#fff;" onclick="deleteDashboard('${escapeHtml(active.id)}')">Delete</button>
+                </div>
+            </div>
+        `;
+
+        const groupsHtml = (active.groups || []).map(g => {
+            const pipesHtml = (g.pipelines || []).length
+                ? `<div class="dash-pipes">` + (g.pipelines || []).map(pk => {
+                    const p = findPipeline(pk);
+                    const name = (p?.name || p?.filename || pk).replace(/-Testim$/, '');
+                    const wfFile = p?.filename || parsePipelineKey(pk).filename || '';
+                    const dots = wfFile ? dashboardRunViz(repo, wfFile) : `<span style="font-size:11px; color:var(--text-muted);">Missing workflow file</span>`;
+                    const pr = wfFile ? dashboardPipelinePassRate(repo, wfFile) : { passRate: null, passed: 0, actionable: 0, total: 0 };
+                    const prTxt = (pr.passRate == null) ? '—' : pr.passRate.toFixed(1) + '%';
+                    const prTip = (pr.passRate == null) ? 'No runs fetched yet.' : `${pr.passed} passed of ${pr.actionable} actionable (last ${loadResultsRunCountPref()})`;
+                    const prCls = (pr.passRate == null) ? '' : (pr.passRate >= 90 ? 'v-green' : pr.passRate >= 70 ? 'v-orange' : 'v-red');
+                    const attn = wfFile ? dashboardNeedsAttention(repo, wfFile) : { needs: false, reason: '' };
+                    return `<div class="dash-pipe-card">
+                        <div class="dash-pipe-name" title="${escapeHtml(name)}">${escapeHtml(name)}</div>
+                        ${dots}
+                        ${attn.needs ? `<div style="margin-top:8px; font-size:11px; color:var(--warning); font-weight:800;">&#9888; ${escapeHtml(attn.reason)}</div>` : ''}
+                        <div style="margin-top:8px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                            <span class="dash-pill" title="${escapeHtml(prTip)}" style="padding:6px 10px;">
+                                <span style="font-weight:900;">Pass rate</span>
+                                <span class="${prCls}" style="margin-left:6px; font-family:'JetBrains Mono',monospace;">${escapeHtml(prTxt)}</span>
+                            </span>
+                            <span style="font-size:11px; color:var(--text-muted);">(${escapeHtml(prTip)})</span>
+                        </div>
+                        <div class="dash-pipe-foot">
+                            <span style="white-space:normal; overflow:visible; word-break:break-word; line-height:1.25;">${escapeHtml(wfFile)}</span>
+                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+                                <button class="btn-lite" onclick="openResultsForDashboardPipeline('${escapeHtml(repo)}','${escapeHtml(pk)}');" title="Open in Results & Metrics">Results</button>
+                                <button class="btn-lite" onclick="removePipelineFromGroup('${escapeHtml(active.id)}','${escapeHtml(g.id)}','${escapeHtml(pk)}');" title="Remove from group">Remove</button>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('') + `</div>`
+                : `<div style="padding:16px 6px; color:var(--text-muted); font-size:12px;">No pipelines in this group yet.</div>`;
+
+            return `<div class="dash-group" style="animation:fadeSlideUp 0.5s ease-out both;">
+                <div class="dash-group-top">
+                    <div class="dash-group-title">${escapeHtml(g.title)}</div>
+                    <div class="dash-group-actions">
+                        <button class="btn-lite" onclick="openPipelinePicker('${escapeHtml(active.id)}','${escapeHtml(g.id)}'); event.stopPropagation();">+ Pipelines</button>
+                        <button class="btn-lite" onclick="renameGroup('${escapeHtml(active.id)}','${escapeHtml(g.id)}'); event.stopPropagation();">Rename</button>
+                        <button class="btn-lite" onclick="deleteGroup('${escapeHtml(active.id)}','${escapeHtml(g.id)}'); event.stopPropagation();" style="color:var(--error);">Delete</button>
+                    </div>
+                </div>
+                ${pipesHtml}
+            </div>`;
+        }).join('');
+
+        contentEl.innerHTML = header + dashMetrics + groupsHtml;
+        try { animateCounters(); } catch { /* ignore */ }
+    }
+
+    // ══════════════════════════════════════════
     //  EMAIL REPORT
     // ══════════════════════════════════════════
     let generatedEmailHtml = '';
@@ -9037,6 +11143,12 @@ ${runnerStrategy === 'group'
     }
 
     function onEmailRepoFilterChange() {
+        try {
+            const v = getEmailRepoFilter();
+            if (String(v || 'all') !== String(globalRepoFilter || 'all')) {
+                setGlobalRepoFilter(v, { persist: true, skipEmail: true });
+            }
+        } catch { /* ignore */ }
         renderEmailPipeList();
         updateEmailPipeCount();
     }
@@ -9655,11 +11767,13 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
     // ══════════════════════════════════════════
     initCustomFeatures();
     initPipelines();
-    buildTree();
-    showFolderPipelines(null);
+    populateGlobalRepoFilter();
+    setGlobalRepoFilter(globalRepoFilter, { persist: false });
     updateSaveStatus();
     updatePatDot();
     updateResultsTokenStatus();
+    initResultsRunCountPref();
+    initResultsFetchControls();
     initResultsSidebarResize();
 
     function initResultsSidebarResize() {
