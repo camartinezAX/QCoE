@@ -2538,6 +2538,25 @@
         setGlobalRepoFilter(v, { persist: true });
     }
 
+    function dashboardsContinueFromRepoPicker() {
+        try {
+            const repos = getKnownRepoNames();
+            const sel = document.getElementById('dashRepoPickTop');
+            const requested = String(sel?.value || '').trim();
+            const next = (requested && repos.includes(requested)) ? requested : (repos[0] || 'all');
+            if (!repos.length || next === 'all') {
+                showToast('No repos available. Add repos to sync first.', true);
+                return;
+            }
+            setGlobalRepoFilter(next, { persist: true });
+        } catch {
+            // If something went sideways, try to re-render dashboards anyway.
+            try { renderDashboards(); } catch { /* ignore */ }
+        }
+        // Force a Dashboards re-render on the next tick (avoids rare stale-DOM timing issues).
+        setTimeout(() => { try { renderDashboards(); } catch { /* ignore */ } }, 0);
+    }
+
     function loadSelectedFolderPref() {
         try {
             const raw = localStorage.getItem(SELECTED_FOLDER_KEY);
@@ -10439,7 +10458,6 @@ ${runnerStrategy === 'group'
             return;
         }
     }
-
     function revealDashboardsTab() {
         const btn = document.getElementById('tabDashboards');
         if (!btn) return;
@@ -10852,7 +10870,7 @@ ${runnerStrategy === 'group'
                             ${opts}
                         </select>
                         <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; justify-content:flex-end;">
-                            <button class="btn btn-orange" onclick="setGlobalRepoFilter(document.getElementById('dashRepoPickTop')?.value || 'all', {persist:true});">Continue</button>
+                            <button class="btn btn-orange" onclick="dashboardsContinueFromRepoPicker();">Continue</button>
                         </div>
                     </div>
                 </div>`;
