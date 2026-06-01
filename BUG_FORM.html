@@ -1049,6 +1049,25 @@
             background: rgba(250, 167, 74, 0.08);
             border-style: solid;
         }
+
+        .evidence-dropzone.error {
+            border-color: var(--error);
+            background: rgba(239, 68, 68, 0.06);
+            border-style: solid;
+        }
+
+        .evidence-hint {
+            display: block;
+            margin-top: 6px;
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .evidence-hint.required {
+            color: var(--error);
+            font-weight: 600;
+        }
         
         .evidence-dropzone-label {
             font-size: 12px;
@@ -1198,7 +1217,7 @@
             <div class="progress-stats">
                 <div class="stat">
                     <div class="stat-dot required"></div>
-                    <span>Required: <strong id="requiredCount">0/8</strong></span>
+                    <span>Required: <strong id="requiredCount">0/9</strong></span>
                 </div>
                 <div class="stat">
                     <div class="stat-dot optional"></div>
@@ -1649,6 +1668,7 @@ File the following bug in Azure DevOps:
                                 ✅ Expected Result <span class="required-mark">*</span>
                             </label>
                             <textarea class="expected-result" id="expectedResult" placeholder="What should have happened? Reference AC if available..." style="min-height: 80px;"></textarea>
+                            <span class="evidence-hint">Highly recommended: attach a screenshot/video/log showing the expected behavior (if available).</span>
                             <div class="evidence-dropzone" data-section="expected" data-scenario="1"
                                  ondragover="evidenceDragOver(event)" ondragleave="evidenceDragLeave(event)" ondrop="evidenceDrop(event, this)">
                                 <input type="file" multiple style="display:none;" onchange="evidenceFileSelect(event, this.parentElement)">
@@ -1665,6 +1685,7 @@ File the following bug in Azure DevOps:
                                 🚨 Actual Result <span class="required-mark">*</span>
                             </label>
                             <textarea class="actual-result" id="actualResult" placeholder="What happened? Include error messages, console errors, network errors..." style="min-height: 80px;"></textarea>
+                            <span class="evidence-hint required">Required: add at least 1 attachment for the Actual Result.</span>
                             <div class="evidence-dropzone" data-section="actual" data-scenario="1"
                                  ondragover="evidenceDragOver(event)" ondragleave="evidenceDragLeave(event)" ondrop="evidenceDrop(event, this)">
                                 <input type="file" multiple style="display:none;" onchange="evidenceFileSelect(event, this.parentElement)">
@@ -2322,7 +2343,7 @@ File the following bug in Azure DevOps:
 
         initTheme();
 
-        // Required fields (8 total: Project, Title, Description, Environment, App Type, Steps, Expected, Actual)
+        // Required fields (9 total: Project, Title, Description, Environment, App Type, Steps, Expected, Actual, Actual Evidence)
         // Note: Priority & Severity are optional (have defaults), username/password are optional
         const requiredFields = [
             'project', 'title', 'description', 'environment', 'appType'
@@ -2338,6 +2359,11 @@ File the following bug in Azure DevOps:
         
         function getEvidenceKey(section, scenario) {
             return `S${scenario}_${section}`;
+        }
+
+        function getEvidenceCount(section, scenario) {
+            const key = getEvidenceKey(section, scenario);
+            return (evidenceStore.get(key) || []).length;
         }
         
         function evidenceDragOver(e) {
@@ -2432,6 +2458,7 @@ File the following bug in Azure DevOps:
                 });
                 renderEvidencePreviews(section, scenario);
                 updateEvidenceBadges();
+                updateProgress();
                 const label = isImage ? 'Screenshot' : isVideo ? 'Video' : 'File';
                 const icon = isImage ? '📷' : isVideo ? '🎬' : '📎';
                 showToast(icon, `${label} added to ${sectionLabel} Result`, 'success');
@@ -2482,6 +2509,7 @@ File the following bug in Azure DevOps:
             
             renderEvidencePreviews(section, scenario);
             updateEvidenceBadges();
+            updateProgress();
         }
         
         function updateEvidenceBadges() {
@@ -2703,6 +2731,7 @@ File the following bug in Azure DevOps:
                         ✅ Expected Result
                     </label>
                     <textarea class="expected-result" placeholder="What should have happened?" style="min-height: 80px;"></textarea>
+                    <span class="evidence-hint">Highly recommended: attach a screenshot/video/log showing the expected behavior (if available).</span>
                     <div class="evidence-dropzone" data-section="expected" data-scenario="${count}"
                          ondragover="evidenceDragOver(event)" ondragleave="evidenceDragLeave(event)" ondrop="evidenceDrop(event, this)">
                         <input type="file" multiple style="display:none;" onchange="evidenceFileSelect(event, this.parentElement)">
@@ -2719,6 +2748,7 @@ File the following bug in Azure DevOps:
                         🚨 Actual Result
                     </label>
                     <textarea class="actual-result" placeholder="What happened?" style="min-height: 80px;"></textarea>
+                    <span class="evidence-hint required">Required: add at least 1 attachment for the Actual Result.</span>
                     <div class="evidence-dropzone" data-section="actual" data-scenario="${count}"
                          ondragover="evidenceDragOver(event)" ondragleave="evidenceDragLeave(event)" ondrop="evidenceDrop(event, this)">
                         <input type="file" multiple style="display:none;" onchange="evidenceFileSelect(event, this.parentElement)">
@@ -3269,27 +3299,47 @@ File the following bug in Azure DevOps:
             fieldStatus.push({ name: 'Steps to Reproduce', filled: hasSteps, required: true });
             if (hasSteps) filledRequired++;
             
-            // 9 & 10. Expected & Actual Results (at least one valid scenario)
-            let hasValidScenario = false;
+            // 7-9. Expected & Actual Results (at least one valid scenario with Actual evidence)
+            let hasValidScenarioText = false;
+            let allFilledScenariosHaveActualEvidence = true;
             const scenarios = document.querySelectorAll('#scenariosList .scenario-item');
             scenarios.forEach(item => {
                 const expected = item.querySelector('.expected-result');
                 const actual = item.querySelector('.actual-result');
-                if (expected && actual && expected.value.trim() && actual.value.trim()) {
-                    hasValidScenario = true;
+                const scenarioNum = item.dataset.scenario;
+                const actualZone = item.querySelector('.evidence-dropzone[data-section="actual"]');
+                const textOk = !!(expected && actual && expected.value.trim() && actual.value.trim());
+                const hasActualEvidence = getEvidenceCount('actual', scenarioNum) > 0;
+
+                if (textOk) {
+                    hasValidScenarioText = true;
                     expected.classList.add('valid');
                     actual.classList.add('valid');
                 } else {
                     if (expected) expected.classList.remove('valid');
                     if (actual) actual.classList.remove('valid');
                 }
+
+                // If user filled Expected+Actual text for a scenario, Actual evidence becomes required for that scenario.
+                if (textOk && !hasActualEvidence) {
+                    if (actualZone) actualZone.classList.add('error');
+                } else {
+                    if (actualZone) actualZone.classList.remove('error');
+                }
+
+                if (textOk && !hasActualEvidence) {
+                    allFilledScenariosHaveActualEvidence = false;
+                }
             });
-            fieldStatus.push({ name: 'Expected Result', filled: hasValidScenario, required: true });
-            fieldStatus.push({ name: 'Actual Result', filled: hasValidScenario, required: true });
-            if (hasValidScenario) filledRequired += 2;
+            const hasValidScenarioWithActualEvidence = hasValidScenarioText && allFilledScenariosHaveActualEvidence;
+            fieldStatus.push({ name: 'Expected Result', filled: hasValidScenarioText, required: true });
+            fieldStatus.push({ name: 'Actual Result', filled: hasValidScenarioText, required: true });
+            fieldStatus.push({ name: 'Actual Result Attachment', filled: hasValidScenarioWithActualEvidence, required: true });
+            if (hasValidScenarioText) filledRequired += 2;
+            if (hasValidScenarioWithActualEvidence) filledRequired += 1;
             
-            // Total required is 8 (Project, Title, Description, Environment, App Type, Steps, Expected, Actual)
-            const totalRequired = 8;
+            // Total required is 9 (Project, Title, Description, Environment, App Type, Steps, Expected, Actual, Actual Evidence)
+            const totalRequired = 9;
             const percentage = Math.round((filledRequired / totalRequired) * 100);
             
             document.getElementById('progressPercent').textContent = percentage + '%';
@@ -3331,8 +3381,8 @@ File the following bug in Azure DevOps:
             const statusText = document.getElementById('statusText');
             const generateBtn = document.getElementById('generateBtn');
             
-            // Must have 100% AND valid scenario (expected + actual) to be ready
-            if (percentage === 100 && hasValidScenario) {
+            // Must have 100% AND valid scenario (Expected + Actual + Actual Evidence) to be ready
+            if (percentage === 100 && hasValidScenarioWithActualEvidence) {
                 statusIndicator.classList.add('complete');
                 statusText.textContent = '✨ Ready to generate!';
                 generateBtn.disabled = false;
@@ -3497,6 +3547,35 @@ File the following bug in Azure DevOps:
                     scenarios.push({ title, expected, actual });
                 }
             });
+
+            // Enforce: Actual Result must have at least 1 attachment for each filled scenario (Expected + Actual).
+            const missingActualEvidence = [];
+            document.querySelectorAll('#scenariosList .scenario-item').forEach(item => {
+                const scenarioNum = item.dataset.scenario;
+                const expected = item.querySelector('.expected-result')?.value.trim() || '';
+                const actual = item.querySelector('.actual-result')?.value.trim() || '';
+                const textOk = !!(expected && actual);
+                if (!textOk) return;
+
+                const count = getEvidenceCount('actual', scenarioNum);
+                if (count < 1) {
+                    missingActualEvidence.push(scenarioNum);
+                }
+            });
+            if (missingActualEvidence.length > 0) {
+                const firstScenarioNum = missingActualEvidence[0];
+                const firstZone = document.querySelector(`.evidence-dropzone[data-section="actual"][data-scenario="${firstScenarioNum}"]`);
+                if (firstZone) {
+                    firstZone.classList.add('error');
+                    firstZone.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                const msg = missingActualEvidence.length === 1
+                    ? `Actual Result requires at least 1 attachment (Scenario ${firstScenarioNum}).`
+                    : `Actual Result requires at least 1 attachment (missing in ${missingActualEvidence.length} scenario(s)).`;
+                showToast('⚠️', msg, 'warning');
+                updateProgress();
+                return;
+            }
             
             // Parse work item inputs to extract IDs
             const parentParsed = parseWorkItemInput(getValue('parentWorkItem'));
@@ -4674,6 +4753,7 @@ DO NOT embed <img> tags before linking attachments — images will break!
                                         ✅ Expected Result <span class="required-mark">*</span>
                                     </label>
                                     <textarea class="expected-result" ${index === 0 ? 'id="expectedResult"' : ''} placeholder="What should have happened? Reference AC if available..." style="min-height: 80px;">${escapeHtml(scenario.expected)}</textarea>
+                                    <span class="evidence-hint">Highly recommended: attach a screenshot/video/log showing the expected behavior (if available).</span>
                                     <div class="evidence-dropzone" data-section="expected" data-scenario="${sNum}"
                                          ondragover="evidenceDragOver(event)" ondragleave="evidenceDragLeave(event)" ondrop="evidenceDrop(event, this)">
                                         <input type="file" multiple style="display:none;" onchange="evidenceFileSelect(event, this.parentElement)">
@@ -4690,6 +4770,7 @@ DO NOT embed <img> tags before linking attachments — images will break!
                                         🚨 Actual Result <span class="required-mark">*</span>
                                     </label>
                                     <textarea class="actual-result" ${index === 0 ? 'id="actualResult"' : ''} placeholder="What happened? Include error messages, console errors, network errors..." style="min-height: 80px;">${escapeHtml(scenario.actual)}</textarea>
+                                    <span class="evidence-hint required">Required: add at least 1 attachment for the Actual Result.</span>
                                     <div class="evidence-dropzone" data-section="actual" data-scenario="${sNum}"
                                          ondragover="evidenceDragOver(event)" ondragleave="evidenceDragLeave(event)" ondrop="evidenceDrop(event, this)">
                                         <input type="file" multiple style="display:none;" onchange="evidenceFileSelect(event, this.parentElement)">
