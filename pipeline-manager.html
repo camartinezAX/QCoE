@@ -386,6 +386,8 @@
         /* Modal */
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
         .modal-overlay.show { display: flex; }
+        /* Ensure the prompt modal always stacks above other overlays (e.g. Settings). */
+        #outputModal.modal-overlay { z-index: 2005; }
         .modal { background: var(--bg-secondary); border-radius: 20px; border: 1px solid var(--border-color); width: 100%; max-width: 850px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; }
         .modal-header { padding: 18px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
         .modal-title { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
@@ -1436,6 +1438,18 @@
                                 <button onclick="emailReplaceWithVisible()" title="Replace selection with current filtered list">Only these</button>
                             </div>
                         </div>
+                        <div id="emailDashQuickPick" style="margin:10px 0 0; padding:12px; border:1px solid var(--border-color); background:var(--bg-tertiary); border-radius:12px;">
+                            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+                                <div style="font-size:12px; font-weight:900; color:var(--text-primary); letter-spacing:0.2px;">Quick select from Dashboards</div>
+                                <div style="font-size:11px; color:var(--text-muted); line-height:1.4;">Optional — replaces selection for the selected repo</div>
+                            </div>
+                            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:10px;">
+                                <select id="emailDashSelect" onchange="onEmailDashSelectChange()" style="flex:1; min-width:220px; padding:9px 10px; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-tertiary); color:var(--text-primary); font-size:12px;"></select>
+                                <select id="emailDashGroupSelect" style="flex:1; min-width:180px; padding:9px 10px; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-tertiary); color:var(--text-primary); font-size:12px;"></select>
+                                <button class="btn btn-secondary" onclick="emailReplaceSelectionFromDashboard()" style="padding:8px 10px; font-size:12px;">Use</button>
+                            </div>
+                            <div id="emailDashHint" style="font-size:11px; color:var(--text-muted); margin-top:8px;"></div>
+                        </div>
                         <div class="pipe-picker-tabs" id="emailPickerTabs"></div>
                         <div class="pipe-picker-toolbar">
                             <input type="text" id="emailPipeSearch" placeholder="Search pipelines..." oninput="filterEmailPipeList()">
@@ -1699,18 +1713,55 @@
                 <button class="modal-close" onclick="closeModal('patModal')">x</button>
             </div>
             <div class="modal-body">
-                <div class="form-group" style="margin-bottom:16px;">
-                    <label class="form-label" style="font-size:13px; font-weight:700;">GitHub Personal Access Token</label>
-                    <input type="password" id="patTokenInput" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="width:100%; padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.3); color:var(--text-primary); font-size:13px; font-family:'JetBrains Mono',monospace;">
-                    <span class="field-help" style="margin-top:6px; display:block; font-size:11px; color:var(--text-muted); line-height:1.6;">
-                        Required for syncing workflows and fetching run results from GitHub.<br>
-                        Needs <strong>repo</strong> and <strong>actions:read</strong> scopes. Saved only in <strong>your browser's localStorage</strong> — never sent anywhere except the GitHub API.
-                    </span>
+                <div style="display:flex; gap:10px; align-items:center; margin-bottom:14px;">
+                    <button id="settingsTabToken" class="btn btn-secondary" onclick="switchSettingsSection('token')" style="flex:1; padding:9px 10px; font-size:12px; font-weight:900;">Token</button>
+                    <button id="settingsTabFeatures" class="btn btn-secondary" onclick="switchSettingsSection('features')" style="flex:1; padding:9px 10px; font-size:12px; font-weight:900;">Features</button>
+                </div>
+
+                <div id="settingsSectionToken">
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label class="form-label" style="font-size:13px; font-weight:700;">GitHub Personal Access Token</label>
+                        <input type="password" id="patTokenInput" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="width:100%; padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.3); color:var(--text-primary); font-size:13px; font-family:'JetBrains Mono',monospace;">
+                        <span class="field-help" style="margin-top:6px; display:block; font-size:11px; color:var(--text-muted); line-height:1.6;">
+                            Required for syncing workflows and fetching run results from GitHub.<br>
+                            Needs <strong>repo</strong> and <strong>actions:read</strong> scopes. Saved only in <strong>your browser's localStorage</strong> — never sent anywhere except the GitHub API.
+                        </span>
+                    </div>
+                </div>
+
+                <div id="settingsSectionFeatures" style="display:none;">
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label class="form-label" style="font-size:13px; font-weight:700;">Repo Feature Catalog</label>
+                        <div style="font-size:11px; color:var(--text-muted); line-height:1.6; margin-top:6px;">
+                            Shows features for the selected repo + how many pipelines use each feature. Admin unlock enables rename/delete and can generate an AI prompt to propagate changes to everyone.
+                        </div>
+
+                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:10px;">
+                            <select id="featureSettingsRepo" onchange="renderFeatureCatalog()" style="flex:1; min-width:220px; padding:9px 10px; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-tertiary); color:var(--text-primary); font-size:12px;">
+                                <option value="all">All Repos</option>
+                            </select>
+                            <input type="password" id="featureAdminPw" placeholder="Admin password" style="flex:1; min-width:180px; padding:9px 10px; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-tertiary); color:var(--text-primary); font-size:12px;" autocomplete="off">
+                            <button class="btn btn-secondary" id="featureAdminUnlockBtn" onclick="unlockFeatureAdmin()" style="padding:8px 10px; font-size:12px;">Unlock</button>
+                            <button class="btn btn-secondary" onclick="renderFeatureCatalog()" style="padding:8px 10px; font-size:12px;">Refresh</button>
+                        </div>
+
+                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:10px;">
+                            <input type="text" id="featureCatalogSearch" placeholder="Search features..." oninput="renderFeatureCatalog()" style="flex:1; min-width:220px; padding:9px 10px; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-tertiary); color:var(--text-primary); font-size:12px;">
+                            <select id="featureCatalogKind" onchange="renderFeatureCatalog()" style="width:220px; padding:9px 10px; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-tertiary); color:var(--text-primary); font-size:12px;">
+                                <option value="web">Web (non-OutSystems)</option>
+                                <option value="outsystems">OutSystems</option>
+                            </select>
+                            <!-- Feature prompt moved to Pipelines > Updates (keeps all updates in one place) -->
+                        </div>
+
+                        <div id="featureCatalogHint" style="font-size:11px; color:var(--text-muted); margin-top:8px;"></div>
+                        <div id="featureCatalogBody" style="margin-top:10px;"></div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeModal('patModal')">Cancel</button>
-                <button class="btn btn-orange" onclick="savePatFromModal()">Save Token</button>
+                <button class="btn btn-orange" id="settingsSaveTokenBtn" onclick="savePatFromModal()">Save Token</button>
             </div>
         </div>
     </div>
@@ -1874,6 +1925,7 @@
 
     function openPatModal() {
         document.getElementById('patTokenInput').value = getGitHubToken();
+        try { initSettingsSection(); } catch { /* ignore */ }
         document.getElementById('patModal').classList.add('show');
     }
 
@@ -1883,6 +1935,50 @@
         closeModal('patModal');
         showToast(val ? 'GitHub token saved to your browser.' : 'GitHub token cleared.');
         if (typeof updateResultsTokenStatus === 'function') updateResultsTokenStatus();
+    }
+
+    // Settings modal: section switcher (scales to more sections later)
+    const SETTINGS_SECTION_KEY = 'pm.settings.section.v1';
+
+    function getStoredSettingsSection() {
+        try { return String(localStorage.getItem(SETTINGS_SECTION_KEY) || '').trim() || 'token'; } catch { return 'token'; }
+    }
+    function storeSettingsSection(v) {
+        try { localStorage.setItem(SETTINGS_SECTION_KEY, String(v || 'token')); } catch { /* ignore */ }
+    }
+
+    function switchSettingsSection(section) {
+        const s = (String(section || '').trim().toLowerCase() === 'features') ? 'features' : 'token';
+        storeSettingsSection(s);
+
+        const tokenEl = document.getElementById('settingsSectionToken');
+        const featEl = document.getElementById('settingsSectionFeatures');
+        const saveBtn = document.getElementById('settingsSaveTokenBtn');
+        const tabToken = document.getElementById('settingsTabToken');
+        const tabFeat = document.getElementById('settingsTabFeatures');
+
+        if (tokenEl) tokenEl.style.display = (s === 'token') ? '' : 'none';
+        if (featEl) featEl.style.display = (s === 'features') ? '' : 'none';
+        if (saveBtn) saveBtn.style.display = (s === 'token') ? 'inline-flex' : 'none';
+
+        const activeStyle = (btn, active) => {
+            if (!btn) return;
+            btn.style.borderColor = active ? 'var(--axos-orange)' : 'var(--border-color)';
+            btn.style.color = active ? 'var(--axos-orange)' : 'var(--text-secondary)';
+            btn.style.background = active ? 'rgba(250,167,74,0.12)' : 'var(--bg-tertiary)';
+        };
+        activeStyle(tabToken, s === 'token');
+        activeStyle(tabFeat, s === 'features');
+
+        if (s === 'features') {
+            try { populateFeatureSettingsRepoSelect(); } catch { /* ignore */ }
+            try { renderFeatureCatalog(); } catch { /* ignore */ }
+        }
+    }
+
+    function initSettingsSection() {
+        const current = getStoredSettingsSection();
+        switchSettingsSection(current);
     }
 
     function getEffectiveSyncRef() {
@@ -1973,6 +2069,9 @@
         return String(s || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
     }
 
+    const DEFAULT_WEB_FEATURE_KEYS = new Set((FEATURES || []).map(f => _featureKey(f?.name)).filter(Boolean));
+    const DEFAULT_OUTSYSTEMS_FEATURE_KEYS = new Set((OUTSYSTEMS_FEATURES || []).map(n => _featureKey(n)).filter(Boolean));
+
     function readCustomFeatureStore() {
         try {
             const raw = localStorage.getItem(CUSTOM_FEATURES_KEY);
@@ -1990,46 +2089,31 @@
     }
 
     function computeNextWebFeatureId() {
-        const used = new Set((FEATURES || []).map(f => String(f?.id || '').trim()).filter(Boolean));
-        for (let i = 0; i < 99; i++) {
-            const id = String(i).padStart(2, '0');
-            if (!used.has(id)) return id;
-        }
-        return 'C' + String((FEATURES || []).length + 1);
+        // Legacy behavior (kept for backwards-compat references): we no longer auto-assign numeric feature IDs.
+        return '';
     }
 
     function initCustomFeatures() {
         const store = readCustomFeatureStore();
         let changed = false;
 
-        // Normalize web custom entries to {id,name} and merge into FEATURES
-        const usedIds = new Set((FEATURES || []).map(f => String(f?.id || '').trim()).filter(Boolean));
-        const allocId = () => {
-            for (let i = 0; i < 99; i++) {
-                const id = String(i).padStart(2, '0');
-                if (!usedIds.has(id)) { usedIds.add(id); return id; }
-            }
-            const id = 'C' + String(usedIds.size + 1);
-            usedIds.add(id);
-            return id;
-        };
+        // Normalize web custom entries to plain names (no auto-numbering) and merge into FEATURES
         const existingWebKeys = new Set((FEATURES || []).map(f => _featureKey(f?.name)));
         const normalizedWeb = [];
+        const seenWebKeys = new Set();
         for (const entry of (store.web || [])) {
             const name = (typeof entry === 'string') ? entry : String(entry?.name || '');
             const n = String(name || '').trim();
             if (!n) continue;
             const k = _featureKey(n);
-            if (!k) continue;
-            let id = (typeof entry === 'object' && entry && entry.id) ? String(entry.id).trim() : '';
-            if (!id || usedIds.has(id)) id = allocId();
-            else usedIds.add(id);
-            normalizedWeb.push({ id, name: n });
+            if (!k || seenWebKeys.has(k)) continue;
+            seenWebKeys.add(k);
+            normalizedWeb.push(n);
         }
-        for (const cf of normalizedWeb) {
-            const k = _featureKey(cf.name);
+        for (const name of normalizedWeb) {
+            const k = _featureKey(name);
             if (existingWebKeys.has(k)) continue;
-            FEATURES.push({ id: String(cf.id || computeNextWebFeatureId()), name: String(cf.name) });
+            FEATURES.push({ id: '', name: String(name) });
             existingWebKeys.add(k);
         }
         try {
@@ -2085,14 +2169,605 @@
         if (!k) return null;
         const existing = FEATURES.find(f => _featureKey(f?.name) === k);
         if (existing) return existing;
-        const id = computeNextWebFeatureId();
-        const obj = { id, name: n };
+        const obj = { id: '', name: n };
         FEATURES.push(obj);
         const store = readCustomFeatureStore();
         store.web = Array.isArray(store.web) ? store.web : [];
-        if (!store.web.some(x => _featureKey(typeof x === 'string' ? x : x?.name) === k)) store.web.push(obj);
+        if (!store.web.some(x => _featureKey(typeof x === 'string' ? x : x?.name) === k)) store.web.push(n);
         writeCustomFeatureStore(store);
         return obj;
+    }
+
+    function populateFeatureSettingsRepoSelect() {
+        const sel = document.getElementById('featureSettingsRepo');
+        if (!sel) return;
+        const repos = getKnownRepoNames();
+        const prev = String(sel.value || '').trim() || 'all';
+        sel.innerHTML = `<option value="all">All Repos</option>` + repos.map(r => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join('');
+        const preferred = (String(globalRepoFilter || 'all').trim() !== 'all') ? String(globalRepoFilter).trim() : (repos[0] || 'all');
+        sel.value = (prev && (prev === 'all' || repos.includes(prev))) ? prev : preferred;
+    }
+
+    // Feature admin unlock + catalog view
+    const FEATURE_ADMIN_SESSION_KEY = 'pm.features.adminUnlocked.v1';
+    const FEATURE_CHANGELOG_KEY = 'pm.features.changeLog.v1';
+    // SHA-256 hex (do not store plaintext password in the file)
+    const FEATURE_ADMIN_PW_HASH = '80d0209241bde3edf86ceef8cdd7f6429bb6916d2501cffd5e5655b294419078';
+    let featureAdminUnlocked = false;
+
+    function loadFeatureChangeLog() {
+        try {
+            const raw = localStorage.getItem(FEATURE_CHANGELOG_KEY);
+            const parsed = raw ? JSON.parse(raw) : [];
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
+    }
+    function saveFeatureChangeLog(arr) {
+        try { localStorage.setItem(FEATURE_CHANGELOG_KEY, JSON.stringify(Array.isArray(arr) ? arr : [])); } catch { /* ignore */ }
+    }
+    function recordFeatureChange(entry) {
+        const e = entry && typeof entry === 'object' ? entry : null;
+        if (!e) return;
+        const log = loadFeatureChangeLog();
+        log.push({
+            ts: Date.now(),
+            action: String(e.action || '').trim(),
+            kind: String(e.kind || '').trim(),
+            repo: String(e.repo || '').trim(),
+            from: String(e.from || '').trim(),
+            to: String(e.to || '').trim(),
+            name: String(e.name || '').trim(),
+        });
+        while (log.length > 50) log.shift();
+        saveFeatureChangeLog(log);
+    }
+
+    function clearFeatureChangeLog() {
+        saveFeatureChangeLog([]);
+        showToast('Feature change log cleared.');
+        try { buildTree(); } catch { /* ignore */ }
+        try {
+            if (selectedFolder === UPDATES_FOLDER_KEY) showFolderPipelines(UPDATES_FOLDER_KEY);
+        } catch { /* ignore */ }
+    }
+
+    async function sha256Hex(input) {
+        const data = new TextEncoder().encode(String(input || ''));
+        const hash = await crypto.subtle.digest('SHA-256', data);
+        const bytes = Array.from(new Uint8Array(hash));
+        return bytes.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    function setFeatureAdminUnlocked(v) {
+        featureAdminUnlocked = !!v;
+        try {
+            if (featureAdminUnlocked) sessionStorage.setItem(FEATURE_ADMIN_SESSION_KEY, '1');
+            else sessionStorage.removeItem(FEATURE_ADMIN_SESSION_KEY);
+        } catch { /* ignore */ }
+        const btn = document.getElementById('featureAdminUnlockBtn');
+        const hint = document.getElementById('featureCatalogHint');
+        if (btn) btn.textContent = featureAdminUnlocked ? 'Unlocked' : 'Unlock';
+        if (btn) btn.style.opacity = featureAdminUnlocked ? '0.9' : '';
+        if (hint) hint.textContent = featureAdminUnlocked
+            ? 'Admin unlocked: rename/delete enabled. Changes affect your local config and can be propagated via the AI prompt.'
+            : 'View-only: unlock to rename/delete features.';
+    }
+
+    function initFeatureAdminUnlock() {
+        try { featureAdminUnlocked = sessionStorage.getItem(FEATURE_ADMIN_SESSION_KEY) === '1'; } catch { featureAdminUnlocked = false; }
+        setFeatureAdminUnlocked(featureAdminUnlocked);
+    }
+
+    async function unlockFeatureAdmin() {
+        const pw = String(document.getElementById('featureAdminPw')?.value || '');
+        if (!pw) { showToast('Enter admin password to unlock.', true); return; }
+        try {
+            const hex = await sha256Hex(pw);
+            if (hex === FEATURE_ADMIN_PW_HASH) {
+                setFeatureAdminUnlocked(true);
+                const el = document.getElementById('featureAdminPw');
+                if (el) el.value = '';
+                renderFeatureCatalog();
+                showToast('Admin unlocked.');
+                return;
+            }
+        } catch { /* ignore */ }
+        setFeatureAdminUnlocked(false);
+        showToast('Invalid admin password.', true);
+    }
+
+    function getFeatureCatalogRepo() {
+        return String(document.getElementById('featureSettingsRepo')?.value || 'all').trim() || 'all';
+    }
+
+    function getFeatureCatalogKind() {
+        return String(document.getElementById('featureCatalogKind')?.value || 'web').trim() || 'web';
+    }
+
+    function getFeatureCatalogSearch() {
+        return String(document.getElementById('featureCatalogSearch')?.value || '').trim().toLowerCase();
+    }
+
+    function getRepoScopedPipelines(repo) {
+        const r = String(repo || 'all').trim() || 'all';
+        return (r === 'all')
+            ? (pipelines || [])
+            : (pipelines || []).filter(p => normRepoForPipeline(p) === r);
+    }
+
+    function listObservedFeatures(repo, kind) {
+        const scope = getRepoScopedPipelines(repo);
+        const k = String(kind || 'web').trim();
+        const out = [];
+        const seen = new Set();
+        for (const p of scope) {
+            if (!p || p.platform !== '02 Web') continue;
+            const brand = String(p.brand || '').trim();
+            const isOs = isOutsystemsBrand(brand);
+            if (k === 'outsystems' && !isOs) continue;
+            if (k === 'web' && isOs) continue;
+            const f = String(p.feature || '').trim();
+            if (!f) continue;
+            const fk = _featureKey(f);
+            if (!fk || seen.has(fk)) continue;
+            seen.add(fk);
+            out.push(f);
+        }
+        return out;
+    }
+
+    function listDefaultFeatures(kind) {
+        const k = String(kind || 'web').trim();
+        if (k === 'outsystems') return (OUTSYSTEMS_FEATURES || []).slice();
+        return (FEATURES || []).map(f => String(f?.name || '').trim()).filter(Boolean);
+    }
+
+    function listCustomFeatures(kind) {
+        const store = readCustomFeatureStore();
+        const k = String(kind || 'web').trim();
+        if (k === 'outsystems') {
+            return (Array.isArray(store.outsystems) ? store.outsystems : []).map(x => String(x || '').trim()).filter(Boolean);
+        }
+        return (Array.isArray(store.web) ? store.web : []).map(x => (typeof x === 'string') ? x : x?.name).map(x => String(x || '').trim()).filter(Boolean);
+    }
+
+    function countPipelinesByFeature(repo, kind, name) {
+        const scope = getRepoScopedPipelines(repo);
+        const k = String(kind || 'web').trim();
+        const fk = _featureKey(name);
+        if (!fk) return 0;
+        let n = 0;
+        for (const p of scope) {
+            if (!p || p.platform !== '02 Web') continue;
+            const brand = String(p.brand || '').trim();
+            const isOs = isOutsystemsBrand(brand);
+            if (k === 'outsystems' && !isOs) continue;
+            if (k === 'web' && isOs) continue;
+            if (_featureKey(p.feature) === fk) n++;
+        }
+        return n;
+    }
+
+    function normalizeFeatureList(items) {
+        const out = [];
+        const seen = new Set();
+        for (const v of (items || [])) {
+            const s = String(v || '').trim();
+            if (!s) continue;
+            const k = _featureKey(s);
+            if (!k || seen.has(k)) continue;
+            seen.add(k);
+            out.push(s);
+        }
+        return out;
+    }
+
+    function featureSource(kind, name) {
+        const k = String(kind || 'web').trim();
+        const key = _featureKey(name);
+        if (!key) return 'other';
+        if (k === 'outsystems') {
+            if (DEFAULT_OUTSYSTEMS_FEATURE_KEYS.has(key)) return 'default';
+            if (listCustomFeatures('outsystems').some(x => _featureKey(x) === key)) return 'custom';
+            return 'observed';
+        }
+        if (DEFAULT_WEB_FEATURE_KEYS.has(key)) return 'default';
+        if (listCustomFeatures('web').some(x => _featureKey(x) === key)) return 'custom';
+        return 'observed';
+    }
+
+    function renderFeatureCatalog() {
+        const body = document.getElementById('featureCatalogBody');
+        const hint = document.getElementById('featureCatalogHint');
+        const repoSel = document.getElementById('featureSettingsRepo');
+        if (!body || !repoSel) return;
+        populateFeatureSettingsRepoSelect();
+        initFeatureAdminUnlock();
+
+        const repo = getFeatureCatalogRepo();
+        const kind = getFeatureCatalogKind();
+        const q = getFeatureCatalogSearch();
+
+        const combined = normalizeFeatureList([
+            ...listDefaultFeatures(kind),
+            ...listCustomFeatures(kind),
+            ...listObservedFeatures(repo, kind),
+        ]);
+
+        const rows = combined
+            .map(name => {
+                const count = countPipelinesByFeature(repo, kind, name);
+                const src = featureSource(kind, name);
+                return { name, count, src, key: _featureKey(name) };
+            })
+            .filter(r => !q || (r.name || '').toLowerCase().includes(q) || formatFeatureLabelForUi(r.name).toLowerCase().includes(q));
+
+        rows.sort((a, b) => (b.count - a.count) || a.name.localeCompare(b.name));
+
+        const totalPipes = getRepoScopedPipelines(repo).filter(p => p && p.platform === '02 Web').length;
+        if (hint) {
+            const scopeLabel = (repo === 'all') ? 'All repos' : repo;
+            const kindLabel = (kind === 'outsystems') ? 'OutSystems' : 'Web';
+            hint.textContent = `${scopeLabel} • ${kindLabel} features • ${rows.length} feature(s) • ${totalPipes} web pipeline(s) in scope. ` +
+                (featureAdminUnlocked ? 'Admin unlocked.' : 'Unlock to rename/delete.');
+        }
+
+        if (!rows.length) {
+            body.innerHTML = `<div style="padding:12px; border:1px dashed var(--border-color); border-radius:12px; background:var(--bg-tertiary); color:var(--text-muted); font-size:12px;">
+                No features found for this scope.
+            </div>`;
+            return;
+        }
+
+        const canEdit = featureAdminUnlocked;
+        body.innerHTML = `<div style="display:flex; flex-direction:column; gap:8px;">` + rows.map(r => {
+            const esc = String(r.name).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            const pill = r.src === 'default'
+                ? `<span style="font-size:10px; font-weight:900; padding:3px 8px; border-radius:999px; border:1px solid rgba(59,130,246,0.35); background:rgba(59,130,246,0.10); color:var(--info);">DEFAULT</span>`
+                : r.src === 'custom'
+                    ? `<span style="font-size:10px; font-weight:900; padding:3px 8px; border-radius:999px; border:1px solid rgba(250,167,74,0.35); background:rgba(250,167,74,0.10); color:var(--axos-orange);">CUSTOM</span>`
+                    : `<span style="font-size:10px; font-weight:900; padding:3px 8px; border-radius:999px; border:1px solid rgba(148,163,184,0.35); background:rgba(148,163,184,0.10); color:var(--text-muted);">OBSERVED</span>`;
+            return `<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; border:1px solid var(--border-color); border-radius:12px; background:var(--bg-tertiary);">
+                <div style="min-width:0;">
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                        <div style="font-size:12px; font-weight:900; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:320px;">${escapeHtml(formatFeatureLabelForUi(r.name))}</div>
+                        ${pill}
+                        <span style="font-size:10px; font-weight:900; padding:3px 8px; border-radius:999px; border:1px solid rgba(22,163,74,0.35); background:rgba(22,163,74,0.10); color:var(--success);">${r.count}</span>
+                    </div>
+                    <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">Used by ${r.count} pipeline(s) in this scope</div>
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <button class="btn btn-secondary" style="padding:7px 10px; font-size:12px; opacity:${canEdit ? '1' : '0.55'}; pointer-events:${canEdit ? 'auto' : 'none'};" onclick="adminRenameFeature('${kind}','${esc}')">Rename</button>
+                    <button class="btn btn-secondary"
+                        title="${r.count > 0 ? `Cannot delete until 0 pipelines use this feature (currently ${r.count}).` : 'Delete feature (only allowed when count is 0)'}"
+                        style="padding:7px 10px; font-size:12px; opacity:${(canEdit && r.count === 0) ? '1' : (canEdit ? '0.45' : '0.55')};"
+                        onclick="adminDeleteFeature('${kind}','${esc}')">Delete</button>
+                </div>
+            </div>`;
+        }).join('') + `</div>`;
+    }
+
+    function updatePipelinesFeatureValues(repo, kind, fromName, toName) {
+        const r = String(repo || 'all').trim() || 'all';
+        const k = String(kind || 'web').trim();
+        const fromKey = _featureKey(fromName);
+        if (!fromKey) return 0;
+        let changed = 0;
+        for (const p of (pipelines || [])) {
+            if (!p || p.platform !== '02 Web') continue;
+            if (r !== 'all' && normRepoForPipeline(p) !== r) continue;
+            const brand = String(p.brand || '').trim();
+            const isOs = isOutsystemsBrand(brand);
+            if (k === 'outsystems' && !isOs) continue;
+            if (k === 'web' && isOs) continue;
+            if (_featureKey(p.feature) !== fromKey) continue;
+            p.feature = String(toName || '').trim();
+            if (p.featureDetail && _featureKey(p.featureDetail) === fromKey) p.featureDetail = String(toName || '').trim();
+            changed++;
+        }
+        if (changed) {
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(pipelines)); } catch { /* ignore */ }
+            try { updateSaveStatus(); } catch { /* ignore */ }
+        }
+        return changed;
+    }
+
+    function suffixFromFeatureDetail(fdRaw) {
+        const fd = String(fdRaw || '').trim();
+        if (!fd) return '';
+        const parts = fd.split('_').filter(Boolean);
+        if (!parts.length) return '';
+        if (parts[0] === 'OLB') return parts.slice(2).join('_') || '';
+        return parts.slice(1).join('_') || '';
+    }
+
+    function replaceFeaturePrefixInFeatureDetail(fdRaw, fromKey, toName) {
+        const fd = String(fdRaw || '').trim();
+        if (!fd) return fd;
+        const parts = fd.split('_').filter(Boolean);
+        if (!parts.length) return fd;
+        const repl = String(toName || '').trim().replace(/\s+/g, '');
+        if (!repl) return fd;
+        if (parts[0] === 'OLB') {
+            if (parts[1] && _featureKey(parts[1]) === fromKey) {
+                parts[1] = repl;
+                return parts.join('_');
+            }
+            return fd;
+        }
+        if (_featureKey(parts[0]) === fromKey) {
+            parts[0] = repl;
+            return parts.join('_');
+        }
+        return fd;
+    }
+
+    function computeNameForPipelineData(p) {
+        if (!p) return '';
+        const repoName = String(normRepoForPipeline(p) || p.repo || '').trim();
+        const platform = String(p.platform || '').trim();
+        const brand = String(p.brand || '').trim();
+        const env = String(p.env || '').trim();
+        const testType = String(p.testType || '').trim() || 'Regression';
+        const feature = String(p.feature || '').trim();
+        if (!repoName || !platform || !brand || !env || !testType || !feature) return '';
+
+        // Skip orchestrators (feature catalog actions are not intended to rename orchestrator workflows)
+        if (testType === 'Orchestrator' || feature === 'Orchestrators') return '';
+
+        // Monorepo Playwright (Axos.QE.Web)
+        if (repoName === 'Axos.QE.Web' || isWebMonorepoPipeline(p)) {
+            const teamKey = (brand === 'OLB 3.0') ? 'OLB3' : brand;
+            const fKey = feature.replace(/\s+/g, '');
+            const suffix = suffixFromFeatureDetail(p.featureDetail);
+            const sKey = suffix ? suffix.replace(/\s+/g, '') : '';
+            const tKey = testType.replace(/\s+/g, '');
+            const includeOlbPrefix = /^Web_[^_]+_(DEV|QA|STG|UAT|PROD)-OLB_/i.test(String(p.name || '').trim());
+            const featureBase = sKey ? `${fKey}_${sKey}` : `${fKey}`;
+            const featureStr = includeOlbPrefix ? `OLB_${featureBase}` : featureBase;
+            return `Web_${teamKey}_${env}-${featureStr}_${tKey}-Playwright`;
+        }
+
+        // Default Testim naming (Axos.QE.TestIM style)
+        const pKey = PLATFORM_KEY_MAP[platform] || platform;
+        const bKey = BRAND_KEY_MAP[brand] || brand.replace(/\s+/g, '');
+        const fKey = feature.replace(/\s+/g, '');
+        const suffix = suffixFromFeatureDetail(p.featureDetail);
+        const featureStr = suffix ? `${fKey}_${suffix}` : `${fKey}`;
+        const tKey = testType.replace(/\s+/g, '');
+        return (fKey === tKey)
+            ? `${pKey}_${bKey}_${env}_${featureStr}-Testim`
+            : `${pKey}_${bKey}_${env}_${featureStr}_${tKey}-Testim`;
+    }
+
+    function updatePipelinesForFeatureRename(repo, kind, fromName, toName) {
+        const r = String(repo || 'all').trim() || 'all';
+        const k = String(kind || 'web').trim();
+        const fromKey = _featureKey(fromName);
+        const to = String(toName || '').trim();
+        if (!fromKey || !to) return { changed: 0, renamed: 0, collisions: 0 };
+
+        let changed = 0;
+        let renamed = 0;
+        let collisions = 0;
+
+        for (const p of (pipelines || [])) {
+            if (!p || p.platform !== '02 Web') continue;
+            if (r !== 'all' && normRepoForPipeline(p) !== r) continue;
+            const brand = String(p.brand || '').trim();
+            const isOs = isOutsystemsBrand(brand);
+            if (k === 'outsystems' && !isOs) continue;
+            if (k === 'web' && isOs) continue;
+            if (_featureKey(p.feature) !== fromKey) continue;
+
+            // Update core fields
+            p.feature = to;
+            p.featureDetail = replaceFeaturePrefixInFeatureDetail(p.featureDetail, fromKey, to);
+            changed++;
+
+            // Update pipeline identity (name + filename) so the list matches what the form preview computes.
+            const newName = computeNameForPipelineData(p);
+            if (!newName) continue;
+            const newFilename = `${newName}.yml`;
+            const repoName = String(normRepoForPipeline(p) || p.repo || '').trim();
+            if (!repoName || !newFilename) continue;
+
+            const oldFilename = String(p.filename || '').trim();
+            const oldName = String(p.name || '').trim();
+
+            if (oldFilename && newFilename !== oldFilename) {
+                const newKey = pipelineKeyFrom(repoName, newFilename);
+                const exists = (pipelines || []).some(pp => pp && pp !== p && pipelineKey(pp) === newKey);
+                if (exists) {
+                    collisions++;
+                    continue;
+                }
+                if (!p.renamedFrom) p.renamedFrom = oldFilename;
+                p.filename = newFilename;
+            }
+            if (oldName && newName !== oldName) {
+                p.name = newName;
+            } else if (!oldName) {
+                p.name = newName;
+            }
+            renamed++;
+        }
+
+        if (changed) {
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(pipelines)); } catch { /* ignore */ }
+            try { updateSaveStatus(); } catch { /* ignore */ }
+        }
+        return { changed, renamed, collisions };
+    }
+
+    function renameInCustomStore(kind, fromName, toName) {
+        const store = readCustomFeatureStore();
+        const k = String(kind || 'web').trim();
+        const fromKey = _featureKey(fromName);
+        if (!fromKey) return;
+        if (k === 'outsystems') {
+            store.outsystems = (Array.isArray(store.outsystems) ? store.outsystems : []).map(x => (_featureKey(x) === fromKey) ? String(toName || '').trim() : x);
+        } else {
+            store.web = (Array.isArray(store.web) ? store.web : []).map(x => {
+                const n = (typeof x === 'string') ? x : x?.name;
+                if (_featureKey(n) !== fromKey) return x;
+                return String(toName || '').trim();
+            });
+        }
+        writeCustomFeatureStore(store);
+    }
+
+    function deleteFromCustomStore(kind, name) {
+        const store = readCustomFeatureStore();
+        const k = String(kind || 'web').trim();
+        const key = _featureKey(name);
+        if (!key) return;
+        if (k === 'outsystems') {
+            store.outsystems = (Array.isArray(store.outsystems) ? store.outsystems : []).filter(x => _featureKey(x) !== key);
+        } else {
+            store.web = (Array.isArray(store.web) ? store.web : []).filter(x => _featureKey((typeof x === 'string') ? x : x?.name) !== key);
+        }
+        writeCustomFeatureStore(store);
+    }
+
+    function renameInDefaultLists(kind, fromName, toName) {
+        const k = String(kind || 'web').trim();
+        const fromKey = _featureKey(fromName);
+        if (!fromKey) return;
+        if (k === 'outsystems') {
+            for (let i = 0; i < OUTSYSTEMS_FEATURES.length; i++) {
+                if (_featureKey(OUTSYSTEMS_FEATURES[i]) === fromKey) OUTSYSTEMS_FEATURES[i] = String(toName || '').trim();
+            }
+        } else {
+            for (let i = 0; i < FEATURES.length; i++) {
+                if (_featureKey(FEATURES[i]?.name) === fromKey) FEATURES[i].name = String(toName || '').trim();
+            }
+        }
+    }
+
+    function deleteFromDefaultLists(kind, name) {
+        const k = String(kind || 'web').trim();
+        const key = _featureKey(name);
+        if (!key) return;
+        if (k === 'outsystems') {
+            for (let i = OUTSYSTEMS_FEATURES.length - 1; i >= 0; i--) {
+                if (_featureKey(OUTSYSTEMS_FEATURES[i]) === key) OUTSYSTEMS_FEATURES.splice(i, 1);
+            }
+        } else {
+            for (let i = FEATURES.length - 1; i >= 0; i--) {
+                if (_featureKey(FEATURES[i]?.name) === key) FEATURES.splice(i, 1);
+            }
+        }
+    }
+
+    function adminRenameFeature(kind, name) {
+        if (!featureAdminUnlocked) { showToast('Unlock admin to rename.', true); return; }
+        const repo = getFeatureCatalogRepo();
+        const from = String(name || '').trim();
+        if (!from) return;
+        const next = prompt(`Rename feature "${from}" to:`, from);
+        if (!next || !next.trim()) return;
+        const to = next.trim();
+        if (_featureKey(to) === _featureKey(from)) { showToast('No change.', true); return; }
+
+        renameInDefaultLists(kind, from, to);
+        renameInCustomStore(kind, from, to);
+        const res = updatePipelinesForFeatureRename(repo, kind, from, to);
+        recordFeatureChange({ action: 'rename', kind, repo, from, to });
+
+        try { buildTree(); } catch { /* ignore */ }
+        try { showFolderPipelines(selectedFolder); } catch { /* ignore */ }
+        try { renderFeatureCatalog(); } catch { /* ignore */ }
+        if (res.collisions > 0) {
+            showToast(`Renamed feature. Updated ${res.changed} pipeline(s). ${res.collisions} pipeline(s) could not be renamed due to name collisions.`, true);
+        } else {
+            showToast(`Renamed. Updated ${res.changed} pipeline(s) in scope.`);
+        }
+    }
+
+    function adminDeleteFeature(kind, name) {
+        if (!featureAdminUnlocked) { showToast('Unlock admin to delete.', true); return; }
+        const repo = getFeatureCatalogRepo();
+        const from = String(name || '').trim();
+        if (!from) return;
+        const used = countPipelinesByFeature(repo, kind, from);
+        if (used > 0) {
+            showToast(`Can't delete "${from}" — it is used by ${used} pipeline(s). Reassign pipelines first until the count is 0.`, true);
+            return;
+        }
+        const ok = confirm(`Delete feature "${from}"? This only changes your local config until you propagate via the AI prompt.`);
+        if (!ok) return;
+
+        deleteFromDefaultLists(kind, from);
+        deleteFromCustomStore(kind, from);
+        recordFeatureChange({ action: 'delete', kind, repo, name: from });
+
+        try { buildTree(); } catch { /* ignore */ }
+        try { showFolderPipelines(selectedFolder); } catch { /* ignore */ }
+        try { renderFeatureCatalog(); } catch { /* ignore */ }
+        showToast('Feature deleted.');
+    }
+
+    function openFeatureAiPrompt() {
+        const repo = getFeatureCatalogRepo();
+        const scopeLabel = repo === 'all' ? 'ALL_REPOS' : repo;
+        const web = (FEATURES || []).map(f => String(f?.name || '').trim()).filter(Boolean);
+        const os = (OUTSYSTEMS_FEATURES || []).map(x => String(x || '').trim()).filter(Boolean);
+
+        const log = loadFeatureChangeLog();
+        const relevant = log.filter(e => {
+            const r = String(e?.repo || '').trim() || 'all';
+            // If user scoped to a repo, show repo-specific changes + all-repo changes.
+            if (repo === 'all') return true;
+            return r === 'all' || r === repo;
+        });
+
+        const fmtWhen = (ts) => {
+            try { return new Date(Number(ts) || 0).toLocaleString(); } catch { return ''; }
+        };
+
+        const delta = relevant.length
+            ? relevant.map(e => {
+                const a = String(e?.action || '').toLowerCase();
+                const k = String(e?.kind || '');
+                if (a === 'rename') return `- RENAME (${k}): "${e.from}" -> "${e.to}"  (${fmtWhen(e.ts)})`;
+                if (a === 'delete') return `- DELETE (${k}): "${e.name}"  (${fmtWhen(e.ts)})`;
+                return `- ${String(e?.action || 'change').toUpperCase()} (${k})  (${fmtWhen(e.ts)})`;
+            }).join('\n')
+            : '- (no feature catalog changes recorded yet)';
+
+        const prompt =
+`Update pipeline-manager feature catalog defaults.
+
+## When to use this prompt
+- Use this when you changed the feature catalog (rename/delete) and you want EVERYONE using pipeline-manager to see the same default feature lists.
+- If your rename impacted pipeline configs, use the Pipelines > Updates view + "Generate Prompt" to update workflow files/configs. This prompt is only for the shared feature catalog in pipeline-manager.
+
+## Scope
+Repo scope (for pipeline count context only): ${scopeLabel}
+
+## Changes (delta)
+${delta}
+
+## Canonical lists (post-change snapshot)
+Web features (FEATURES):
+${web.map(n => `- ${n}`).join('\n')}
+
+OutSystems features (OUTSYSTEMS_FEATURES):
+${os.map(n => `- ${n}`).join('\n')}
+
+## Requirements
+- Do not reintroduce auto-numbering for new features.
+- UI may hide ordering prefixes (e.g. "14 UE" should display as "UE").
+- Apply the update to every copy of pipeline-manager.html across repos/tools that your team uses.`;
+
+        const out = document.getElementById('outputModal');
+        if (out) out.style.zIndex = '2005'; // ensure it appears above Settings modal
+        document.getElementById('outputBox').textContent = prompt;
+        document.getElementById('outputModal').classList.add('show');
+        showToast('Feature prompt generated (see Generated Cursor Prompt modal).');
     }
 
     function normalizeOutSystemsFeature(raw) {
@@ -2213,6 +2888,17 @@
         if (/^\d{3,}_/.test(s)) return s;
         return s
             .replace(/^\d+\s+/, '')
+            .replace(/^\d{1,2}_+/, '')
+            .trim();
+    }
+
+    // UI-only: hide display ordering prefixes like "14 UE" / "01_Login" while preserving meaningful numeric IDs like "201_Registration".
+    function formatFeatureLabelForUi(raw) {
+        const s = String(raw || '').trim();
+        if (!s) return '';
+        if (/^\d{3,}_/.test(s)) return s;
+        return s
+            .replace(/^\d{1,2}\s+/, '')
             .replace(/^\d{1,2}_+/, '')
             .trim();
     }
@@ -2428,18 +3114,18 @@
         if (isOutsystems) {
             html = OUTSYSTEMS_FEATURES.map(name => `<option value="${name}" ${selected === name ? 'selected' : ''}>${name}</option>`).join('');
         } else {
-            html = FEATURES.map(f => `<option value="${f.name}" ${selected === f.name ? 'selected' : ''}>${f.id} ${f.name}</option>`).join('');
+            html = FEATURES.map(f => `<option value="${f.name}" ${selected === f.name ? 'selected' : ''}>${escapeHtml(formatFeatureLabelForUi(f.name))}</option>`).join('');
         }
         for (const ef of extras) {
             if (ef === selected) {
-                html += `<option value="${ef}" selected>${ef}</option>`;
+                html += `<option value="${ef}" selected>${escapeHtml(formatFeatureLabelForUi(ef))}</option>`;
             } else {
-                html += `<option value="${ef}">${ef}</option>`;
+                html += `<option value="${ef}">${escapeHtml(formatFeatureLabelForUi(ef))}</option>`;
             }
         }
 
         if (selected && !baseList.includes(selected) && !extras.includes(selected)) {
-            html += `<option value="${selected}" selected>${selected}</option>`;
+            html += `<option value="${selected}" selected>${escapeHtml(formatFeatureLabelForUi(selected))}</option>`;
         }
         html += '<option value="__custom__">+ Add new...</option>';
         return html;
@@ -2447,6 +3133,7 @@
 
     const SELECTED_FOLDER_KEY = 'pm.pipelines.selectedFolder.v1';
     const NO_FOLDER_SELECTED = '__none__'; // means "no default selection" (not "All Pipelines")
+    const UPDATES_FOLDER_KEY = '__updates__';
     const GLOBAL_REPO_FILTER_KEY = 'pm.globalRepoFilter.v1';
 
     function loadGlobalRepoFilterPref() {
@@ -3071,6 +3758,18 @@
         document.getElementById('diffModal').classList.add('show');
     }
 
+    function viewUpdatePipeline(idx) {
+        const c = pendingSaveChanges[idx];
+        if (!c) return;
+        const k = pipelineKey(c.pipeline);
+        const current = pipelines.find(p => pipelineKey(p) === k) || null;
+        const p = (c.type === 'removed') ? (c.pipeline || current) : (current || c.pipeline);
+        if (!p) return;
+        editingPipeline = null;
+        viewOnlyMode = true;
+        showCreateForm(p, false);
+    }
+
     function toggleAllSaveChecks(state) {
         document.querySelectorAll('#saveChangesList input[type=checkbox]').forEach(cb => cb.checked = state);
     }
@@ -3125,6 +3824,15 @@
         const container = document.getElementById('treeContainer');
         let html = '';
         const visiblePipelines = getRepoFilteredPipelines(pipelines);
+        const visibleChanges = (() => {
+            const repo = String(globalRepoFilter || 'all').trim() || 'all';
+            const ch = getChanges();
+            if (repo === 'all') return ch;
+            return ch.filter(c => normRepoForPipeline(c?.pipeline) === repo);
+        })();
+        const featureChangesCount = (() => {
+            try { return loadFeatureChangeLog().filter(e => String(e?.action || '').toLowerCase() === 'delete').length; } catch { return 0; }
+        })();
 
         const isOpen = key => !!(treeOpenState && treeOpenState[key]);
 
@@ -3142,6 +3850,14 @@
                 <span class="tree-icon">*</span>
                 <span class="tree-label" style="font-weight:700; color:var(--text-primary);">All Pipelines</span>
                 <span class="tree-count">${visiblePipelines.length}</span>
+            </div>
+        </div>`;
+
+        html += `<div class="tree-node">
+            <div class="tree-row${selectedFolder === UPDATES_FOLDER_KEY ? ' selected' : ''}" onclick="selectFolder('${UPDATES_FOLDER_KEY}')" style="padding-left:12px;">
+                <span class="tree-icon">&#9998;</span>
+                <span class="tree-label" style="font-weight:700; color:var(--text-primary);">Updates</span>
+                <span class="tree-count">${(visibleChanges.length + featureChangesCount) || ''}</span>
             </div>
         </div>`;
 
@@ -3186,7 +3902,7 @@
                                 <div class="tree-row${selectedFolder === suiteKey ? ' selected' : ''}" onclick="selectFolder('${suiteKey}')" style="padding-left:52px;">
                                     <span class="tree-arrow hidden">&#9654;</span>
                                     <span class="tree-icon">&#128193;</span>
-                                    <span class="tree-label">${suite.id} ${suite.name}</span>
+                                    <span class="tree-label">${escapeHtml(suite.name)}</span>
                                     <span class="tree-count">${suitePipelines.length}</span>
                                 </div>
                             </div>`;
@@ -3231,7 +3947,7 @@
                                     <div class="tree-row${selectedFolder === featKey ? ' selected' : ''}" onclick="selectFolder('${featKey}')" style="padding-left:72px;">
                                         <span class="tree-arrow hidden">&#9654;</span>
                                         <span class="tree-icon">&#128196;</span>
-                                        <span class="tree-label">${feat.id ? feat.id + ' ' : ''}${feat.name}</span>
+                                        <span class="tree-label">${escapeHtml(formatFeatureLabelForUi(feat.name))}</span>
                                         <span class="tree-count">${featPipelines.length}</span>
                                     </div>
                                 </div>`;
@@ -3246,7 +3962,7 @@
                                     <div class="tree-row${selectedFolder === efKey ? ' selected' : ''}" onclick="selectFolder('${efKey}')" style="padding-left:72px;">
                                         <span class="tree-arrow hidden">&#9654;</span>
                                         <span class="tree-icon">&#128196;</span>
-                                        <span class="tree-label">${ef}</span>
+                                        <span class="tree-label">${escapeHtml(formatFeatureLabelForUi(ef))}</span>
                                         <span class="tree-count">${efPipelines.length}</span>
                                     </div>
                                 </div>`;
@@ -3427,31 +4143,190 @@
             return;
         }
 
+        if (folderKey === UPDATES_FOLDER_KEY) {
+            const repo = String(globalRepoFilter || 'all').trim() || 'all';
+            let changes = getChanges();
+            if (repo !== 'all') changes = changes.filter(c => normRepoForPipeline(c?.pipeline) === repo);
+
+            const featureLog = loadFeatureChangeLog();
+            const featureDeletes = featureLog.filter(e => String(e?.action || '').toLowerCase() === 'delete');
+            const counts = {
+                added: changes.filter(c => c.type === 'added').length,
+                modified: changes.filter(c => c.type === 'modified').length,
+                removed: changes.filter(c => c.type === 'removed').length,
+            };
+            changes.sort((a, b) => {
+                const o = (t) => t === 'modified' ? 0 : t === 'added' ? 1 : 2;
+                const d = o(a.type) - o(b.type);
+                if (d) return d;
+                return String(a.pipeline?.name || '').localeCompare(String(b.pipeline?.name || ''));
+            });
+
+            const scopeLabel = repo === 'all' ? 'All Repos' : repo;
+            let html = `<div class="main-header">
+                <h1>Updates</h1>
+                <p>${scopeLabel} • ${changes.length} pipeline change${changes.length !== 1 ? 's' : ''} (${counts.modified} modified, ${counts.added} added, ${counts.removed} removed)${featureDeletes.length ? ` • ${featureDeletes.length} feature deletion${featureDeletes.length !== 1 ? 's' : ''}` : ''}</p>
+            </div>`;
+
+            if (featureDeletes.length) {
+                html += `<div style="margin:14px 0 18px; padding:14px 16px; border:1px solid var(--border-color); border-radius:14px; background:var(--bg-tertiary);">
+                    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+                        <div style="min-width:0;">
+                            <div style="font-size:12px; font-weight:900; color:var(--text-primary); letter-spacing:0.2px;">Feature deletions (catalog)</div>
+                            <div style="font-size:11px; color:var(--text-muted); line-height:1.5; margin-top:6px;">
+                                Deleting a feature does not modify workflow YAMLs, but it does change the default feature dropdown/grouping.
+                                This will be automatically included at the top of the main <b>Generate Prompt</b> output so you don’t need two prompts.
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <button class="btn btn-secondary" onclick="clearFeatureChangeLog()" style="padding:8px 10px; font-size:12px;">Clear</button>
+                        </div>
+                    </div>
+                    <div style="margin-top:10px; font-size:11px; color:var(--text-secondary); line-height:1.8; max-height:140px; overflow:auto; padding-right:6px;">
+                        ${featureDeletes.slice().reverse().map(e => {
+                            const a = String(e?.action || '').toLowerCase();
+                            const k = String(e?.kind || '');
+                            const r = String(e?.repo || '');
+                            const when = (() => { try { return new Date(Number(e?.ts) || 0).toLocaleString(); } catch { return ''; } })();
+                            if (a === 'delete') return `<div><b>DELETE</b> (${escapeHtml(k)}) <span style="color:var(--text-muted)">${escapeHtml(r || 'all')}</span>: ${escapeHtml(e.name)} <span style="color:var(--text-muted)">(${escapeHtml(when)})</span></div>`;
+                            return `<div><b>${escapeHtml(String(e?.action || 'change').toUpperCase())}</b> (${escapeHtml(k)})</div>`;
+                        }).join('')}
+                    </div>
+                </div>`;
+            }
+
+            if (!changes.length) {
+                html += `<div class="empty-state" style="margin-top:18px;">
+                    <div class="empty-icon" style="font-size:56px;">&#9989;</div>
+                    <h3>No updates</h3>
+                    <p>Nothing differs from the last saved snapshot.</p>
+                </div>`;
+                document.getElementById('mainContent').innerHTML = html;
+                buildTree();
+                return;
+            }
+
+            // selection toolbar works with any cards that have data-pkey
+            const changePipes = changes.map(c => c.pipeline).filter(Boolean);
+            // Auto-select all non-removed updates so "Generate Prompt" is one click.
+            try {
+                selectedPipelines.clear();
+                for (const c of changes) {
+                    if (!c || c.type === 'removed') continue;
+                    const p = c.pipeline || {};
+                    const ghRepo = normRepoForPipeline(p) || '';
+                    const pKey = pipelineKeyFrom(ghRepo, p.filename);
+                    if (pKey) selectedPipelines.add(pKey);
+                }
+            } catch { /* ignore */ }
+            html += selectionToolbar(changePipes);
+
+            // store for diff view reuse
+            pendingSaveChanges = changes;
+
+            const renameMap = (() => {
+                const m = new Map();
+                for (const c of changes) {
+                    if (!c || c.type === 'removed') continue;
+                    const p = c.pipeline || {};
+                    if (p.renamedFrom) m.set(String(p.renamedFrom).trim(), String(p.name || '').trim());
+                }
+                return m;
+            })();
+
+            html += changes.map((c, idx) => {
+                const p = c.pipeline || {};
+                const ghRepo = normRepoForPipeline(p) || '';
+                const pKey = pipelineKeyFrom(ghRepo, p.filename);
+                const badgeClass =
+                    c.type === 'removed' ? 'badge-regression' :
+                    c.type === 'added' ? 'badge-sanity' :
+                    'badge-smoke';
+                const typePill = `<span class="save-change-type ${c.type}" style="margin-right:8px;">${c.type}</span>`;
+                const title = (c.type ? `${c.type.toUpperCase()} — ` : '') + (p.name || p.filename || '');
+                const meta = `${ghRepo || 'Unknown repo'} • ${p.env || ''} • ${p.testType || ''}`.replace(/\s+/g, ' ').trim();
+                const removedRenameHint = (c.type === 'removed' && renameMap.has(String(p.filename || '').trim()))
+                    ? `Renamed to ${renameMap.get(String(p.filename || '').trim())}`
+                    : '';
+                return `<div class="pipeline-card" data-pkey="${escapeHtml(pKey)}" onclick="viewSaveChange(${idx})">
+                    <div class="pipeline-card-header">
+                        <div class="pipeline-card-name" title="${escapeHtml(title)}">
+                            <div class="pipeline-card-check" onclick="togglePipelineCheck('${escapeHtml(pKey)}', event)" title="Select"></div>
+                            <span class="test-badge ${badgeClass}">${escapeHtml(p.testType || 'Pipeline')}</span>
+                            ${typePill}
+                            ${escapeHtml(p.name || p.filename || 'Pipeline')}
+                        </div>
+                        <div class="pipeline-card-actions">
+                            ${ghRepo ? `<span class="section-badge" style="background:rgba(255,255,255,0.06);color:var(--text-muted); font-weight:800; letter-spacing:0.2px;">${escapeHtml(ghRepo)}</span>` : ''}
+                            <button class="card-btn" onclick="event.stopPropagation(); viewUpdatePipeline(${idx})" title="View pipeline details">&#128065;</button>
+                        </div>
+                    </div>
+                    <div class="pipeline-card-meta">
+                        <div class="meta-item">&#128203; ${escapeHtml(meta || '')}</div>
+                        <div class="meta-item" style="color:var(--text-muted);">&#128269; Click card to view diff</div>
+                        <div class="meta-item" style="color:var(--text-muted); cursor:pointer;" onclick="event.stopPropagation(); viewUpdatePipeline(${idx})">&#128065; View details</div>
+                        ${removedRenameHint ? `<div class="meta-item" style="color:var(--text-muted);">&#128257; ${escapeHtml(removedRenameHint)}</div>` : ''}
+                    </div>
+                </div>`;
+            }).join('');
+
+            document.getElementById('mainContent').innerHTML = html;
+            try { refreshSelectionUI(); } catch { /* ignore */ }
+            buildTree();
+            return;
+        }
+
         let filtered = getRepoFilteredPipelines(pipelines);
-        let breadcrumbParts = ['All Pipelines'];
+        const breadcrumbKeys = ['All Pipelines'];
+        const breadcrumbLabels = ['All Pipelines'];
 
         if (folderKey) {
             const parts = folderKey.split('__');
-            if (parts[0]) { filtered = filtered.filter(p => p.platform === parts[0]); breadcrumbParts.push(parts[0]); }
+            if (parts[0]) {
+                filtered = filtered.filter(p => p.platform === parts[0]);
+                breadcrumbKeys.push(parts[0]);
+                breadcrumbLabels.push(parts[0]);
+            }
 
             const isMobileFolder = parts[0] === '01 Mobile';
             if (isMobileFolder) {
-                if (parts[1]) { filtered = filtered.filter(p => p.brand === parts[1]); breadcrumbParts.push(parts[1]); }
+                if (parts[1]) {
+                    filtered = filtered.filter(p => p.brand === parts[1]);
+                    breadcrumbKeys.push(parts[1]);
+                    breadcrumbLabels.push(parts[1]);
+                }
                 if (parts[2]) {
                     const suite = parts[2];
                     filtered = filtered.filter(p => p.feature === suite || (p.feature && p.feature.startsWith(suite + '_')));
-                    breadcrumbParts.push(suite);
+                    breadcrumbKeys.push(suite);
+                    breadcrumbLabels.push(formatFeatureLabelForUi(suite));
                 }
             } else {
-                if (parts[1]) { const bLower = parts[1].toLowerCase(); filtered = filtered.filter(p => (p.brand || '').toLowerCase() === bLower); breadcrumbParts.push(parts[1]); }
-                if (parts[2]) { filtered = filtered.filter(p => p.env === parts[2]); breadcrumbParts.push(parts[2]); }
-                if (parts[3]) { filtered = filtered.filter(p => p.feature === parts[3]); breadcrumbParts.push(parts[3]); }
+                if (parts[1]) {
+                    const bLower = parts[1].toLowerCase();
+                    filtered = filtered.filter(p => (p.brand || '').toLowerCase() === bLower);
+                    breadcrumbKeys.push(parts[1]);
+                    breadcrumbLabels.push(parts[1]);
+                }
+                if (parts[2]) {
+                    filtered = filtered.filter(p => p.env === parts[2]);
+                    breadcrumbKeys.push(parts[2]);
+                    breadcrumbLabels.push(parts[2]);
+                }
+                if (parts[3]) {
+                    filtered = filtered.filter(p => p.feature === parts[3]);
+                    breadcrumbKeys.push(parts[3]);
+                    breadcrumbLabels.push(formatFeatureLabelForUi(parts[3]));
+                }
             }
         }
 
-        let html = `<div class="breadcrumb">${breadcrumbParts.map((b, i) => i < breadcrumbParts.length - 1 ? `<span onclick="selectFolder('${breadcrumbParts.slice(1, i+1).join('__') || null}')">${b}</span><span class="sep">/</span>` : `<span style="color:var(--text-primary);font-weight:600;">${b}</span>`).join('')}</div>`;
+        let html = `<div class="breadcrumb">${breadcrumbLabels.map((label, i) => i < breadcrumbLabels.length - 1
+            ? `<span onclick="selectFolder('${breadcrumbKeys.slice(1, i+1).join('__') || null}')">${escapeHtml(label)}</span><span class="sep">/</span>`
+            : `<span style="color:var(--text-primary);font-weight:600;">${escapeHtml(label)}</span>`
+        ).join('')}</div>`;
         html += `<div class="view-header">
-            <h2>${breadcrumbParts[breadcrumbParts.length - 1]} <span style="color:var(--text-muted);font-weight:400;font-size:16px;">(${filtered.length})</span></h2>
+            <h2>${escapeHtml(breadcrumbLabels[breadcrumbLabels.length - 1])} <span style="color:var(--text-muted);font-weight:400;font-size:16px;">(${filtered.length})</span></h2>
             <button class="btn btn-orange" onclick="showCreateForm()">+ New Pipeline</button>
         </div>`;
 
@@ -4215,6 +5090,45 @@
             .map(p => buildPromptForPipeline(p));
 
         let combined = prompts.join('\n\n---\n\n');
+
+        // Updates view: if there were feature deletions, include the feature-catalog propagation prompt
+        // so the user only needs ONE prompt output.
+        try {
+            if (selectedFolder === UPDATES_FOLDER_KEY) {
+                const deletes = loadFeatureChangeLog().filter(e => String(e?.action || '').toLowerCase() === 'delete');
+                if (deletes.length) {
+                    const web = (FEATURES || []).map(f => String(f?.name || '').trim()).filter(Boolean);
+                    const os = (OUTSYSTEMS_FEATURES || []).map(x => String(x || '').trim()).filter(Boolean);
+                    const delta = deletes.slice().reverse().map(e => {
+                        const k = String(e?.kind || '');
+                        const r = String(e?.repo || '') || 'all';
+                        const when = (() => { try { return new Date(Number(e?.ts) || 0).toLocaleString(); } catch { return ''; } })();
+                        return `- DELETE (${k}) ${r}: "${String(e?.name || '').trim()}" (${when})`;
+                    }).join('\n');
+                    const featureSection =
+`FEATURE CATALOG UPDATE (pipeline-manager.html)
+
+Why this exists:
+- Pipeline prompts below update workflow YAML files.
+- This section updates the DEFAULT feature lists inside pipeline-manager so other users see the same dropdown/grouping.
+
+Feature deletions detected:
+${delta}
+
+Apply these canonical lists (post-change snapshot):
+Web FEATURES:
+${web.map(n => `- ${n}`).join('\n')}
+
+OutSystems OUTSYSTEMS_FEATURES:
+${os.map(n => `- ${n}`).join('\n')}
+
+Apply this update to every copy of pipeline-manager.html your team uses.`;
+
+                    combined = featureSection + '\n\n' + '---' + '\n\n' + combined;
+                }
+            }
+        } catch { /* ignore */ }
+
         if (includeCommitPush) {
             combined += `\n\nAfter making these changes, commit and push your current branch (e.g. \`git push origin HEAD\`).`;
         }
@@ -6403,8 +7317,21 @@
             const fKey = feature.replace(/\s+/g, '');
             const sKey = suffix ? suffix.replace(/\s+/g, '') : '';
             const tKey = testType.replace(/\s+/g, '');
-            const includeOlbPrefix = String(brand || '').trim().toLowerCase() !== 'outsystems';
             const featureBase = sKey ? `${fKey}_${sKey}` : `${fKey}`;
+            const includeOlbPrefix = (() => {
+                // Default OFF: do not auto-insert legacy "OLB_" prefix for new workflows.
+                const b = String(brand || '').trim().toLowerCase();
+                if (b === 'outsystems') return false;
+                try {
+                    const pk = String(editingPipeline || '').trim();
+                    if (!pk) return false;
+                    const ep = (pipelines || []).find(p => pipelineKey(p) === pk);
+                    const n = String(ep?.name || '').trim();
+                    return /^Web_[^_]+_(DEV|QA|STG|UAT|PROD)-OLB_/i.test(n);
+                } catch {
+                    return false;
+                }
+            })();
             const featureStr = includeOlbPrefix ? `OLB_${featureBase}` : featureBase;
             const name = `Web_${teamKey}_${env}-${featureStr}_${tKey}-Playwright`;
 
@@ -8123,8 +9050,8 @@ ${runnerStrategy === 'group'
             };
         }
 
-        // Web Monorepo pipelines (Axos.QE.Web): Web_{Team}_{Env}-OLB_{Feature}_{TestType}-Playwright
-        // NOTE: The "OLB_" prefix is legacy; some teams may omit it (e.g. OutSystems).
+        // Web Monorepo pipelines (Axos.QE.Web): Web_{Team}_{Env}-[OLB_]{Feature}_{TestType}-Playwright
+        // NOTE: The "OLB_" prefix is legacy and should not be auto-inserted for new pipelines.
         // e.g. Web_Enrollment_UAT-OLB_Login_Smoke-Playwright → team=Enrollment, env=UAT, feature=Login, testType=Smoke
         // e.g. Web_OutSystems_UAT-AML_Smoke-Playwright → team=OutSystems, env=UAT, feature=AML, testType=Smoke
         // e.g. Web_OLB3_UAT-OLB_Smoke-Playwright → team=OLB 3.0, env=UAT, feature=Login (default), testType=Smoke
@@ -8135,8 +9062,9 @@ ${runnerStrategy === 'group'
             const rest = webMonoMatch[2]; // e.g. "uat-olb_login_smoke"
             const envMatch = rest.match(/^(dev|qa|stg|uat|prod)-/i);
             const env = envMatch ? String(envMatch[1]).toUpperCase() : 'UAT';
-            // After env, expect OLB_{feature}[_{suffix}]_{testType}
+            // After env, optional legacy "OLB_" prefix may appear before the feature.
             const afterEnv = envMatch ? rest.slice(envMatch[0].length) : rest;
+            const hadOlbPrefix = /^olb_/i.test(afterEnv);
             // Strip leading "olb_" if present
             const withoutOlb = afterEnv.replace(/^olb_/i, '');
             // Last segment is testType, everything before is feature (+ optional suffix)
@@ -8167,7 +9095,6 @@ ${runnerStrategy === 'group'
             }
             const teamShortMap = { Enrollment: 'Enr', OutSystems: 'OutSys', Crypto: 'Crypto', 'OLB 3.0': 'OLB3' };
             const teamShort = teamShortMap[team] || team;
-            const includeOlbPrefix = String(team || '').trim().toLowerCase() !== 'outsystems';
             return {
                 filename, name,
                 repo: 'Axos.QE.Web',
@@ -8175,7 +9102,7 @@ ${runnerStrategy === 'group'
                 brand: team,
                 env,
                 feature,
-                featureDetail: includeOlbPrefix ? `OLB_${feature}` : feature,
+                featureDetail: hadOlbPrefix ? `OLB_${feature}` : feature,
                 testType,
                 grep: `@${teamShort}_${testType}_${feature.replace(/\s+/g, '')}`,
                 parallel: '3',
@@ -8523,9 +9450,8 @@ ${runnerStrategy === 'group'
                     insertedLabel = String(added);
                 } else {
                     const added = addCustomWebFeature(val);
-                    const id = String(added?.id || computeNextWebFeatureId());
                     insertedValue = String(added?.name || val);
-                    insertedLabel = `${id} ${insertedValue}`;
+                    insertedLabel = insertedValue;
                 }
 
                 const existing = Array.from(e.target.options || []).find(o => String(o.value || '').trim() === insertedValue);
@@ -10656,7 +11582,7 @@ ${runnerStrategy === 'group'
             const checked = existing.has(p.key) ? 'checked' : '';
             const label = escapeHtml(String(p.name || p.filename || p.key).replace(/-Testim$/, ''));
             const sub = escapeHtml(p.filename || '');
-            return `<label style="display:flex; gap:10px; align-items:flex-start; padding:10px 10px; border-radius:12px; border:1px solid rgba(255,255,255,0.06); background:rgba(0,0,0,0.18); margin-bottom:8px; cursor:pointer;">
+            return `<label style="display:flex; gap:10px; align-items:flex-start; padding:10px 10px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-tertiary); margin-bottom:8px; cursor:pointer;">
                 <input type="checkbox" class="dash-pick" value="${escapeHtml(p.key)}" ${checked} style="margin-top:2px; accent-color: var(--axos-orange); width:16px; height:16px;">
                 <div style="min-width:0;">
                     <div style="font-size:12px; font-weight:800; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${label}</div>
@@ -10671,7 +11597,7 @@ ${runnerStrategy === 'group'
                 <div style="font-size:12px; color:var(--text-secondary); line-height:1.6; margin-bottom:10px;">
                     Choose pipelines to include in this dashboard group. Only configured pipelines can be added.
                 </div>
-                <input type="text" id="dashPickSearch" placeholder="Search pipelines..." style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); color:var(--text-primary); font-size:12px; margin-bottom:12px;" oninput="filterDashPickList()">
+                <input type="text" id="dashPickSearch" placeholder="Search pipelines..." style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-tertiary); color:var(--text-primary); font-size:12px; margin-bottom:12px;" oninput="filterDashPickList()">
                 <div id="dashPickList" style="max-height:360px; overflow:auto; padding-right:4px;">${listHtml}</div>
             `,
             `
@@ -11102,6 +12028,108 @@ ${runnerStrategy === 'group'
         return document.getElementById('emailHealthFilter')?.value || 'all';
     }
 
+    function populateEmailDashQuickPick() {
+        const dashSel = document.getElementById('emailDashSelect');
+        const groupSel = document.getElementById('emailDashGroupSelect');
+        const hint = document.getElementById('emailDashHint');
+        if (!dashSel || !groupSel || !hint) return;
+
+        const repo = getEmailRepoFilter();
+        if (repo === 'all') {
+            dashSel.innerHTML = `<option value="">Select a repo to use dashboards</option>`;
+            groupSel.innerHTML = `<option value="__all__">All groups</option>`;
+            dashSel.disabled = true;
+            groupSel.disabled = true;
+            hint.textContent = 'Dashboards are repo-scoped. Pick a repo in the filter to enable this.';
+            return;
+        }
+
+        const list = dashboardsForRepo(repo) || [];
+        if (!list.length) {
+            dashSel.innerHTML = `<option value="">No dashboards for ${escapeHtml(repo)}</option>`;
+            groupSel.innerHTML = `<option value="__all__">All groups</option>`;
+            dashSel.disabled = true;
+            groupSel.disabled = true;
+            hint.textContent = 'No dashboards found for this repo. Create one in the Dashboards tab to use this picker.';
+            return;
+        }
+
+        const prevDash = String(dashSel.value || '').trim();
+        dashSel.innerHTML = list.map(d => `<option value="${escapeHtml(d.id)}">${escapeHtml(d.name || 'Dashboard')}</option>`).join('');
+        dashSel.disabled = false;
+        dashSel.value = list.some(d => String(d.id) === prevDash) ? prevDash : String(list[0].id);
+        groupSel.disabled = false;
+        onEmailDashSelectChange();
+    }
+
+    function onEmailDashSelectChange() {
+        const repo = getEmailRepoFilter();
+        const dashSel = document.getElementById('emailDashSelect');
+        const groupSel = document.getElementById('emailDashGroupSelect');
+        const hint = document.getElementById('emailDashHint');
+        if (!dashSel || !groupSel || !hint) return;
+        if (repo === 'all') { populateEmailDashQuickPick(); return; }
+
+        const dashId = String(dashSel.value || '').trim();
+        const d = (dashboardsForRepo(repo) || []).find(x => String(x?.id || '') === dashId);
+        const groups = Array.isArray(d?.groups) ? d.groups : [];
+        const prev = String(groupSel.value || '').trim() || '__all__';
+        groupSel.innerHTML = `<option value="__all__">All groups</option>` + groups.map(g => `<option value="${escapeHtml(g.id)}">${escapeHtml(g.title || 'Group')}</option>`).join('');
+        groupSel.value = (prev === '__all__' || groups.some(g => String(g.id) === prev)) ? prev : '__all__';
+
+        const pipes = (groups || []).reduce((n, g) => n + ((g?.pipelines || []).length), 0);
+        hint.textContent = `${groups.length} group(s), ${pipes} pipeline reference(s) in this dashboard.`;
+    }
+
+    function emailReplaceSelectionFromDashboard() {
+        const repo = getEmailRepoFilter();
+        if (repo === 'all') { showToast('Pick a repo first to use dashboards.', true); return; }
+
+        const dashId = String(document.getElementById('emailDashSelect')?.value || '').trim();
+        const groupId = String(document.getElementById('emailDashGroupSelect')?.value || '__all__').trim() || '__all__';
+        if (!dashId) { showToast('Select a dashboard first.', true); return; }
+
+        const d = (dashboardsForRepo(repo) || []).find(x => String(x?.id || '') === dashId);
+        if (!d) { showToast('Dashboard not found.', true); return; }
+        const groups = Array.isArray(d?.groups) ? d.groups : [];
+        const groupList = (groupId === '__all__')
+            ? groups
+            : groups.filter(g => String(g?.id || '') === groupId);
+        if (!groupList.length) { showToast('No matching dashboard group found.', true); return; }
+
+        // Dashboard stores pipeline config keys. Convert those to email keys using the configured workflow name.
+        const pickedEmailKeys = [];
+        const seen = new Set();
+        for (const g of groupList) {
+            for (const pk of (g?.pipelines || [])) {
+                const p = findPipeline(String(pk || '').trim());
+                const wf = String(p?.name || '').trim();
+                if (!wf) continue;
+                const ek = emailPipelineKey(repo, wf);
+                if (seen.has(ek)) continue;
+                // Only include pipelines that exist in fetched results (otherwise the report would be empty).
+                if ((allRuns || []).some(r => emailPipelineKey(r.repo, r.workflowName) === ek)) {
+                    seen.add(ek);
+                    pickedEmailKeys.push(ek);
+                }
+            }
+        }
+
+        if (!pickedEmailKeys.length) {
+            showToast('No fetched runs match the pipelines in that dashboard/group.', true);
+            return;
+        }
+
+        // Replace selection for this repo only (keep other repos intact).
+        const repoKeys = new Set([...new Set((allRuns || []).map(r => emailPipelineKey(r.repo, r.workflowName)))].filter(k => parseEmailPipelineKey(k).repo === repo));
+        for (const k of repoKeys) emailSelectedPipelines.delete(k);
+        pickedEmailKeys.forEach(k => emailSelectedPipelines.add(k));
+
+        renderEmailPipeList();
+        updateEmailPipeCount();
+        showToast(`Selected ${pickedEmailKeys.length} pipeline(s) from dashboard.`);
+    }
+
     function getEmailScopeKeys(opts) {
         const includeSearch = !!opts?.includeSearch;
         const repoFilter = getEmailRepoFilter();
@@ -11167,6 +12195,7 @@ ${runnerStrategy === 'group'
                 setGlobalRepoFilter(v, { persist: true, skipEmail: true });
             }
         } catch { /* ignore */ }
+        try { populateEmailDashQuickPick(); } catch { /* ignore */ }
         renderEmailPipeList();
         updateEmailPipeCount();
     }
@@ -11196,6 +12225,7 @@ ${runnerStrategy === 'group'
         }
 
         populateEmailRepoFilter();
+        try { populateEmailDashQuickPick(); } catch { /* ignore */ }
         buildEmailPickerTabs();
         renderEmailPipeList();
     }
