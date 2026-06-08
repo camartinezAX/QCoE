@@ -2562,37 +2562,47 @@
             if (k === 'web' && isOs) continue;
             if (_featureKey(p.feature) !== fromKey) continue;
 
-            // Update core fields
-            p.feature = to;
-            p.featureDetail = replaceFeaturePrefixInFeatureDetail(p.featureDetail, fromKey, to);
-            changed++;
+            const nextFeatureDetail = replaceFeaturePrefixInFeatureDetail(p.featureDetail, fromKey, to);
 
-            // Update pipeline identity (name + filename) so the list matches what the form preview computes.
-            const newName = computeNameForPipelineData(p);
-            if (!newName) continue;
-            const newFilename = `${newName}.yml`;
+            // Compute the new identity BEFORE mutating so collisions don't leave partial state behind.
+            const newName = computeNameForPipelineData({ ...p, feature: to, featureDetail: nextFeatureDetail });
+            const newFilename = newName ? `${newName}.yml` : '';
             const repoName = String(normRepoForPipeline(p) || p.repo || '').trim();
-            if (!repoName || !newFilename) continue;
 
             const oldFilename = String(p.filename || '').trim();
             const oldName = String(p.name || '').trim();
 
-            if (oldFilename && newFilename !== oldFilename) {
+            if (oldFilename && newFilename && repoName && newFilename !== oldFilename) {
                 const newKey = pipelineKeyFrom(repoName, newFilename);
                 const exists = (pipelines || []).some(pp => pp && pp !== p && pipelineKey(pp) === newKey);
                 if (exists) {
                     collisions++;
                     continue;
                 }
+            }
+
+            // Update core fields (safe now that collisions were checked)
+            p.feature = to;
+            p.featureDetail = nextFeatureDetail;
+            changed++;
+
+            // Update pipeline identity (name + filename) so the list matches what the form preview computes.
+            let didRename = false;
+            if (oldFilename && newFilename && repoName && newFilename !== oldFilename) {
                 if (!p.renamedFrom) p.renamedFrom = oldFilename;
                 p.filename = newFilename;
+                didRename = true;
             }
-            if (oldName && newName !== oldName) {
-                p.name = newName;
-            } else if (!oldName) {
-                p.name = newName;
+            if (newName) {
+                if (oldName && newName !== oldName) {
+                    p.name = newName;
+                    didRename = true;
+                } else if (!oldName) {
+                    p.name = newName;
+                    didRename = true;
+                }
             }
-            renamed++;
+            if (didRename) renamed++;
         }
 
         if (changed) {
@@ -4199,7 +4209,10 @@ ${os.map(n => `- ${n}`).join('\n')}
                 html += `<div class="empty-state" style="margin-top:18px;">
                     <div class="empty-icon" style="font-size:56px;">&#9989;</div>
                     <h3>No updates</h3>
-                    <p>Nothing differs from the last saved snapshot.</p>
+                    <p>${featureDeletes.length ? 'No pipeline snapshot diffs were detected, but you do have feature-catalog deletions pending.' : 'Nothing differs from the last saved snapshot.'}</p>
+                    ${featureDeletes.length ? `<div style="display:flex; gap:10px; justify-content:center; margin-top:14px; flex-wrap:wrap;">
+                        <button class="btn btn-orange" onclick="generateSelectedPrompts()" style="padding:10px 14px;">Generate Prompt</button>
+                    </div>` : ``}
                 </div>`;
                 document.getElementById('mainContent').innerHTML = html;
                 buildTree();
@@ -5057,7 +5070,7 @@ ${os.map(n => `- ${n}`).join('\n')}
         prompt += `\n\nUse the existing caller workflow file Web_AxosBank_UAT_HealthCheck-Testim.yml as the exact format reference. Include:\n` +
             `- A header comment showing the folder path (e.g. Web > Axos Bank > UAT > ...)\n` +
             `- name: and run-name fields matching the pipeline name\n` +
-            `- workflow_dispatch inputs for ALL variables: TEST_SUITE, BASE_URL, PROJECT, TOKEN, BRANCH, GRID (choice: Testim Grid, Local Agent), PARALLEL, RETRIES, TIMEOUTMIN, BROWSER_TIMEOUT, JOB_TIMEOUT, RUNNER_LABEL (choice: dsdl-timab21, dsdl-timab24, dsdl-timab27, dsdl-timab28, dsdl-timab29, dsdl-timab30, dsdl-timab31), and CUSTOM_RUNNER_LABEL (string)\n` +
+            `- workflow_dispatch inputs for ALL variables: TEST_SUITE, BASE_URL, PROJECT, TOKEN, BRANCH, GRID (choice: Testim Grid, Local Agent), PARALLEL, RETRIES, TIMEOUTMIN, BROWSER_TIMEOUT, JOB_TIMEOUT, RUNNER_STRATEGY (choice: label, group), RUNNER_GROUP, RUNNER_LABEL (choice: dsdl-timab21, dsdl-timab24, dsdl-timab27, dsdl-timab28, dsdl-timab29, dsdl-timab30, dsdl-timab31), and CUSTOM_RUNNER_LABEL (string)\n` +
             `- permissions block (contents: read, checks: write, actions: write)\n` +
             `- jobs section calling _testim-template.yml passing all inputs with fallback defaults using the \${{ inputs.VAR || 'default' }} pattern\n` +
             `- secrets mapping should pass TESTIM_TOKEN dynamically from TOKEN: \${{ secrets[inputs.TOKEN] || secrets.TESTIM_TOKEN }}`;
@@ -5078,12 +5091,20 @@ ${os.map(n => `- ${n}`).join('\n')}
     }
 
     function generateSelectedPrompts(opts = {}) {
-        if (selectedPipelines.size === 0) { showToast('Select at least one pipeline first.'); return; }
         const includeCommitPush = opts.includeCommitPush !== undefined ? !!opts.includeCommitPush : true;
+        const isUpdates = selectedFolder === UPDATES_FOLDER_KEY;
+        let deletes = [];
+        try {
+            if (isUpdates) {
+                deletes = loadFeatureChangeLog().filter(e => String(e?.action || '').toLowerCase() === 'delete');
+            }
+        } catch { /* ignore */ }
+        const allowCatalogOnly = isUpdates && deletes.length > 0;
+        if (selectedPipelines.size === 0 && !allowCatalogOnly) { showToast('Select at least one pipeline first.'); return; }
         const selected = Array.from(selectedPipelines)
             .map(k => findPipeline(k))
             .filter(Boolean);
-        if (selected.length === 0) { showToast('No selected pipelines found.'); return; }
+        if (selected.length === 0 && !allowCatalogOnly) { showToast('No selected pipelines found.'); return; }
 
         const prompts = selected
             .sort((a, b) => a.name.localeCompare(b.name))
@@ -5095,7 +5116,6 @@ ${os.map(n => `- ${n}`).join('\n')}
         // so the user only needs ONE prompt output.
         try {
             if (selectedFolder === UPDATES_FOLDER_KEY) {
-                const deletes = loadFeatureChangeLog().filter(e => String(e?.action || '').toLowerCase() === 'delete');
                 if (deletes.length) {
                     const web = (FEATURES || []).map(f => String(f?.name || '').trim()).filter(Boolean);
                     const os = (OUTSYSTEMS_FEATURES || []).map(x => String(x || '').trim()).filter(Boolean);
@@ -5124,7 +5144,9 @@ ${os.map(n => `- ${n}`).join('\n')}
 
 Apply this update to every copy of pipeline-manager.html your team uses.`;
 
-                    combined = featureSection + '\n\n' + '---' + '\n\n' + combined;
+                    combined = combined
+                        ? (featureSection + '\n\n' + '---' + '\n\n' + combined)
+                        : featureSection;
                 }
             }
         } catch { /* ignore */ }
@@ -8051,7 +8073,7 @@ ${runnerStrategy === 'group'
             prompt += `\n\nUse the existing caller workflow file Web_AxosBank_UAT_HealthCheck-Testim.yml as the exact format reference. Include:
 - A header comment showing the folder path (e.g. Web > Axos Bank > UAT > ...)
 - name: and run-name: fields matching the pipeline name
-- workflow_dispatch inputs for ALL variables: TEST_SUITE, BASE_URL, PROJECT, TOKEN, BRANCH, GRID (choice: Testim Grid, Local Agent), PARALLEL, RETRIES, TIMEOUTMIN, BROWSER_TIMEOUT, JOB_TIMEOUT, RUNNER_LABEL (choice: dsdl-timab21, dsdl-timab24, dsdl-timab27, dsdl-timab28, dsdl-timab29, dsdl-timab30, dsdl-timab31), and CUSTOM_RUNNER_LABEL (string) — each with the correct default value from the settings above
+- workflow_dispatch inputs for ALL variables: TEST_SUITE, BASE_URL, PROJECT, TOKEN, BRANCH, GRID (choice: Testim Grid, Local Agent), PARALLEL, RETRIES, TIMEOUTMIN, BROWSER_TIMEOUT, JOB_TIMEOUT, RUNNER_STRATEGY (choice: label, group), RUNNER_GROUP, RUNNER_LABEL (choice: dsdl-timab21, dsdl-timab24, dsdl-timab27, dsdl-timab28, dsdl-timab29, dsdl-timab30, dsdl-timab31), and CUSTOM_RUNNER_LABEL (string) — each with the correct default value from the settings above
 - permissions block (contents: read, checks: write, actions: write)
 - The jobs section calling _testim-template.yml passing all inputs with fallback defaults using the \${{ inputs.VAR || 'default' }} pattern
 - secrets mapping should pass TESTIM_TOKEN dynamically from TOKEN: \${{ secrets[inputs.TOKEN] || secrets.TESTIM_TOKEN }}`;
@@ -8490,6 +8512,8 @@ ${runnerStrategy === 'group'
             TIMEOUTMIN: 'timeoutMin',
             BROWSER_TIMEOUT: 'browserTimeout',
             JOB_TIMEOUT: 'jobTimeout',
+            RUNNER_STRATEGY: 'runnerStrategy',
+            RUNNER_GROUP: 'runnerGroup',
             RUNNER_LABEL: 'runnerLabel',
             CUSTOM_RUNNER_LABEL: 'customRunnerLabel'
         };
@@ -8763,6 +8787,8 @@ ${runnerStrategy === 'group'
                 if (entry.timeoutMin) parsed.timeoutMin = entry.timeoutMin;
                 if (entry.browserTimeout) parsed.browserTimeout = entry.browserTimeout;
                 if (entry.jobTimeout) parsed.jobTimeout = entry.jobTimeout;
+                if (entry.runnerStrategy) parsed.runnerStrategy = entry.runnerStrategy;
+                if (entry.runnerGroup) parsed.runnerGroup = entry.runnerGroup;
                 if (entry.runnerLabel) parsed.runnerLabel = entry.runnerLabel;
                 if (entry.customRunnerLabel !== undefined) parsed.customRunnerLabel = entry.customRunnerLabel;
                 if (entry.env) parsed.env = entry.env;
