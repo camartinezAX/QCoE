@@ -553,6 +553,153 @@
             }
         }
 
+        /* Password-protected section */
+        .tool-card.locked-card {
+            cursor: pointer;
+            border-style: dashed;
+            border-color: var(--border-medium);
+        }
+
+        .tool-card.locked-card .tool-icon {
+            background: var(--bg-hover) !important;
+            color: var(--text-muted);
+        }
+
+        .lock-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 0.25rem;
+        }
+
+        .interview-section-hidden {
+            display: none;
+        }
+
+        .password-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .password-modal-overlay.active {
+            display: flex;
+        }
+
+        .password-modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 20px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: var(--shadow-xl);
+        }
+
+        .password-modal h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .password-modal p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .password-input-group {
+            margin-bottom: 1rem;
+        }
+
+        .password-input-group label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .password-input-group input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-family: inherit;
+        }
+
+        .password-input-group input:focus {
+            outline: none;
+            border-color: var(--axos-orange);
+            box-shadow: 0 0 0 3px rgba(250, 167, 74, 0.15);
+        }
+
+        .password-error {
+            color: #ef4444;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .password-error.visible {
+            display: block;
+        }
+
+        .password-modal-actions {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+        }
+
+        .password-btn {
+            padding: 0.65rem 1.25rem;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+        }
+
+        .password-btn-cancel {
+            background: var(--bg-hover);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-light);
+        }
+
+        .password-btn-cancel:hover {
+            background: var(--border-light);
+        }
+
+        .password-btn-submit {
+            background: var(--gradient-blue);
+            color: white;
+        }
+
+        .password-btn-submit:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
     </style>
 </head>
 <body>
@@ -845,14 +992,42 @@
                 </div>
             </section>
 
-            <!-- Interview & Assessment Section -->
-            <section class="tool-section">
+            <!-- Interview & Assessment Section (password protected) -->
+            <section class="tool-section" id="interview-locked-section">
                 <h2 class="section-title">
                     <i class="fas fa-user-check"></i>
                     Interview & Assessment
                 </h2>
                 <div class="tools-grid">
-                    <div class="tool-card tool-interview" onclick="openTool('interview')">
+                    <div class="tool-card tool-interview locked-card" onclick="showInterviewPasswordModal()">
+                        <div class="tool-header">
+                            <div class="tool-icon">
+                                <i class="fas fa-lock"></i>
+                            </div>
+                            <div class="tool-content">
+                                <h3>Interview Assessment Tool</h3>
+                                <span class="lock-badge"><i class="fas fa-lock"></i> Password required</span>
+                            </div>
+                        </div>
+                        <p class="tool-description">
+                            Technical and coding interview evaluation with structured scoring and assessment generation. Enter the team password to access this tool.
+                        </p>
+                        <div class="tool-footer">
+                            <div class="tool-arrow">
+                                <i class="fas fa-key"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="tool-section interview-section-hidden" id="interview-unlocked-section">
+                <h2 class="section-title">
+                    <i class="fas fa-user-check"></i>
+                    Interview & Assessment
+                </h2>
+                <div class="tools-grid">
+                    <div class="tool-card tool-interview" onclick="openInterviewTool()">
                         <div class="tool-header">
                             <div class="tool-icon">
                                 <i class="fas fa-clipboard-check"></i>
@@ -874,6 +1049,25 @@
             </section>
         </div>
     </main>
+
+    <!-- Interview password modal -->
+    <div class="password-modal-overlay" id="interviewPasswordModal" onclick="closeInterviewPasswordModalOnOverlay(event)">
+        <div class="password-modal" onclick="event.stopPropagation()">
+            <h3><i class="fas fa-lock" style="color: var(--color-interview);"></i> Interview & Assessment</h3>
+            <p>This section is restricted. Enter the team password to unlock access.</p>
+            <form id="interviewPasswordForm" onsubmit="submitInterviewPassword(event)">
+                <div class="password-input-group">
+                    <label for="interviewPasswordInput">Password</label>
+                    <input type="password" id="interviewPasswordInput" autocomplete="current-password" required>
+                </div>
+                <p class="password-error" id="interviewPasswordError">Incorrect password. Please try again.</p>
+                <div class="password-modal-actions">
+                    <button type="button" class="password-btn password-btn-cancel" onclick="closeInterviewPasswordModal()">Cancel</button>
+                    <button type="submit" class="password-btn password-btn-submit">Unlock</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Footer -->
     <footer class="footer">
@@ -956,10 +1150,77 @@
             }
         }
 
+        // Interview section password protection
+        const INTERVIEW_ACCESS_KEY = 'qe-hub-interview-access';
+        const INTERVIEW_PASSWORD = 'Bank$1234';
+
+        function hasInterviewAccess() {
+            return sessionStorage.getItem(INTERVIEW_ACCESS_KEY) === 'granted';
+        }
+
+        function unlockInterviewSection() {
+            sessionStorage.setItem(INTERVIEW_ACCESS_KEY, 'granted');
+            document.getElementById('interview-locked-section').style.display = 'none';
+            const unlocked = document.getElementById('interview-unlocked-section');
+            unlocked.classList.remove('interview-section-hidden');
+            unlocked.style.opacity = '1';
+            unlocked.style.transform = 'translateY(0)';
+        }
+
+        function initInterviewAccess() {
+            if (hasInterviewAccess()) {
+                unlockInterviewSection();
+            }
+        }
+
+        function showInterviewPasswordModal() {
+            const modal = document.getElementById('interviewPasswordModal');
+            const error = document.getElementById('interviewPasswordError');
+            const input = document.getElementById('interviewPasswordInput');
+            error.classList.remove('visible');
+            input.value = '';
+            modal.classList.add('active');
+            setTimeout(() => input.focus(), 100);
+        }
+
+        function closeInterviewPasswordModal() {
+            document.getElementById('interviewPasswordModal').classList.remove('active');
+            document.getElementById('interviewPasswordError').classList.remove('visible');
+        }
+
+        function closeInterviewPasswordModalOnOverlay(event) {
+            if (event.target.id === 'interviewPasswordModal') {
+                closeInterviewPasswordModal();
+            }
+        }
+
+        function submitInterviewPassword(event) {
+            event.preventDefault();
+            const input = document.getElementById('interviewPasswordInput');
+            const error = document.getElementById('interviewPasswordError');
+
+            if (input.value === INTERVIEW_PASSWORD) {
+                closeInterviewPasswordModal();
+                unlockInterviewSection();
+            } else {
+                error.classList.add('visible');
+                input.select();
+            }
+        }
+
+        function openInterviewTool() {
+            if (hasInterviewAccess()) {
+                openTool('interview');
+            } else {
+                showInterviewPasswordModal();
+            }
+        }
+
         // Initialize everything
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize theme
             initTheme();
+            initInterviewAccess();
             
             // Smooth scroll for CTA button
             const ctaButton = document.querySelector('.hero-cta');
