@@ -1124,6 +1124,56 @@ function getAdoPipelineDefinitionUrl(defId) {
   if (!ctx.orgUrl || !ctx.project) return '';
   return `${ctx.orgUrl}/${ctx.projEnc}/_build?definitionId=${encodeURIComponent(id)}`;
 }
+
+function getAdoBuildResultsUrl(buildId) {
+  const id = String(buildId || '').trim();
+  if (!id) return '';
+  const ctx = getAdoLinkContext();
+  if (!ctx.orgUrl || !ctx.project) return '';
+  return `${ctx.orgUrl}/${ctx.projEnc}/_build/results?buildId=${encodeURIComponent(id)}&view=results`;
+}
+
+function extractOriginFromBuild(b) {
+  const ti = b?.triggerInfo && typeof b.triggerInfo === 'object' ? b.triggerInfo : {};
+  let defId = null, buildId = null, buildNumber = null;
+
+  for (const [kRaw, vRaw] of Object.entries(ti || {})) {
+    const k = String(kRaw || '').toLowerCase();
+    const v = (vRaw == null) ? '' : String(vRaw);
+    if (!defId && k.includes('triggeredby') && k.includes('definitionid')) defId = v;
+    if (!buildId && k.includes('triggeredby') && k.includes('buildid')) buildId = v;
+    if (!buildNumber && k.includes('triggeredby') && k.includes('buildnumber')) buildNumber = v;
+  }
+
+  // Fallbacks (some payloads use different shapes)
+  if (!buildId && b?.triggeredByBuild?.id) buildId = String(b.triggeredByBuild.id);
+  if (!defId && b?.triggeredByBuild?.definition?.id) defId = String(b.triggeredByBuild.definition.id);
+  if (!buildNumber && b?.triggeredByBuild?.buildNumber) buildNumber = String(b.triggeredByBuild.buildNumber);
+
+  const normNum = (x) => {
+    const n = parseInt(String(x || ''), 10);
+    return Number.isFinite(n) && n > 0 ? String(n) : '';
+  };
+  const normStr = (x) => String(x || '').trim();
+
+  const out = {
+    definitionId: normNum(defId),
+    buildId: normNum(buildId),
+    buildNumber: normStr(buildNumber)
+  };
+  if (!out.definitionId && !out.buildId) return null;
+  return out;
+}
+
+function getBuildOriginLabel(b) {
+  const reason = String(b?.reason || '').toLowerCase();
+  if (reason === 'schedule') return { kind: 'scheduled', label: 'Scheduled', origin: null };
+  if (reason === 'buildcompletion') return { kind: 'pipeline', label: 'Triggered by pipeline', origin: extractOriginFromBuild(b) };
+  if (reason === 'manual') return { kind: 'manual', label: 'Manual', origin: null };
+  if (reason.includes('ci')) return { kind: 'ci', label: 'CI', origin: null };
+  if (reason) return { kind: 'other', label: reason, origin: extractOriginFromBuild(b) };
+  return { kind: 'other', label: 'Unknown', origin: extractOriginFromBuild(b) };
+}
 function initAdoDefaults() {
   const org = getDefaultOrgUrl();
   const proj = getDefaultProject();
@@ -2579,7 +2629,9 @@ function applyLoadedData(data, opts) {
       startTime: b.startTime, finishTime: b.finishTime,
       duration: parseDuration(b.startTime, b.finishTime),
       requestedBy: b.requestedFor?.displayName || b.requestedBy?.displayName || 'Scheduled',
-      reason: b.reason, url: webUrl,
+      reason: b.reason,
+      triggerInfo: b.triggerInfo || {},
+      url: webUrl,
       testUrl: `${defaultOrg}/${projEnc}/_build/results?buildId=${b.id}&view=ms.vss-test-web.build-test-results-tab`
     });
   });
@@ -3068,6 +3120,7 @@ function renderTopPipelinesByRuns(filteredPipelines, pipelineStats) {
           <th style="width:46px">#</th>
           <th>Pipeline</th>
           <th style="width:86px">ADO</th>
+          <th style="width:160px">Origin</th>
           <th style="width:110px">Category</th>
           <th style="width:110px">Type</th>
           <th style="width:90px">Runs</th>
@@ -3082,11 +3135,24 @@ function renderTopPipelinesByRuns(filteredPipelines, pipelineStats) {
           const typePill = p.type === 'Sanity' ? 'pill green' : p.type === 'Regression' ? 'pill blue' : 'pill';
           const passPct = r.pr == null ? '-' : r.pr + '%';
           const defUrl = getAdoPipelineDefinitionUrl(r.id);
+          const s = pipelineStats?.[p.id] || {};
+          const originBits = [];
+          if ((s.scheduledRuns || 0) > 0) originBits.push(`<span class="pill green" title="Had scheduled runs in the loaded window">Scheduled</span>`);
+          if (s.upstreamTop && s.upstreamTop.id) {
+            const upUrl = getAdoPipelineDefinitionUrl(s.upstreamTop.id);
+            const upName = s.upstreamTop.name ? s.upstreamTop.name : ('Pipeline #' + s.upstreamTop.id);
+            originBits.push(upUrl
+              ? `<a class="build-link" href="${esc(upUrl)}" target="_blank" onclick="event.stopPropagation()" title="Most common upstream pipeline in this window">${esc(upName)}</a>`
+              : `<span class="muted">${esc(upName)}</span>`
+            );
+          }
+          const originCell = originBits.length ? originBits.join('<div style="height:6px"></div>') : '<span class="muted">—</span>';
           return `
             <tr style="cursor:pointer" onclick="scrollToPipelineSection('${esc(r.id)}')">
               <td class="muted" style="font-family:var(--mono);font-size:.66rem">${i + 1}</td>
               <td><span class="muted">${esc(p.featureNum)} </span><span style="font-weight:800">${esc(p.name)}</span></td>
               <td>${defUrl ? `<a class="build-link" href="${esc(defUrl)}" target="_blank" onclick="event.stopPropagation()">Open</a>` : '<span class="muted">—</span>'}</td>
+              <td>${originCell}</td>
               <td><span class="pill">${esc(p.platform)}</span></td>
               <td><span class="${typePill}">${esc(p.type)}</span></td>
               <td class="num">${r.runs}</td>
@@ -3205,6 +3271,7 @@ function renderPipelineSelectionTable(basePipelines, pipelineStats, includedCoun
           <th style="width:42px">Inc</th>
           <th>Pipeline</th>
           <th style="width:86px">ADO</th>
+          <th style="width:160px">Origin</th>
           <th style="width:110px">Category</th>
           <th style="width:110px">Type</th>
           <th style="width:90px">Runs</th>
@@ -3220,11 +3287,23 @@ function renderPipelineSelectionTable(basePipelines, pipelineStats, includedCoun
           const pr = s.runs ? Math.round((s.passed / s.runs) * 100) : 0;
           const typePill = p.type === 'Sanity' ? 'pill green' : p.type === 'Regression' ? 'pill blue' : 'pill';
           const defUrl = getAdoPipelineDefinitionUrl(id);
+          const originBits = [];
+          if ((s.scheduledRuns || 0) > 0) originBits.push(`<span class="pill green" title="Had scheduled runs in the loaded window">Scheduled</span>`);
+          if (s.upstreamTop && s.upstreamTop.id) {
+            const upUrl = getAdoPipelineDefinitionUrl(s.upstreamTop.id);
+            const upName = s.upstreamTop.name ? s.upstreamTop.name : ('Pipeline #' + s.upstreamTop.id);
+            originBits.push(upUrl
+              ? `<a class="build-link" href="${esc(upUrl)}" target="_blank" title="Most common upstream pipeline in this window">${esc(upName)}</a>`
+              : `<span class="muted">${esc(upName)}</span>`
+            );
+          }
+          const originCell = originBits.length ? originBits.join('<div style="height:6px"></div>') : '<span class="muted">—</span>';
           return `
             <tr>
               <td><input class="pipe-inc-check" type="checkbox" ${includedPipelineIds.has(id) ? 'checked' : ''} onchange="togglePipelineIncluded('${esc(id)}', this.checked)"></td>
               <td><span class="muted">${esc(p.featureNum)} </span><span style="font-weight:700">${esc(p.name)}</span></td>
               <td>${defUrl ? `<a class="build-link" href="${esc(defUrl)}" target="_blank">Open</a>` : '<span class="muted">—</span>'}</td>
+              <td>${originCell}</td>
               <td><span class="pill">${esc(p.platform)}</span></td>
               <td><span class="${typePill}">${esc(p.type)}</span></td>
               <td class="num">${s.runs || 0}</td>
@@ -3364,12 +3443,28 @@ function renderDashboard() {
   const pipelineStats = {};
   baseFiltered.forEach(p => {
     const builds = getFilteredBuilds(p.id, f).filter(b => isPersonIncluded(b.requestedBy || 'Unknown'));
-    const ps = { runs: 0, passed: 0, failed: 0 };
+    const ps = { runs: 0, passed: 0, failed: 0, scheduledRuns: 0, upstreamRuns: 0, upstreamTop: null };
+    const upstreamCounts = new Map(); // defId -> count
     builds.forEach(b => {
       ps.runs++;
       if (b.result === 'succeeded') ps.passed++;
       if (b.result === 'failed' || b.result === 'partiallySucceeded') ps.failed++;
+      const lbl = getBuildOriginLabel(b);
+      if (lbl.kind === 'scheduled') ps.scheduledRuns++;
+      if (lbl.kind === 'pipeline' && lbl.origin?.definitionId) {
+        ps.upstreamRuns++;
+        const k = String(lbl.origin.definitionId);
+        upstreamCounts.set(k, (upstreamCounts.get(k) || 0) + 1);
+      }
     });
+    if (upstreamCounts.size) {
+      let topId = '', topCount = 0;
+      for (const [id, c] of upstreamCounts.entries()) {
+        if (c > topCount) { topId = id; topCount = c; }
+      }
+      const topPipe = pipelines.find(x => String(x?.id) === String(topId));
+      ps.upstreamTop = { id: topId, name: topPipe?.name || '', count: topCount };
+    }
     pipelineStats[p.id] = ps;
   });
 
@@ -3474,7 +3569,7 @@ function renderDashboard() {
           if (!blds.length) {
             html += `<div class="no-data">No executions found</div>`;
           } else {
-            html += `<table class="exec-tbl"><thead><tr><th>Date</th><th>Build</th><th>Triggered By</th><th>Duration</th><th>Result</th><th>Tests</th></tr></thead><tbody>`;
+            html += `<table class="exec-tbl"><thead><tr><th>Date</th><th>Build</th><th>Triggered By</th><th>Origin</th><th>Duration</th><th>Result</th><th>Tests</th></tr></thead><tbody>`;
             blds.forEach(b => {
               const bc = b.result === 'succeeded' ? 'badge-pass' : b.result === 'failed' ? 'badge-fail' : b.result === 'partiallySucceeded' ? 'badge-partial' : 'badge-other';
               const t = testsByBuild[b.id];
@@ -3489,14 +3584,31 @@ function renderDashboard() {
                 const cl = hasDetails ? `class="td-toggle" onclick="toggleTestDetail('${trid}')"` : '';
                 testCell = `<div ${cl}><div class="test-info"><div class="test-bar"><div class="t-pass" style="width:${pP}%"></div><div class="t-fail" style="width:${fP}%"></div><div class="t-other" style="width:${oP}%"></div></div><span class="test-nums">${t.passed}/${t.total}${hasDetails?' &#9662;':''}</span></div></div>`;
               }
-              html += `<tr><td>${fmtDate(b.startTime)}</td><td><a class="build-link" href="${b.url}" target="_blank">${b.number||b.id}</a></td><td>${esc(b.requestedBy)}</td><td>${fmtDuration(b.duration)}</td><td><span class="badge ${bc}">${b.result}</span></td><td>${testCell}</td></tr>`;
+              const o = getBuildOriginLabel(b);
+              let originCell = `<span class="muted">${esc(o.label || '—')}</span>`;
+              if (o.origin && (o.origin.definitionId || o.origin.buildId)) {
+                const bits = [];
+                if (o.origin.definitionId) {
+                  const upUrl = getAdoPipelineDefinitionUrl(o.origin.definitionId);
+                  const upPipe = pipelines.find(x => String(x?.id) === String(o.origin.definitionId));
+                  const upName = upPipe?.name || ('Pipeline #' + o.origin.definitionId);
+                  bits.push(upUrl ? `<a class="build-link" href="${esc(upUrl)}" target="_blank" title="Upstream pipeline">${esc(upName)}</a>` : `<span class="muted">${esc(upName)}</span>`);
+                }
+                if (o.origin.buildId) {
+                  const bUrl = getAdoBuildResultsUrl(o.origin.buildId);
+                  const bLabel = o.origin.buildNumber ? o.origin.buildNumber : ('Build #' + o.origin.buildId);
+                  bits.push(bUrl ? `<a class="build-link" href="${esc(bUrl)}" target="_blank" title="Upstream build">${esc(bLabel)}</a>` : `<span class="muted">${esc(bLabel)}</span>`);
+                }
+                originCell = bits.join('<span class="muted"> · </span>');
+              }
+              html += `<tr><td>${fmtDate(b.startTime)}</td><td><a class="build-link" href="${b.url}" target="_blank">${b.number||b.id}</a></td><td>${esc(b.requestedBy)}</td><td>${originCell}</td><td>${fmtDuration(b.duration)}</td><td><span class="badge ${bc}">${b.result}</span></td><td>${testCell}</td></tr>`;
               if (hasDetails) {
                 const sorted = [...t.tests].sort((a,b) => {
                   const ao = a.outcome==='Failed'?0:a.outcome==='Passed'?2:1;
                   const bo = b.outcome==='Failed'?0:b.outcome==='Passed'?2:1;
                   return ao-bo;
                 });
-                html += `<tr class="td-row"><td colspan="6"><div class="td-panel" id="${trid}"><div style="display:flex;justify-content:space-between;margin-bottom:.3rem"><span style="font-size:.6rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px">Test Cases (${t.tests.length})</span><a href="${b.testUrl}" target="_blank" style="font-size:.58rem;color:var(--blue);text-decoration:none">View in Azure DevOps &rarr;</a></div><ul class="test-list">${sorted.map(tc => {
+                html += `<tr class="td-row"><td colspan="7"><div class="td-panel" id="${trid}"><div style="display:flex;justify-content:space-between;margin-bottom:.3rem"><span style="font-size:.6rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px">Test Cases (${t.tests.length})</span><a href="${b.testUrl}" target="_blank" style="font-size:.58rem;color:var(--blue);text-decoration:none">View in Azure DevOps &rarr;</a></div><ul class="test-list">${sorted.map(tc => {
                   const dc = tc.outcome==='Passed'?'dot-p':tc.outcome==='Failed'?'dot-f':'dot-o';
                   const dur = tc.duration > 0 ? (tc.duration/1000).toFixed(1)+'s' : '';
                   return `<li><span class="dot ${dc}"></span><span class="t-name" title="${esc(tc.name)}">${esc(tc.name)}</span><span class="t-dur">${dur}</span></li>`;
