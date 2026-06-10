@@ -242,9 +242,34 @@
             padding: 18px 22px; margin-bottom: 12px; transition: all 0.2s; cursor: pointer;
         }
         .pipeline-card:hover { border-color: rgba(250,167,74,0.4); transform: translateY(-1px); }
-        .pipeline-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-        .pipeline-card-name { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px; }
-        .pipeline-card-actions { display: flex; gap: 6px; }
+        .pipeline-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+        /* Keep actions visible: allow name to wrap, don't let actions shrink */
+        .pipeline-card-name {
+            font-weight: 700;
+            font-size: 14px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            min-width: 0;
+            flex: 1 1 auto;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+        .pipeline-card-actions {
+            display: flex;
+            gap: 6px;
+            flex: 0 0 auto;
+            align-items: flex-start;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+        .pipeline-card-title {
+            min-width: 0;
+            flex: 1 1 auto;
+            white-space: normal;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
         .card-btn {
             width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border-color);
             background: var(--bg-tertiary); color: var(--text-muted); cursor: pointer; font-size: 14px;
@@ -1244,6 +1269,11 @@
                     <option value="cancelled">Cancelled Only</option>
                     <option value="skipped">Skipped Only</option>
                 </select>
+                <select id="resultsScheduleFilter" onchange="onResultsScheduleFilterChange()" style="width:100%; padding:9px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); color:var(--text-primary); font-size:12px; margin-top:8px;">
+                    <option value="all">All Pipelines</option>
+                    <option value="scheduled">Scheduled only</option>
+                    <option value="unscheduled">Not scheduled</option>
+                </select>
                 <select id="resultsRepoFilter" onchange="onResultsRepoFilterChange()" style="width:100%; padding:9px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); color:var(--text-primary); font-size:12px; margin-top:8px;">
                     <option value="all">All Repos</option>
                 </select>
@@ -1328,6 +1358,17 @@
                     <div class="chart-box" style="animation-delay:0.34s;">
                         <h3>Status Distribution</h3>
                         <canvas id="pieChart" style="max-height:220px;"></canvas>
+                    </div>
+                </div>
+                <div class="charts-row-full">
+                    <div class="chart-box" style="animation-delay:0.40s;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+                            <h3 style="margin:0;">Most executed pipelines</h3>
+                            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                                <button class="btn-lite" id="topPipesShowAllBtn" onclick="toggleResultsTopPipelinesShowAll()" title="Toggle show all pipelines">Show all</button>
+                            </div>
+                        </div>
+                        <div id="topPipelinesList" style="margin-top:10px;"></div>
                     </div>
                 </div>
                 <canvas id="hiddenPieChart" style="display:none;"></canvas>
@@ -4755,7 +4796,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                 <div class="pipeline-card-name">
                     <div class="pipeline-card-check" onclick="togglePipelineCheck('${pKey}', event)" title="Select"></div>
                     <span class="test-badge ${badgeClass}">${p.testType}</span>
-                    ${p.name}
+                    <span class="pipeline-card-title">${escapeHtml(p.name)}</span>
                 </div>
                 <div class="pipeline-card-actions">
                     ${ghRepoPill}
@@ -9524,8 +9565,11 @@ ${runnerStrategy === 'group'
     let lineChartInstance = null;
     let selectedRuns = new Set();
     let resultsSelectedPipelines = new Set(); // multi-select; empty means "All Pipelines"
+    let resultsPipelineIndex = new Map(); // resultsPipelineKey(repo,name) -> pipeline config
+    let resultsTopPipelinesShowAll = false;
 
     const RESULTS_EXCLUDE_CANCELLED_KEY = 'pm.results.excludeCancelledMetrics';
+    const RESULTS_SCHEDULE_FILTER_KEY = 'pm.results.scheduleFilter.v1'; // all|scheduled|unscheduled
     const RESULTS_RUN_COUNT_KEY = 'pm.results.runCount.v1';
     const RESULTS_FETCH_MODE_KEY = 'pm.results.fetchMode.v1'; // 'count' | 'range'
     const RESULTS_DATE_PRESET_KEY = 'pm.results.datePreset.v1'; // today|week|month|custom
@@ -10146,6 +10190,8 @@ ${runnerStrategy === 'group'
         document.getElementById('resultsEmpty').style.display = 'none';
         document.getElementById('resultsTableWrap').style.display = 'block';
         populateResultsRepoFilter();
+        buildResultsPipelineIndex();
+        loadResultsScheduleFilterPref();
         loadResultsExcludeCancelledPref();
         renderResultsTree();
         filterResults();
@@ -10165,12 +10211,58 @@ ${runnerStrategy === 'group'
         return document.getElementById('resultsRepoFilter')?.value || 'all';
     }
 
+    function buildResultsPipelineIndex() {
+        const m = new Map();
+        for (const p of (resultsPipelines || [])) {
+            if (!p || !p.name) continue;
+            m.set(resultsPipelineKey(p.repo, p.name), p);
+        }
+        resultsPipelineIndex = m;
+    }
+
+    function getResultsScheduleFilterValue() {
+        const v = (document.getElementById('resultsScheduleFilter')?.value || '').trim().toLowerCase();
+        return (v === 'scheduled' || v === 'unscheduled' || v === 'all') ? v : 'all';
+    }
+
+    function saveResultsScheduleFilterPref(v) {
+        try { localStorage.setItem(RESULTS_SCHEDULE_FILTER_KEY, String(v || 'all')); } catch { /* ignore */ }
+    }
+
+    function loadResultsScheduleFilterPref() {
+        const sel = document.getElementById('resultsScheduleFilter');
+        if (!sel) return;
+        try {
+            const raw = String(localStorage.getItem(RESULTS_SCHEDULE_FILTER_KEY) || '').trim().toLowerCase();
+            const v = (raw === 'scheduled' || raw === 'unscheduled' || raw === 'all') ? raw : 'all';
+            sel.value = v;
+        } catch {
+            sel.value = 'all';
+        }
+    }
+
+    function onResultsScheduleFilterChange() {
+        const v = getResultsScheduleFilterValue();
+        saveResultsScheduleFilterPref(v);
+        // Keep the UI predictable: changing schedule filter resets pipeline selection to "All".
+        resultsSelectedPipelines.clear();
+        resultsTopPipelinesShowAll = false;
+        renderResultsTree();
+        filterResults();
+    }
+
     function getResultsVisiblePipelines() {
         const repoFilter = getResultsRepoFilterValue();
+        const schedFilter = getResultsScheduleFilterValue();
         return (resultsPipelines || []).slice().filter(p => {
             if (!p || !p.name) return false;
-            if (repoFilter === 'all') return true;
-            return String(p.repo || '').trim() === repoFilter;
+            if (repoFilter !== 'all' && String(p.repo || '').trim() !== repoFilter) return false;
+            if (schedFilter !== 'all') {
+                const isSched = !!p.scheduleEnabled;
+                if (schedFilter === 'scheduled' && !isSched) return false;
+                if (schedFilter === 'unscheduled' && isSched) return false;
+            }
+            return true;
         });
     }
 
@@ -10185,6 +10277,7 @@ ${runnerStrategy === 'group'
         } else {
             resultsSelectedPipelines.clear(); // empty == All Pipelines
         }
+        resultsTopPipelinesShowAll = false;
         renderResultsTree();
         if (tree) tree.scrollTop = prevScroll;
         filterResults();
@@ -10208,6 +10301,7 @@ ${runnerStrategy === 'group'
             }
         } catch { /* ignore */ }
         resultsSelectedPipelines.clear();
+        resultsTopPipelinesShowAll = false;
         renderResultsTree();
         filterResults();
     }
@@ -10262,6 +10356,51 @@ ${runnerStrategy === 'group'
             : new Set(runs.map(r => resultsPipelineKey(r.repo, r.workflowName))).size;
         const prClass = parseFloat(passRate) >= 90 ? 'v-green' : parseFloat(passRate) >= 70 ? 'v-orange' : 'v-red';
 
+        // Scheduler insights (only when scheduled pipelines are in scope)
+        const scheduledInScope = (() => {
+            const keys = new Set();
+            if (resultsSelectedPipelines.size) {
+                for (const k of resultsSelectedPipelines) {
+                    if (resultsPipelineIndex.get(k)?.scheduleEnabled) keys.add(k);
+                }
+            } else {
+                for (const p of (getResultsVisiblePipelines() || [])) {
+                    const k = resultsPipelineKey(p.repo, p.name);
+                    if (p?.scheduleEnabled) keys.add(k);
+                }
+            }
+            return keys;
+        })();
+
+        let schedMetricHtml = '';
+        if (scheduledInScope.size) {
+            const schedExecRuns = runs.filter(r => r && r.event === 'schedule' && !r.gateSkipped);
+            const byPipe = new Map();
+            for (const r of schedExecRuns) {
+                const k = resultsPipelineKey(r.repo, r.workflowName);
+                if (!scheduledInScope.has(k)) continue;
+                byPipe.set(k, (byPipe.get(k) || 0) + 1);
+            }
+            let topKey = '';
+            let topCount = 0;
+            for (const [k, c] of byPipe.entries()) {
+                if (c > topCount) { topKey = k; topCount = c; }
+            }
+            const totalSched = [...byPipe.values()].reduce((a, b) => a + b, 0);
+            const topNameRaw = topKey ? (resultsPipelineIndex.get(topKey)?.name || parseResultsPipelineKey(topKey).workflowName) : '';
+            const topName = topNameRaw ? String(topNameRaw).replace(/-Testim$/, '') : '—';
+            const topLine = totalSched ? `Top: ${escapeHtml(topName)} (${topCount})` : 'No scheduler runs in view';
+            schedMetricHtml = `
+                <div class="metric-card m-green">
+                    <div class="metric-icon">&#128337;</div>
+                    <div class="metric-label">Most scheduled</div>
+                    <div class="metric-value v-green" data-count="${topCount}">${topCount}</div>
+                    <div class="metric-sub">${totalSched} scheduler run(s) in view<br>${topLine}</div>
+                    <div class="metric-bar"><div class="metric-bar-fill" style="width:${totalSched ? Math.min(100, (topCount / Math.max(1, totalSched)) * 100) : 0}%; background:linear-gradient(90deg,#10b981,#34d399);"></div></div>
+                </div>
+            `;
+        }
+
         document.getElementById('metricsGrid').innerHTML = `
             <div class="metric-card m-blue">
                 <div class="metric-icon">&#128640;</div>
@@ -10298,6 +10437,7 @@ ${runnerStrategy === 'group'
                 <div class="metric-sub">Shortest: ${fmtDuration(durations.length ? Math.min(...durations) : 0)}</div>
                 <div class="metric-bar"><div class="metric-bar-fill" style="width:100%; background:linear-gradient(90deg,#8b5cf6,#a78bfa);"></div></div>
             </div>
+            ${schedMetricHtml}
         `;
         animateCounters();
     }
@@ -10574,13 +10714,178 @@ ${runnerStrategy === 'group'
         }
     }
 
+    function toggleResultsTopPipelinesShowAll() {
+        resultsTopPipelinesShowAll = !resultsTopPipelinesShowAll;
+        renderTopPipelinesByRuns();
+    }
+
+    function focusResultsPipelineKey(key) {
+        const k = String(key || '').trim();
+        if (!k) return;
+        if (!allRuns || !allRuns.length) return;
+
+        const parsed = parseResultsPipelineKey(k);
+        const repo = String(parsed.repo || '').trim();
+        if (repo) {
+            try { setGlobalRepoFilter(repo, { persist: true, skipResults: true, skipEmail: true }); } catch { /* ignore */ }
+            const repoSel = document.getElementById('resultsRepoFilter');
+            if (repoSel) repoSel.value = repo;
+        }
+
+        resultsSelectedPipelines.clear();
+        resultsSelectedPipelines.add(k);
+        renderResultsTree();
+        filterResults();
+
+        setTimeout(() => {
+            try {
+                const tree = document.getElementById('resultsTree');
+                if (!tree) return;
+                const node = tree.querySelector(`[data-pipeline="${CSS.escape(k)}"]`);
+                if (node && typeof node.scrollIntoView === 'function') node.scrollIntoView({ block: 'center' });
+            } catch { /* ignore */ }
+        }, 60);
+    }
+
+    function renderTopPipelinesByRuns() {
+        const el = document.getElementById('topPipelinesList');
+        if (!el) return;
+
+        const runs = getMetricsRuns();
+        if (!runs.length) {
+            el.innerHTML = `<div style="padding:10px 2px; color:var(--text-muted); font-size:12px;">No runs match the current filters.</div>`;
+            return;
+        }
+
+        // Determine which pipelines are in-scope for the list: current multi-select, else all visible pipelines.
+        const inScopeKeys = resultsSelectedPipelines.size
+            ? [...resultsSelectedPipelines]
+            : (getResultsVisiblePipelines() || []).map(p => resultsPipelineKey(p.repo, p.name));
+
+        const agg = new Map();
+        for (const k of inScopeKeys) {
+            const p = resultsPipelineIndex.get(k);
+            const name = (p?.name || parseResultsPipelineKey(k).workflowName || '').replace(/-Testim$/, '');
+            agg.set(k, {
+                key: k,
+                name,
+                repo: String(p?.repo || parseResultsPipelineKey(k).repo || '').trim(),
+                scheduled: !!p?.scheduleEnabled,
+                total: 0,
+                passed: 0,
+                failed: 0,
+                cancelled: 0,
+                skipped: 0,
+                other: 0,
+                latestAt: ''
+            });
+        }
+
+        for (const r of runs) {
+            const k = resultsPipelineKey(r.repo, r.workflowName);
+            const row = agg.get(k);
+            if (!row) continue;
+            row.total++;
+            const o = getRunOutcome(r);
+            if (o === 'success') row.passed++;
+            else if (o === 'failure') row.failed++;
+            else if (o === 'cancelled') row.cancelled++;
+            else if (o === 'skipped') row.skipped++;
+            else row.other++;
+            if (!row.latestAt || new Date(r.createdAt) > new Date(row.latestAt)) row.latestAt = r.createdAt;
+        }
+
+        const rows = [...agg.values()];
+        rows.sort((a, b) => {
+            if (b.total !== a.total) return b.total - a.total;
+            return String(a.name || '').localeCompare(String(b.name || ''));
+        });
+
+        const maxRows = resultsTopPipelinesShowAll ? rows.length : Math.min(30, rows.length);
+        const shown = rows.slice(0, maxRows);
+
+        const btnShowAll = document.getElementById('topPipesShowAllBtn');
+        if (btnShowAll) btnShowAll.textContent = resultsTopPipelinesShowAll ? 'Show top 30' : 'Show all';
+
+        el.innerHTML = `
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+                <div style="font-size:11px; color:var(--text-muted);">
+                    Showing <b>${shown.length}</b> of <b>${rows.length}</b> pipeline(s) in scope (${escapeHtml(getResultsFetchWindowLabel())})
+                </div>
+                <div style="font-size:11px; color:var(--text-muted);">Click a pipeline to focus it</div>
+            </div>
+            <div style="border:1px solid var(--border-color); border-radius:12px; overflow:hidden;">
+                <div style="display:grid; grid-template-columns: 44px 1fr 90px 64px 64px 64px 64px; gap:0; padding:10px 12px; background:var(--bg-tertiary); color:var(--text-muted); font-size:11px; font-weight:900; letter-spacing:0.5px; text-transform:uppercase;">
+                    <div>#</div>
+                    <div>Pipeline</div>
+                    <div style="text-align:right;">Runs</div>
+                    <div style="text-align:right;">Pass</div>
+                    <div style="text-align:right;">Fail</div>
+                    <div style="text-align:right;">Cancel</div>
+                    <div style="text-align:right;">Skip</div>
+                </div>
+                <div style="max-height:280px; overflow:auto; background:rgba(255,255,255,0.02);">
+                    ${shown.map((r, i) => {
+                        const keyEsc = escapeHtml(r.key);
+                        const nameEsc = escapeHtml(r.name || '(unknown)');
+                        const repoEsc = escapeHtml(r.repo || '');
+                        const tip = `${repoEsc}${repoEsc ? ' — ' : ''}${nameEsc} (${r.total} run(s))`;
+                        const rowBg = i % 2 ? 'rgba(255,255,255,0.015)' : 'transparent';
+                        return `
+                            <div data-focus-key="${keyEsc}" title="${escapeHtml(tip)}"
+                                 style="display:grid; grid-template-columns: 44px 1fr 90px 64px 64px 64px 64px; padding:10px 12px; gap:0; cursor:pointer; border-top:1px solid rgba(255,255,255,0.05); background:${rowBg}; align-items:center;">
+                                <div style="font-family:'JetBrains Mono',monospace; color:var(--text-muted); font-size:11px;">${i + 1}</div>
+                                <div style="min-width:0;">
+                                    <div style="font-weight:800; color:var(--text-primary); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${nameEsc}</div>
+                                    <div style="font-size:10px; color:var(--text-muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${repoEsc}${r.scheduled ? ` <span style="color:var(--success); font-weight:900;">&#128337; scheduled</span>` : ''}</div>
+                                </div>
+                                <div style="text-align:right; font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:900; color:var(--text-primary);">${r.total}</div>
+                                <div style="text-align:right; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--success);">${r.passed}</div>
+                                <div style="text-align:right; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--error);">${r.failed}</div>
+                                <div style="text-align:right; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-muted);">${r.cancelled}</div>
+                                <div style="text-align:right; font-family:'JetBrains Mono',monospace; font-size:12px; color:#60a5fa;">${r.skipped}</div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+
+        // Bind clicks safely (no inline JS; avoids quote-breakage / injection).
+        try {
+            el.querySelectorAll('[data-focus-key]').forEach(row => {
+                const key = row.getAttribute('data-focus-key') || '';
+                row.onclick = () => focusResultsPipelineKey(key);
+                row.onkeydown = (e) => {
+                    const k = e?.key;
+                    if (k === 'Enter' || k === ' ') {
+                        e.preventDefault();
+                        focusResultsPipelineKey(key);
+                    }
+                };
+                row.setAttribute('role', 'button');
+                row.setAttribute('tabindex', '0');
+            });
+        } catch { /* ignore */ }
+    }
+
     function renderResultsTree() {
         const tree = document.getElementById('resultsTree');
         if (!tree) return;
-        const repoFilter = getResultsRepoFilterValue();
-        const list = (resultsPipelines || []).slice().filter(p => repoFilter === 'all' ? true : (String(p?.repo || '').trim() === repoFilter));
+        const list = getResultsVisiblePipelines();
         list.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
         const missingMap = new Map((missingWorkflows || []).map(m => [`${m.repo}::${m.filename}`, m.reason || 'missing']));
+
+        const totalRunCountByPipe = new Map();
+        const schedExecCountByPipe = new Map();
+        for (const r of (allRuns || [])) {
+            if (!r) continue;
+            const k = resultsPipelineKey(r.repo, r.workflowName);
+            totalRunCountByPipe.set(k, (totalRunCountByPipe.get(k) || 0) + 1);
+            if (r.event === 'schedule' && !r.gateSkipped) {
+                schedExecCountByPipe.set(k, (schedExecCountByPipe.get(k) || 0) + 1);
+            }
+        }
 
         const grouped = {};
         for (const p of list) {
@@ -10610,15 +10915,17 @@ ${runnerStrategy === 'group'
                 const isMissing = !!missReason;
                 const display = String(p.name || '').replace(/-Testim$/, '');
                 const short = display.replace(/^Web_AxosBank_[^_]+(?:-OLB)?_/, '');
-                const runCount = allRuns.filter(r => r.workflowName === p.name && r.repo === p.repo).length;
+                const keyVal = resultsPipelineKey(p.repo, p.name);
+                const runCount = totalRunCountByPipe.get(keyVal) || 0;
+                const schedExec = schedExecCountByPipe.get(keyVal) || 0;
                 const jsName = String(p.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                 const jsRepo = String(p.repo || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-                const keyVal = resultsPipelineKey(p.repo, p.name);
                 const checked = resultsSelectedPipelines.has(keyVal);
                 html += `<label class="rf-node rf-indent ${checked ? 'active' : ''}" data-pipeline="${escapeHtml(keyVal)}" style="${isMissing ? 'color:var(--danger);' : ''}">
                     <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleResultsPipeline('${jsRepo}', '${jsName}', this.checked)">
                     <span class="rf-label" title="${escapeHtml(p.repo)}: ${escapeHtml(p.name)}">${escapeHtml(short)}${isMissing ? ` <span style="font-size:10px; font-weight:800;">&#9888; ${missReason === 'repo_error' ? 'repo error' : missReason === 'runs_error' ? 'runs error' : 'issue'}</span>` : ''}</span>
-                    <span class="rf-count">${runCount}</span>
+                    <span class="rf-count" title="Total runs fetched">${runCount}</span>
+                    ${p.scheduleEnabled ? `<span class="rf-count" style="margin-left:6px; background:rgba(16,185,129,0.10); color:rgba(16,185,129,0.95);" title="Scheduler-triggered runs (executed) in fetch window">&#128337; ${schedExec}</span>` : ''}
                 </label>`;
             }
         }
@@ -10661,6 +10968,14 @@ ${runnerStrategy === 'group'
         let runs = [...allRuns];
         const repoFilter = getResultsRepoFilterValue();
         if (repoFilter !== 'all') runs = runs.filter(r => String(r.repo || '').trim() === repoFilter);
+        const schedFilter = getResultsScheduleFilterValue();
+        if (schedFilter !== 'all') {
+            runs = runs.filter(r => {
+                const key = resultsPipelineKey(r.repo, r.workflowName);
+                const isSched = !!(resultsPipelineIndex.get(key)?.scheduleEnabled);
+                return schedFilter === 'scheduled' ? isSched : !isSched;
+            });
+        }
         if (resultsSelectedPipelines.size) runs = runs.filter(r => resultsSelectedPipelines.has(resultsPipelineKey(r.repo, r.workflowName)));
         const search = document.getElementById('resultsSearch')?.value?.toLowerCase() || '';
         if (search) runs = runs.filter(r => r.workflowName.toLowerCase().includes(search));
@@ -10675,6 +10990,7 @@ ${runnerStrategy === 'group'
         const runs = getFilteredRuns();
         renderMetrics();
         renderCharts();
+        renderTopPipelinesByRuns();
         const repoFilter = getResultsRepoFilterValue();
         let title = repoFilter !== 'all' ? `${repoFilter} — All Pipeline Runs` : 'All Pipeline Runs';
         if (resultsSelectedPipelines.size === 1) {
@@ -11715,6 +12031,24 @@ ${runnerStrategy === 'group'
         return { passRate: pr, passed, actionable, total: runs.length };
     }
 
+    function dashboardSchedulerExecCount(repo, workflowFile) {
+        const mode = (document.getElementById('resultsFetchMode')?.value || loadResultsFetchModePref() || 'count').toLowerCase();
+        const limit = (mode === 'count') ? loadResultsRunCountPref() : 500;
+        let runs = (allRuns || [])
+            .filter(r => r && String(r.repo || '').trim() === String(repo || '').trim() && String(r.workflowFile || '').trim() === String(workflowFile || '').trim())
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        if (mode === 'range') {
+            const range = getResultsSelectedDateRange();
+            if (range) runs = runs.filter(r => {
+                const t = new Date(r.createdAt).getTime();
+                return Number.isFinite(t) && t >= range.startMs && t <= range.endMs;
+            });
+        }
+        runs = runs.slice(0, limit);
+        if (!runs.length) return 0;
+        return runs.filter(r => r && r.event === 'schedule' && !r.gateSkipped).length;
+    }
+
     function dashboardNeedsAttention(repo, workflowFile) {
         const limit = loadResultsRunCountPref();
         const runs = (allRuns || [])
@@ -11987,6 +12321,11 @@ ${runnerStrategy === 'group'
                     const prTxt = (pr.passRate == null) ? '—' : pr.passRate.toFixed(1) + '%';
                     const prTip = (pr.passRate == null) ? 'No runs fetched yet.' : `${pr.passed} passed of ${pr.actionable} actionable (last ${loadResultsRunCountPref()})`;
                     const prCls = (pr.passRate == null) ? '' : (pr.passRate >= 90 ? 'v-green' : pr.passRate >= 70 ? 'v-orange' : 'v-red');
+                    const schedEnabled = !!p?.scheduleEnabled;
+                    const schedExec = (schedEnabled && wfFile) ? dashboardSchedulerExecCount(repo, wfFile) : 0;
+                    const schedTip = schedEnabled
+                        ? `${schedExec} scheduler run(s) executed in this window (${getResultsFetchWindowLabel()}).`
+                        : '';
                     const attn = wfFile ? dashboardNeedsAttention(repo, wfFile) : { needs: false, reason: '' };
                     return `<div class="dash-pipe-card">
                         <div class="dash-pipe-name" title="${escapeHtml(name)}">${escapeHtml(name)}</div>
@@ -11997,6 +12336,10 @@ ${runnerStrategy === 'group'
                                 <span style="font-weight:900;">Pass rate</span>
                                 <span class="${prCls}" style="margin-left:6px; font-family:'JetBrains Mono',monospace;">${escapeHtml(prTxt)}</span>
                             </span>
+                            ${schedEnabled ? `<span class="dash-pill" title="${escapeHtml(schedTip)}" style="padding:6px 10px;">
+                                <span style="font-weight:900;">&#128337; Scheduler</span>
+                                <span style="margin-left:6px; font-family:'JetBrains Mono',monospace; color:var(--success);">${schedExec}</span>
+                            </span>` : ''}
                             <span style="font-size:11px; color:var(--text-muted);">(${escapeHtml(prTip)})</span>
                         </div>
                         <div class="dash-pipe-foot">
