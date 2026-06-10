@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+z|<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -277,6 +277,7 @@ textarea.field-input{resize:vertical;min-height:100px;font-family:var(--mono);fo
 /* Pipeline sections inside features */
 .pipe-section{padding:.75rem;border-bottom:1px solid var(--glass-border)}
 .pipe-section:last-child{border-bottom:none}
+.pipe-section.flash-focus{outline:2px solid rgba(250,167,74,0.55);background:rgba(250,167,74,0.08);box-shadow:0 0 0 3px rgba(250,167,74,0.10);border-radius:12px}
 .pipe-label{font-size:.72rem;font-weight:600;color:var(--text-dim);padding:.2rem 0 .4rem;display:flex;align-items:center;gap:.5rem}
 .pipe-label .pipe-type{font-size:.55rem;padding:.15rem .4rem;border-radius:3px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
 .type-sanity{background:rgba(16,185,129,.1);color:var(--green)}
@@ -539,12 +540,17 @@ kbd{background:rgba(250,167,74,0.12);padding:1px 5px;border-radius:4px;font-size
         <div class="field-hint">This updates the generated ADO console script (and can override lower values in your selected pipeline configs).</div>
       </div>
       <div class="field" style="min-width:260px">
-        <div class="field-label">Month (optional)</div>
+        <div class="field-label">Time range (optional)</div>
         <div class="exec-row">
-          <input class="field-input" id="fetchMonth" type="month" oninput="handleFetchMonthInput()">
-          <button class="btn btn-ghost" style="padding:.45rem .7rem" onclick="clearFetchMonth()">Any</button>
+          <select class="field-select" id="fetchRangePreset" onchange="handleFetchRangePresetChange()" style="min-width:160px">
+            <option value="all">All time</option>
+            <option value="thisWeek">This week</option>
+            <option value="last2Weeks">Last 2 weeks</option>
+          </select>
+          <input class="field-input" id="fetchMonth" type="month" oninput="handleFetchMonthInput()" title="Optional: limit fetch to a specific month">
+          <button class="btn btn-ghost" style="padding:.45rem .7rem" onclick="clearFetchMonth(); clearFetchRangePreset()">Any</button>
         </div>
-        <div class="field-hint">If set, the script only fetches runs whose finish time is within that month (e.g. 2025-12, 2026-03).</div>
+        <div class="field-hint">Pick a quick preset (this week / last 2 weeks) or set a Month. Time filtering is based on build finish time when available.</div>
       </div>
     </div>
 
@@ -641,6 +647,23 @@ kbd{background:rgba(250,167,74,0.12);padding:1px 5px;border-radius:4px;font-size
 
   <div id="resultsContent" class="hidden">
     <div id="summaryMetrics" class="metrics-grid stagger"></div>
+
+    <div class="glass-solid results-card" style="padding:1rem;margin:1rem 0">
+      <div class="rc-head">
+        <div>
+          <div class="rc-title">Most executed pipelines</div>
+          <div class="rc-sub" id="topPipelinesSummary">—</div>
+        </div>
+        <div class="rc-actions">
+          <button class="btn btn-ghost" id="topPipesShowAllBtn" onclick="toggleTopPipelinesShowAll()">Show all</button>
+        </div>
+      </div>
+      <div class="table-wrap" id="topPipelinesTable"></div>
+      <div style="margin-top:.6rem;font-size:.68rem;color:var(--text-muted);display:flex;justify-content:space-between;gap:.75rem;flex-wrap:wrap">
+        <span>Sorted by <strong style="color:var(--text)">Runs</strong> (desc) using current filters.</span>
+        <span>Click a row to jump to that pipeline’s execution table below.</span>
+      </div>
+    </div>
 
     <div class="results-extras">
       <div class="glass-solid results-card">
@@ -1027,10 +1050,12 @@ let generatedEmailHtml = '';
 let loadedFileContent = null;
 let chipUrls = [];
 let selectedConfigIds = new Set();
+let topPipelinesShowAll = false; // Results: "Most executed pipelines" list
 
 const LS_KEY = 'pipeline-hub-configs';
 const EXEC_PREF_KEY = 'ado-pipeline-metrics-executions'; // number string or "all"
 const FETCH_MONTH_KEY = 'ado-pipeline-metrics-fetch-month'; // "YYYY-MM"
+const FETCH_RANGE_PRESET_KEY = 'ado-pipeline-metrics-fetch-range-preset'; // "all" | "thisWeek" | "last2Weeks"
 const PIPELINE_INCLUDE_KEY = 'ado-pipeline-metrics-included-pipelines'; // JSON array of definition ids
 const PEOPLE_INCLUDE_KEY = 'ado-pipeline-metrics-included-people'; // JSON array of people display names
 
@@ -1084,6 +1109,20 @@ function getDefaultOrgUrl() {
 }
 function getDefaultProject() {
   return (localStorage.getItem(ADO_DEFAULT_PROJECT_KEY) || 'Automation Architecture').trim();
+}
+
+function getAdoLinkContext() {
+  const orgUrl = String(lastFetchedDataObj?.meta?.orgUrl || configs?.[0]?.orgUrl || getDefaultOrgUrl() || '').trim().replace(/\/+$/, '');
+  const project = String(lastFetchedDataObj?.meta?.project || configs?.[0]?.project || getDefaultProject() || '').trim();
+  return { orgUrl, project, projEnc: encodeURIComponent(project) };
+}
+
+function getAdoPipelineDefinitionUrl(defId) {
+  const id = String(defId || '').trim();
+  if (!id) return '';
+  const ctx = getAdoLinkContext();
+  if (!ctx.orgUrl || !ctx.project) return '';
+  return `${ctx.orgUrl}/${ctx.projEnc}/_build?definitionId=${encodeURIComponent(id)}`;
 }
 function initAdoDefaults() {
   const org = getDefaultOrgUrl();
@@ -1175,6 +1214,42 @@ function setFetchMonth(month) {
   else localStorage.removeItem(FETCH_MONTH_KEY);
 }
 
+function getFetchRangePreset() {
+  const raw = (localStorage.getItem(FETCH_RANGE_PRESET_KEY) || '').trim();
+  if (!raw) return 'all';
+  return (raw === 'thisWeek' || raw === 'last2Weeks' || raw === 'all') ? raw : 'all';
+}
+
+function setFetchRangePreset(preset) {
+  const v = String(preset || '').trim();
+  if (v && (v === 'thisWeek' || v === 'last2Weeks' || v === 'all')) localStorage.setItem(FETCH_RANGE_PRESET_KEY, v);
+  else localStorage.removeItem(FETCH_RANGE_PRESET_KEY);
+}
+
+function applyFetchRangePresetToInput() {
+  const sel = document.getElementById('fetchRangePreset');
+  if (!sel) return;
+  sel.value = getFetchRangePreset();
+}
+
+function handleFetchRangePresetChange() {
+  const sel = document.getElementById('fetchRangePreset');
+  const v = sel ? String(sel.value || 'all') : 'all';
+  setFetchRangePreset(v);
+  // If user picks a week-based preset, clear month (month has higher priority).
+  if (v !== 'all') setFetchMonth(null);
+  applyFetchMonthToInput();
+  applyFetchRangePresetToInput();
+  updateScript();
+}
+
+function clearFetchRangePreset() {
+  setFetchRangePreset('all');
+  applyFetchRangePresetToInput();
+  updateScript();
+  showToast('Time range cleared (fetching across all time).');
+}
+
 function applyFetchMonthToInput() {
   const el = document.getElementById('fetchMonth');
   if (!el) return;
@@ -1184,7 +1259,10 @@ function applyFetchMonthToInput() {
 function handleFetchMonthInput() {
   const raw = (document.getElementById('fetchMonth')?.value || '').trim();
   setFetchMonth(raw || null);
+  // Month selection overrides presets.
+  if (raw) setFetchRangePreset('all');
   applyFetchMonthToInput();
+  applyFetchRangePresetToInput();
   updateScript();
 }
 
@@ -1193,6 +1271,40 @@ function clearFetchMonth() {
   applyFetchMonthToInput();
   updateScript();
   showToast('Month filter cleared (fetching across all time).');
+}
+
+function parsePresetRange(preset) {
+  const p = String(preset || 'all');
+  if (p !== 'thisWeek' && p !== 'last2Weeks') return null;
+  const now = new Date();
+  let start = new Date(now);
+  if (p === 'thisWeek') {
+    // Start of local week (Mon 00:00 local)
+    const day = start.getDay(); // 0=Sun
+    const delta = (day === 0 ? 6 : day - 1);
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - delta);
+  } else {
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - 14);
+  }
+  const end = now;
+  return {
+    preset: p,
+    label: p === 'thisWeek' ? 'This week' : 'Last 2 weeks',
+    startIso: start.toISOString(),
+    endIso: end.toISOString(),
+    startMs: start.getTime(),
+    endMs: end.getTime()
+  };
+}
+
+function getFetchRangeObj() {
+  const month = getFetchMonth();
+  const byMonth = parseMonthRange(month);
+  if (byMonth) return { ...byMonth, label: `Month: ${byMonth.ym}` };
+  const preset = getFetchRangePreset();
+  return parsePresetRange(preset);
 }
 
 // ─── View Switching ───
@@ -1211,6 +1323,7 @@ function switchView(view) {
     if (hasSelected) updateScript();
     applyPreferredExecToInputs();
     applyFetchMonthToInput();
+    applyFetchRangePresetToInput();
     updateAdoPatFetchStatus();
   }
   if (view === 'results') {
@@ -2211,6 +2324,7 @@ function generateScript() {
   const prefExec = pref === 'all' ? 0 : (pref || 10);
   const wantAll = pref === 'all';
   const fetchMonth = getFetchMonth() || '';
+  const fetchPreset = getFetchRangePreset() || 'all';
   const configsJson = JSON.stringify(active.map(c => ({
     orgUrl: c.orgUrl,
     project: c.project,
@@ -2223,6 +2337,7 @@ function generateScript() {
   return `(async()=>{
   const CONFIGS=${configsJson};
   const FETCH_MONTH=${JSON.stringify(fetchMonth)}; // "YYYY-MM" or ""
+  const FETCH_PRESET=${JSON.stringify(fetchPreset)}; // "all" | "thisWeek" | "last2Weeks"
   const monthRange=(ym)=>{
     if(!ym) return null;
     const m=/^(\\d{4})-(\\d{2})$/.exec(ym);
@@ -2233,9 +2348,27 @@ function generateScript() {
     const end=new Date(Date.UTC(y,mo,1,0,0,0));
     return { ym, startIso:start.toISOString(), endIso:end.toISOString(), startMs:start.getTime(), endMs:end.getTime() };
   };
-  const RANGE=monthRange(FETCH_MONTH);
+  const presetRange=(preset)=>{
+    const p=String(preset||'all');
+    if(p!=='thisWeek'&&p!=='last2Weeks') return null;
+    const now=new Date();
+    let start=new Date(now);
+    if(p==='thisWeek'){
+      const day=start.getDay();
+      const delta=(day===0?6:day-1);
+      start.setHours(0,0,0,0);
+      start.setDate(start.getDate()-delta);
+    }else{
+      start.setHours(0,0,0,0);
+      start.setDate(start.getDate()-14);
+    }
+    const end=now;
+    return { preset:p, startIso:start.toISOString(), endIso:end.toISOString(), startMs:start.getTime(), endMs:end.getTime() };
+  };
+  const RANGE=monthRange(FETCH_MONTH) || presetRange(FETCH_PRESET);
   const L=m=>console.log('%c[ADO Pipeline Metrics] '+m,'color:#F59E0B;font-weight:bold');
-  if(RANGE) L('Month filter: '+RANGE.ym);
+  if(RANGE&&RANGE.ym) L('Month filter: '+RANGE.ym);
+  else if(RANGE&&RANGE.preset) L('Preset range: '+RANGE.preset);
   const allDefs=[],allBuilds=[],tMap={};
   for(let ci=0;ci<CONFIGS.length;ci++){
     const C=CONFIGS[ci];
@@ -2530,9 +2663,9 @@ async function fetchNowFromAdo() {
     const pref = getPreferredExecutions();
     const perPipeline = pref === 'all' ? 0 : (pref || 10);
     const wantAll = pref === 'all';
-    const month = getFetchMonth();
-    const range = parseMonthRange(month);
-    logFetch(`[ADO] Starting fetch — per pipeline: ${wantAll ? 'ALL' : perPipeline}${range ? `, month: ${range.ym}` : ''}`);
+    const range = getFetchRangeObj();
+    const rangeNote = range ? `, range: ${range.label || (range.ym || range.preset || '')}` : '';
+    logFetch(`[ADO] Starting fetch — per pipeline: ${wantAll ? 'ALL' : perPipeline}${rangeNote}`);
 
     const defCache = new Map(); // apiPrefix -> { allDefs: [], byId: Map }
     const resolveAllDefs = async (orgUrl, project) => {
@@ -2706,7 +2839,8 @@ async function fetchNowFromAdo() {
 
     const out = {
       meta: {
-        fetchMonth: month || null,
+        fetchMonth: getFetchMonth() || null,
+        fetchRangePreset: getFetchRangePreset() || 'all',
         generatedAt: new Date().toISOString(),
         orgUrl: active[0]?.orgUrl || getDefaultOrgUrl(),
         project: active[0]?.project || getDefaultProject()
@@ -2827,8 +2961,11 @@ function initIncludedPeople(availableNames) {
   }
   try {
     const arr = JSON.parse(raw);
-    const next = new Set((Array.isArray(arr) ? arr : []).map(String).map(s => s.trim()).filter(n => all.has(n)));
-    includedPeople = next.size ? next : new Set(all);
+    // Default to "all included" only when there is no stored preference.
+    // IMPORTANT: allow an explicit empty array ([]) to mean "include none".
+    if (!Array.isArray(arr)) { includedPeople = new Set(all); return; }
+    const next = new Set(arr.map(String).map(s => s.trim()).filter(n => all.has(n)));
+    includedPeople = next; // can be empty intentionally
   } catch (e) {
     includedPeople = new Set(all);
   }
@@ -2840,8 +2977,7 @@ function persistIncludedPeople() {
 
 function isPersonIncluded(name) {
   const who = String(name || 'Unknown');
-  if (!includedPeople || includedPeople.size === 0) return true;
-  return includedPeople.has(who);
+  return !!(includedPeople && includedPeople.has(who));
 }
 
 function togglePersonIncluded(name, checked) {
@@ -2891,6 +3027,96 @@ function getFilteredBuilds(defId, f) {
   if (f.result !== 'all') builds = builds.filter(b => b.result === f.result);
   if (f.executions > 0) builds = builds.slice(0, f.executions);
   return builds;
+}
+
+function toggleTopPipelinesShowAll() {
+  topPipelinesShowAll = !topPipelinesShowAll;
+  renderDashboard();
+}
+
+function renderTopPipelinesByRuns(filteredPipelines, pipelineStats) {
+  const wrap = document.getElementById('topPipelinesTable');
+  const summaryEl = document.getElementById('topPipelinesSummary');
+  const btn = document.getElementById('topPipesShowAllBtn');
+  if (!wrap) return;
+
+  const pipes = Array.isArray(filteredPipelines) ? filteredPipelines : [];
+  if (!pipes.length) {
+    if (summaryEl) summaryEl.textContent = 'No included pipelines match the current filters.';
+    if (btn) btn.textContent = 'Show all';
+    wrap.innerHTML = `<div class="no-data" style="padding:1rem">No pipelines to rank.</div>`;
+    return;
+  }
+
+  const rows = pipes.map(p => {
+    const id = String(p.id);
+    const s = pipelineStats?.[p.id] || { runs: 0, passed: 0, failed: 0 };
+    const pr = s.runs ? Math.round((s.passed / s.runs) * 100) : null;
+    return { id, p, runs: s.runs || 0, passed: s.passed || 0, failed: s.failed || 0, pr };
+  }).sort((a, b) => (b.runs - a.runs) || String(a.p.name || '').localeCompare(String(b.p.name || '')));
+
+  const maxRows = topPipelinesShowAll ? rows.length : Math.min(30, rows.length);
+  const shown = rows.slice(0, maxRows);
+
+  if (summaryEl) summaryEl.textContent = `Showing ${shown.length} of ${rows.length} included pipeline(s)`;
+  if (btn) btn.textContent = topPipelinesShowAll ? 'Show top 30' : 'Show all';
+
+  wrap.innerHTML = `
+    <table class="data-table" style="min-width:520px">
+      <thead>
+        <tr>
+          <th style="width:46px">#</th>
+          <th>Pipeline</th>
+          <th style="width:86px">ADO</th>
+          <th style="width:110px">Category</th>
+          <th style="width:110px">Type</th>
+          <th style="width:90px">Runs</th>
+          <th style="width:90px">Pass</th>
+          <th style="width:90px">Fail</th>
+          <th style="width:90px">Pass %</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${shown.map((r, i) => {
+          const p = r.p || {};
+          const typePill = p.type === 'Sanity' ? 'pill green' : p.type === 'Regression' ? 'pill blue' : 'pill';
+          const passPct = r.pr == null ? '-' : r.pr + '%';
+          const defUrl = getAdoPipelineDefinitionUrl(r.id);
+          return `
+            <tr style="cursor:pointer" onclick="scrollToPipelineSection('${esc(r.id)}')">
+              <td class="muted" style="font-family:var(--mono);font-size:.66rem">${i + 1}</td>
+              <td><span class="muted">${esc(p.featureNum)} </span><span style="font-weight:800">${esc(p.name)}</span></td>
+              <td>${defUrl ? `<a class="build-link" href="${esc(defUrl)}" target="_blank" onclick="event.stopPropagation()">Open</a>` : '<span class="muted">—</span>'}</td>
+              <td><span class="pill">${esc(p.platform)}</span></td>
+              <td><span class="${typePill}">${esc(p.type)}</span></td>
+              <td class="num">${r.runs}</td>
+              <td class="num" style="color:var(--green)">${r.passed}</td>
+              <td class="num" style="color:var(--red)">${r.failed}</td>
+              <td class="num">${passPct}</td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function scrollToPipelineSection(defId) {
+  const id = String(defId || '').trim();
+  if (!id) return;
+  const el = document.getElementById('pipe_' + id);
+  if (!el) {
+    showToast('Pipeline execution table not found for this item.', true);
+    return;
+  }
+  const gid = el.dataset?.gid || '';
+  if (gid) {
+    document.getElementById('body_' + gid)?.classList.add('open');
+    document.getElementById('chev_' + gid)?.classList.add('open');
+  }
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  el.classList.add('flash-focus');
+  setTimeout(() => el.classList.remove('flash-focus'), 1400);
 }
 
 function getFilters() {
@@ -2978,6 +3204,7 @@ function renderPipelineSelectionTable(basePipelines, pipelineStats, includedCoun
         <tr>
           <th style="width:42px">Inc</th>
           <th>Pipeline</th>
+          <th style="width:86px">ADO</th>
           <th style="width:110px">Category</th>
           <th style="width:110px">Type</th>
           <th style="width:90px">Runs</th>
@@ -2992,10 +3219,12 @@ function renderPipelineSelectionTable(basePipelines, pipelineStats, includedCoun
           const s = pipelineStats[p.id] || { runs: 0, passed: 0, failed: 0 };
           const pr = s.runs ? Math.round((s.passed / s.runs) * 100) : 0;
           const typePill = p.type === 'Sanity' ? 'pill green' : p.type === 'Regression' ? 'pill blue' : 'pill';
+          const defUrl = getAdoPipelineDefinitionUrl(id);
           return `
             <tr>
               <td><input class="pipe-inc-check" type="checkbox" ${includedPipelineIds.has(id) ? 'checked' : ''} onchange="togglePipelineIncluded('${esc(id)}', this.checked)"></td>
               <td><span class="muted">${esc(p.featureNum)} </span><span style="font-weight:700">${esc(p.name)}</span></td>
+              <td>${defUrl ? `<a class="build-link" href="${esc(defUrl)}" target="_blank">Open</a>` : '<span class="muted">—</span>'}</td>
               <td><span class="pill">${esc(p.platform)}</span></td>
               <td><span class="${typePill}">${esc(p.type)}</span></td>
               <td class="num">${s.runs || 0}</td>
@@ -3177,6 +3406,7 @@ function renderDashboard() {
       <div class="m-sub">${totalTests ? ((totalTestsFailed/totalTests)*100).toFixed(1)+'% failure rate' : ''}</div></div>
   `;
 
+  renderTopPipelinesByRuns(filtered, pipelineStats);
   renderPipelineSelectionTable(baseFiltered, pipelineStats, filtered.length);
   renderPeopleTable(peopleStats, totalRuns);
 
@@ -3239,7 +3469,7 @@ function renderDashboard() {
         typePipelines.forEach(p => {
           let blds = getFilteredBuilds(p.id, f).filter(b => isPersonIncluded(b.requestedBy || 'Unknown'));
           const tc = type === 'Sanity' ? 'type-sanity' : type === 'Regression' ? 'type-regression' : '';
-          html += `<div class="pipe-section">
+          html += `<div class="pipe-section" id="pipe_${esc(p.id)}" data-gid="${esc(gid)}">
             <div class="pipe-label"><span class="pipe-type ${tc}">${type}</span><span style="color:var(--text)">${esc(p.name)}</span></div>`;
           if (!blds.length) {
             html += `<div class="no-data">No executions found</div>`;
