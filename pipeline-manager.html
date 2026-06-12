@@ -1935,6 +1935,7 @@
         if (repo === 'Axos.QE.TestIM') return 'linux';
         if (repo === 'Axos.QE.API_OLB') return 'windows';
         if (repo === 'Axos.QE.API_CS') return 'windows';
+        if (repo === 'Axos.QE.API_UDB') return 'windows';
         if (repo === 'Axos.QE.Mobile') return 'windows';
         if (repo === 'Axos.QE.Crypto.Web') return 'windows';
         if (repo === 'Axos.QE.Web') {
@@ -3363,6 +3364,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                     else if (fn.includes('-playwright') || fn.startsWith('crypto-web-') || fn.startsWith('crypto-web_')) p.repo = 'Axos.QE.Crypto.Web';
                     else if (fn.startsWith('mobile_')) p.repo = 'Axos.QE.Mobile';
                     else if (fn.startsWith('api_cs_')) p.repo = 'Axos.QE.API_CS';
+                    else if (fn.startsWith('api_udb_')) p.repo = 'Axos.QE.API_UDB';
                     else if (fn.includes('-newman') || fn.startsWith('api_') || fn.startsWith('api-')) p.repo = 'Axos.QE.API_OLB';
                     else p.repo = 'Axos.QE.TestIM';
                 };
@@ -5073,7 +5075,7 @@ ${os.map(n => `- ${n}`).join('\n')}
             return prompt;
         }
 
-        if (repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS') {
+        if (repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB') {
             let prompt = `Create or update a Newman pipeline workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
                 `This file should call the reusable template _newman-template.yml with these settings:\n\n` +
                 `PIPELINE_NAME: ${p.name}\n` +
@@ -5087,7 +5089,11 @@ ${os.map(n => `- ${n}`).join('\n')}
                 `RUNNER_LABEL: ${p.runnerLabel || 'QSDW-TFSBA06'}\n` +
                 `CUSTOM_RUNNER_LABEL: ${p.customRunnerLabel || ''}\n` +
                 `JOB_TIMEOUT: ${p.jobTimeout || 120}\n\n` +
-                `Use the existing workflow file ${repoName === 'Axos.QE.API_CS' ? 'API_CS_UAT_Health_Checks_Sanity-Newman.yml' : 'API_OLB_UAT_Login_Smoke-Newman.yml'} as the exact format reference. Include:\n` +
+                `Use the existing workflow file ${repoName === 'Axos.QE.API_CS'
+                    ? 'API_CS_UAT_Health_Checks_Sanity-Newman.yml'
+                    : repoName === 'Axos.QE.API_UDB'
+                        ? 'API_UDB_UAT_Smoke-Newman.yml'
+                        : 'API_OLB_UAT_Login_Smoke-Newman.yml'} as the exact format reference. Include:\n` +
                 `- name: and run-name fields matching the pipeline name\n` +
                 `- workflow_dispatch inputs for: COLLECTION_ID, ENVIRONMENT_ID, COLLECTION_SUBFOLDER, RUN_FULL_COLLECTION, HOSTS_UAT_ENV, MAX_RETRIES, JOB_TIMEOUT, RUNNER_STRATEGY, RUNNER_GROUP, RUNNER_LABEL, CUSTOM_RUNNER_LABEL\n` +
                 `- permissions block (contents: read, checks: write, actions: read)\n` +
@@ -5289,7 +5295,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             ? 'BrowserStack mobile pipeline'
             : (isOrchestratorPipeline(p)
                 ? 'Orchestrator workflow'
-                : ((repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS')
+                : ((repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB')
                     ? 'Newman pipeline'
                     : ((isCryptoPipeline(p) || repoName === 'Axos.QE.Web') ? 'Playwright pipeline' : 'Testim pipeline')));
         let html = `<div class="main-header">
@@ -5321,7 +5327,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     <input type="text" id="fCustomSuffix" placeholder="e.g. IBD, External, Internal" value="${(() => {
                         const fd = String(p.featureDetail || '').trim();
                         if (!fd) return '';
-                        if (repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS') {
+                        if (repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB') {
                             // For API pipelines, derive suffix after the feature is selected (avoids feature duplication).
                             return '';
                         }
@@ -5484,7 +5490,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 </div>
             </div>`;
         } else {
-        if (repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS') {
+        if (repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB') {
             // API (Newman/Postman) form
             html += `<div class="section">
             <div class="section-header" onclick="toggleSection(this)">
@@ -5570,7 +5576,11 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     </div>
                     <div class="form-group">
                         <label class="form-label">Environment File <span class="req">*</span></label>
-                        <input type="text" id="fEnvironmentId" placeholder="${repoName === 'Axos.QE.API_CS' ? 'uat-BankingCoreSvcAcct.postman_environment.json' : 'uat-app-olbapi-Sanity.postman_environment.json'}" value="${p.environmentId || ''}" oninput="updateFormStatus()" ${isView ? 'disabled' : ''}>
+                        <input type="text" id="fEnvironmentId" placeholder="${repoName === 'Axos.QE.API_CS'
+                            ? 'uat-BankingCoreSvcAcct.postman_environment.json'
+                            : repoName === 'Axos.QE.API_UDB'
+                                ? 'uat-secure-udbloginapi-NewLogin.postman_environment.json'
+                                : 'uat-app-olbapi-Sanity.postman_environment.json'}" value="${p.environmentId || ''}" oninput="updateFormStatus()" ${isView ? 'disabled' : ''}>
                         <span class="field-help">Filename under <code>src/environment/</code></span>
                     </div>
                 </div>
@@ -5632,7 +5642,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
 
                 <div class="form-group">
                     <label class="form-label">Targets <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(simple mode)</span></label>
-                    <textarea id="fOrchTargetRefs" rows="10" placeholder="axos-financial/Axos.QE.API_OLB:API_OLB_UAT_Login_Sanity-Newman.yml@main" oninput="updateOrchestratorTargetsPreview()" ${isView ? 'disabled' : ''}>${escapeHtml(orchRefsPrefill)}</textarea>
+                    <textarea id="fOrchTargetRefs" rows="10" placeholder="axos-financial/Axos.QE.API_UDB:API_UDB_UAT_Smoke-Newman.yml@main" oninput="updateOrchestratorTargetsPreview()" ${isView ? 'disabled' : ''}>${escapeHtml(orchRefsPrefill)}</textarea>
                     <span class="field-help">One per line. Formats: <code>owner/repo:workflow.yml@ref</code> or <code>repo:workflow.yml@ref</code> or just <code>workflow.yml</code> (defaults to axos-financial/Axos.QE.TestIM @ main).</span>
                 </div>
 
@@ -6294,10 +6304,10 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 </div>
 
                 <div style="background:var(--bg-tertiary); border-radius:10px; padding:12px 16px; display:flex; align-items:center; gap:10px;">
-                    <span style="font-size:16px;">${(formIsMobile || repoName === 'Axos.QE.Crypto.Web' || repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS') ? '&#128187;' : '&#129302;'}</span>
+                    <span style="font-size:16px;">${(formIsMobile || repoName === 'Axos.QE.Crypto.Web' || repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB') ? '&#128187;' : '&#129302;'}</span>
                     <div>
                         <div style="font-size:12px; font-weight:600; color:var(--success);">Runner: ${runnerStrategyUi === 'group' ? `Runner group ${escapeHtml(runnerGroupUi)} (${runnerOsUi})` : (runnerOsUi === 'windows' ? 'Self-hosted Windows' : 'Self-hosted Linux')}</div>
-                        <div style="font-size:11px; color:var(--text-muted);">${runnerStrategyUi === 'group' ? 'Targets runners via runner group + OS labels (no machine-name pinning).' : ((repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS') ? 'Runs Newman on a self-hosted Windows runner (ensure it has network access to the target env).' : ((formIsMobile || repoName === 'Axos.QE.Crypto.Web') ? 'Picks from QSDW-TFSBA01–05 Windows runners (same pool as Mobile)' : 'Selects a self-hosted runner by label (no wildcard runner-name matching)'))}</div>
+                        <div style="font-size:11px; color:var(--text-muted);">${runnerStrategyUi === 'group' ? 'Targets runners via runner group + OS labels (no machine-name pinning).' : ((repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB') ? 'Runs Newman on a self-hosted Windows runner (ensure it has network access to the target env).' : ((formIsMobile || repoName === 'Axos.QE.Crypto.Web') ? 'Picks from QSDW-TFSBA01–05 Windows runners (same pool as Mobile)' : 'Selects a self-hosted runner by label (no wildcard runner-name matching)'))}</div>
                     </div>
                 </div>
 
@@ -6558,7 +6568,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             }
         }
         if (p.scheduleEnabled && p.schedule) initScheduleFromCron(p.schedule);
-        if (repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS') {
+        if (repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB') {
             const rawFeature = String(p.feature || '').trim();
             const seed = (/^\d+$/.test(rawFeature) && String(p.featureDetail || '').trim())
                 ? String(p.featureDetail || '').trim()
@@ -7122,7 +7132,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
 
     function updateApiFeatureSuggestions(initialSelectedFeature) {
         const repo = document.getElementById('fRepo')?.value || '';
-        if (repo !== 'Axos.QE.API_OLB' && repo !== 'Axos.QE.API_CS') return;
+        if (repo !== 'Axos.QE.API_OLB' && repo !== 'Axos.QE.API_CS' && repo !== 'Axos.QE.API_UDB') return;
 
         const brand = document.getElementById('fBrand')?.value || '';
         const featureSelect = document.getElementById('fFeature');
@@ -7179,7 +7189,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
 
     function onApiFeatureChange() {
         const repo = document.getElementById('fRepo')?.value || '';
-        if (repo !== 'Axos.QE.API_OLB' && repo !== 'Axos.QE.API_CS') return;
+        if (repo !== 'Axos.QE.API_OLB' && repo !== 'Axos.QE.API_CS' && repo !== 'Axos.QE.API_UDB') return;
 
         const featureSelect = document.getElementById('fFeature');
         if (!featureSelect) return;
@@ -7259,7 +7269,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         }
 
         const repo = document.getElementById('fRepo')?.value || '';
-        if (repo === 'Axos.QE.API_OLB' || repo === 'Axos.QE.API_CS') {
+        if (repo === 'Axos.QE.API_OLB' || repo === 'Axos.QE.API_CS' || repo === 'Axos.QE.API_UDB') {
             const brand = document.getElementById('fBrand')?.value;
             const suffix = document.getElementById('fCustomSuffix')?.value?.trim();
             const feature = document.getElementById('fFeature')?.value?.trim();
@@ -7578,7 +7588,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             fieldsOk = el('fPlatform')?.value && el('fBrand')?.value && el('fFeature')?.value && el('fTestType')?.value && el('fEnv')?.value;
         } else {
             const repo = (el('fRepo')?.value || '').trim();
-            if (repo === 'Axos.QE.API_OLB' || repo === 'Axos.QE.API_CS') {
+            if (repo === 'Axos.QE.API_OLB' || repo === 'Axos.QE.API_CS' || repo === 'Axos.QE.API_UDB') {
                 const isOrch = (el('fTestType')?.value || '') === 'Orchestrator' || (el('fFeature')?.value || '') === 'Orchestrators';
                 if (isOrch) {
                     fieldsOk =
@@ -7667,7 +7677,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             base.jobTimeout = n('fJobTimeout', 120);
         } else {
             const repo = v('fRepo');
-            if (repo === 'Axos.QE.API_OLB' || repo === 'Axos.QE.API_CS') {
+            if (repo === 'Axos.QE.API_OLB' || repo === 'Axos.QE.API_CS' || repo === 'Axos.QE.API_UDB') {
                 base.brand = v('fBrand') || base.brand;
                 base.env = v('fEnv') || base.env;
                 const rawFeature = v('fFeature') || base.feature || 'Login';
@@ -7970,7 +7980,7 @@ ${targets}
 
 Each target element supports: enabled, name, owner, repo, workflow, ref, inputs.`;
 
-        } else if (el('fRepo') === 'Axos.QE.API_OLB' || el('fRepo') === 'Axos.QE.API_CS') {
+        } else if (el('fRepo') === 'Axos.QE.API_OLB' || el('fRepo') === 'Axos.QE.API_CS' || el('fRepo') === 'Axos.QE.API_UDB') {
             const apiRepo = el('fRepo') || 'Axos.QE.API_OLB';
             prompt = `Create or update a Newman pipeline workflow file in the repo ${apiRepo} at:
 .github/workflows/${name}.yml
@@ -7995,7 +8005,11 @@ JOB_TIMEOUT: ${el('fJobTimeout') || '120'}`;
                 prompt += `\n\nKeep the schedule block commented out.`;
             }
 
-            prompt += `\n\nUse the existing workflow file ${apiRepo === 'Axos.QE.API_CS' ? 'API_CS_UAT_Health_Checks_Sanity-Newman.yml' : 'API_OLB_UAT_Login_Smoke-Newman.yml'} as the exact format reference. Include:
+            prompt += `\n\nUse the existing workflow file ${apiRepo === 'Axos.QE.API_CS'
+                ? 'API_CS_UAT_Health_Checks_Sanity-Newman.yml'
+                : apiRepo === 'Axos.QE.API_UDB'
+                    ? 'API_UDB_UAT_Smoke-Newman.yml'
+                    : 'API_OLB_UAT_Login_Smoke-Newman.yml'} as the exact format reference. Include:
 - name: and run-name: fields matching the pipeline name
 - workflow_dispatch inputs for: COLLECTION_ID, ENVIRONMENT_ID, COLLECTION_SUBFOLDER, RUN_FULL_COLLECTION, HOSTS_UAT_ENV, MAX_RETRIES, JOB_TIMEOUT, RUNNER_STRATEGY, RUNNER_GROUP, RUNNER_LABEL, CUSTOM_RUNNER_LABEL (each with the correct default value from above)
 - permissions block (contents: read, checks: write, actions: read)
@@ -8308,6 +8322,26 @@ ${runnerStrategy === 'group'
                 jobTimeout: 120,
             };
         }
+        if (repo === 'Axos.QE.API_UDB') {
+            return {
+                repo,
+                platform: '03 API',
+                brand: 'UDB API',
+                env: 'UAT',
+                feature: '99',
+                testType: 'Smoke',
+                collectionId: '99_Smoke.postman_collection.json',
+                environmentId: 'uat-secure-udbloginapi-NewLogin.postman_environment.json',
+                collectionSubfolder: '',
+                hostsUatEnv: 'na',
+                maxRetries: '0',
+                runnerStrategy: 'group',
+                runnerGroup: DEFAULT_RUNNER_GROUP,
+                runnerLabel: 'QSDW-TFSBA06',
+                customRunnerLabel: '',
+                jobTimeout: 120,
+            };
+        }
         if (repo === 'Axos.QE.Mobile') {
             return {
                 repo,
@@ -8419,7 +8453,7 @@ ${runnerStrategy === 'group'
         const repos = loadSyncRepos().map(r => r.repo);
         const unique = [...new Set(repos.filter(Boolean))];
         const defaultRepo = 'Axos.QE.Web';
-        const baseList = unique.length ? unique : ['Axos.QE.TestIM', 'Axos.QE.Mobile', 'Axos.QE.Crypto.Web', defaultRepo, 'Axos.QE.API_OLB', 'Axos.QE.API_CS'];
+        const baseList = unique.length ? unique : ['Axos.QE.TestIM', 'Axos.QE.Mobile', 'Axos.QE.Crypto.Web', defaultRepo, 'Axos.QE.API_OLB', 'Axos.QE.API_CS', 'Axos.QE.API_UDB'];
         if (!baseList.includes(defaultRepo)) baseList.unshift(defaultRepo);
         const current = String(prefill?.repo || '').trim() || defaultRepo;
         sel.innerHTML = baseList.map(r => `<option value="${r}" ${current === r ? 'selected' : ''}>${r}</option>`).join('');
@@ -9142,7 +9176,11 @@ ${runnerStrategy === 'group'
                     : domainKey === 'cs'
                         ? 'CS API'
                         : domainRaw.toUpperCase();
-            const apiRepo = domainKey === 'cs' ? 'Axos.QE.API_CS' : 'Axos.QE.API_OLB';
+            const apiRepo = domainKey === 'cs'
+                ? 'Axos.QE.API_CS'
+                : domainKey === 'udb'
+                    ? 'Axos.QE.API_UDB'
+                    : 'Axos.QE.API_OLB';
             return {
                 filename,
                 name,
@@ -9546,7 +9584,7 @@ ${runnerStrategy === 'group'
         if (e.target.id === 'fFeature' && e.target.value === '__custom__') {
             const repo = String(document.getElementById('fRepo')?.value || '').trim();
             // API uses its own custom feature flow; don't double-prompt here.
-            if (repo === 'Axos.QE.API_OLB' || repo === 'Axos.QE.API_CS') { e.target.value = ''; updateNamePreview(); return; }
+            if (repo === 'Axos.QE.API_OLB' || repo === 'Axos.QE.API_CS' || repo === 'Axos.QE.API_UDB') { e.target.value = ''; updateNamePreview(); return; }
 
             const brand = String(document.getElementById('fBrand')?.value || '').trim();
             const isOs = isOutsystemsBrand(brand);
