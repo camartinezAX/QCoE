@@ -130,6 +130,37 @@
         }
         .sidebar-repo-filter select:focus{border-color: var(--axos-orange);}
 
+        /* ── Repo multi-select widget (drop-in replacement for repo <select>) ── */
+        .repo-ms{ position:relative; display:inline-block; vertical-align:middle; }
+        .repo-ms-btn{
+            display:flex; align-items:center; gap:8px; justify-content:space-between;
+            width:100%; padding:9px 12px; border-radius:10px;
+            border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.25);
+            color:var(--text-primary); font-size:12px; font-family:inherit; cursor:pointer;
+            outline:none; transition:border-color 0.2s; text-align:left;
+        }
+        .repo-ms-btn:hover{ border-color: rgba(255,255,255,0.22); }
+        .repo-ms.open .repo-ms-btn{ border-color: var(--axos-orange); }
+        [data-theme="light"] .repo-ms-btn{ background:#fff; border-color:rgba(30,56,96,0.20); color:var(--navy); }
+        .repo-ms-text{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .repo-ms-caret{ flex-shrink:0; opacity:0.7; font-size:10px; }
+        .repo-ms.repo-ms-disabled{ opacity:0.78; }
+        .repo-ms.repo-ms-disabled .repo-ms-btn{ cursor:not-allowed; }
+        .repo-ms-menu{
+            display:none; position:absolute; z-index:9999; top:calc(100% + 4px); left:0;
+            min-width:100%; max-width:320px; max-height:280px; overflow:auto;
+            background: var(--bg-secondary, #1b2436); color:var(--text-primary);
+            border:1px solid rgba(255,255,255,0.14); border-radius:10px;
+            box-shadow:0 12px 32px rgba(0,0,0,0.35); padding:5px;
+        }
+        [data-theme="light"] .repo-ms-menu{ background:#fff; color:var(--navy); border-color:rgba(30,56,96,0.18); }
+        .repo-ms.open .repo-ms-menu{ display:block; }
+        .repo-ms-opt{ display:flex; align-items:center; justify-content:flex-start; gap:8px; padding:7px 9px; border-radius:7px; cursor:pointer; font-size:12px; white-space:nowrap; width:100%; box-sizing:border-box; margin:0; text-align:left; }
+        .repo-ms-opt:hover{ background:rgba(125,125,125,0.14); }
+        .repo-ms-opt > input[type="checkbox"]{ accent-color:var(--axos-orange); cursor:pointer; margin:0; flex:0 0 16px; width:16px; height:16px; }
+        .repo-ms-opt > span{ flex:1 1 auto; min-width:0; text-align:left; overflow:hidden; text-overflow:ellipsis; }
+        .repo-ms-all{ border-bottom:1px solid rgba(125,125,125,0.20); margin-bottom:4px; padding-bottom:8px; font-weight:700; }
+
         .sidebar-actions { padding: 12px 16px; border-bottom: 1px solid var(--border-color); display: flex; gap: 8px; }
         .sidebar-actions .btn-sm {
             flex: 1; padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 600;
@@ -1219,9 +1250,14 @@
             </div>
             <div class="sidebar-repo-filter">
                 <div class="sidebar-repo-label">Repo</div>
-                <select id="globalRepoFilter" onchange="onGlobalRepoFilterChange()">
-                    <option value="all">All Repos</option>
-                </select>
+                <div class="repo-ms" id="globalRepoFilter__ms" style="width:100%;">
+                    <button type="button" class="repo-ms-btn" id="globalRepoFilter__btn" onclick="repoMsToggleOpen('globalRepoFilter', event)" aria-haspopup="listbox">
+                        <span class="repo-ms-text" id="globalRepoFilter__text">All Repos</span>
+                        <span class="repo-ms-caret">&#9662;</span>
+                    </button>
+                    <input type="hidden" id="globalRepoFilter" value="all">
+                    <div class="repo-ms-menu" id="globalRepoFilter__menu" role="listbox"></div>
+                </div>
             </div>
             <div class="sidebar-actions">
                 <button class="btn-sm active" onclick="setView('tree')" id="viewTreeBtn">Folders</button>
@@ -1269,13 +1305,18 @@
                     <option value="cancelled">Cancelled Only</option>
                     <option value="skipped">Skipped Only</option>
                 </select>
+                <div class="repo-ms" id="resultsRepoFilter__ms" style="width:100%; margin-top:8px;">
+                    <button type="button" class="repo-ms-btn" id="resultsRepoFilter__btn" onclick="repoMsToggleOpen('resultsRepoFilter', event)" aria-haspopup="listbox">
+                        <span class="repo-ms-text" id="resultsRepoFilter__text">All Repos</span>
+                        <span class="repo-ms-caret">&#9662;</span>
+                    </button>
+                    <input type="hidden" id="resultsRepoFilter" value="all">
+                    <div class="repo-ms-menu" id="resultsRepoFilter__menu" role="listbox"></div>
+                </div>
                 <select id="resultsScheduleFilter" onchange="onResultsScheduleFilterChange()" style="width:100%; padding:9px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); color:var(--text-primary); font-size:12px; margin-top:8px;">
                     <option value="all">All Pipelines</option>
                     <option value="scheduled">Scheduled only</option>
                     <option value="unscheduled">Not scheduled</option>
-                </select>
-                <select id="resultsRepoFilter" onchange="onResultsRepoFilterChange()" style="width:100%; padding:9px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); color:var(--text-primary); font-size:12px; margin-top:8px;">
-                    <option value="all">All Repos</option>
                 </select>
                 <div class="mini-toggle-row" onclick="toggleResultsExcludeCancelledToggle(event)" title="Excludes cancelled runs from metrics/charts only (table stays the same).">
                     <div class="mini-toggle-switch">
@@ -1494,9 +1535,14 @@
                         <div class="pipe-picker-tabs" id="emailPickerTabs"></div>
                         <div class="pipe-picker-toolbar">
                             <input type="text" id="emailPipeSearch" placeholder="Search pipelines..." oninput="filterEmailPipeList()">
-                            <select id="emailRepoFilter" onchange="onEmailRepoFilterChange()" title="Filter pipelines by repo">
-                                <option value="all">All Repos</option>
-                            </select>
+                            <div class="repo-ms" id="emailRepoFilter__ms" title="Filter pipelines by repo">
+                                <button type="button" class="repo-ms-btn" id="emailRepoFilter__btn" onclick="repoMsToggleOpen('emailRepoFilter', event)" aria-haspopup="listbox">
+                                    <span class="repo-ms-text" id="emailRepoFilter__text">All Repos</span>
+                                    <span class="repo-ms-caret">&#9662;</span>
+                                </button>
+                                <input type="hidden" id="emailRepoFilter" value="all">
+                                <div class="repo-ms-menu" id="emailRepoFilter__menu" role="listbox"></div>
+                            </div>
                             <select id="emailHealthFilter" onchange="onEmailHealthFilterChange()" title="Filter pipelines by health">
                                 <option value="all">All</option>
                                 <option value="failing">Has failures</option>
@@ -1778,9 +1824,14 @@
                         </div>
 
                         <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:10px;">
-                            <select id="featureSettingsRepo" onchange="renderFeatureCatalog()" style="flex:1; min-width:220px; padding:9px 10px; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-tertiary); color:var(--text-primary); font-size:12px;">
-                                <option value="all">All Repos</option>
-                            </select>
+                            <div class="repo-ms" id="featureSettingsRepo__ms" style="flex:1; min-width:220px;">
+                                <button type="button" class="repo-ms-btn" id="featureSettingsRepo__btn" onclick="repoMsToggleOpen('featureSettingsRepo', event)" aria-haspopup="listbox">
+                                    <span class="repo-ms-text" id="featureSettingsRepo__text">All Repos</span>
+                                    <span class="repo-ms-caret">&#9662;</span>
+                                </button>
+                                <input type="hidden" id="featureSettingsRepo" value="all">
+                                <div class="repo-ms-menu" id="featureSettingsRepo__menu" role="listbox"></div>
+                            </div>
                             <input type="password" id="featureAdminPw" placeholder="Admin password" style="flex:1; min-width:180px; padding:9px 10px; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-tertiary); color:var(--text-primary); font-size:12px;" autocomplete="off">
                             <button class="btn btn-secondary" id="featureAdminUnlockBtn" onclick="unlockFeatureAdmin()" style="padding:8px 10px; font-size:12px;">Unlock</button>
                             <button class="btn btn-secondary" onclick="renderFeatureCatalog()" style="padding:8px 10px; font-size:12px;">Refresh</button>
@@ -2223,13 +2274,13 @@
     }
 
     function populateFeatureSettingsRepoSelect() {
-        const sel = document.getElementById('featureSettingsRepo');
-        if (!sel) return;
-        const repos = getKnownRepoNames();
-        const prev = String(sel.value || '').trim() || 'all';
-        sel.innerHTML = `<option value="all">All Repos</option>` + repos.map(r => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join('');
-        const preferred = (String(globalRepoFilter || 'all').trim() !== 'all') ? String(globalRepoFilter).trim() : (repos[0] || 'all');
-        sel.value = (prev && (prev === 'all' || repos.includes(prev))) ? prev : preferred;
+        if (!document.getElementById('featureSettingsRepo')) return;
+        // On first build only, seed from the global selection (matches prior behavior).
+        const firstInit = !_repoMs['featureSettingsRepo'];
+        repoMsPopulate('featureSettingsRepo', getKnownRepoNames(), 'renderFeatureCatalog');
+        if (firstInit && repoFilterList(globalRepoFilter)) {
+            repoMsSetValue('featureSettingsRepo', globalRepoFilter, { silent: true });
+        }
     }
 
     // Feature admin unlock + catalog view
@@ -2323,7 +2374,7 @@
     }
 
     function getFeatureCatalogRepo() {
-        return String(document.getElementById('featureSettingsRepo')?.value || 'all').trim() || 'all';
+        return getRepoMsValue('featureSettingsRepo');
     }
 
     function getFeatureCatalogKind() {
@@ -2335,10 +2386,8 @@
     }
 
     function getRepoScopedPipelines(repo) {
-        const r = String(repo || 'all').trim() || 'all';
-        return (r === 'all')
-            ? (pipelines || [])
-            : (pipelines || []).filter(p => normRepoForPipeline(p) === r);
+        if (!repoFilterList(repo)) return (pipelines || []);
+        return (pipelines || []).filter(p => repoFilterMatches(repo, normRepoForPipeline(p)));
     }
 
     function listObservedFeatures(repo, kind) {
@@ -2501,7 +2550,7 @@
         let changed = 0;
         for (const p of (pipelines || [])) {
             if (!p || p.platform !== '02 Web') continue;
-            if (r !== 'all' && normRepoForPipeline(p) !== r) continue;
+            if (!repoFilterMatches(r, normRepoForPipeline(p))) continue;
             const brand = String(p.brand || '').trim();
             const isOs = isOutsystemsBrand(brand);
             if (k === 'outsystems' && !isOs) continue;
@@ -2599,7 +2648,7 @@
 
         for (const p of (pipelines || [])) {
             if (!p || p.platform !== '02 Web') continue;
-            if (r !== 'all' && normRepoForPipeline(p) !== r) continue;
+            if (!repoFilterMatches(r, normRepoForPipeline(p))) continue;
             const brand = String(p.brand || '').trim();
             const isOs = isOutsystemsBrand(brand);
             if (k === 'outsystems' && !isOs) continue;
@@ -3205,6 +3254,139 @@ ${os.map(n => `- ${n}`).join('\n')}
     const SELECTED_FOLDER_KEY = 'pm.pipelines.selectedFolder.v1';
     const NO_FOLDER_SELECTED = '__none__'; // means "no default selection" (not "All Pipelines")
     const UPDATES_FOLDER_KEY = '__updates__';
+    // ══════════════════════════════════════════
+    //  Repo multi-select widget + filter matcher
+    //  A repo filter value is either the string 'all' or a '|'-joined list of
+    //  repo names (e.g. "Axos.QE.Web|Axos.QE.API_CS"). Backing store is a hidden
+    //  <input> whose id matches the original <select> id, so existing `.value`
+    //  reads keep working; the visible UI is a checkbox dropdown.
+    // ══════════════════════════════════════════
+    const _repoMs = {}; // id -> { repos: string[], cb: string }
+
+    function repoFilterList(val) {
+        const v = String(val == null ? 'all' : val).trim();
+        if (!v || v === 'all') return null; // null === "all repos"
+        const list = v.split('|').map(s => s.trim()).filter(Boolean);
+        return list.length ? list : null;
+    }
+    function repoFilterMatches(val, repoName) {
+        const list = repoFilterList(val);
+        if (!list) return true;
+        return list.includes(String(repoName || '').trim());
+    }
+    function repoFilterLabel(val) {
+        const list = repoFilterList(val);
+        if (!list) return 'All Repos';
+        if (list.length === 1) return list[0];
+        return `${list.length} repos`;
+    }
+    function getRepoMsValue(id) {
+        const el = document.getElementById(id);
+        return el ? (String(el.value || 'all') || 'all') : 'all';
+    }
+    function repoMsMarkup(id, opts) {
+        const o = opts || {};
+        return `<div class="repo-ms" id="${id}__ms" style="${o.style || ''}">
+            <button type="button" class="repo-ms-btn" id="${id}__btn" style="${o.btnStyle || ''}" onclick="repoMsToggleOpen('${id}', event)" aria-haspopup="listbox">
+                <span class="repo-ms-text" id="${id}__text">All Repos</span>
+                <span class="repo-ms-caret">&#9662;</span>
+            </button>
+            <input type="hidden" id="${id}" value="all">
+            <div class="repo-ms-menu" id="${id}__menu" role="listbox"></div>
+        </div>`;
+    }
+    function repoMsPopulate(id, repos, cb) {
+        const hidden = document.getElementById(id);
+        if (!hidden) return;
+        const known = (Array.isArray(repos) ? repos : []).map(r => String(r || '').trim()).filter(Boolean);
+        _repoMs[id] = { repos: known, cb: cb || (_repoMs[id] && _repoMs[id].cb) || '' };
+        // Reconcile the current value against the known repo set.
+        const list = repoFilterList(hidden.value);
+        if (list) {
+            const kept = list.filter(r => known.includes(r));
+            hidden.value = kept.length ? kept.join('|') : 'all';
+        }
+        repoMsRenderMenu(id);
+        repoMsSyncLabel(id);
+    }
+    function repoMsRenderMenu(id) {
+        const menu = document.getElementById(id + '__menu');
+        if (!menu) return;
+        const st = _repoMs[id] || { repos: [] };
+        const list = repoFilterList(getRepoMsValue(id));
+        const allActive = !list;
+        let html = `<label class="repo-ms-opt repo-ms-all"><input type="checkbox" ${allActive ? 'checked' : ''} onchange="repoMsOnAll('${id}')"><span>All Repos</span></label>`;
+        html += st.repos.map(r => {
+            const checked = !allActive && list.includes(r);
+            const js = String(r).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            return `<label class="repo-ms-opt"><input type="checkbox" ${checked ? 'checked' : ''} onchange="repoMsOnToggle('${id}','${js}', this.checked)"><span>${escapeHtml(r)}</span></label>`;
+        }).join('');
+        menu.innerHTML = html;
+    }
+    function repoMsSyncLabel(id) {
+        const t = document.getElementById(id + '__text');
+        if (t) t.textContent = repoFilterLabel(getRepoMsValue(id));
+    }
+    function repoMsFire(id) {
+        const cb = (_repoMs[id] || {}).cb;
+        if (cb && typeof window[cb] === 'function') { try { window[cb](); } catch { /* ignore */ } }
+    }
+    function repoMsOnAll(id) {
+        const hidden = document.getElementById(id);
+        if (!hidden) return;
+        hidden.value = 'all';
+        repoMsRenderMenu(id);
+        repoMsSyncLabel(id);
+        repoMsFire(id);
+    }
+    function repoMsOnToggle(id, repo, checked) {
+        const hidden = document.getElementById(id);
+        if (!hidden) return;
+        const st = _repoMs[id] || { repos: [] };
+        const set = new Set(repoFilterList(hidden.value) || []); // 'all' starts a fresh selection
+        if (checked) set.add(repo); else set.delete(repo);
+        const next = st.repos.filter(r => set.has(r)); // preserve stable order
+        hidden.value = next.length ? next.join('|') : 'all';
+        repoMsRenderMenu(id);
+        repoMsSyncLabel(id);
+        repoMsFire(id);
+    }
+    function repoMsSetValue(id, val, opts) {
+        const hidden = document.getElementById(id);
+        if (!hidden) return;
+        const o = opts || {};
+        const known = (_repoMs[id] || {}).repos || [];
+        const list = repoFilterList(val);
+        let v = 'all';
+        if (list) {
+            const kept = known.length ? list.filter(r => known.includes(r)) : list;
+            v = kept.length ? kept.join('|') : 'all';
+        }
+        hidden.value = v;
+        repoMsRenderMenu(id);
+        repoMsSyncLabel(id);
+        if (!o.silent) repoMsFire(id);
+    }
+    function repoMsSetDisabled(id, disabled, title) {
+        const wrap = document.getElementById(id + '__ms');
+        const btn = document.getElementById(id + '__btn');
+        if (wrap) wrap.classList.toggle('repo-ms-disabled', !!disabled);
+        if (btn) { btn.disabled = !!disabled; btn.title = title || ''; }
+        if (disabled && wrap) wrap.classList.remove('open');
+    }
+    function repoMsToggleOpen(id, ev) {
+        if (ev) ev.stopPropagation();
+        const wrap = document.getElementById(id + '__ms');
+        if (!wrap || wrap.classList.contains('repo-ms-disabled')) return;
+        const willOpen = !wrap.classList.contains('open');
+        document.querySelectorAll('.repo-ms.open').forEach(w => { if (w !== wrap) w.classList.remove('open'); });
+        wrap.classList.toggle('open', willOpen);
+    }
+    document.addEventListener('click', (e) => {
+        if (e.target && e.target.closest && e.target.closest('.repo-ms')) return;
+        document.querySelectorAll('.repo-ms.open').forEach(w => w.classList.remove('open'));
+    });
+
     const GLOBAL_REPO_FILTER_KEY = 'pm.globalRepoFilter.v1';
 
     function loadGlobalRepoFilterPref() {
@@ -3220,10 +3402,9 @@ ${os.map(n => `- ${n}`).join('\n')}
     let globalRepoFilter = loadGlobalRepoFilterPref();
 
     function getRepoFilteredPipelines(list) {
-        const repo = String(globalRepoFilter || 'all').trim() || 'all';
         const arr = Array.isArray(list) ? list : [];
-        if (repo === 'all') return arr;
-        return arr.filter(p => normRepoForPipeline(p) === repo);
+        if (!repoFilterList(globalRepoFilter)) return arr;
+        return arr.filter(p => repoFilterMatches(globalRepoFilter, normRepoForPipeline(p)));
     }
 
     function getKnownRepoNames() {
@@ -3233,34 +3414,29 @@ ${os.map(n => `- ${n}`).join('\n')}
     }
 
     function populateGlobalRepoFilter() {
-        const sel = document.getElementById('globalRepoFilter');
-        if (!sel) return;
-        const repos = getKnownRepoNames();
-        const prev = String(globalRepoFilter || 'all').trim() || 'all';
-        sel.innerHTML = `<option value="all">All Repos</option>` + repos.map(r => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join('');
-        sel.value = (prev === 'all' || repos.includes(prev)) ? prev : 'all';
+        if (!document.getElementById('globalRepoFilter')) return;
+        repoMsPopulate('globalRepoFilter', getKnownRepoNames(), 'onGlobalRepoFilterChange');
+        repoMsSetValue('globalRepoFilter', globalRepoFilter, { silent: true });
+    }
+
+    // Normalize a requested filter value ('all' or '|'-joined) against known repos.
+    function normalizeRepoFilterValue(next) {
+        const known = getKnownRepoNames();
+        const list = repoFilterList(next);
+        if (!list) return 'all';
+        const kept = list.filter(r => known.includes(r));
+        return kept.length ? kept.join('|') : 'all';
     }
 
     function setGlobalRepoFilter(next, opts) {
         const o = opts && typeof opts === 'object' ? opts : {};
-        const requested = String(next || 'all').trim() || 'all';
-        const known = getKnownRepoNames();
-        const v = (requested !== 'all' && !known.includes(requested)) ? 'all' : requested;
-        globalRepoFilter = v;
+        globalRepoFilter = normalizeRepoFilterValue(next);
         if (o.persist !== false) persistGlobalRepoFilterPref(globalRepoFilter);
 
-        // Sync UI controls across tabs (even if hidden).
+        // Sync UI controls across tabs (even if hidden) — silent so we don't recurse.
         try { populateGlobalRepoFilter(); } catch { /* ignore */ }
-        const gSel = document.getElementById('globalRepoFilter');
-        if (gSel && gSel.value !== globalRepoFilter) gSel.value = globalRepoFilter;
-        const rSel = document.getElementById('resultsRepoFilter');
-        if (rSel && rSel.value !== globalRepoFilter && (globalRepoFilter === 'all' || Array.from(rSel.options || []).some(o => o.value === globalRepoFilter))) {
-            rSel.value = globalRepoFilter;
-        }
-        const eSel = document.getElementById('emailRepoFilter');
-        if (eSel && eSel.value !== globalRepoFilter && (globalRepoFilter === 'all' || Array.from(eSel.options || []).some(o => o.value === globalRepoFilter))) {
-            eSel.value = globalRepoFilter;
-        }
+        try { repoMsSetValue('resultsRepoFilter', globalRepoFilter, { silent: true }); } catch { /* ignore */ }
+        try { repoMsSetValue('emailRepoFilter', globalRepoFilter, { silent: true }); } catch { /* ignore */ }
 
         // Refresh views.
         if (currentView === 'list') showAllPipelines();
@@ -3269,16 +3445,14 @@ ${os.map(n => `- ${n}`).join('\n')}
             if (o.skipResults !== true) {
                 try { populateResultsRepoFilter(); } catch { /* ignore */ }
                 try {
-                    const rSel2 = document.getElementById('resultsRepoFilter');
-                    if (rSel2) rSel2.value = globalRepoFilter === 'all' ? 'all' : globalRepoFilter;
+                    repoMsSetValue('resultsRepoFilter', globalRepoFilter, { silent: true });
                     onResultsRepoFilterChange();
                 } catch { /* ignore */ }
             }
             if (o.skipEmail !== true) {
                 try {
                     populateEmailRepoFilter();
-                    const eSel2 = document.getElementById('emailRepoFilter');
-                    if (eSel2) eSel2.value = globalRepoFilter === 'all' ? 'all' : globalRepoFilter;
+                    repoMsSetValue('emailRepoFilter', globalRepoFilter, { silent: true });
                     populateEmailPipePicker();
                 } catch { /* ignore */ }
             }
@@ -3292,8 +3466,7 @@ ${os.map(n => `- ${n}`).join('\n')}
     }
 
     function onGlobalRepoFilterChange() {
-        const v = document.getElementById('globalRepoFilter')?.value || 'all';
-        setGlobalRepoFilter(v, { persist: true });
+        setGlobalRepoFilter(getRepoMsValue('globalRepoFilter'), { persist: true });
     }
 
     function dashboardsContinueFromRepoPicker() {
@@ -3898,10 +4071,9 @@ ${os.map(n => `- ${n}`).join('\n')}
         let html = '';
         const visiblePipelines = getRepoFilteredPipelines(pipelines);
         const visibleChanges = (() => {
-            const repo = String(globalRepoFilter || 'all').trim() || 'all';
             const ch = getChanges();
-            if (repo === 'all') return ch;
-            return ch.filter(c => normRepoForPipeline(c?.pipeline) === repo);
+            if (!repoFilterList(globalRepoFilter)) return ch;
+            return ch.filter(c => repoFilterMatches(globalRepoFilter, normRepoForPipeline(c?.pipeline)));
         })();
         const featureChangesCount = (() => {
             try { return loadFeatureChangeLog().filter(e => String(e?.action || '').toLowerCase() === 'delete').length; } catch { return 0; }
@@ -4217,9 +4389,8 @@ ${os.map(n => `- ${n}`).join('\n')}
         }
 
         if (folderKey === UPDATES_FOLDER_KEY) {
-            const repo = String(globalRepoFilter || 'all').trim() || 'all';
             let changes = getChanges();
-            if (repo !== 'all') changes = changes.filter(c => normRepoForPipeline(c?.pipeline) === repo);
+            if (repoFilterList(globalRepoFilter)) changes = changes.filter(c => repoFilterMatches(globalRepoFilter, normRepoForPipeline(c?.pipeline)));
 
             const featureLog = loadFeatureChangeLog();
             const featureDeletes = featureLog.filter(e => String(e?.action || '').toLowerCase() === 'delete');
@@ -4235,7 +4406,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                 return String(a.pipeline?.name || '').localeCompare(String(b.pipeline?.name || ''));
             });
 
-            const scopeLabel = repo === 'all' ? 'All Repos' : repo;
+            const scopeLabel = repoFilterLabel(globalRepoFilter);
             let html = `<div class="main-header">
                 <h1>Updates</h1>
                 <p>${scopeLabel} • ${changes.length} pipeline change${changes.length !== 1 ? 's' : ''} (${counts.modified} modified, ${counts.added} added, ${counts.removed} removed)${featureDeletes.length ? ` • ${featureDeletes.length} feature deletion${featureDeletes.length !== 1 ? 's' : ''}` : ''}</p>
@@ -4437,10 +4608,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                 <option value="all">All Envs</option>
                 ${ENVIRONMENTS.map(e => `<option value="${e}">${e}</option>`).join('')}
             </select>
-            <select id="pipelineFilterRepo" onchange="applyPipelineSearch()" style="width:170px;">
-                <option value="all">All Repos</option>
-                ${repoList.map(r => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join('')}
-            </select>
+            ${repoMsMarkup('pipelineFilterRepo', { style: 'width:170px;' })}
             <select id="pipelineFilterSchedule" onchange="applyPipelineSearch()" style="width:160px;">
                 <option value="all">All Schedules</option>
                 <option value="scheduled">Scheduled only</option>
@@ -4466,6 +4634,7 @@ ${os.map(n => `- ${n}`).join('\n')}
         </div>`;
         html += `<div id="pipelineListArea"></div>`;
         document.getElementById('mainContent').innerHTML = html;
+        repoMsPopulate('pipelineFilterRepo', repoList, 'applyPipelineSearch');
         initPipelineAdvancedFiltersUi();
         applyPipelineSearch();
     }
@@ -4475,25 +4644,20 @@ ${os.map(n => `- ${n}`).join('\n')}
         const typeFilter = document.getElementById('pipelineFilterType')?.value || 'all';
         const envFilter = document.getElementById('pipelineFilterEnv')?.value || 'all';
         const repoSel = document.getElementById('pipelineFilterRepo');
-        let repoFilter = repoSel?.value || 'all';
+        let repoFilter = getRepoMsValue('pipelineFilterRepo');
         const schedFilter = document.getElementById('pipelineFilterSchedule')?.value || 'all';
 
         let filtered = getRepoFilteredPipelines(pipelines).slice();
-        // If a global repo is selected, lock the per-view repo filter to match.
+        // If a global repo selection is active, lock the per-view repo filter to match.
         if (repoSel) {
-            const g = String(globalRepoFilter || 'all').trim() || 'all';
-            const shouldLock = g !== 'all';
+            const shouldLock = !!repoFilterList(globalRepoFilter);
             if (shouldLock) {
-                repoSel.value = g;
-                repoSel.disabled = true;
-                repoSel.style.opacity = '0.78';
-                repoSel.title = 'Repo is controlled by the global selector in the left sidebar.';
-                repoFilter = g;
+                repoMsSetValue('pipelineFilterRepo', globalRepoFilter, { silent: true });
+                repoMsSetDisabled('pipelineFilterRepo', true, 'Repo is controlled by the global selector in the left sidebar.');
+                repoFilter = globalRepoFilter;
             } else {
-                repoSel.disabled = false;
-                repoSel.style.opacity = '';
-                repoSel.title = '';
-                repoFilter = repoSel.value || 'all';
+                repoMsSetDisabled('pipelineFilterRepo', false, '');
+                repoFilter = getRepoMsValue('pipelineFilterRepo');
             }
         }
         if (search) filtered = filtered.filter(p =>
@@ -4505,7 +4669,7 @@ ${os.map(n => `- ${n}`).join('\n')}
         );
         if (typeFilter !== 'all') filtered = filtered.filter(p => p.testType === typeFilter);
         if (envFilter !== 'all') filtered = filtered.filter(p => p.env === envFilter);
-        if (repoFilter !== 'all') filtered = filtered.filter(p => normRepoForPipeline(p) === repoFilter);
+        if (repoFilterList(repoFilter)) filtered = filtered.filter(p => repoFilterMatches(repoFilter, normRepoForPipeline(p)));
         if (schedFilter !== 'all') filtered = filtered.filter(p => (schedFilter === 'scheduled') ? !!p.scheduleEnabled : !p.scheduleEnabled);
 
         // Advanced filters (optional, combinable with the quick filters above).
@@ -9878,14 +10042,13 @@ ${runnerStrategy === 'group'
     function getResultsPipelineConfigs() {
         const out = [];
         const seen = new Set();
-        const gRepo = String(globalRepoFilter || 'all').trim() || 'all';
         for (const p of (pipelines || [])) {
             if (!p || !p.filename || !p.name) continue;
             const filename = String(p.filename);
             if (!filename.endsWith('.yml')) continue;
             if (filename.startsWith('_')) continue;
             const repo = getPipelineRepo(p);
-            if (gRepo !== 'all' && repo !== gRepo) continue;
+            if (!repoFilterMatches(globalRepoFilter, repo)) continue;
             const key = `${repo}::${filename}`;
             if (seen.has(key)) continue;
             seen.add(key);
@@ -10346,7 +10509,7 @@ ${runnerStrategy === 'group'
         const schedFilter = getResultsScheduleFilterValue();
         return (resultsPipelines || []).slice().filter(p => {
             if (!p || !p.name) return false;
-            if (repoFilter !== 'all' && String(p.repo || '').trim() !== repoFilter) return false;
+            if (!repoFilterMatches(repoFilter, String(p.repo || '').trim())) return false;
             if (schedFilter !== 'all') {
                 const isSched = !!p.scheduleEnabled;
                 if (schedFilter === 'scheduled' && !isSched) return false;
@@ -10374,12 +10537,9 @@ ${runnerStrategy === 'group'
     }
 
     function populateResultsRepoFilter() {
-        const sel = document.getElementById('resultsRepoFilter');
-        if (!sel) return;
-        const prev = sel.value || 'all';
+        if (!document.getElementById('resultsRepoFilter')) return;
         const repos = [...new Set((resultsPipelines || []).map(p => String(p?.repo || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-        sel.innerHTML = `<option value="all">All Repos</option>` + repos.map(r => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join('');
-        sel.value = repos.includes(prev) ? prev : 'all';
+        repoMsPopulate('resultsRepoFilter', repos, 'onResultsRepoFilterChange');
     }
 
     function onResultsRepoFilterChange() {
@@ -10446,29 +10606,34 @@ ${runnerStrategy === 'group'
             : new Set(runs.map(r => resultsPipelineKey(r.repo, r.workflowName))).size;
         const prClass = parseFloat(passRate) >= 90 ? 'v-green' : parseFloat(passRate) >= 70 ? 'v-orange' : 'v-red';
 
-        // Scheduler insights (only when scheduled pipelines are in scope)
-        const scheduledInScope = (() => {
-            const keys = new Set();
+        // Scheduler insights — which pipeline ran the most via its scheduler.
+        // Source of truth is the run's own trigger (event === 'schedule'), NOT a
+        // separately-recomputed scheduleEnabled scope set. A schedule-triggered run
+        // can only come from a scheduled pipeline, so the run's event already proves
+        // it. The old code re-gated each run through a config/selection-derived scope
+        // set; when that set didn't line up (stale parsed flag, partial selection),
+        // every real scheduler run got dropped and the card showed 0 even though the
+        // sidebar clock badges (which read the run event directly) showed runs. This
+        // now mirrors the sidebar badge logic exactly, scoped to the runs in view.
+        const schedExecRuns = runs.filter(r => r && r.event === 'schedule' && !r.gateSkipped);
+
+        // Still surface the card when scheduled pipelines are in scope (so an empty
+        // window reads "0 scheduler run(s) in view" rather than hiding the card).
+        const hasScheduledPipelinesInScope = (() => {
             if (resultsSelectedPipelines.size) {
                 for (const k of resultsSelectedPipelines) {
-                    if (resultsPipelineIndex.get(k)?.scheduleEnabled) keys.add(k);
+                    if (resultsPipelineIndex.get(k)?.scheduleEnabled) return true;
                 }
-            } else {
-                for (const p of (getResultsVisiblePipelines() || [])) {
-                    const k = resultsPipelineKey(p.repo, p.name);
-                    if (p?.scheduleEnabled) keys.add(k);
-                }
+                return false;
             }
-            return keys;
+            return (getResultsVisiblePipelines() || []).some(p => p?.scheduleEnabled);
         })();
 
         let schedMetricHtml = '';
-        if (scheduledInScope.size) {
-            const schedExecRuns = runs.filter(r => r && r.event === 'schedule' && !r.gateSkipped);
+        if (schedExecRuns.length || hasScheduledPipelinesInScope) {
             const byPipe = new Map();
             for (const r of schedExecRuns) {
                 const k = resultsPipelineKey(r.repo, r.workflowName);
-                if (!scheduledInScope.has(k)) continue;
                 byPipe.set(k, (byPipe.get(k) || 0) + 1);
             }
             let topKey = '';
@@ -10818,8 +10983,7 @@ ${runnerStrategy === 'group'
         const repo = String(parsed.repo || '').trim();
         if (repo) {
             try { setGlobalRepoFilter(repo, { persist: true, skipResults: true, skipEmail: true }); } catch { /* ignore */ }
-            const repoSel = document.getElementById('resultsRepoFilter');
-            if (repoSel) repoSel.value = repo;
+            try { repoMsSetValue('resultsRepoFilter', repo, { silent: true }); } catch { /* ignore */ }
         }
 
         resultsSelectedPipelines.clear();
@@ -11057,7 +11221,7 @@ ${runnerStrategy === 'group'
     function getFilteredRuns() {
         let runs = [...allRuns];
         const repoFilter = getResultsRepoFilterValue();
-        if (repoFilter !== 'all') runs = runs.filter(r => String(r.repo || '').trim() === repoFilter);
+        if (repoFilterList(repoFilter)) runs = runs.filter(r => repoFilterMatches(repoFilter, String(r.repo || '').trim()));
         const schedFilter = getResultsScheduleFilterValue();
         if (schedFilter !== 'all') {
             runs = runs.filter(r => {
@@ -11082,7 +11246,7 @@ ${runnerStrategy === 'group'
         renderCharts();
         renderTopPipelinesByRuns();
         const repoFilter = getResultsRepoFilterValue();
-        let title = repoFilter !== 'all' ? `${repoFilter} — All Pipeline Runs` : 'All Pipeline Runs';
+        let title = repoFilterList(repoFilter) ? `${repoFilterLabel(repoFilter)} — All Pipeline Runs` : 'All Pipeline Runs';
         if (resultsSelectedPipelines.size === 1) {
             const only = [...resultsSelectedPipelines][0];
             const parsed = parseResultsPipelineKey(only);
@@ -11851,8 +12015,9 @@ ${runnerStrategy === 'group'
     }
 
     function getDashboardsRepo() {
-        const r = String(globalRepoFilter || 'all').trim() || 'all';
-        return r === 'all' ? '' : r;
+        // Dashboards are single-repo; if the global filter holds multiple repos, use the first.
+        const list = repoFilterList(globalRepoFilter);
+        return list && list.length ? list[0] : '';
     }
 
     function ensureDashModal() {
@@ -12191,8 +12356,7 @@ ${runnerStrategy === 'group'
         resultsSelectedPipelines.clear();
         resultsSelectedPipelines.add(key);
 
-        const repoSel = document.getElementById('resultsRepoFilter');
-        if (repoSel) repoSel.value = r || 'all';
+        try { repoMsSetValue('resultsRepoFilter', r || 'all', { silent: true }); } catch { /* ignore */ }
         try { renderResultsTree(); } catch { /* ignore */ }
         try { filterResults(); } catch { /* ignore */ }
 
@@ -12481,7 +12645,12 @@ ${runnerStrategy === 'group'
     }
 
     function getEmailRepoFilter() {
-        return document.getElementById('emailRepoFilter')?.value || 'all';
+        return getRepoMsValue('emailRepoFilter');
+    }
+    // Dashboards are single-repo; when the email repo filter has 1+ repos, use the first.
+    function emailDashRepo() {
+        const list = repoFilterList(getEmailRepoFilter());
+        return list && list.length ? list[0] : '';
     }
     function getEmailHealthFilter() {
         return document.getElementById('emailHealthFilter')?.value || 'all';
@@ -12493,8 +12662,8 @@ ${runnerStrategy === 'group'
         const hint = document.getElementById('emailDashHint');
         if (!dashSel || !groupSel || !hint) return;
 
-        const repo = getEmailRepoFilter();
-        if (repo === 'all') {
+        const repo = emailDashRepo();
+        if (!repo) {
             dashSel.innerHTML = `<option value="">Select a repo to use dashboards</option>`;
             groupSel.innerHTML = `<option value="__all__">All groups</option>`;
             dashSel.disabled = true;
@@ -12522,12 +12691,12 @@ ${runnerStrategy === 'group'
     }
 
     function onEmailDashSelectChange() {
-        const repo = getEmailRepoFilter();
+        const repo = emailDashRepo();
         const dashSel = document.getElementById('emailDashSelect');
         const groupSel = document.getElementById('emailDashGroupSelect');
         const hint = document.getElementById('emailDashHint');
         if (!dashSel || !groupSel || !hint) return;
-        if (repo === 'all') { populateEmailDashQuickPick(); return; }
+        if (!repo) { populateEmailDashQuickPick(); return; }
 
         const dashId = String(dashSel.value || '').trim();
         const d = (dashboardsForRepo(repo) || []).find(x => String(x?.id || '') === dashId);
@@ -12541,8 +12710,8 @@ ${runnerStrategy === 'group'
     }
 
     function emailReplaceSelectionFromDashboard() {
-        const repo = getEmailRepoFilter();
-        if (repo === 'all') { showToast('Pick a repo first to use dashboards.', true); return; }
+        const repo = emailDashRepo();
+        if (!repo) { showToast('Pick a repo first to use dashboards.', true); return; }
 
         const dashId = String(document.getElementById('emailDashSelect')?.value || '').trim();
         const groupId = String(document.getElementById('emailDashGroupSelect')?.value || '__all__').trim() || '__all__';
@@ -12597,7 +12766,7 @@ ${runnerStrategy === 'group'
 
         let keys = [...new Set((allRuns || []).map(r => emailPipelineKey(r.repo, r.workflowName)))].sort();
 
-        if (repoFilter !== 'all') keys = keys.filter(k => parseEmailPipelineKey(k).repo === repoFilter);
+        if (repoFilterList(repoFilter)) keys = keys.filter(k => repoFilterMatches(repoFilter, parseEmailPipelineKey(k).repo));
 
         if (emailPickerTab !== 'all') {
             keys = keys.filter(k => {
@@ -12633,7 +12802,7 @@ ${runnerStrategy === 'group'
     function getEmailRepoTabScopeKeys() {
         const repoFilter = getEmailRepoFilter();
         let keys = [...new Set((allRuns || []).map(r => emailPipelineKey(r.repo, r.workflowName)))].sort();
-        if (repoFilter !== 'all') keys = keys.filter(k => parseEmailPipelineKey(k).repo === repoFilter);
+        if (repoFilterList(repoFilter)) keys = keys.filter(k => repoFilterMatches(repoFilter, parseEmailPipelineKey(k).repo));
         if (emailPickerTab !== 'all') {
             keys = keys.filter(k => {
                 const n = parseEmailPipelineKey(k).workflowName;
@@ -12665,12 +12834,9 @@ ${runnerStrategy === 'group'
     }
 
     function populateEmailRepoFilter() {
-        const sel = document.getElementById('emailRepoFilter');
-        if (!sel) return;
-        const prev = sel.value || 'all';
+        if (!document.getElementById('emailRepoFilter')) return;
         const repos = [...new Set((allRuns || []).map(r => String(r?.repo || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-        sel.innerHTML = `<option value="all">All Repos</option>` + repos.map(r => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join('');
-        sel.value = repos.includes(prev) ? prev : 'all';
+        repoMsPopulate('emailRepoFilter', repos, 'onEmailRepoFilterChange');
     }
 
     function populateEmailPipePicker() {
