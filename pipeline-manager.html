@@ -3145,6 +3145,15 @@ ${os.map(n => `- ${n}`).join('\n')}
         return String(brand || '').trim().toLowerCase() === 'outsystems';
     }
 
+    // Extract the orchestrator team/set name from a featureDetail like
+    // "Orchestrators_E2E_UAT_OLB_Accounts". The team name may contain underscores, so capture
+    // the full remainder after "Orchestrators_"/"Orchestrators-" (the Test Type has already been
+    // stripped from featureDetail during parsing). Returns '' when there is no set name.
+    function orchestratorSetFromFeatureDetail(featureDetail) {
+        const m = String(featureDetail || '').match(/Orchestrators[_-](.+)$/);
+        return m && m[1] ? m[1].trim() : '';
+    }
+
     function orchestratorTargetsToRefs(targets) {
         const arr = Array.isArray(targets) ? targets : [];
         return arr.map(t => {
@@ -3167,38 +3176,56 @@ ${os.map(n => `- ${n}`).join('\n')}
         for (const line of lines) {
             // Formats supported:
             // - owner/repo:workflow.yml@ref
-            // - repo:workflow.yml@ref              (assumes owner=axos-financial)
-            // - workflow.yml@ref                   (assumes owner=axos-financial, repo=Axos.QE.TestIM)
-            const [left, refPart] = line.split('@');
+            // - repo:workflow.yml@ref                                 (assumes owner=axos-financial)
+            // - workflow.yml@ref                                      (assumes owner=axos-financial, repo=Axos.QE.TestIM)
+            // - owner/repo/actions/workflows/workflow.yml@ref         (GitHub Actions path)
+            // - https://github.com/owner/repo/actions/workflows/workflow.yml  (full URL)
+            const [rawLeft, refPart] = line.split('@');
             const ref = (refPart || '').trim() || 'main';
-
-            const lr = left.split(':');
-            const repoPart = (lr[0] || '').trim();
-            const workflow = (lr[1] || '').trim() || (lr.length === 1 ? repoPart : '');
+            const left = String(rawLeft || '').trim().replace(/^https?:\/\/github\.com\//i, '');
+            if (!left) continue;
 
             let owner = 'axos-financial';
             let repo = 'Axos.QE.TestIM';
+            let repoPath = '';   // the owner/repo portion, if present
+            let workflow = '';
 
-            if (lr.length === 1) {
-                // workflow.yml
-                repo = 'Axos.QE.TestIM';
+            if (left.includes(':')) {
+                // owner/repo:workflow  (the workflow side may itself be a full path)
+                const idx = left.indexOf(':');
+                repoPath = left.slice(0, idx).trim();
+                workflow = left.slice(idx + 1).trim();
+            } else if (/\/actions\/workflows\//i.test(left)) {
+                // owner/repo/actions/workflows/workflow.yml
+                const m = left.match(/^(.*?)\/actions\/workflows\/(.+)$/i);
+                repoPath = (m && m[1] || '').trim();
+                workflow = (m && m[2] || '').trim();
+            } else if (left.includes('/')) {
+                // owner/repo/workflow.yml  -> last segment is the workflow, the rest is owner/repo
+                const parts = left.split('/');
+                workflow = (parts.pop() || '').trim();
+                repoPath = parts.join('/').trim();
             } else {
-                // repo part could be owner/repo OR just repo
-                if (repoPart.includes('/')) {
-                    const [o, r] = repoPart.split('/');
-                    if (o) owner = o.trim();
-                    if (r) repo = r.trim();
-                } else if (repoPart) {
-                    repo = repoPart;
-                }
+                // workflow.yml
+                workflow = left;
             }
 
-            if (!workflow.endsWith('.yml')) continue;
+            // The workflow value is always reduced to its bare file name.
+            workflow = workflow.replace(/.*\//, '').trim();
+
+            // Resolve owner/repo from the repo portion when present.
+            if (repoPath) {
+                const rp = repoPath.split('/').filter(Boolean);
+                if (rp.length >= 2) { owner = rp[0].trim(); repo = rp[1].trim(); }
+                else if (rp.length === 1) { repo = rp[0].trim(); }
+            }
+
+            if (!/\.ya?ml$/i.test(workflow)) continue;
             targets.push({
                 enabled: true,
                 name: '',
-                owner,
-                repo,
+                owner: owner || 'axos-financial',
+                repo: repo || 'Axos.QE.TestIM',
                 workflow,
                 ref,
                 inputs: {}
@@ -3517,6 +3544,8 @@ ${os.map(n => `- ${n}`).join('\n')}
     let savedSnapshot = [];
     let pendingSaveChanges = [];
     let currentView = 'tree';
+    // Remembers the All Pipelines list filters so they survive opening a pipeline and going Back.
+    let pipelineListState = { search: '', type: 'all', env: 'all', sched: 'all', repo: 'all' };
     let selectedFolder = loadSelectedFolderPref();
     let editingPipeline = null;
     let viewOnlyMode = false;
@@ -4251,6 +4280,7 @@ ${os.map(n => `- ${n}`).join('\n')}
 
     function pipelineTreeNode(p, indent) {
         const typeClass =
+            isOrchestratorPipeline(p) ? 'type-orchestrator' :
             p.testType === 'Regression' ? 'type-regression' :
             p.testType === 'Sanity' ? 'type-sanity' :
             p.testType === 'Smoke' ? 'type-smoke' :
@@ -4297,6 +4327,13 @@ ${os.map(n => `- ${n}`).join('\n')}
         persistSelectedFolderPref(selectedFolder);
         buildTree();
         showFolderPipelines(selectedFolder);
+    }
+
+    // Return to whichever list the user came from (the search-enabled "All Pipelines"
+    // list view, or the folder view), preserving search/filters when in list view.
+    function returnToPipelineList() {
+        if (currentView === 'list') showAllPipelines();
+        else showFolderPipelines(selectedFolder);
     }
 
     // ══════════════════════════════════════════
@@ -4638,6 +4675,14 @@ ${os.map(n => `- ${n}`).join('\n')}
         document.getElementById('mainContent').innerHTML = html;
         repoMsPopulate('pipelineFilterRepo', repoList, 'applyPipelineSearch');
         initPipelineAdvancedFiltersUi();
+        // Restore the last-used list filters so navigating into a pipeline and back keeps the search.
+        const st = pipelineListState || {};
+        const setVal = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
+        setVal('pipelineSearch', st.search || '');
+        setVal('pipelineFilterType', st.type || 'all');
+        setVal('pipelineFilterEnv', st.env || 'all');
+        setVal('pipelineFilterSchedule', st.sched || 'all');
+        if (st.repo && st.repo !== 'all') { try { repoMsSetValue('pipelineFilterRepo', st.repo, { silent: true }); } catch { /* ignore */ } }
         applyPipelineSearch();
     }
 
@@ -4662,6 +4707,15 @@ ${os.map(n => `- ${n}`).join('\n')}
                 repoFilter = getRepoMsValue('pipelineFilterRepo');
             }
         }
+        // Remember filters so they survive navigating into a pipeline and back.
+        pipelineListState = {
+            search: document.getElementById('pipelineSearch')?.value || '',
+            type: typeFilter,
+            env: envFilter,
+            sched: schedFilter,
+            repo: repoFilter || 'all',
+        };
+
         if (search) filtered = filtered.filter(p =>
             p.name.toLowerCase().includes(search) ||
             (p.testSuite || '').toLowerCase().includes(search) ||
@@ -4962,12 +5016,17 @@ ${os.map(n => `- ${n}`).join('\n')}
     }
 
     function pipelineCard(p) {
+        // Orchestrators always show the Orchestrator badge (even when their Test Type is a real
+        // type like Regression), since orchestrator mode is driven by the Feature.
+        const isOrch = isOrchestratorPipeline(p);
         const badgeClass =
+            isOrch ? 'badge-orchestrator' :
             p.testType === 'Regression' ? 'badge-regression' :
             p.testType === 'Sanity' ? 'badge-sanity' :
             p.testType === 'Smoke' ? 'badge-smoke' :
             p.testType === 'Orchestrator' ? 'badge-orchestrator' :
             'badge-health';
+        const badgeLabel = isOrch ? 'Orchestrator' : (p.testType || '');
         let suiteOrFeature = isOrchestratorPipeline(p)
             ? (p.orchestratorSet || p.featureDetail || p.feature || '')
             : (p.testSuite || p.feature || '');
@@ -4983,7 +5042,7 @@ ${os.map(n => `- ${n}`).join('\n')}
             <div class="pipeline-card-header">
                 <div class="pipeline-card-name">
                     <div class="pipeline-card-check" onclick="togglePipelineCheck('${pKey}', event)" title="Select"></div>
-                    <span class="test-badge ${badgeClass}">${p.testType}</span>
+                    <span class="test-badge ${badgeClass}">${escapeHtml(badgeLabel)}</span>
                     <span class="pipeline-card-title">${escapeHtml(p.name)}</span>
                 </div>
                 <div class="pipeline-card-actions">
@@ -5066,7 +5125,7 @@ ${os.map(n => `- ${n}`).join('\n')}
         const runnerGroup = getRunnerGroup(p);
 
         if (!isMobile && isOrchestratorPipeline(p)) {
-            const setName = (p.orchestratorSet || '').trim() || (p.featureDetail || '').split('Orchestrators_')[1]?.split('_')[0] || 'WFO';
+            const setName = (p.orchestratorSet || '').trim() || orchestratorSetFromFeatureDetail(p.featureDetail) || 'WFO';
             const targets = Array.isArray(p.orchestratorTargets) ? p.orchestratorTargets : [];
             const eventType = `orchestrator-${String(setName || 'wfo').toLowerCase()}`;
             let prompt = `Create or update an orchestrator workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
@@ -5432,7 +5491,15 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         const isView = !editable;
         const title = isEdit ? 'Edit Pipeline' : isClone ? 'Clone Pipeline' : isView ? 'Pipeline Details' : 'Create New Pipeline';
 
-        const p = prefill || {};
+        const p = { ...(prefill || {}) };
+
+        // Defensive: an orchestrator must render with the "Orchestrators" feature so the form
+        // shows the Orchestrator Targets section (not Testim config) and regenerates the right
+        // name. Older/stale parses may have mis-detected a feature embedded in the team suffix
+        // (e.g. "...OLB_Accounts" → "Accounts"); correct it here based on the workflow name.
+        if (isOrchestratorPipeline(p) && p.feature !== 'Orchestrators') {
+            p.feature = 'Orchestrators';
+        }
 
         // New pipeline: choose the repo first (repo drives the config section).
         if (editable && !isEdit && !String(p.repo || '').trim()) {
@@ -5467,12 +5534,12 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         let html = `<div class="main-header">
             <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
                 <div style="min-width:0;">
-                    <div class="breadcrumb"><span onclick="selectFolder(null)" style="cursor:pointer;">All Pipelines</span><span class="sep">/</span><span style="color:var(--text-primary);font-weight:600;">${title}</span></div>
+                    <div class="breadcrumb"><span onclick="returnToPipelineList()" style="cursor:pointer;">All Pipelines</span><span class="sep">/</span><span style="color:var(--text-primary);font-weight:600;">${title}</span></div>
                     <h1>${title}</h1>
                     <p>${isView ? 'Viewing pipeline configuration' : isClone ? 'Creating a copy with different settings' : isEdit ? 'Modify pipeline settings and save' : 'Configure a new pipeline'} <span style="opacity:0.75;">—</span> <span style="font-weight:800; color:var(--text-secondary);">${repoName}</span></p>
                 </div>
                 <div style="display:flex; gap:8px; flex-shrink:0;">
-                    <button class="btn btn-secondary" onclick="selectFolder(selectedFolder)" style="padding:6px 16px;">&#9664; Back</button>
+                    <button class="btn btn-secondary" onclick="returnToPipelineList()" style="padding:6px 16px;">&#9664; Back</button>
                     ${isView && p.filename ? `<button class="btn btn-orange" onclick="editPipeline('${p.filename}')" style="padding:6px 16px;">&#9998; Edit</button>` : ''}
                 </div>
             </div>
@@ -5802,14 +5869,14 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             <div class="section-content">
                 <div class="form-group">
                     <label class="form-label">Team / Set Name <span class="req">*</span></label>
-                    <input type="text" id="fOrchSetName" placeholder="e.g. OLBAPISanity" value="${(p.orchestratorSet || '').trim() || (p.featureDetail || '').split('Orchestrators_')[1]?.split('-')[0] || (p.featureDetail || '').split('Orchestrators_')[1]?.split('_')[0] || (p.customSuffix || '')}" ${isView ? 'disabled' : ''}>
+                    <input type="text" id="fOrchSetName" placeholder="e.g. OLBAPISanity" value="${(p.orchestratorSet || '').trim() || orchestratorSetFromFeatureDetail(p.featureDetail) || (p.customSuffix || '')}" ${isView ? 'disabled' : ''}>
                     <span class="field-help">This should match the team name you put in Custom Suffix. Each team gets its own orchestrator set.</span>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Targets <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(simple mode)</span></label>
                     <textarea id="fOrchTargetRefs" rows="10" placeholder="axos-financial/Axos.QE.API_UDB:API_UDB_UAT_Smoke-Newman.yml@main" oninput="updateOrchestratorTargetsPreview()" ${isView ? 'disabled' : ''}>${escapeHtml(orchRefsPrefill)}</textarea>
-                    <span class="field-help">One per line. Formats: <code>owner/repo:workflow.yml@ref</code> or <code>repo:workflow.yml@ref</code> or just <code>workflow.yml</code> (defaults to axos-financial/Axos.QE.TestIM @ main).</span>
+                    <span class="field-help">One per line. Formats: <code>owner/repo:workflow.yml@ref</code>, <code>repo:workflow.yml@ref</code>, just <code>workflow.yml</code>, or paste a GitHub Actions path/URL like <code>owner/repo/actions/workflows/workflow.yml</code> (defaults to axos-financial/Axos.QE.TestIM @ main).</span>
                 </div>
 
                 <div class="form-group">
@@ -6424,14 +6491,14 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             <div class="section-content">
                 <div class="form-group">
                     <label class="form-label">Team / Set Name <span class="req">*</span></label>
-                    <input type="text" id="fOrchSetName" placeholder="e.g. WFO" value="${(p.orchestratorSet || '').trim() || (p.featureDetail || '').split('Orchestrators_')[1]?.split('-')[0] || (p.featureDetail || '').split('Orchestrators_')[1]?.split('_')[0] || (p.customSuffix || '')}" ${isView ? 'disabled' : ''}>
+                    <input type="text" id="fOrchSetName" placeholder="e.g. WFO" value="${(p.orchestratorSet || '').trim() || orchestratorSetFromFeatureDetail(p.featureDetail) || (p.customSuffix || '')}" ${isView ? 'disabled' : ''}>
                     <span class="field-help">This should match the team name you put in Custom Suffix. Each team gets its own orchestrator set (so you can have multiple orchestrators).</span>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Targets <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(simple mode)</span></label>
                     <textarea id="fOrchTargetRefs" rows="6" placeholder="axos-financial/Axos.QE.TestIM:Web_Outsystems_UAT_EWM_Creation_Regression-Testim.yml@main" oninput="updateOrchestratorTargetsPreview()" ${isView ? 'disabled' : ''}>${escapeHtml(orchRefsPrefill)}</textarea>
-                    <span class="field-help">One per line. Formats: <code>owner/repo:workflow.yml@ref</code> or <code>repo:workflow.yml@ref</code> or just <code>workflow.yml</code> (defaults to axos-financial/Axos.QE.TestIM @ main).</span>
+                    <span class="field-help">One per line. Formats: <code>owner/repo:workflow.yml@ref</code>, <code>repo:workflow.yml@ref</code>, just <code>workflow.yml</code>, or paste a GitHub Actions path/URL like <code>owner/repo/actions/workflows/workflow.yml</code> (defaults to axos-financial/Axos.QE.TestIM @ main).</span>
                 </div>
 
                 <div class="form-group">
@@ -7422,7 +7489,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
 
             const previewEl = document.getElementById('namePreview');
             const currentRepo = 'Axos.QE.Mobile';
-            const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
+            const duplicate = !viewOnlyMode && pipelines.some(p => pipeNamesEqual(p.name, name) && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
             if (duplicate) {
                 previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:var(--font-b);">&#9888; A pipeline with this exact name already exists.</div>`;
                 previewEl.style.borderColor = 'var(--error)';
@@ -7439,45 +7506,28 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             const brand = document.getElementById('fBrand')?.value;
             const suffix = document.getElementById('fCustomSuffix')?.value?.trim();
             const feature = document.getElementById('fFeature')?.value?.trim();
-            if (!brand || !env || !testType || !feature || feature === '__custom__') {
+            // Orchestrator mode is driven by the Feature ("Orchestrators"); the NAME still uses the
+            // standard convention so the chosen Test Type appears in the title (not "-Orchestrator").
+            const isOrch = feature === 'Orchestrators';
+            if (!brand || !env || !feature || feature === '__custom__' || !testType) {
                 document.getElementById('namePreview').innerHTML = '<span class="dim">Select all required fields to generate pipeline name...</span>';
                 updateFormStatus();
                 return;
             }
 
             const bKey = BRAND_KEY_MAP[brand] || brand.replace(/\s+/g, '');
-            const isOrch = testType === 'Orchestrator' || feature === 'Orchestrators';
-            if (isOrch) {
-                if (feature !== 'Orchestrators') {
-                    document.getElementById('namePreview').innerHTML = '<span class="dim">For orchestrators, set Feature to <b>Orchestrators</b> and enter a team name in <b>Custom Suffix</b>.</span>';
-                    updateFormStatus();
-                    return;
-                }
-                if (!suffix) {
-                    document.getElementById('namePreview').innerHTML = '<span class="dim">Enter a team name in <b>Custom Suffix</b> (example: OLBAPISanity) to name this orchestrator.</span>';
-                    updateFormStatus();
-                    return;
-                }
-
-                const suffixKey = String(suffix).replace(/\s+/g, '');
-                const name = `API_${bKey}_${env}_Orchestrators_${suffixKey}-Orchestrator`;
-
-                const previewEl = document.getElementById('namePreview');
-                const currentRepo = String(document.getElementById('fRepo')?.value || '').trim() || repo;
-                const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
-                if (duplicate) {
-                    previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:var(--font-b);">&#9888; An orchestrator with this name already exists.</div>`;
-                    previewEl.style.borderColor = 'var(--error)';
-                } else {
-                    previewEl.textContent = name;
-                    previewEl.style.borderColor = '';
-                }
+            // For orchestrators the team (Custom Suffix, or Orchestrator Set Name) acts as the suffix.
+            const effSuffix = isOrch
+                ? String(suffix || (document.getElementById('fOrchSetName')?.value || '').trim()).trim()
+                : suffix;
+            if (isOrch && !effSuffix) {
+                document.getElementById('namePreview').innerHTML = '<span class="dim">Enter a team name in <b>Custom Suffix</b> (example: OLBAPISanity) to name this orchestrator.</span>';
                 updateFormStatus();
                 return;
             }
 
             const fKey = normalizeApiFeatureValue(feature).replace(/\s+/g, '_');
-            let sKey = suffix ? suffix.replace(/\s+/g, '_') : '';
+            let sKey = effSuffix ? effSuffix.replace(/\s+/g, '_') : '';
             const tKey = testType.replace(/\s+/g, '');
             const fLower = fKey.toLowerCase();
             const sLower = sKey.toLowerCase();
@@ -7493,7 +7543,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
 
             const previewEl = document.getElementById('namePreview');
             const currentRepo = String(document.getElementById('fRepo')?.value || '').trim() || repo;
-            const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
+            const duplicate = !viewOnlyMode && pipelines.some(p => pipeNamesEqual(p.name, name) && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
             if (duplicate) {
                 previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:var(--font-b);">&#9888; A pipeline with this exact name already exists.</div>`;
                 previewEl.style.borderColor = 'var(--error)';
@@ -7524,7 +7574,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
 
             const previewEl = document.getElementById('namePreview');
             const currentRepo = String(document.getElementById('fRepo')?.value || '').trim() || 'Axos.QE.Crypto.Web';
-            const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
+            const duplicate = !viewOnlyMode && pipelines.some(p => pipeNamesEqual(p.name, name) && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
             if (duplicate) {
                 previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:var(--font-b);">&#9888; A pipeline with this exact name already exists.</div>`;
                 previewEl.style.borderColor = 'var(--error)';
@@ -7603,7 +7653,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             }
 
             const previewEl = document.getElementById('namePreview');
-            const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && normRepoForPipeline(p) === 'Axos.QE.Web' && pipelineKey(p) !== editingPipeline);
+            const duplicate = !viewOnlyMode && pipelines.some(p => pipeNamesEqual(p.name, name) && normRepoForPipeline(p) === 'Axos.QE.Web' && pipelineKey(p) !== editingPipeline);
             if (duplicate) {
                 previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:var(--font-b);">&#9888; A pipeline with this exact name already exists.</div>`;
                 previewEl.style.borderColor = 'var(--error)';
@@ -7620,6 +7670,12 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         const feature = document.getElementById('fFeature')?.value;
         const suffix = document.getElementById('fCustomSuffix')?.value?.trim();
 
+        // Orchestrator mode is driven by the Feature being "Orchestrators" — NOT the Test Type.
+        // The NAME, however, uses the standard convention (feature + suffix + type), so the
+        // chosen Test Type (Regression/Sanity/Smoke/…) appears in the title instead of a fixed
+        // "-Orchestrator" suffix. For orchestrators the team comes from Custom Suffix (or the
+        // Orchestrator Set Name if the suffix is blank).
+        const isOrch = feature === 'Orchestrators';
         if (!platform || !brand || !env || !feature || !testType) {
             document.getElementById('namePreview').innerHTML = '<span class="dim">Select all required fields to generate pipeline name...</span>';
             updateFormStatus();
@@ -7628,44 +7684,26 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
 
         const pKey = PLATFORM_KEY_MAP[platform] || platform;
         const bKey = BRAND_KEY_MAP[brand] || brand.replace(/\s+/g, '');
-        const fKey = feature.replace(/\s+/g, '');
-        const tKey = testType.replace(/\s+/g, '');
-        if (testType === 'Orchestrator') {
-            const previewEl = document.getElementById('namePreview');
-            if (feature !== 'Orchestrators') {
-                previewEl.innerHTML = '<span class="dim">For orchestrators, set Feature to <b>Orchestrators</b> and enter a team name in Custom Suffix (e.g. WFO).</span>';
-                previewEl.style.borderColor = '';
-                updateFormStatus();
-                return;
-            }
-            if (!suffix) {
-                previewEl.innerHTML = '<span class="dim">Enter a team name in <b>Custom Suffix</b> (example: WFO) to name this orchestrator.</span>';
-                previewEl.style.borderColor = '';
-                updateFormStatus();
-                return;
-            }
-            const name = `${pKey}_${bKey}_${env}_Orchestrators_${suffix}-Orchestrator`;
-            const currentRepo = String(document.getElementById('fRepo')?.value || '').trim() || 'Axos.QE.TestIM';
-            const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
-            if (duplicate) {
-                previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:var(--font-b);">&#9888; An orchestrator with this name already exists.</div>`;
-                previewEl.style.borderColor = 'var(--error)';
-            } else {
-                previewEl.textContent = name;
-                previewEl.style.borderColor = '';
-            }
+        const fKey = (feature || '').replace(/\s+/g, '');
+        const tKey = (testType || '').replace(/\s+/g, '');
+
+        const effSuffix = isOrch
+            ? String(suffix || (document.getElementById('fOrchSetName')?.value || '').trim()).trim()
+            : suffix;
+        if (isOrch && !effSuffix) {
+            document.getElementById('namePreview').innerHTML = '<span class="dim">Enter a team name in <b>Custom Suffix</b> (example: WFO) to name this orchestrator.</span>';
             updateFormStatus();
             return;
         }
 
-        const featureStr = suffix ? `${fKey}_${suffix}` : `${fKey}`;
+        const featureStr = effSuffix ? `${fKey}_${effSuffix.replace(/\s+/g, '_')}` : `${fKey}`;
 
         const name = (fKey === tKey)
             ? `${pKey}_${bKey}_${env}_${featureStr}-Testim`
             : `${pKey}_${bKey}_${env}_${featureStr}_${tKey}-Testim`;
         const previewEl = document.getElementById('namePreview');
         const currentRepo = String(document.getElementById('fRepo')?.value || '').trim() || 'Axos.QE.TestIM';
-        const duplicate = !viewOnlyMode && pipelines.some(p => p.name === name && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
+        const duplicate = !viewOnlyMode && pipelines.some(p => pipeNamesEqual(p.name, name) && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
 
         if (duplicate) {
             previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:var(--font-b);">&#9888; A pipeline with this exact name already exists. Change the feature, suffix, test type, or environment to make it unique.</div>`;
@@ -7679,9 +7717,10 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
 
     function toggleOrchestratorSections() {
         if (isMobileForm()) return;
-        const testType = document.getElementById('fTestType')?.value || '';
         const feature = document.getElementById('fFeature')?.value || '';
-        const isOrch = testType === 'Orchestrator' || feature === 'Orchestrators';
+        // Orchestrator mode is driven by the Feature ("Orchestrators"), so the Test Type
+        // stays a real type. Orchestrators (web + API) are stored with feature "Orchestrators".
+        const isOrch = feature === 'Orchestrators';
 
         const testim = document.getElementById('testimConfigSection');
         const newman = document.getElementById('newmanConfigSection');
@@ -7717,7 +7756,10 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             text.textContent = 'Ready to save pipeline!';
             text.style.color = '';
         } else {
-            text.textContent = 'Fill all required fields to save';
+            const missing = getMissingRequiredFields();
+            text.textContent = missing.length
+                ? `Fill required field${missing.length > 1 ? 's' : ''}: ${missing.join(', ')}`
+                : 'Fill all required fields to save';
             text.style.color = '';
         }
 
@@ -7728,10 +7770,29 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         }
     }
 
+    // Normalize a pipeline name for duplicate comparison. Existing workflow files use
+    // inconsistent brand casing (OutSystems vs Outsystems) and separators before the
+    // type suffix (e.g. "_1015-Orchestrator" vs "_1015_Orchestrator"), so an exact
+    // string match misses real duplicates. Compare case-insensitively and treat any run
+    // of spaces / underscores / hyphens as equivalent.
+    function pipeNameKey(s) {
+        return String(s || '').trim().toLowerCase().replace(/[\s_-]+/g, '_');
+    }
+    function pipeNamesEqual(a, b) {
+        const ka = pipeNameKey(a);
+        return !!ka && ka === pipeNameKey(b);
+    }
+
     function getGeneratedName() {
         const preview = document.getElementById('namePreview');
         if (!preview) return '';
-        const text = preview.textContent;
+        // A dim placeholder means no real name has been generated yet.
+        if (preview.querySelector('.dim')) return '';
+        let text = preview.textContent || '';
+        // Strip any appended duplicate-warning copy (rendered after a ⚠ marker).
+        const warnIdx = text.indexOf('⚠');
+        if (warnIdx >= 0) text = text.slice(0, warnIdx);
+        text = text.trim();
         return text.includes('Select') ? '' : text;
     }
 
@@ -7744,7 +7805,65 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             const r = String(document.getElementById('fRepo')?.value || '').trim();
             return r || 'Axos.QE.TestIM';
         })();
-        return pipelines.some(p => p.name === name && normRepoForPipeline(p) === repo && pipelineKey(p) !== editingPipeline);
+        return pipelines.some(p => pipeNamesEqual(p.name, name) && normRepoForPipeline(p) === repo && pipelineKey(p) !== editingPipeline);
+    }
+
+    // Returns the human-readable labels of required fields that are still empty,
+    // mirroring the branches in isFormValid() so the status bar can name them.
+    function getMissingRequiredFields() {
+        const val = id => (document.getElementById(id)?.value || '').trim();
+        const missing = [];
+        const need = (id, label) => { if (!val(id)) missing.push(label); };
+
+        if (isMobileForm()) {
+            need('fPlatform', 'Platform');
+            need('fBrand', 'Mobile Platform');
+            need('fEnv', 'Environment');
+            need('fFeature', 'Feature');
+            need('fTestType', 'Test Type');
+            return missing;
+        }
+
+        const repo = val('fRepo');
+        // Orchestrator mode is driven by the Feature being "Orchestrators"; Test Type is free.
+        const isOrch = val('fFeature') === 'Orchestrators';
+
+        if (repo === 'Axos.QE.API_OLB' || repo === 'Axos.QE.API_CS' || repo === 'Axos.QE.API_UDB') {
+            need('fBrand', 'Brand');
+            need('fEnv', 'Environment');
+            need('fTestType', 'Test Type');
+            if (isOrch) {
+                if (!val('fCustomSuffix') && !val('fOrchSetName')) missing.push('Team / Set Name');
+                if (!val('fOrchTargetRefs')) missing.push('Orchestrator Targets');
+            } else {
+                need('fFeature', 'Feature');
+                need('fCollectionId', 'Collection ID');
+                need('fEnvironmentId', 'Environment ID');
+            }
+            return missing;
+        }
+
+        if (repo === 'Axos.QE.Crypto.Web' || repo === 'Axos.QE.Web') {
+            need('fBrand', 'Brand');
+            need('fEnv', 'Environment');
+            need('fFeature', 'Feature');
+            need('fTestType', 'Test Type');
+            return missing;
+        }
+
+        // Default: Web (Testim)
+        need('fPlatform', 'Platform');
+        need('fBrand', 'Brand');
+        need('fEnv', 'Environment');
+        need('fTestType', 'Test Type');
+        if (isOrch) {
+            if (!val('fCustomSuffix') && !val('fOrchSetName')) missing.push('Team / Custom Suffix');
+        } else {
+            need('fFeature', 'Feature');
+            need('fTestSuite', 'Test Suite Name');
+            need('fBaseUrl', 'Base URL');
+        }
+        return missing;
     }
 
     function isFormValid() {
@@ -7755,13 +7874,12 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         } else {
             const repo = (el('fRepo')?.value || '').trim();
             if (repo === 'Axos.QE.API_OLB' || repo === 'Axos.QE.API_CS' || repo === 'Axos.QE.API_UDB') {
-                const isOrch = (el('fTestType')?.value || '') === 'Orchestrator' || (el('fFeature')?.value || '') === 'Orchestrators';
+                const isOrch = (el('fFeature')?.value || '') === 'Orchestrators';
                 if (isOrch) {
+                    const team = (el('fCustomSuffix')?.value || '').trim() || (el('fOrchSetName')?.value || '').trim();
                     fieldsOk =
-                        el('fBrand')?.value && el('fEnv')?.value &&
-                        (el('fFeature')?.value === 'Orchestrators') &&
-                        (el('fTestType')?.value === 'Orchestrator') &&
-                        (el('fCustomSuffix')?.value || '').trim() &&
+                        el('fBrand')?.value && el('fEnv')?.value && el('fTestType')?.value &&
+                        team &&
                         (el('fOrchTargetRefs')?.value || '').trim();
                 } else {
                     fieldsOk =
@@ -7777,13 +7895,11 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     el('fFeature')?.value && el('fTestType')?.value;
                 return fieldsOk && !isNameDuplicate();
             }
-            const isOrch = (el('fTestType')?.value || '') === 'Orchestrator';
+            const isOrch = (el('fFeature')?.value || '') === 'Orchestrators';
             if (isOrch) {
+                const team = (el('fCustomSuffix')?.value || '').trim() || (el('fOrchSetName')?.value || '').trim();
                 fieldsOk =
-                    el('fPlatform')?.value && el('fBrand')?.value && el('fEnv')?.value &&
-                    el('fFeature')?.value && el('fTestType')?.value &&
-                    (el('fFeature')?.value === 'Orchestrators') &&
-                    (el('fCustomSuffix')?.value || '').trim();
+                    el('fPlatform')?.value && el('fBrand')?.value && el('fEnv')?.value && el('fTestType')?.value && team;
             } else {
                 fieldsOk = el('fPlatform')?.value && el('fBrand')?.value && el('fEnv')?.value &&
                        el('fFeature')?.value && el('fTestType')?.value && el('fTestSuite')?.value && el('fBaseUrl')?.value;
@@ -7849,13 +7965,14 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 const rawFeature = v('fFeature') || base.feature || 'Login';
                 const rawSuffix = v('fCustomSuffix');
                 const chosenTestType = v('fTestType') || base.testType || 'Smoke';
-                const isOrch = chosenTestType === 'Orchestrator' || rawFeature === 'Orchestrators';
+                // Orchestrator mode is driven by the Feature ("Orchestrators"); Test Type stays a real type.
+                const isOrch = rawFeature === 'Orchestrators';
 
                 if (isOrch) {
                     const team = (rawSuffix || '').replace(/\s+/g, '');
                     base.feature = 'Orchestrators';
                     base.featureDetail = `Orchestrators_${team}`;
-                    base.testType = 'Orchestrator';
+                    base.testType = v('fTestType') || base.testType || 'Orchestrator';
                     base.jobTimeout = n('fJobTimeout', 30);
 
                     base.orchestratorSet = (v('fOrchSetName') || v('fCustomSuffix')).trim();
@@ -7961,8 +8078,11 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 base.runnerLabel = v('fRunnerLabel') || 'QSDW-TFSBA01';
                 base.jobTimeout = n('fJobTimeout', 120);
             } else {
-            const isOrch = (v('fTestType') === 'Orchestrator') || base.testType === 'Orchestrator';
+            // Orchestrator mode is driven by the Feature ("Orchestrators"); Test Type stays a real type.
+            const isOrch = v('fFeature') === 'Orchestrators';
             if (isOrch) {
+                base.feature = 'Orchestrators';
+                base.testType = v('fTestType') || base.testType || 'Orchestrator';
                 base.testSuite = '';
                 base.baseUrl = '';
                 base.project = '';
@@ -8120,7 +8240,7 @@ ${runnerStrategy === 'group'
                     `  labels: [self-hosted, windows, x64]`;
             }
 
-        } else if ((document.getElementById('fTestType')?.value || '') === 'Orchestrator') {
+        } else if ((document.getElementById('fFeature')?.value || '') === 'Orchestrators') {
             const setName = (document.getElementById('fOrchSetName')?.value || el('fCustomSuffix') || '').trim();
             const targets = document.getElementById('fOrchTargets')?.value || '[]';
             const orchRepo = el('fRepo') || 'Axos.QE.TestIM';
@@ -9575,9 +9695,24 @@ ${runnerStrategy === 'group'
         }
 
         let feature = '';
-        for (const fName of featureNamesForParse) {
+        // The convention is "<feature>_<suffix>", so the feature is a PREFIX of featureDetail.
+        // Prefer a prefix match (longest first) so a feature name that merely appears inside the
+        // suffix doesn't win — e.g. "Orchestrators_E2E_UAT_OLB_Accounts" must resolve to
+        // "Orchestrators", not "Accounts".
+        const orderedByLen = [...featureNamesForParse].sort((a, b) => b.length - a.length);
+        for (const fName of orderedByLen) {
             const fKey = fName.replace(/\s+/g, '');
-            if (featureDetail.includes(fKey)) { feature = fName; break; }
+            if (featureDetail === fKey || featureDetail.startsWith(fKey + '_') || featureDetail.startsWith(fKey + '-')) {
+                feature = fName;
+                break;
+            }
+        }
+        // Legacy fallback: substring match anywhere (covers names that don't sit at the start).
+        if (!feature) {
+            for (const fName of featureNamesForParse) {
+                const fKey = fName.replace(/\s+/g, '');
+                if (featureDetail.includes(fKey)) { feature = fName; break; }
+            }
         }
 
         if (!feature) {
@@ -9599,27 +9734,23 @@ ${runnerStrategy === 'group'
             // so keep the feature parsed from the filename (e.g., OLB_Login → Login).
         }
 
+        // Orchestrator detection for parsing: a workflow is an orchestrator when its Feature is
+        // "Orchestrators" or its name carries the -Orchestrator suffix (covers legacy "_Orchestrator").
+        const isOrchParsed = testType === 'Orchestrator' || feature === 'Orchestrators' || /orchestrator/i.test(String(name || ''));
         return {
             filename, name, platform, brand, env, feature, featureDetail, testType,
             testSuite: '',
-            baseUrl: testType === 'Orchestrator' ? '' : (ENV_URLS[env] || ''),
-            branch: testType === 'Orchestrator' ? '' : 'UDB - API and Web',
-            grid: testType === 'Orchestrator' ? '' : 'Testim Grid',
-            parallel: testType === 'Orchestrator' ? '' : '5',
-            retries: testType === 'Orchestrator' ? '' : '1',
-            timeoutMin: testType === 'Orchestrator' ? '' : '30',
-            browserTimeout: testType === 'Orchestrator' ? '' : '30',
-            runnerLabel: testType === 'Orchestrator' ? '' : 'dsdl-timab31',
-            jobTimeout: testType === 'Orchestrator' ? 30 : 120,
-            orchestratorSet: testType === 'Orchestrator'
-                ? (() => {
-                    const m = String(featureDetail || '').match(/Orchestrators[_-]([^_]+)$/);
-                    if (m && m[1]) return m[1];
-                    const s = String(featureDetail || '').split('Orchestrators_')[1] || '';
-                    return (s.split('_')[0] || s.split('-')[0] || '').trim();
-                })()
-                : '',
-            orchestratorTargets: testType === 'Orchestrator' ? [] : undefined,
+            baseUrl: isOrchParsed ? '' : (ENV_URLS[env] || ''),
+            branch: isOrchParsed ? '' : 'UDB - API and Web',
+            grid: isOrchParsed ? '' : 'Testim Grid',
+            parallel: isOrchParsed ? '' : '5',
+            retries: isOrchParsed ? '' : '1',
+            timeoutMin: isOrchParsed ? '' : '30',
+            browserTimeout: isOrchParsed ? '' : '30',
+            runnerLabel: isOrchParsed ? '' : 'dsdl-timab31',
+            jobTimeout: isOrchParsed ? 30 : 120,
+            orchestratorSet: isOrchParsed ? orchestratorSetFromFeatureDetail(featureDetail) : '',
+            orchestratorTargets: isOrchParsed ? [] : undefined,
             schedule: '', scheduleEnabled: false
         };
     }
@@ -9632,7 +9763,7 @@ ${runnerStrategy === 'group'
         if (!el) return;
         el.classList.remove('show');
     }
-    function cancelCreate() { showFolderPipelines(selectedFolder); }
+    function cancelCreate() { returnToPipelineList(); }
 
     function showToast(msg, opts = null) {
         const t = document.getElementById('toast');
