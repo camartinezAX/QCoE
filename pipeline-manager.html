@@ -5124,6 +5124,17 @@ ${os.map(n => `- ${n}`).join('\n')}
         document.getElementById('outputModal').classList.add('show');
     }
 
+    // Instruction appended to every create/update prompt: stamp the author's name into the
+    // header comment box. The page can't know who's pasting the prompt, so we tell the AI to
+    // look it up itself. If it can't resolve a name, it simply omits the line (no placeholder).
+    const AUTHOR_STAMP_INSTRUCTION =
+        `\n\nIn the header comment box at the very top of the file, add an "Updated by:" line ` +
+        `with the name of the person making this change, e.g.:\n` +
+        `# │  Updated by: <name>                                                        │\n` +
+        `Determine the name automatically — prefer the GitHub MCP get_me tool, otherwise fall ` +
+        `back to \`git config user.name\`. If you cannot resolve a name from either source, ` +
+        `omit the "Updated by:" line entirely. Do NOT ask the user and do NOT insert a placeholder.`;
+
     function buildPromptForPipeline(p) {
         const isMobile = isMobilePipeline(p);
         const repoName = String(
@@ -5454,6 +5465,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 }
             }
         } catch { /* ignore */ }
+
+        combined += AUTHOR_STAMP_INSTRUCTION;
 
         if (includeCommitPush) {
             combined += `\n\nAfter making these changes, commit and push your current branch (e.g. \`git push origin HEAD\`).`;
@@ -8460,6 +8473,8 @@ ${runnerStrategy === 'group'
             const oldFn = old.filename || String(editingPipeline || '').trim();
             prompt += `\n\nAlso delete the old workflow file: .github/workflows/${oldFn}`;
         }
+
+        prompt += AUTHOR_STAMP_INSTRUCTION;
 
         if (commitPush) {
             prompt += `\n\nAfter creating the file, commit and push your current branch (e.g. \`git push origin HEAD\`).`;
