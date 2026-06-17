@@ -9718,16 +9718,27 @@ ${runnerStrategy === 'group'
 
             if (!foundExplicitType) {
                 featureDetail = rest;
-                for (const fName of featureNamesForParse) {
-                    const fKey = fName.replace(/\s+/g, '');
-                    if (rest.includes(fKey)) {
-                        for (const t of TEST_TYPES) {
-                            if (t.replace(/\s+/g, '') === fKey) {
-                                testType = t;
-                                break;
+                // The name generator collapses the type segment when Feature === Test Type
+                // (e.g. Feature=Sanity + Type=Sanity -> "..._Sanity_OLB_E2E-Testim", no trailing
+                // "_Sanity"). With no explicit type segment, recover the type from the LEADING
+                // segment when it is itself a test-type name — this inverts that collapse so the
+                // round-trip is stable (otherwise it silently defaults to "Regression").
+                const firstSeg = rest.split('_')[0];
+                const collapsedType = TEST_TYPES.find(t => t.replace(/\s+/g, '') === firstSeg);
+                if (collapsedType) {
+                    testType = collapsedType;
+                } else {
+                    for (const fName of featureNamesForParse) {
+                        const fKey = fName.replace(/\s+/g, '');
+                        if (rest.includes(fKey)) {
+                            for (const t of TEST_TYPES) {
+                                if (t.replace(/\s+/g, '') === fKey) {
+                                    testType = t;
+                                    break;
+                                }
                             }
+                            break;
                         }
-                        break;
                     }
                 }
             }
