@@ -1989,6 +1989,7 @@
         if (repo === 'Axos.QE.API_OLB') return 'windows';
         if (repo === 'Axos.QE.API_CS') return 'windows';
         if (repo === 'Axos.QE.API_UDB') return 'windows';
+        if (repo === 'Axos.QE.API_WFO') return 'windows';
         if (repo === 'Axos.QE.Mobile') return 'windows';
         if (repo === 'Axos.QE.Crypto.Web') return 'windows';
         if (repo === 'Axos.QE.Web') {
@@ -2112,7 +2113,8 @@
         '03 API': {
             'OLB API': null,
             'UDB API': null,
-            'CS API': null
+            'CS API': null,
+            'WFO API': null
         }
     };
 
@@ -2952,7 +2954,8 @@ ${os.map(n => `- ${n}`).join('\n')}
         'ULP': 'ULP',
         'OLB API': 'OLB',
         'UDB API': 'UDB',
-        'CS API': 'CS'
+        'CS API': 'CS',
+        'WFO API': 'WFO'
     };
 
     const API_FEATURE_SUGGESTIONS = {
@@ -2998,6 +3001,12 @@ ${os.map(n => `- ${n}`).join('\n')}
             'Securities',
             'ServiceBus',
             'Orchestrators'
+        ],
+        'WFO API': [
+            'Yodlee',
+            'OpenFinance',
+            'Crypto',
+            'Orchestrators'
         ]
     };
 
@@ -3027,7 +3036,7 @@ ${os.map(n => `- ${n}`).join('\n')}
 
     function initApiSuffixFromFeatureDetail(featureDetailRaw) {
         const repo = document.getElementById('fRepo')?.value || '';
-        if (repo !== 'Axos.QE.API_OLB') return;
+        if (repo !== 'Axos.QE.API_OLB' && repo !== 'Axos.QE.API_WFO') return;
 
         const suffixEl = document.getElementById('fCustomSuffix');
         const featureEl = document.getElementById('fFeature');
@@ -3569,6 +3578,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                     else if (fn.startsWith('mobile_')) p.repo = 'Axos.QE.Mobile';
                     else if (fn.startsWith('api_cs_')) p.repo = 'Axos.QE.API_CS';
                     else if (fn.startsWith('api_udb_')) p.repo = 'Axos.QE.API_UDB';
+                    else if (fn.startsWith('api_wfo_')) p.repo = 'Axos.QE.API_WFO';
                     else if (fn.includes('-newman') || fn.startsWith('api_') || fn.startsWith('api-')) p.repo = 'Axos.QE.API_OLB';
                     else p.repo = 'Axos.QE.TestIM';
                 };
@@ -5134,7 +5144,8 @@ ${os.map(n => `- ${n}`).join('\n')}
                 `- use a unique repository_dispatch event type: "${eventType}"\n` +
                 `- use secrets.GH_DISPATCH_TOKEN to dispatch workflows across repos\n` +
                 `- call the existing script .github/orchestrator/dispatch-workflows.ps1\n` +
-                `- use this targets file: .github/orchestrator/targets.json\n\n` +
+                `- use this targets file: .github/orchestrator/targets.json\n` +
+                `- SECURITY: do not reference github.event.client_payload.* or inputs.* directly inside the run: script. Map each into the step env: block (IN_* for workflow_dispatch inputs, CP_* for repository_dispatch client_payload) and read them via $env:IN_*/$env:CP_* in the script (avoids script injection); mirror the secure env-var pattern used by the other repos' orchestrators.\n\n` +
                 `Workflow inputs:\n` +
                 `- SET_NAME (default: ${setName})\n` +
                 `- TARGET_ENVIRONMENT (default: Development)\n` +
@@ -5300,7 +5311,7 @@ ${os.map(n => `- ${n}`).join('\n')}
             return prompt;
         }
 
-        if (repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB') {
+        if (repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB' || repoName === 'Axos.QE.API_WFO') {
             let prompt = `Create or update a Newman pipeline workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
                 `This file should call the reusable template _newman-template.yml with these settings:\n\n` +
                 `PIPELINE_NAME: ${p.name}\n` +
@@ -5528,7 +5539,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             ? 'BrowserStack mobile pipeline'
             : (isOrchestratorPipeline(p)
                 ? 'Orchestrator workflow'
-                : ((repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB')
+                : ((repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB' || repoName === 'Axos.QE.API_WFO')
                     ? 'Newman pipeline'
                     : ((isCryptoPipeline(p) || repoName === 'Axos.QE.Web') ? 'Playwright pipeline' : 'Testim pipeline')));
         let html = `<div class="main-header">
@@ -5560,7 +5571,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     <input type="text" id="fCustomSuffix" placeholder="e.g. IBD, External, Internal" value="${(() => {
                         const fd = String(p.featureDetail || '').trim();
                         if (!fd) return '';
-                        if (repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB') {
+                        if (repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB' || repoName === 'Axos.QE.API_WFO') {
                             // For API pipelines, derive suffix after the feature is selected (avoids feature duplication).
                             return '';
                         }
@@ -5723,7 +5734,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 </div>
             </div>`;
         } else {
-        if (repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB') {
+        if (repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB' || repoName === 'Axos.QE.API_WFO') {
             // API (Newman/Postman) form
             html += `<div class="section">
             <div class="section-header" onclick="toggleSection(this)">
@@ -6537,10 +6548,10 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 </div>
 
                 <div style="background:var(--bg-tertiary); border-radius:10px; padding:12px 16px; display:flex; align-items:center; gap:10px;">
-                    <span style="font-size:16px;">${(formIsMobile || repoName === 'Axos.QE.Crypto.Web' || repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB') ? '&#128187;' : '&#129302;'}</span>
+                    <span style="font-size:16px;">${(formIsMobile || repoName === 'Axos.QE.Crypto.Web' || repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB' || repoName === 'Axos.QE.API_WFO') ? '&#128187;' : '&#129302;'}</span>
                     <div>
                         <div style="font-size:12px; font-weight:600; color:var(--success);">Runner: ${runnerStrategyUi === 'group' ? `Runner group ${escapeHtml(runnerGroupUi)} (${runnerOsUi})` : (runnerOsUi === 'windows' ? 'Self-hosted Windows' : 'Self-hosted Linux')}</div>
-                        <div style="font-size:11px; color:var(--text-muted);">${runnerStrategyUi === 'group' ? 'Targets runners via runner group + OS labels (no machine-name pinning).' : ((repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB') ? 'Runs Newman on a self-hosted Windows runner (ensure it has network access to the target env).' : ((formIsMobile || repoName === 'Axos.QE.Crypto.Web') ? 'Picks from QSDW-TFSBA01–05 Windows runners (same pool as Mobile)' : 'Selects a self-hosted runner by label (no wildcard runner-name matching)'))}</div>
+                        <div style="font-size:11px; color:var(--text-muted);">${runnerStrategyUi === 'group' ? 'Targets runners via runner group + OS labels (no machine-name pinning).' : ((repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB' || repoName === 'Axos.QE.API_WFO') ? 'Runs Newman on a self-hosted Windows runner (ensure it has network access to the target env).' : ((formIsMobile || repoName === 'Axos.QE.Crypto.Web') ? 'Picks from QSDW-TFSBA01–05 Windows runners (same pool as Mobile)' : 'Selects a self-hosted runner by label (no wildcard runner-name matching)'))}</div>
                     </div>
                 </div>
 
@@ -6801,7 +6812,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             }
         }
         if (p.scheduleEnabled && p.schedule) initScheduleFromCron(p.schedule);
-        if (repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB') {
+        if (repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB' || repoName === 'Axos.QE.API_WFO') {
             const rawFeature = String(p.feature || '').trim();
             const seed = (/^\d+$/.test(rawFeature) && String(p.featureDetail || '').trim())
                 ? String(p.featureDetail || '').trim()
@@ -6809,7 +6820,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             updateApiFeatureSuggestions(seed);
         }
         else onBrandChange(p.feature || '');
-        if (repoName === 'Axos.QE.API_OLB') initApiSuffixFromFeatureDetail(p.featureDetail || '');
+        if (repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_WFO') initApiSuffixFromFeatureDetail(p.featureDetail || '');
         toggleOrchestratorSections();
         updateOrchestratorTargetsPreview();
         toggleCryptoRunTargetSections();
@@ -7365,7 +7376,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
 
     function updateApiFeatureSuggestions(initialSelectedFeature) {
         const repo = document.getElementById('fRepo')?.value || '';
-        if (repo !== 'Axos.QE.API_OLB' && repo !== 'Axos.QE.API_CS' && repo !== 'Axos.QE.API_UDB') return;
+        if (repo !== 'Axos.QE.API_OLB' && repo !== 'Axos.QE.API_CS' && repo !== 'Axos.QE.API_UDB' && repo !== 'Axos.QE.API_WFO') return;
 
         const brand = document.getElementById('fBrand')?.value || '';
         const featureSelect = document.getElementById('fFeature');
@@ -7422,7 +7433,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
 
     function onApiFeatureChange() {
         const repo = document.getElementById('fRepo')?.value || '';
-        if (repo !== 'Axos.QE.API_OLB' && repo !== 'Axos.QE.API_CS' && repo !== 'Axos.QE.API_UDB') return;
+        if (repo !== 'Axos.QE.API_OLB' && repo !== 'Axos.QE.API_CS' && repo !== 'Axos.QE.API_UDB' && repo !== 'Axos.QE.API_WFO') return;
 
         const featureSelect = document.getElementById('fFeature');
         if (!featureSelect) return;
@@ -7502,7 +7513,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         }
 
         const repo = document.getElementById('fRepo')?.value || '';
-        if (repo === 'Axos.QE.API_OLB' || repo === 'Axos.QE.API_CS' || repo === 'Axos.QE.API_UDB') {
+        if (repo === 'Axos.QE.API_OLB' || repo === 'Axos.QE.API_CS' || repo === 'Axos.QE.API_UDB' || repo === 'Axos.QE.API_WFO') {
             const brand = document.getElementById('fBrand')?.value;
             const suffix = document.getElementById('fCustomSuffix')?.value?.trim();
             const feature = document.getElementById('fFeature')?.value?.trim();
@@ -7828,7 +7839,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         // Orchestrator mode is driven by the Feature being "Orchestrators"; Test Type is free.
         const isOrch = val('fFeature') === 'Orchestrators';
 
-        if (repo === 'Axos.QE.API_OLB' || repo === 'Axos.QE.API_CS' || repo === 'Axos.QE.API_UDB') {
+        if (repo === 'Axos.QE.API_OLB' || repo === 'Axos.QE.API_CS' || repo === 'Axos.QE.API_UDB' || repo === 'Axos.QE.API_WFO') {
             need('fBrand', 'Brand');
             need('fEnv', 'Environment');
             need('fTestType', 'Test Type');
@@ -7873,7 +7884,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             fieldsOk = el('fPlatform')?.value && el('fBrand')?.value && el('fFeature')?.value && el('fTestType')?.value && el('fEnv')?.value;
         } else {
             const repo = (el('fRepo')?.value || '').trim();
-            if (repo === 'Axos.QE.API_OLB' || repo === 'Axos.QE.API_CS' || repo === 'Axos.QE.API_UDB') {
+            if (repo === 'Axos.QE.API_OLB' || repo === 'Axos.QE.API_CS' || repo === 'Axos.QE.API_UDB' || repo === 'Axos.QE.API_WFO') {
                 const isOrch = (el('fFeature')?.value || '') === 'Orchestrators';
                 if (isOrch) {
                     const team = (el('fCustomSuffix')?.value || '').trim() || (el('fOrchSetName')?.value || '').trim();
@@ -7959,7 +7970,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             base.jobTimeout = n('fJobTimeout', 120);
         } else {
             const repo = v('fRepo');
-            if (repo === 'Axos.QE.API_OLB' || repo === 'Axos.QE.API_CS' || repo === 'Axos.QE.API_UDB') {
+            if (repo === 'Axos.QE.API_OLB' || repo === 'Axos.QE.API_CS' || repo === 'Axos.QE.API_UDB' || repo === 'Axos.QE.API_WFO') {
                 base.brand = v('fBrand') || base.brand;
                 base.env = v('fEnv') || base.env;
                 const rawFeature = v('fFeature') || base.feature || 'Login';
@@ -8252,6 +8263,7 @@ This workflow is an ORCHESTRATOR (not a Testim pipeline). It should:
 - use a GitHub secret GH_DISPATCH_TOKEN to dispatch other workflows (cross-repo supported)
 - call the existing script: .github/orchestrator/dispatch-workflows.ps1
 - pass -SetName "${setName || 'WFO'}" and -ConfigPath ".github/orchestrator/targets.json"
+- SECURITY: do not reference github.event.client_payload.* or inputs.* directly inside the run: script; map each into the step env: block (IN_* for inputs, CP_* for client_payload) and read $env:IN_*/$env:CP_* in the script (avoids script injection), mirroring the other repos' orchestrators
 
 Workflow_dispatch inputs should include:
 - SET_NAME (default: ${setName || 'WFO'})
@@ -8266,7 +8278,7 @@ ${targets}
 
 Each target element supports: enabled, name, owner, repo, workflow, ref, inputs.`;
 
-        } else if (el('fRepo') === 'Axos.QE.API_OLB' || el('fRepo') === 'Axos.QE.API_CS' || el('fRepo') === 'Axos.QE.API_UDB') {
+        } else if (el('fRepo') === 'Axos.QE.API_OLB' || el('fRepo') === 'Axos.QE.API_CS' || el('fRepo') === 'Axos.QE.API_UDB' || el('fRepo') === 'Axos.QE.API_WFO') {
             const apiRepo = el('fRepo') || 'Axos.QE.API_OLB';
             prompt = `Create or update a Newman pipeline workflow file in the repo ${apiRepo} at:
 .github/workflows/${name}.yml
@@ -8628,6 +8640,26 @@ ${runnerStrategy === 'group'
                 jobTimeout: 120,
             };
         }
+        if (repo === 'Axos.QE.API_WFO') {
+            return {
+                repo,
+                platform: '03 API',
+                brand: 'WFO API',
+                env: 'UAT',
+                feature: 'OpenFinance',
+                testType: 'Regression',
+                collectionId: '927_performance_testing.postman_collection.json',
+                environmentId: 'uat-927-ninthwave.postman_environment.json',
+                collectionSubfolder: '--folder "UAT"',
+                hostsUatEnv: 'na',
+                maxRetries: '0',
+                runnerStrategy: 'group',
+                runnerGroup: DEFAULT_RUNNER_GROUP,
+                runnerLabel: 'QSDW-TFSBA06',
+                customRunnerLabel: '',
+                jobTimeout: 120,
+            };
+        }
         if (repo === 'Axos.QE.Mobile') {
             return {
                 repo,
@@ -8739,7 +8771,7 @@ ${runnerStrategy === 'group'
         const repos = loadSyncRepos().map(r => r.repo);
         const unique = [...new Set(repos.filter(Boolean))];
         const defaultRepo = 'Axos.QE.Web';
-        const baseList = unique.length ? unique : ['Axos.QE.TestIM', 'Axos.QE.Mobile', 'Axos.QE.Crypto.Web', defaultRepo, 'Axos.QE.API_OLB', 'Axos.QE.API_CS', 'Axos.QE.API_UDB'];
+        const baseList = unique.length ? unique : ['Axos.QE.TestIM', 'Axos.QE.Mobile', 'Axos.QE.Crypto.Web', defaultRepo, 'Axos.QE.API_OLB', 'Axos.QE.API_CS', 'Axos.QE.API_UDB', 'Axos.QE.API_WFO'];
         if (!baseList.includes(defaultRepo)) baseList.unshift(defaultRepo);
         const current = String(prefill?.repo || '').trim() || defaultRepo;
         sel.innerHTML = baseList.map(r => `<option value="${r}" ${current === r ? 'selected' : ''}>${r}</option>`).join('');
@@ -9453,20 +9485,28 @@ ${runnerStrategy === 'group'
             }
             const fullFeatureRaw = featureSegsRaw.join('_') || 'API';
             const fullFeature = normalizeApiFeatureValue(fullFeatureRaw) || 'API';
-            const feature = fullFeature;
             const featureDetail = fullFeature;
+            // For WFO the catalog feature (e.g. "OpenFinance") is the first segment; the remainder
+            // ("Accounts", "Accounts_Phase2", ...) is carried as the Custom Suffix via featureDetail.
+            const feature = (domainKey === 'wfo')
+                ? (recoverFeatureFromDetail(fullFeature, 'WFO API') || fullFeature)
+                : fullFeature;
             const brand = domainKey === 'olb'
                 ? 'OLB API'
                 : domainKey === 'udb'
                     ? 'UDB API'
                     : domainKey === 'cs'
                         ? 'CS API'
-                        : domainRaw.toUpperCase();
+                        : domainKey === 'wfo'
+                            ? 'WFO API'
+                            : domainRaw.toUpperCase();
             const apiRepo = domainKey === 'cs'
                 ? 'Axos.QE.API_CS'
                 : domainKey === 'udb'
                     ? 'Axos.QE.API_UDB'
-                    : 'Axos.QE.API_OLB';
+                    : domainKey === 'wfo'
+                        ? 'Axos.QE.API_WFO'
+                        : 'Axos.QE.API_OLB';
             return {
                 filename,
                 name,
@@ -9881,7 +9921,7 @@ ${runnerStrategy === 'group'
         if (e.target.id === 'fFeature' && e.target.value === '__custom__') {
             const repo = String(document.getElementById('fRepo')?.value || '').trim();
             // API uses its own custom feature flow; don't double-prompt here.
-            if (repo === 'Axos.QE.API_OLB' || repo === 'Axos.QE.API_CS' || repo === 'Axos.QE.API_UDB') { e.target.value = ''; updateNamePreview(); return; }
+            if (repo === 'Axos.QE.API_OLB' || repo === 'Axos.QE.API_CS' || repo === 'Axos.QE.API_UDB' || repo === 'Axos.QE.API_WFO') { e.target.value = ''; updateNamePreview(); return; }
 
             const brand = String(document.getElementById('fBrand')?.value || '').trim();
             const isOs = isOutsystemsBrand(brand);
