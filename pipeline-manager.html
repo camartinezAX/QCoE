@@ -457,7 +457,7 @@
         .sync-textarea { width: 100%; min-height: 200px; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 
         /* Toast */
-        .toast { position: fixed; bottom: 80px; right: 20px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 14px 18px; display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); transform: translateX(120%); transition: transform 0.3s; z-index: 1001; }
+        .toast { position: fixed; bottom: 80px; right: 20px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 14px 18px; display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); transform: translateX(120%); transition: transform 0.3s; z-index: 100000; }
         .toast.show { transform: translateX(0); }
         .toast.success { border-left: 4px solid var(--success); }
         .toast.error { border-left: 4px solid var(--error); }
@@ -5124,16 +5124,23 @@ ${os.map(n => `- ${n}`).join('\n')}
         document.getElementById('outputModal').classList.add('show');
     }
 
-    // Instruction appended to every create/update prompt: stamp the author's name into the
-    // header comment box. The page can't know who's pasting the prompt, so we tell the AI to
-    // look it up itself. If it can't resolve a name, it simply omits the line (no placeholder).
+    // Instruction appended to every create/update prompt: ensure the file has a header comment box
+    // (breadcrumb + author stamp) so you can see at a glance where a pipeline lives and who last
+    // touched it. The page can't know who's pasting the prompt, so we tell the AI to look the name
+    // up itself; if it can't resolve one, it omits the line (no placeholder).
     const AUTHOR_STAMP_INSTRUCTION =
-        `\n\nIn the header comment box at the very top of the file, add an "Updated by:" line ` +
-        `with the name of the person making this change, e.g.:\n` +
-        `# │  Updated by: <name>                                                        │\n` +
-        `Determine the name automatically — prefer the GitHub MCP get_me tool, otherwise fall ` +
-        `back to \`git config user.name\`. If you cannot resolve a name from either source, ` +
-        `omit the "Updated by:" line entirely. Do NOT ask the user and do NOT insert a placeholder.`;
+        `\n\nAt the very top of the file, ensure there is a header comment box (create one if the file ` +
+        `doesn't already have it) with a breadcrumb title line and an "Updated by:" line. Use this exact ` +
+        `box style (matching the other workflows), padding each line with spaces so the trailing │ aligns:\n` +
+        `# ┌────────────────────────────────────────────────────────────────────────────┐\n` +
+        `# │  <Platform> > <Brand/Team> > <Env> > <Feature> > <TestType>                  │\n` +
+        `# │  Updated by: <name>                                                          │\n` +
+        `# └────────────────────────────────────────────────────────────────────────────┘\n` +
+        `Build the breadcrumb from THIS pipeline's own fields (omit any segment that doesn't apply). If a ` +
+        `header box already exists, just add/refresh the "Updated by:" line inside it. Determine <name> ` +
+        `automatically — prefer the GitHub MCP get_me tool, otherwise fall back to \`git config user.name\`. ` +
+        `If you cannot resolve a name from either source, omit the "Updated by:" line entirely. Do NOT ask ` +
+        `the user and do NOT insert a placeholder.`;
 
     function buildPromptForPipeline(p) {
         const isMobile = isMobilePipeline(p);
@@ -5149,6 +5156,27 @@ ${os.map(n => `- ${n}`).join('\n')}
             const setName = (p.orchestratorSet || '').trim() || orchestratorSetFromFeatureDetail(p.featureDetail) || 'WFO';
             const targets = Array.isArray(p.orchestratorTargets) ? p.orchestratorTargets : [];
             const eventType = `orchestrator-${String(setName || 'wfo').toLowerCase()}`;
+            const isWebOrch = repoName === 'Axos.QE.Web';
+            const inputsBlock = isWebOrch
+                ? `Workflow inputs (mirror the existing Axos.QE.Web orchestrators — inheritable values use "inherit" so each downstream suite keeps its committed default):\n` +
+                  `- SET_NAME (default: ${setName})\n` +
+                  `- RUN_TARGET (choice inherit/local/browserstack, default inherit)\n` +
+                  `- TEST_ENV (choice inherit/QA/UAT/STG/PROD, default inherit)\n` +
+                  `- PARALLELS (default inherit)\n` +
+                  `- RETRIES (default inherit)\n` +
+                  `- RUNNER_STRATEGY (choice inherit/group/label, default inherit)\n` +
+                  `- RUNNER_GROUP (default axos-qe-gh-runners)\n` +
+                  `- RUNNER_LABEL_LINUX / CUSTOM_RUNNER_LABEL_LINUX, RUNNER_LABEL_WINDOWS / CUSTOM_RUNNER_LABEL_WINDOWS\n` +
+                  `- PW_VIDEO (choice 0/1, default 1), PW_HEADLESS (choice inherit/0/1, default inherit)\n` +
+                  `- VERBOSE_OUTPUT, DRY_RUN, FAIL_FAST (choice true/false, default false)\n\n`
+                : `Workflow inputs:\n` +
+                  `- SET_NAME (default: ${setName})\n` +
+                  `- TARGET_ENVIRONMENT (default: Development)\n` +
+                  `- DEPLOYMENT_TYPE (default: deploy-latest)\n` +
+                  `- ARTIFACT_ID (default: empty)\n` +
+                  `- VERBOSE_OUTPUT (choice true/false, default false)\n` +
+                  `- DRY_RUN (choice true/false, default false)\n` +
+                  `- FAIL_FAST (choice true/false, default false)\n\n`;
             let prompt = `Create or update an orchestrator workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
                 `This is an ORCHESTRATOR workflow (not a Testim pipeline). It must:\n` +
                 `- trigger on workflow_dispatch and repository_dispatch\n` +
@@ -5157,14 +5185,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                 `- call the existing script .github/orchestrator/dispatch-workflows.ps1\n` +
                 `- use this targets file: .github/orchestrator/targets.json\n` +
                 `- SECURITY: do not reference github.event.client_payload.* or inputs.* directly inside the run: script. Map each into the step env: block (IN_* for workflow_dispatch inputs, CP_* for repository_dispatch client_payload) and read them via $env:IN_*/$env:CP_* in the script (avoids script injection); mirror the secure env-var pattern used by the other repos' orchestrators.\n\n` +
-                `Workflow inputs:\n` +
-                `- SET_NAME (default: ${setName})\n` +
-                `- TARGET_ENVIRONMENT (default: Development)\n` +
-                `- DEPLOYMENT_TYPE (default: deploy-latest)\n` +
-                `- ARTIFACT_ID (default: empty)\n` +
-                `- VERBOSE_OUTPUT (choice true/false, default false)\n` +
-                `- DRY_RUN (choice true/false, default false)\n` +
-                `- FAIL_FAST (choice true/false, default false)\n\n` +
+                inputsBlock +
                 `Also create/update .github/orchestrator/targets.json so it contains the set "${setName}" with these targets:\n\n` +
                 `${JSON.stringify(targets, null, 2)}\n\n` +
                 `Each target element supports: enabled, name, owner, repo, workflow, ref, inputs.\n` +
@@ -5893,7 +5914,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             <div class="section-content">
                 <div class="form-group">
                     <label class="form-label">Team / Set Name <span class="req">*</span></label>
-                    <input type="text" id="fOrchSetName" placeholder="e.g. OLBAPISanity" value="${(p.orchestratorSet || '').trim() || orchestratorSetFromFeatureDetail(p.featureDetail) || (p.customSuffix || '')}" ${isView ? 'disabled' : ''}>
+                    <input type="text" id="fOrchSetName" placeholder="e.g. OLBAPISanity" value="${(p.orchestratorSet || '').trim() || orchestratorSetFromFeatureDetail(p.featureDetail) || (p.customSuffix || '')}" oninput="onOrchSetNameInput()" ${isView ? 'disabled' : ''}>
                     <span class="field-help">This should match the team name you put in Custom Suffix. Each team gets its own orchestrator set.</span>
                 </div>
 
@@ -5959,7 +5980,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                         <label class="form-label">Test Type <span class="req">*</span></label>
                         <select id="fTestType" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
                             <option value="">Select...</option>
-                            ${['Regression','Sanity','Smoke'].map(t => `<option value="${t}" ${p.testType === t ? 'selected' : ''}>${t}</option>`).join('')}
+                            ${['Regression','Sanity','Smoke','Orchestrator'].map(t => `<option value="${t}" ${p.testType === t ? 'selected' : ''}>${t}</option>`).join('')}
                         </select>
                     </div>
                 </div>
@@ -6154,7 +6175,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Feature <span class="req">*</span></label>
-                        <select id="fFeature" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
+                        <select id="fFeature" onchange="toggleOrchestratorSections(); updateNamePreview()" ${isView ? 'disabled' : ''}>
                             <option value="">Select...</option>
                             ${renderWebFeatureOptions(webMonoTeamBrand, p.feature || 'Login')}
                         </select>
@@ -6164,14 +6185,14 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                         <label class="form-label">Test Type <span class="req">*</span></label>
                         <select id="fTestType" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
                             <option value="">Select...</option>
-                            ${['Regression','Sanity','Smoke'].map(t => `<option value="${t}" ${p.testType === t ? 'selected' : ''}>${t}</option>`).join('')}
+                            ${['Regression','Sanity','Smoke','Orchestrator'].map(t => `<option value="${t}" ${p.testType === t ? 'selected' : ''}>${t}</option>`).join('')}
                         </select>
                     </div>
                 </div>
             </div>
         </div>`;
 
-            html += `<div class="section">
+            html += `<div class="section" id="playwrightConfigSection">
             <div class="section-header" onclick="toggleSection(this)">
                 <div class="section-title"><span class="section-icon">&#9881;</span> Playwright / BrowserStack Configuration <span class="section-badge" style="background:rgba(59,130,246,0.1);color:#60a5fa;">Required</span></div>
                 <div class="section-toggle">&#9660;</div>
@@ -6370,6 +6391,37 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             </div>
         </div>`;
 
+            const orchRefsPrefill = orchestratorTargetsToRefs(p.orchestratorTargets || []);
+            html += `<div class="section" id="orchestratorConfigSection" style="display:none;">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title"><span class="section-icon">&#129517;</span> Orchestrator Targets <span class="section-badge" style="background:rgba(167,139,250,0.14);color:#a78bfa;">Orchestrator</span></div>
+                <div class="section-toggle">&#9660;</div>
+            </div>
+            <div class="section-content">
+                <div class="form-group">
+                    <label class="form-label">Team / Set Name <span class="req">*</span></label>
+                    <input type="text" id="fOrchSetName" placeholder="e.g. OutSystemsAml" value="${(p.orchestratorSet || '').trim() || orchestratorSetFromFeatureDetail(p.featureDetail) || (p.customSuffix || '')}" oninput="onOrchSetNameInput()" ${isView ? 'disabled' : ''}>
+                    <span class="field-help">Each team/set gets its own orchestrator. The Set name becomes part of the workflow name (…_Orchestrators_&lt;Set&gt;_Orchestrator-Playwright).</span>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Targets <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(simple mode)</span></label>
+                    <textarea id="fOrchTargetRefs" rows="6" placeholder="axos-financial/Axos.QE.Web:Web_OutSystems_AML_Smoke-Playwright.yml@main" oninput="updateOrchestratorTargetsPreview()" ${isView ? 'disabled' : ''}>${escapeHtml(orchRefsPrefill)}</textarea>
+                    <span class="field-help">One per line. Formats: <code>owner/repo:workflow.yml@ref</code>, <code>repo:workflow.yml@ref</code>, just <code>workflow.yml</code>, or paste a GitHub Actions path/URL like <code>owner/repo/actions/workflows/workflow.yml</code> (defaults to axos-financial/Axos.QE.TestIM @ main).</span>
+                </div>
+
+                <div class="form-group">
+                    <details>
+                      <summary style="cursor:pointer; color:var(--text-secondary); font-size:12px; font-weight:700;">Advanced: Targets JSON (auto-generated)</summary>
+                      <div style="margin-top:10px;">
+                        <textarea id="fOrchTargets" rows="10" ${isView ? 'disabled' : ''}>${escapeHtml(JSON.stringify(p.orchestratorTargets || [], null, 2))}</textarea>
+                        <span class="field-help">You usually don’t need to touch this. Pipeline Manager will generate it from the simple list above.</span>
+                      </div>
+                    </details>
+                </div>
+            </div>
+        </div>`;
+
         } else {
         // Web (Testim) — original form
         html += `<div class="section">
@@ -6515,7 +6567,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             <div class="section-content">
                 <div class="form-group">
                     <label class="form-label">Team / Set Name <span class="req">*</span></label>
-                    <input type="text" id="fOrchSetName" placeholder="e.g. WFO" value="${(p.orchestratorSet || '').trim() || orchestratorSetFromFeatureDetail(p.featureDetail) || (p.customSuffix || '')}" ${isView ? 'disabled' : ''}>
+                    <input type="text" id="fOrchSetName" placeholder="e.g. WFO" value="${(p.orchestratorSet || '').trim() || orchestratorSetFromFeatureDetail(p.featureDetail) || (p.customSuffix || '')}" oninput="onOrchSetNameInput()" ${isView ? 'disabled' : ''}>
                     <span class="field-help">This should match the team name you put in Custom Suffix. Each team gets its own orchestrator set (so you can have multiple orchestrators).</span>
                 </div>
 
@@ -7372,6 +7424,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             : (featureSelect.value || '');
 
         featureSelect.innerHTML = '<option value="">Select...</option>' + renderWebFeatureOptions(brand, selected);
+        toggleOrchestratorSections();
         updateNamePreview();
     }
 
@@ -7442,6 +7495,16 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         const suffixEl = document.getElementById('fCustomSuffix');
         if (suffixEl && suffixEl.dataset) suffixEl.dataset.userEdited = 'true';
         updateNamePreview();
+    }
+
+    // Team / Set Name is what the orchestrator dispatches (the targets.json set) — independent of the
+    // pipeline name (Custom Suffix). It does NOT overwrite Custom Suffix. We still refresh the name
+    // preview because the generator falls back to the Set Name when Custom Suffix is empty, so editing
+    // it must update the preview (otherwise Save is blocked with an empty name). updateNamePreview only
+    // reads the fields — it never copies between them, so the two stay independent.
+    function onOrchSetNameInput() {
+        updateNamePreview();
+        updateFormStatus();
     }
 
     function onApiFeatureChange() {
@@ -7620,8 +7683,22 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 return;
             }
 
+            // Orchestrator mode is driven by the Feature ("Orchestrators"). The Set name comes from the
+            // Orchestrator Set Name field (falling back to Custom Suffix) and becomes the suffix, so the
+            // name reads Web_{Team}_{Env}-Orchestrators_{Set}_Orchestrator-Playwright — matching the
+            // API (-Newman) and Testim (-Testim) orchestrator convention.
+            const isOrch = feature === 'Orchestrators';
+            const effSuffix = isOrch
+                ? String(suffix || (document.getElementById('fOrchSetName')?.value || '').trim()).trim()
+                : suffix;
+            if (isOrch && !effSuffix) {
+                document.getElementById('namePreview').innerHTML = '<span class="dim">Enter a team name in <b>Orchestrator Set Name</b> (example: OutSystemsAml) to name this orchestrator.</span>';
+                updateFormStatus();
+                return;
+            }
+
             const projectDirEl = document.getElementById('fProjectDir');
-            if (projectDirEl && !projectDirEl.dataset.userEdited) {
+            if (!isOrch && projectDirEl && !projectDirEl.dataset.userEdited) {
                 const computedDir = computeWebMonorepoProjectDir(brand, feature);
                 const current = String(projectDirEl.value || '').trim();
                 const last = String(projectDirEl.dataset.lastComputed || '').trim();
@@ -7634,7 +7711,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             }
 
             const runTargetEl = document.getElementById('fRunTarget');
-            if (runTargetEl && !runTargetEl.dataset.userEdited) {
+            if (!isOrch && runTargetEl && !runTargetEl.dataset.userEdited) {
                 const computedRt = isOutsystemsBrand(brand) ? 'browserstack' : 'local';
                 const current = String(runTargetEl.value || '').trim().toLowerCase();
                 const last = String(runTargetEl.dataset.lastComputed || '').trim().toLowerCase();
@@ -7649,8 +7726,11 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
 
             const teamKey = (String(brand) === 'OLB 3.0') ? 'OLB3' : String(brand);
             const fKey = feature.replace(/\s+/g, '');
-            const sKey = suffix ? suffix.replace(/\s+/g, '') : '';
-            const tKey = testType.replace(/\s+/g, '');
+            const sKey = effSuffix ? effSuffix.replace(/\s+/g, isOrch ? '_' : '') : '';
+            // Orchestrator mode is driven by the Feature ("Orchestrators"), so the Test Type segment is
+            // always "Orchestrator" regardless of the form dropdown (which offers Regression/Sanity/Smoke).
+            // This keeps the generated name (…_Orchestrator-Playwright) in sync with the parser.
+            const tKey = isOrch ? 'Orchestrator' : testType.replace(/\s+/g, '');
             const featureBase = sKey ? `${fKey}_${sKey}` : `${fKey}`;
             const includeOlbPrefix = (() => {
                 // Default OFF: do not auto-insert legacy "OLB_" prefix for new workflows.
@@ -7666,13 +7746,13 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     return false;
                 }
             })();
-            const featureStr = includeOlbPrefix ? `OLB_${featureBase}` : featureBase;
+            const featureStr = (!isOrch && includeOlbPrefix) ? `OLB_${featureBase}` : featureBase;
             const name = `Web_${teamKey}_${env}-${featureStr}_${tKey}-Playwright`;
 
             const teamShortMap = { Enrollment: 'Enr', OutSystems: 'OutSys', Crypto: 'Crypto', 'OLB 3.0': 'OLB3' };
             const teamShort = teamShortMap[brand] || teamKey;
             const grepInput = document.getElementById('fGrep');
-            if (grepInput && !grepInput.dataset.userEdited) {
+            if (!isOrch && grepInput && !grepInput.dataset.userEdited) {
                 grepInput.value = `@${teamShort}_${tKey}_${fKey}`;
             }
 
@@ -7749,11 +7829,15 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         const testim = document.getElementById('testimConfigSection');
         const newman = document.getElementById('newmanConfigSection');
         const orch = document.getElementById('orchestratorConfigSection');
+        const playwright = document.getElementById('playwrightConfigSection');
         if (orch) orch.style.display = isOrch ? '' : 'none';
         if (testim) testim.style.display = isOrch ? 'none' : '';
         if (newman) newman.style.display = isOrch ? 'none' : '';
+        if (playwright) playwright.style.display = isOrch ? 'none' : '';
 
-        // Keep the set name in sync with Custom Suffix (team), since the suffix is part of the orchestrator name.
+        // Custom Suffix is the pipeline NAME; Team / Set Name is what the orchestrator dispatches.
+        // They are independent. As a convenience only, pre-fill an empty Set Name from Custom Suffix
+        // for brand-new orchestrators — never overwrite a Set Name the user already entered.
         const suffix = (document.getElementById('fCustomSuffix')?.value || '').trim();
         const setInput = document.getElementById('fOrchSetName');
         if (isOrch && setInput) {
@@ -7870,8 +7954,13 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         if (repo === 'Axos.QE.Crypto.Web' || repo === 'Axos.QE.Web') {
             need('fBrand', 'Brand');
             need('fEnv', 'Environment');
-            need('fFeature', 'Feature');
             need('fTestType', 'Test Type');
+            if (repo === 'Axos.QE.Web' && isOrch) {
+                if (!val('fOrchSetName') && !val('fCustomSuffix')) missing.push('Team / Set Name');
+                if (!val('fOrchTargetRefs')) missing.push('Orchestrator Targets');
+            } else {
+                need('fFeature', 'Feature');
+            }
             return missing;
         }
 
@@ -7914,9 +8003,17 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 return fieldsOk && !isNameDuplicate();
             }
             if (repo === 'Axos.QE.Crypto.Web' || repo === 'Axos.QE.Web') {
-                fieldsOk =
-                    el('fBrand')?.value && el('fEnv')?.value &&
-                    el('fFeature')?.value && el('fTestType')?.value;
+                const isOrchWeb = repo === 'Axos.QE.Web' && (el('fFeature')?.value || '') === 'Orchestrators';
+                if (isOrchWeb) {
+                    const team = (el('fOrchSetName')?.value || '').trim() || (el('fCustomSuffix')?.value || '').trim();
+                    fieldsOk =
+                        el('fBrand')?.value && el('fEnv')?.value && el('fTestType')?.value &&
+                        team && (el('fOrchTargetRefs')?.value || '').trim();
+                } else {
+                    fieldsOk =
+                        el('fBrand')?.value && el('fEnv')?.value &&
+                        el('fFeature')?.value && el('fTestType')?.value;
+                }
                 return fieldsOk && !isNameDuplicate();
             }
             const isOrch = (el('fFeature')?.value || '') === 'Orchestrators';
@@ -8037,6 +8134,30 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 base.brand = v('fBrand') || base.brand;
                 base.env = v('fEnv') || base.env;
                 base.feature = v('fFeature') || base.feature || 'Login';
+                if (base.feature === 'Orchestrators') {
+                    base.testType = v('fTestType') || base.testType || 'Orchestrator';
+                    base.grep = ''; base.suite = ''; base.spec = '';
+                    base.parallel = ''; base.retries = '';
+                    base.runnerLabel = ''; base.customRunnerLabel = '';
+                    base.jobTimeout = n('fJobTimeout', 30);
+                    // orchestratorSet = the targets.json set the orchestrator dispatches (Team / Set Name).
+                    // featureDetail / name = the pipeline name component (Custom Suffix). These are independent.
+                    base.orchestratorSet = (v('fOrchSetName') || v('fCustomSuffix') || '').trim();
+                    const nameSuffix = (v('fCustomSuffix') || '').replace(/\s+/g, '');
+                    base.featureDetail = `Orchestrators_${nameSuffix || base.orchestratorSet}`;
+                    const refs = (document.getElementById('fOrchTargetRefs')?.value || '').trim();
+                    if (refs) {
+                        base.orchestratorTargets = orchestratorRefsToTargets(refs);
+                    } else {
+                        const rawTargets = (document.getElementById('fOrchTargets')?.value || '').trim();
+                        if (rawTargets) {
+                            try { const arr = JSON.parse(rawTargets); base.orchestratorTargets = Array.isArray(arr) ? arr : []; }
+                            catch { base.orchestratorTargets = []; }
+                        } else {
+                            base.orchestratorTargets = base.orchestratorTargets || [];
+                        }
+                    }
+                } else {
                 {
                     const rtEl = document.getElementById('fRunTarget');
                     const computedRt = isOutsystemsBrand(base.brand) ? 'browserstack' : 'local';
@@ -8076,6 +8197,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 base.runnerLabel = rt === 'browserstack' ? base.runnerLabelLinux : base.runnerLabelWindows;
                 base.customRunnerLabel = rt === 'browserstack' ? base.customRunnerLabelLinux : base.customRunnerLabelWindows;
                 base.jobTimeout = n('fJobTimeout', 120);
+                }
             } else if (repo === 'Axos.QE.Crypto.Web') {
                 base.feature = v('fFeature') || cryptoScenarioPrefill || base.feature || 'Login';
                 base.brand = v('fBrand') || base.brand;
@@ -8268,6 +8390,23 @@ ${runnerStrategy === 'group'
             const setName = (document.getElementById('fOrchSetName')?.value || el('fCustomSuffix') || '').trim();
             const targets = document.getElementById('fOrchTargets')?.value || '[]';
             const orchRepo = el('fRepo') || 'Axos.QE.TestIM';
+            const isWebOrch = orchRepo === 'Axos.QE.Web';
+            const orchInputs = isWebOrch
+                ? `- SET_NAME (default: ${setName || 'WFO'})
+- RUN_TARGET (choice: inherit/local/browserstack, default: inherit)
+- TEST_ENV (choice: inherit/QA/UAT/STG/PROD, default: inherit)
+- PARALLELS (default: inherit)
+- RETRIES (default: inherit)
+- RUNNER_STRATEGY (choice: inherit/group/label, default: inherit)
+- RUNNER_GROUP (default: axos-qe-gh-runners)
+- RUNNER_LABEL_LINUX / CUSTOM_RUNNER_LABEL_LINUX, RUNNER_LABEL_WINDOWS / CUSTOM_RUNNER_LABEL_WINDOWS
+- PW_VIDEO (choice: 0/1, default: 1), PW_HEADLESS (choice: inherit/0/1, default: inherit)
+- VERBOSE_OUTPUT, DRY_RUN, FAIL_FAST (choice: true/false, default: false)`
+                : `- SET_NAME (default: ${setName || 'WFO'})
+- TARGET_ENVIRONMENT (default: Development)
+- DEPLOYMENT_TYPE (default: deploy-latest)
+- ARTIFACT_ID (default: empty)
+- VERBOSE_OUTPUT (choice: true/false, default: false)`;
             prompt = `Create or update an orchestrator workflow file in the repo ${orchRepo} at:
 .github/workflows/${name}.yml
 
@@ -8279,11 +8418,7 @@ This workflow is an ORCHESTRATOR (not a Testim pipeline). It should:
 - SECURITY: do not reference github.event.client_payload.* or inputs.* directly inside the run: script; map each into the step env: block (IN_* for inputs, CP_* for client_payload) and read $env:IN_*/$env:CP_* in the script (avoids script injection), mirroring the other repos' orchestrators
 
 Workflow_dispatch inputs should include:
-- SET_NAME (default: ${setName || 'WFO'})
-- TARGET_ENVIRONMENT (default: Development)
-- DEPLOYMENT_TYPE (default: deploy-latest)
-- ARTIFACT_ID (default: empty)
-- VERBOSE_OUTPUT (choice: true/false, default: false)
+${orchInputs}
 
 Also create/update the file .github/orchestrator/targets.json so it includes a set named "${setName || 'WFO'}" with these targets (array):
 
@@ -9242,7 +9377,11 @@ ${runnerStrategy === 'group'
                 if (entry.runnerGroup) parsed.runnerGroup = entry.runnerGroup;
                 if (entry.runnerLabel) parsed.runnerLabel = entry.runnerLabel;
                 if (entry.customRunnerLabel !== undefined) parsed.customRunnerLabel = entry.customRunnerLabel;
-                if (entry.env) parsed.env = entry.env;
+                // TEST_ENV is 'inherit' for orchestrators (a runtime directive meaning "use each
+                // downstream suite's own env"), which is NOT a real environment folder. Never let it
+                // clobber the categorical env parsed from the filename (e.g. QA in
+                // Web_OutSystems_QA-Orchestrators_..._Orchestrator-Playwright).
+                if (entry.env && String(entry.env).trim().toLowerCase() !== 'inherit') parsed.env = entry.env;
                 if (entry.grep !== undefined) parsed.grep = entry.grep;
                 if (entry.suite !== undefined) parsed.suite = entry.suite;
                 if (entry.spec !== undefined) parsed.spec = entry.spec;
@@ -9557,6 +9696,37 @@ ${runnerStrategy === 'group'
         if (webMonoMatch) {
             const teamMap = { enrollment: 'Enrollment', outsystems: 'OutSystems', crypto: 'Crypto', olb3: 'OLB 3.0' };
             const team = teamMap[webMonoMatch[1]] || webMonoMatch[1];
+
+            // Orchestrators (dispatcher workflows) in the Web/Playwright repo follow the same
+            // "_Orchestrator-<engine>" convention as API (-Newman) and Testim (-Testim):
+            //   Web_{Team}_{Env}-Orchestrators_{Set}_Orchestrator-Playwright
+            // The Feature is "Orchestrators", the trailing "_Orchestrator" segment is the Test Type,
+            // and the segment(s) between are the orchestrator Set name. Match against the ORIGINAL-case
+            // name so the Set keeps its camelCase (e.g. "OutSystemsAml"), and accept either "-"/"_" as
+            // the env separator. Without this the generic "-playwright" suffix below would mis-parse it
+            // as a normal test suite (losing the Set name and forcing Test Type to Regression).
+            const orchM = name.replace(/-Playwright$/i, '')
+                .match(/^Web_[^_]+_(DEV|QA|STG|UAT|PROD)[-_]Orchestrators_(.+)_Orchestrator$/i);
+            if (orchM) {
+                const orchEnv = String(orchM[1]).toUpperCase();
+                const setName = String(orchM[2]).trim();
+                return {
+                    filename, name,
+                    repo: 'Axos.QE.Web',
+                    platform: '02 Web',
+                    brand: team,
+                    env: orchEnv,
+                    feature: 'Orchestrators',
+                    featureDetail: `Orchestrators_${setName}`,
+                    testType: 'Orchestrator',
+                    orchestratorSet: setName,
+                    orchestratorTargets: [],
+                    grep: '', parallel: '', retries: '', runTarget: '', localBrowser: '',
+                    pwVideo: '', pwHeadless: '', runnerLabel: '', customRunnerLabel: '',
+                    jobTimeout: 120, schedule: '', scheduleEnabled: false
+                };
+            }
+
             const rest = webMonoMatch[2]; // e.g. "uat-olb_login_smoke"
             const envMatch = rest.match(/^(dev|qa|stg|uat|prod)-/i);
             const env = envMatch ? String(envMatch[1]).toUpperCase() : 'UAT';
