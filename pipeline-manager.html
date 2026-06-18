@@ -3090,7 +3090,7 @@ ${os.map(n => `- ${n}`).join('\n')}
     //  MOBILE CONFIG
     // ══════════════════════════════════════════
     const MOBILE_SUITES = [
-        { id: '00', name: 'Triggers' },
+        { id: '00', name: 'Orchestrators' },
         { id: '01', name: 'Registration' },
         { id: '02', name: 'Login' },
         { id: '03', name: 'MegaMenu' },
@@ -3104,7 +3104,7 @@ ${os.map(n => `- ${n}`).join('\n')}
         { id: '11', name: 'Performance' }
     ];
 
-    const MOBILE_TEST_TYPES = ['Smoke', 'Sanity', 'Regression'];
+    const MOBILE_TEST_TYPES = ['Smoke', 'Sanity', 'Regression', 'Health Check'];
 
     function isMobilePipeline(p) { return p && p.platform === '01 Mobile'; }
     function isCryptoRepo(repo) { return String(repo || '').trim() === 'Axos.QE.Crypto.Web'; }
@@ -5152,11 +5152,12 @@ ${os.map(n => `- ${n}`).join('\n')}
         const runnerStrategy = getRunnerStrategy(p);
         const runnerGroup = getRunnerGroup(p);
 
-        if (!isMobile && isOrchestratorPipeline(p)) {
+        if (isOrchestratorPipeline(p)) {
             const setName = (p.orchestratorSet || '').trim() || orchestratorSetFromFeatureDetail(p.featureDetail) || 'WFO';
             const targets = Array.isArray(p.orchestratorTargets) ? p.orchestratorTargets : [];
             const eventType = `orchestrator-${String(setName || 'wfo').toLowerCase()}`;
             const isWebOrch = repoName === 'Axos.QE.Web';
+            const isMobileOrch = repoName === 'Axos.QE.Mobile';
             const inputsBlock = isWebOrch
                 ? `Workflow inputs (mirror the existing Axos.QE.Web orchestrators — inheritable values use "inherit" so each downstream suite keeps its committed default):\n` +
                   `- SET_NAME (default: ${setName})\n` +
@@ -5168,6 +5169,16 @@ ${os.map(n => `- ${n}`).join('\n')}
                   `- RUNNER_GROUP (default axos-qe-gh-runners)\n` +
                   `- RUNNER_LABEL_LINUX / CUSTOM_RUNNER_LABEL_LINUX, RUNNER_LABEL_WINDOWS / CUSTOM_RUNNER_LABEL_WINDOWS\n` +
                   `- PW_VIDEO (choice 0/1, default 1), PW_HEADLESS (choice inherit/0/1, default inherit)\n` +
+                  `- VERBOSE_OUTPUT, DRY_RUN, FAIL_FAST (choice true/false, default false)\n\n`
+                : isMobileOrch
+                ? `Workflow inputs (mirror the existing Axos.QE.Mobile orchestrators — inheritable values use "inherit" so each downstream suite keeps its committed default):\n` +
+                  `- SET_NAME (default: ${setName})\n` +
+                  `- TEST_ENV (choice inherit/QA/UAT/STG/PROD, default inherit)\n` +
+                  `- PARALLELS (default inherit)\n` +
+                  `- RETRIES (default inherit)\n` +
+                  `- RUNNER_STRATEGY (choice inherit/group/label, default inherit)\n` +
+                  `- RUNNER_GROUP (default inherit)\n` +
+                  `- RUNNER_LABEL (choice inherit/QSDW-TFSBA01..04, default inherit)\n` +
                   `- VERBOSE_OUTPUT, DRY_RUN, FAIL_FAST (choice true/false, default false)\n\n`
                 : `Workflow inputs:\n` +
                   `- SET_NAME (default: ${setName})\n` +
@@ -5653,7 +5664,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Suite <span class="req">*</span></label>
-                            <select id="fFeature" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
+                            <select id="fFeature" onchange="toggleOrchestratorSections(); updateNamePreview()" ${isView ? 'disabled' : ''}>
                                 <option value="">Select...</option>
                                 ${MOBILE_SUITES.map(s => `<option value="${s.name}" ${p.feature === s.name ? 'selected' : ''}>${s.id} ${s.name}</option>`).join('')}
                             </select>
@@ -5669,7 +5680,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 </div>
             </div>`;
 
-            html += `<div class="section">
+            html += `<div class="section" id="browserstackConfigSection">
                 <div class="section-header" onclick="toggleSection(this)">
                     <div class="section-title"><span class="section-icon">&#9881;</span> BrowserStack Configuration <span class="section-badge" style="background:rgba(59,130,246,0.1);color:#60a5fa;">Required</span></div>
                     <div class="section-toggle">&#9660;</div>
@@ -5767,6 +5778,37 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     </div>
                 </div>
             </div>`;
+
+            const orchRefsPrefillMobile = orchestratorTargetsToRefs(p.orchestratorTargets || []);
+            html += `<div class="section" id="orchestratorConfigSection" style="display:none;">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title"><span class="section-icon">&#129517;</span> Orchestrator Targets <span class="section-badge" style="background:rgba(167,139,250,0.14);color:#a78bfa;">Orchestrator</span></div>
+                <div class="section-toggle">&#9660;</div>
+            </div>
+            <div class="section-content">
+                <div class="form-group">
+                    <label class="form-label">Team / Set Name <span class="req">*</span></label>
+                    <input type="text" id="fOrchSetName" placeholder="e.g. AndroidSmoke" value="${(p.orchestratorSet || '').trim() || orchestratorSetFromFeatureDetail(p.featureDetail) || (p.customSuffix || '')}" oninput="onOrchSetNameInput()" ${isView ? 'disabled' : ''}>
+                    <span class="field-help">The targets.json set this orchestrator dispatches. Independent of the pipeline name (Custom Suffix).</span>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Targets <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(simple mode)</span></label>
+                    <textarea id="fOrchTargetRefs" rows="6" placeholder="axos-financial/Axos.QE.Mobile:Mobile_Android_UAT_Smoke-BrowserStack.yml@main" oninput="updateOrchestratorTargetsPreview()" ${isView ? 'disabled' : ''}>${escapeHtml(orchRefsPrefillMobile)}</textarea>
+                    <span class="field-help">One per line. Formats: <code>owner/repo:workflow.yml@ref</code>, <code>repo:workflow.yml@ref</code>, just <code>workflow.yml</code>, or paste a GitHub Actions path/URL like <code>owner/repo/actions/workflows/workflow.yml</code> (defaults to axos-financial/Axos.QE.TestIM @ main).</span>
+                </div>
+
+                <div class="form-group">
+                    <details>
+                      <summary style="cursor:pointer; color:var(--text-secondary); font-size:12px; font-weight:700;">Advanced: Targets JSON (auto-generated)</summary>
+                      <div style="margin-top:10px;">
+                        <textarea id="fOrchTargets" rows="10" ${isView ? 'disabled' : ''}>${escapeHtml(JSON.stringify(p.orchestratorTargets || [], null, 2))}</textarea>
+                        <span class="field-help">You usually don’t need to touch this. Pipeline Manager will generate it from the simple list above.</span>
+                      </div>
+                    </details>
+                </div>
+            </div>
+        </div>`;
         } else {
         if (repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB' || repoName === 'Axos.QE.API_WFO') {
             // API (Newman/Postman) form
@@ -7567,11 +7609,15 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 updateFormStatus();
                 return;
             }
+            // Orchestrators follow the same naming as every other orchestrator: the Feature
+            // ("Orchestrators") marks it, the Test Type is the real selected type (Smoke/Sanity/…),
+            // and Custom Suffix is the optional name component. Team / Set Name is dispatch-only and
+            // never appears in the name.
             const suffix = document.getElementById('fCustomSuffix')?.value?.trim();
             const envVal = document.getElementById('fEnv')?.value;
             let name = `Mobile_${brand}_${envVal}_${feature}`;
-            if (suffix) name += `_${suffix}`;
-            if (feature !== testType) name += `_${testType}`;
+            if (suffix) name += `_${suffix.replace(/\s+/g, '_')}`;
+            if (feature !== testType) name += `_${testType.replace(/\s+/g, '')}`;
             name += `-BrowserStack`;
 
             const previewEl = document.getElementById('namePreview');
@@ -7820,20 +7866,21 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
     }
 
     function toggleOrchestratorSections() {
-        if (isMobileForm()) return;
         const feature = document.getElementById('fFeature')?.value || '';
         // Orchestrator mode is driven by the Feature ("Orchestrators"), so the Test Type
-        // stays a real type. Orchestrators (web + API) are stored with feature "Orchestrators".
+        // stays a real type. Orchestrators (web + API + mobile) are stored with feature "Orchestrators".
         const isOrch = feature === 'Orchestrators';
 
         const testim = document.getElementById('testimConfigSection');
         const newman = document.getElementById('newmanConfigSection');
         const orch = document.getElementById('orchestratorConfigSection');
         const playwright = document.getElementById('playwrightConfigSection');
+        const browserstack = document.getElementById('browserstackConfigSection');
         if (orch) orch.style.display = isOrch ? '' : 'none';
         if (testim) testim.style.display = isOrch ? 'none' : '';
         if (newman) newman.style.display = isOrch ? 'none' : '';
         if (playwright) playwright.style.display = isOrch ? 'none' : '';
+        if (browserstack) browserstack.style.display = isOrch ? 'none' : '';
 
         // Custom Suffix is the pipeline NAME; Team / Set Name is what the orchestrator dispatches.
         // They are independent. As a convenience only, pre-fill an empty Set Name from Custom Suffix
@@ -7927,8 +7974,13 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             need('fPlatform', 'Platform');
             need('fBrand', 'Mobile Platform');
             need('fEnv', 'Environment');
-            need('fFeature', 'Feature');
             need('fTestType', 'Test Type');
+            if (val('fFeature') === 'Orchestrators') {
+                if (!val('fOrchSetName')) missing.push('Team / Set Name');
+                if (!val('fOrchTargetRefs')) missing.push('Orchestrator Targets');
+            } else {
+                need('fFeature', 'Feature');
+            }
             return missing;
         }
 
@@ -7983,7 +8035,14 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         const el = id => document.getElementById(id);
         let fieldsOk;
         if (isMobileForm()) {
-            fieldsOk = el('fPlatform')?.value && el('fBrand')?.value && el('fFeature')?.value && el('fTestType')?.value && el('fEnv')?.value;
+            const isOrchMobile = (el('fFeature')?.value || '') === 'Orchestrators';
+            if (isOrchMobile) {
+                const team = (el('fOrchSetName')?.value || '').trim();
+                fieldsOk = el('fPlatform')?.value && el('fBrand')?.value && el('fEnv')?.value && el('fTestType')?.value &&
+                    team && (el('fOrchTargetRefs')?.value || '').trim();
+            } else {
+                fieldsOk = el('fPlatform')?.value && el('fBrand')?.value && el('fFeature')?.value && el('fTestType')?.value && el('fEnv')?.value;
+            }
         } else {
             const repo = (el('fRepo')?.value || '').trim();
             if (repo === 'Axos.QE.API_OLB' || repo === 'Axos.QE.API_CS' || repo === 'Axos.QE.API_UDB' || repo === 'Axos.QE.API_WFO') {
@@ -8064,6 +8123,35 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         }
 
         if (isMobileForm()) {
+            if (v('fFeature') === 'Orchestrators') {
+                // orchestratorSet = the targets.json set this orchestrator dispatches (Team / Set Name) —
+                // dispatch-only, never in the name. featureDetail / name use the Custom Suffix (optional).
+                // The Test Type is the real selected type (Smoke/Sanity/Regression). They are independent.
+                base.feature = 'Orchestrators';
+                base.testType = v('fTestType') || base.testType || 'Smoke';
+                base.orchestratorSet = (v('fOrchSetName') || '').trim();
+                const nameSuffix = (v('fCustomSuffix') || '').replace(/\s+/g, '');
+                base.featureDetail = nameSuffix ? `Orchestrators_${nameSuffix}` : 'Orchestrators';
+                const refs = (document.getElementById('fOrchTargetRefs')?.value || '').trim();
+                if (refs) {
+                    base.orchestratorTargets = orchestratorRefsToTargets(refs);
+                } else {
+                    const rawTargets = (document.getElementById('fOrchTargets')?.value || '').trim();
+                    if (rawTargets) {
+                        try { const arr = JSON.parse(rawTargets); base.orchestratorTargets = Array.isArray(arr) ? arr : []; }
+                        catch { base.orchestratorTargets = []; }
+                    } else {
+                        base.orchestratorTargets = base.orchestratorTargets || [];
+                    }
+                }
+                base.jobTimeout = n('fJobTimeout', 30);
+                // Clear BrowserStack-suite fields (not used by orchestrators).
+                base.grep = ''; base.suite = ''; base.spec = '';
+                base.parallel = ''; base.parallelSplit = ''; base.retries = '';
+                base.tunnel = ''; base.appId = ''; base.runnerLabel = '';
+                base.deviceName = ''; base.deviceOS = '';
+                base.bsUsername = ''; base.bsAccessKey = '';
+            } else {
             base.grep = v('fGrep');
             base.suite = v('fSuite');
             base.spec = v('fSpec');
@@ -8078,6 +8166,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             base.bsUsername = v('fBsUsername');
             base.bsAccessKey = v('fBsAccessKey');
             base.jobTimeout = n('fJobTimeout', 120);
+            }
         } else {
             const repo = v('fRepo');
             if (repo === 'Axos.QE.API_OLB' || repo === 'Axos.QE.API_CS' || repo === 'Axos.QE.API_UDB' || repo === 'Axos.QE.API_WFO') {
@@ -8340,7 +8429,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         const runnerGroup = String(el('fRunnerGroup') || DEFAULT_RUNNER_GROUP).trim() || DEFAULT_RUNNER_GROUP;
         let prompt;
 
-        if (isMobileForm()) {
+        if (isMobileForm() && (document.getElementById('fFeature')?.value || '') !== 'Orchestrators') {
             const subPlatform = el('fBrand').toLowerCase();
             const appField = subPlatform === 'ios' ? 'IOS_APP' : 'ANDROID_APP';
             const deviceNameField = subPlatform === 'ios' ? 'IOS_DEVICE_NAME' : 'ANDROID_DEVICE_NAME';
@@ -8391,6 +8480,7 @@ ${runnerStrategy === 'group'
             const targets = document.getElementById('fOrchTargets')?.value || '[]';
             const orchRepo = el('fRepo') || 'Axos.QE.TestIM';
             const isWebOrch = orchRepo === 'Axos.QE.Web';
+            const isMobileOrch = orchRepo === 'Axos.QE.Mobile';
             const orchInputs = isWebOrch
                 ? `- SET_NAME (default: ${setName || 'WFO'})
 - RUN_TARGET (choice: inherit/local/browserstack, default: inherit)
@@ -8401,6 +8491,15 @@ ${runnerStrategy === 'group'
 - RUNNER_GROUP (default: axos-qe-gh-runners)
 - RUNNER_LABEL_LINUX / CUSTOM_RUNNER_LABEL_LINUX, RUNNER_LABEL_WINDOWS / CUSTOM_RUNNER_LABEL_WINDOWS
 - PW_VIDEO (choice: 0/1, default: 1), PW_HEADLESS (choice: inherit/0/1, default: inherit)
+- VERBOSE_OUTPUT, DRY_RUN, FAIL_FAST (choice: true/false, default: false)`
+                : isMobileOrch
+                ? `- SET_NAME (default: ${setName || 'AndroidSmoke'})
+- TEST_ENV (choice: inherit/QA/UAT/STG/PROD, default: inherit)
+- PARALLELS (default: inherit)
+- RETRIES (default: inherit)
+- RUNNER_STRATEGY (choice: inherit/group/label, default: inherit)
+- RUNNER_GROUP (default: inherit)
+- RUNNER_LABEL (choice: inherit/QSDW-TFSBA01..04, default: inherit)
 - VERBOSE_OUTPUT, DRY_RUN, FAIL_FAST (choice: true/false, default: false)`
                 : `- SET_NAME (default: ${setName || 'WFO'})
 - TARGET_ENVIRONMENT (default: Development)
@@ -9823,6 +9922,31 @@ ${runnerStrategy === 'group'
         // Mobile pipelines: Mobile_{Android|iOS}_{Feature}_{TestType}-BrowserStack
         if (name.startsWith('Mobile_')) {
             const withoutBs = name.replace(/-BrowserStack$/, '');
+
+            // Orchestrators: Mobile_{OS}_{Env}_Orchestrators[_{CustomSuffix}]_{TestType}-BrowserStack.
+            // The Feature is "Orchestrators" and the Test Type is a real type (Smoke/Sanity/Regression),
+            // mirroring the other orchestrators. The optional segment(s) before the test type are the
+            // Custom Suffix (name only). The Set the orchestrator dispatches lives in the workflow's
+            // SET_NAME input / targets.json, NOT the filename, so it is filled in on sync, not here.
+            const mOrch = withoutBs.match(/^Mobile_(Android|iOS)_(DEV|QA|STG|UAT|PROD)_Orchestrators(?:_(.+))?_(Smoke|Sanity|Regression|HealthCheck)$/);
+            if (mOrch) {
+                const orchOs = mOrch[1];
+                const orchEnv = mOrch[2];
+                const orchSuffix = mOrch[3] ? String(mOrch[3]).trim() : '';
+                const orchTestType = mOrch[4] === 'HealthCheck' ? 'Health Check' : mOrch[4];
+                return {
+                    filename, name, platform: '01 Mobile', brand: orchOs, env: orchEnv,
+                    feature: 'Orchestrators',
+                    featureDetail: orchSuffix ? `Orchestrators_${orchSuffix}` : 'Orchestrators',
+                    testType: orchTestType,
+                    orchestratorSet: '', orchestratorTargets: [],
+                    grep: '', suite: '', spec: '', parallel: '', parallelSplit: '',
+                    retries: '', tunnel: '', appId: '', deviceName: '', deviceOS: '',
+                    bsUsername: '', bsAccessKey: '', runnerLabel: '',
+                    jobTimeout: 120, schedule: '', scheduleEnabled: false
+                };
+            }
+
             const parts = withoutBs.split('_');
             if (parts.length < 4) return null;
             const subPlatform = parts[1];
@@ -9830,8 +9954,9 @@ ${runnerStrategy === 'group'
             const rest = parts.slice(2);
             const lastSeg = rest[rest.length - 1];
             let testType = 'Regression', featureParts = rest;
-            if (['Regression', 'Sanity', 'Smoke'].includes(lastSeg)) {
-                testType = lastSeg;
+            const mobileTtMap = { Regression: 'Regression', Sanity: 'Sanity', Smoke: 'Smoke', HealthCheck: 'Health Check' };
+            if (mobileTtMap[lastSeg]) {
+                testType = mobileTtMap[lastSeg];
                 featureParts = rest.slice(0, -1);
             }
             const envs = ['DEV', 'QA', 'STG', 'UAT', 'PROD'];
