@@ -1045,6 +1045,18 @@
         .pipe-mini-cancel { background:rgba(107,114,128,0.12); color:#9ca3af; }
         .pipe-mini-rate { font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px; }
         .pipe-picker-legend { display:flex; gap:12px; align-items:center; font-size:10px; color:var(--text-muted); padding:6px 0; }
+
+        /* Dashboard "Add Pipelines" picker rows.
+           Class-based (not inline) + checkbox reset so the global `input` rule and any
+           injected/extension stylesheet can't knock the checkbox out of the row.
+           `!important` on display guards the row against label-display overrides. */
+        .dash-pick-row { display:flex !important; align-items:flex-start; gap:10px; padding:10px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-tertiary); margin-bottom:8px; cursor:pointer; }
+        .dash-pick-row:hover { border-color:var(--axos-orange); }
+        .dash-pick-row > .dash-pick { flex:0 0 16px; width:16px; height:16px; margin:2px 0 0 0; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; accent-color:var(--axos-orange); -webkit-appearance:checkbox; appearance:auto; cursor:pointer; }
+        .dash-pick-row > .dash-pick:focus { outline:none; box-shadow:none; }
+        .dash-pick-info { flex:1 1 auto; min-width:0; }
+        .dash-pick-name { font-size:12px; font-weight:800; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .dash-pick-sub { font-size:10px; color:var(--text-muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .pipe-picker-legend span { display:flex; align-items:center; gap:4px; }
         .pipe-picker-selected { font-size:12px; color:var(--text-muted); margin-top:8px; }
 
@@ -1312,6 +1324,11 @@
                     </button>
                     <input type="hidden" id="resultsRepoFilter" value="all">
                     <div class="repo-ms-menu" id="resultsRepoFilter__menu" role="listbox"></div>
+                </div>
+                <div id="resultsDashboardFilterWrap" style="display:none; margin-top:8px;">
+                    <select id="resultsDashboardFilter" onchange="onResultsDashboardFilterChange()" title="Select a saved dashboard to show only its pipelines" style="width:100%; padding:9px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); color:var(--text-primary); font-size:12px;">
+                        <option value="">&#128202; Dashboard: none</option>
+                    </select>
                 </div>
                 <select id="resultsScheduleFilter" onchange="onResultsScheduleFilterChange()" style="width:100%; padding:9px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); color:var(--text-primary); font-size:12px; margin-top:8px;">
                     <option value="all">All Pipelines</option>
@@ -10937,6 +10954,7 @@ ${runnerStrategy === 'group'
         document.getElementById('resultsEmpty').style.display = 'none';
         document.getElementById('resultsTableWrap').style.display = 'block';
         populateResultsRepoFilter();
+        populateResultsDashboardFilter();
         buildResultsPipelineIndex();
         loadResultsScheduleFilterPref();
         loadResultsExcludeCancelledPref();
@@ -10994,6 +11012,7 @@ ${runnerStrategy === 'group'
         // Keep the UI predictable: changing schedule filter resets pipeline selection to "All".
         resultsSelectedPipelines.clear();
         resultsTopPipelinesShowAll = false;
+        clearResultsDashboardSelect();
         renderResultsTree();
         filterResults();
     }
@@ -11025,6 +11044,7 @@ ${runnerStrategy === 'group'
             resultsSelectedPipelines.clear(); // empty == All Pipelines
         }
         resultsTopPipelinesShowAll = false;
+        clearResultsDashboardSelect();
         renderResultsTree();
         if (tree) tree.scrollTop = prevScroll;
         filterResults();
@@ -11046,8 +11066,106 @@ ${runnerStrategy === 'group'
         } catch { /* ignore */ }
         resultsSelectedPipelines.clear();
         resultsTopPipelinesShowAll = false;
+        clearResultsDashboardSelect();
         renderResultsTree();
         filterResults();
+    }
+
+    // Reset the "Dashboard" dropdown back to its placeholder. Called whenever the
+    // pipeline selection changes by other means, so it never displays a stale dashboard.
+    function clearResultsDashboardSelect() {
+        const sel = document.getElementById('resultsDashboardFilter');
+        if (sel && sel.value) sel.value = '';
+    }
+
+    // Populate the "Dashboard" dropdown from saved dashboards (all repos). Hidden when none exist.
+    function populateResultsDashboardFilter() {
+        const sel = document.getElementById('resultsDashboardFilter');
+        const wrap = document.getElementById('resultsDashboardFilterWrap');
+        if (!sel) return;
+        const dashes = (dashboardsState.dashboards || []).slice()
+            .sort((a, b) => String(a.repo || '').localeCompare(String(b.repo || '')) || String(a.name || '').localeCompare(String(b.name || '')));
+        if (!dashes.length) { if (wrap) wrap.style.display = 'none'; sel.value = ''; return; }
+        if (wrap) wrap.style.display = '';
+        const prev = sel.value;
+        let html = `<option value="">&#128202; Dashboard: none</option>`;
+        for (const d of dashes) {
+            const count = (d.groups || []).reduce((n, g) => n + ((g.pipelines || []).length), 0);
+            html += `<option value="${escapeHtml(d.id)}">${escapeHtml(`${d.repo} — ${d.name} (${count})`)}</option>`;
+        }
+        sel.innerHTML = html;
+        sel.value = (prev && dashes.some(d => d.id === prev)) ? prev : '';
+    }
+
+    function onResultsDashboardFilterChange() {
+        const sel = document.getElementById('resultsDashboardFilter');
+        if (!sel) return;
+        const dashId = String(sel.value || '').trim();
+        if (!dashId) { // back to placeholder == clear selection (All Pipelines)
+            resultsSelectedPipelines.clear();
+            resultsTopPipelinesShowAll = false;
+            renderResultsTree();
+            filterResults();
+            return;
+        }
+        applyDashboardSelectionToResults(dashId);
+    }
+
+    // Select exactly the pipelines belonging to a saved dashboard.
+    // Dashboard groups store keys as `repo::filename`; the results view keys by `repo::name`,
+    // so we map across every configured pipeline (filename + repo, with filename fallback).
+    function applyDashboardSelectionToResults(dashId) {
+        const dash = (dashboardsState.dashboards || []).find(d => d && d.id === dashId);
+        if (!dash) return;
+
+        // Build configs across ALL repos (independent of the active repo filter).
+        const toResultsKey = new Map();
+        const byFilename = new Map();
+        const seen = new Set();
+        for (const p of (pipelines || [])) {
+            if (!p || !p.filename || !p.name) continue;
+            const fn = String(p.filename);
+            if (!fn.endsWith('.yml') || fn.startsWith('_')) continue;
+            const repo = getPipelineRepo(p);
+            const dedup = `${repo}::${fn}`;
+            if (seen.has(dedup)) continue;
+            seen.add(dedup);
+            const cfg = { ...p, repo };
+            const rk = resultsPipelineKey(repo, p.name);
+            toResultsKey.set(pipelineKey(cfg), rk);
+            toResultsKey.set(`${repo}::${fn}`, rk);
+            if (!byFilename.has(fn)) byFilename.set(fn, rk);
+        }
+
+        const selKeys = [];
+        for (const g of (dash.groups || [])) {
+            for (const pk of (g.pipelines || [])) {
+                let rk = toResultsKey.get(pk);
+                if (!rk) {
+                    const parsed = parsePipelineKey(pk);
+                    rk = toResultsKey.get(`${parsed.repo}::${parsed.filename}`) || byFilename.get(parsed.filename);
+                }
+                if (rk) selKeys.push(rk);
+            }
+        }
+
+        if (!selKeys.length) {
+            showToast('No matching pipelines found for that dashboard in the current data.', true);
+            const sel = document.getElementById('resultsDashboardFilter');
+            if (sel) sel.value = '';
+            return;
+        }
+
+        resultsSelectedPipelines = new Set(selKeys);
+        // Make the dashboard's pipelines visible in the tree: scope the repo filter to the
+        // dashboard's repo (silently, so it doesn't reset the selection) and clear schedule filter.
+        try { repoMsSetValue('resultsRepoFilter', dash.repo, { silent: true }); } catch { /* ignore */ }
+        const sf = document.getElementById('resultsScheduleFilter');
+        if (sf) { sf.value = 'all'; saveResultsScheduleFilterPref('all'); }
+        resultsTopPipelinesShowAll = false;
+        renderResultsTree();
+        filterResults();
+        showToast(`Showing ${resultsSelectedPipelines.size} pipeline(s) from "${dash.name}".`);
     }
 
     function toggleResultsExcludeCancelledToggle(e) {
@@ -11683,6 +11801,7 @@ ${runnerStrategy === 'group'
 
     function setResultsAllPipelines(el) {
         resultsSelectedPipelines.clear();
+        clearResultsDashboardSelect();
         if (el) {
             document.querySelectorAll('#resultsTree [data-results-all]').forEach(n => n.classList.add('active'));
             document.querySelectorAll('#resultsTree [data-pipeline]').forEach(n => n.classList.remove('active'));
@@ -11695,6 +11814,7 @@ ${runnerStrategy === 'group'
         const key = resultsPipelineKey(repo, pipeline);
         if (checked) resultsSelectedPipelines.add(key);
         else resultsSelectedPipelines.delete(key);
+        clearResultsDashboardSelect();
 
         // Update tree UI state without rerendering (preserves scroll position).
         const tree = document.getElementById('resultsTree');
@@ -11845,6 +11965,8 @@ ${runnerStrategy === 'group'
 
     function saveDashboardsState() {
         try { localStorage.setItem(DASHBOARDS_KEY, JSON.stringify(dashboardsState)); } catch { /* ignore */ }
+        // Keep the Results "Dashboard" filter dropdown in sync with saved dashboards.
+        try { populateResultsDashboardFilter(); } catch { /* ignore */ }
     }
 
     function cleanDashboard(d) {
@@ -12673,11 +12795,11 @@ ${runnerStrategy === 'group'
             const checked = existing.has(p.key) ? 'checked' : '';
             const label = escapeHtml(String(p.name || p.filename || p.key).replace(/-Testim$/, ''));
             const sub = escapeHtml(p.filename || '');
-            return `<label style="display:flex; gap:10px; align-items:flex-start; padding:10px 10px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-tertiary); margin-bottom:8px; cursor:pointer;">
-                <input type="checkbox" class="dash-pick" value="${escapeHtml(p.key)}" ${checked} style="margin-top:2px; accent-color: var(--axos-orange); width:16px; height:16px;">
-                <div style="min-width:0;">
-                    <div style="font-size:12px; font-weight:800; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${label}</div>
-                    <div style="font-size:10px; color:var(--text-muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${sub}</div>
+            return `<label class="dash-pick-row">
+                <input type="checkbox" class="dash-pick" value="${escapeHtml(p.key)}" ${checked}>
+                <div class="dash-pick-info">
+                    <div class="dash-pick-name">${label}</div>
+                    <div class="dash-pick-sub">${sub}</div>
                 </div>
             </label>`;
         }).join('');
