@@ -614,6 +614,218 @@
         .tab-content.active { display:block; }
 
         /* ═══════════════════════════════════════════ */
+        /*  CINEMATIC DASHBOARD REVEAL                 */
+        /* ═══════════════════════════════════════════ */
+        .dash-cinematic{
+            animation: dashCineIn 1.25s cubic-bezier(.16,1,.3,1) both;
+            transform-origin: 50% 0%;
+            will-change: transform, opacity, filter;
+        }
+        @keyframes dashCineIn{
+            0%{   opacity:0; transform:perspective(1400px) rotateX(15deg) translateY(90px) scale(.84); filter:blur(12px); }
+            40%{  opacity:1; filter:blur(0); }
+            70%{  transform:perspective(1400px) rotateX(0deg) translateY(-10px) scale(1.025); }
+            85%{  transform:perspective(1400px) rotateX(0deg) translateY(3px) scale(.995); }
+            100%{ opacity:1; transform:perspective(1400px) rotateX(0deg) translateY(0) scale(1); filter:blur(0); }
+        }
+        /* Brief glow ring so the reveal reads even on a busy page. */
+        .dash-glow{ animation: dashCineIn 1.25s cubic-bezier(.16,1,.3,1) both, dashGlowRing 1.5s ease-out both; border-radius:18px; }
+        @keyframes dashGlowRing{
+            0%{ box-shadow:0 0 0 0 rgba(250,167,74,0.0), 0 0 60px 0 rgba(250,167,74,0.0); }
+            22%{ box-shadow:0 0 0 2px rgba(250,167,74,0.55), 0 0 70px 6px rgba(250,167,74,0.30); }
+            100%{ box-shadow:0 0 0 0 rgba(250,167,74,0.0), 0 0 60px 0 rgba(250,167,74,0.0); }
+        }
+        /* Children cascade up while the parent zooms — layered, "assembling" feel. */
+        .dash-cinematic > *{ animation: dashChildRise .8s cubic-bezier(.16,1,.3,1) both; }
+        .dash-cinematic > *:nth-child(1){ animation-delay:.10s; }
+        .dash-cinematic > *:nth-child(2){ animation-delay:.20s; }
+        .dash-cinematic > *:nth-child(3){ animation-delay:.30s; }
+        .dash-cinematic > *:nth-child(4){ animation-delay:.40s; }
+        .dash-cinematic > *:nth-child(5){ animation-delay:.50s; }
+        .dash-cinematic > *:nth-child(6){ animation-delay:.58s; }
+        @keyframes dashChildRise{
+            0%{ opacity:0; transform:translateY(34px) scale(.97); }
+            100%{ opacity:1; transform:translateY(0) scale(1); }
+        }
+        /* One-shot light wipe that sweeps down across the dashboard on reveal. */
+        .dash-cine-fx{
+            position:absolute; left:0; right:0; top:0; height:100%;
+            pointer-events:none; z-index:40; overflow:hidden; border-radius:18px;
+        }
+        .dash-cine-fx .wipe{
+            position:absolute; left:-20%; right:-20%; top:-60%; height:60%;
+            background:linear-gradient(180deg, transparent, rgba(250,167,74,0.22) 45%, rgba(96,165,250,0.16) 60%, transparent);
+            filter:blur(8px);
+            animation: dashWipe 1.05s cubic-bezier(.16,1,.3,1) both;
+        }
+        .dash-cine-fx .scan{
+            position:absolute; left:0; right:0; top:0; height:2px;
+            background:linear-gradient(90deg, transparent, rgba(250,167,74,0.9), transparent);
+            box-shadow:0 0 18px 4px rgba(250,167,74,0.45);
+            opacity:0; animation: dashScan 1.05s cubic-bezier(.16,1,.3,1) both;
+        }
+        @keyframes dashWipe{ 0%{ transform:translateY(0); opacity:0; } 14%{ opacity:1; } 100%{ transform:translateY(220%); opacity:0; } }
+        @keyframes dashScan{ 0%{ top:0; opacity:0; } 12%{ opacity:1; } 100%{ top:100%; opacity:0; } }
+        @media (prefers-reduced-motion: reduce){
+            .dash-cinematic, .dash-glow, .dash-cinematic > *{ animation:none !important; }
+            .dash-cine-fx{ display:none !important; }
+        }
+
+        /* ═══════════════════════════════════════════ */
+        /*  CALENDAR TAB                               */
+        /* ═══════════════════════════════════════════ */
+        #panelCalendar .cal-shell{ max-width:1280px; margin:0 auto; padding:26px 30px 60px; }
+        .cal-head{
+            display:flex; align-items:center; justify-content:space-between; gap:16px;
+            flex-wrap:wrap; margin-bottom:20px;
+        }
+        .cal-title-wrap{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+        .cal-title{ font-size:26px; font-weight:800; letter-spacing:.3px; display:flex; align-items:baseline; gap:10px; }
+        .cal-title .cal-year{ color:var(--text-muted); font-weight:600; font-size:20px; }
+        .cal-sub{ font-size:12px; color:var(--text-secondary); margin-top:3px; }
+        .cal-nav{ display:flex; align-items:center; gap:8px; }
+        .cal-nav button{
+            border:1px solid var(--border-color); background:var(--glass-bg); color:var(--text-primary);
+            border-radius:10px; padding:8px 12px; font-size:13px; font-weight:700; cursor:pointer;
+            transition:all .18s var(--ease); display:inline-flex; align-items:center; gap:6px;
+        }
+        .cal-nav button:hover{ border-color:var(--orange); color:var(--orange); background:rgba(250,167,74,0.08); }
+        .cal-nav .cal-arrow{ width:38px; height:38px; padding:0; justify-content:center; font-size:16px; }
+        .cal-legend{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; font-size:11px; color:var(--text-secondary); }
+        .cal-legend .lg{ display:inline-flex; align-items:center; gap:6px; }
+        .cal-legend .dot{ width:9px; height:9px; border-radius:50%; display:inline-block; box-shadow:0 0 8px rgba(0,0,0,.25); }
+        .cal-grid-wrap{
+            border:1px solid var(--border-color); border-radius:18px; overflow:hidden;
+            background:linear-gradient(135deg, rgba(22,29,46,0.55), rgba(31,41,55,0.45));
+            backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+            box-shadow:0 18px 50px rgba(0,0,0,0.28);
+        }
+        [data-theme="light"] .cal-grid-wrap{ background:#fff; box-shadow:0 10px 36px rgba(30,56,96,0.10); }
+        .cal-dow{
+            display:grid; grid-template-columns:repeat(7,1fr);
+            background:rgba(250,167,74,0.06); border-bottom:1px solid var(--border-color);
+        }
+        .cal-dow div{
+            padding:11px 12px; font-size:10px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase;
+            color:var(--text-muted); text-align:left;
+        }
+        .cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); }
+        .cal-cell{
+            position:relative; min-height:118px; padding:8px 8px 10px; border-right:1px solid var(--border-color);
+            border-bottom:1px solid var(--border-color); display:flex; flex-direction:column; gap:5px;
+            transition:background .18s var(--ease); overflow:hidden;
+            animation: calCellIn .5s var(--ease) both;
+        }
+        .cal-cell:nth-child(7n){ border-right:none; }
+        .cal-cell:hover{ background:rgba(250,167,74,0.05); }
+        .cal-cell.cal-out{ opacity:.42; }
+        .cal-cell.cal-weekend{ background:rgba(255,255,255,0.015); }
+        [data-theme="light"] .cal-cell.cal-weekend{ background:rgba(30,56,96,0.025); }
+        .cal-daynum{
+            font-size:12px; font-weight:700; color:var(--text-secondary); align-self:flex-start;
+            width:24px; height:24px; display:flex; align-items:center; justify-content:center; border-radius:8px;
+        }
+        .cal-cell.cal-today .cal-daynum{
+            background:linear-gradient(135deg,var(--orange),#fbbf24); color:#1a1206; font-weight:900;
+            box-shadow:0 4px 14px rgba(250,167,74,0.45);
+        }
+        .cal-cell.cal-today{ box-shadow: inset 0 0 0 2px rgba(250,167,74,0.55); }
+        @keyframes calCellIn{ 0%{ opacity:0; transform:translateY(10px); } 100%{ opacity:1; transform:translateY(0); } }
+        .cal-events{ display:flex; flex-direction:column; gap:4px; overflow:hidden; }
+        .cal-chip{
+            display:flex; align-items:center; gap:6px; padding:4px 7px; border-radius:8px;
+            font-size:10.5px; font-weight:600; line-height:1.25; cursor:default;
+            background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08);
+            border-left:3px solid var(--chip-c, var(--orange));
+            color:var(--text-primary); transition:all .15s var(--ease);
+            text-decoration:none; white-space:nowrap; overflow:hidden;
+        }
+        [data-theme="light"] .cal-chip{ background:rgba(30,56,96,0.04); border-color:rgba(30,56,96,0.10); }
+        a.cal-chip{ cursor:pointer; }
+        a.cal-chip:hover{ transform:translateX(2px); border-color:var(--chip-c,var(--orange)); background:rgba(250,167,74,0.10); }
+        .cal-chip .cal-chip-dot{ width:7px; height:7px; border-radius:50%; flex:0 0 auto; background:var(--chip-c,var(--orange)); }
+        .cal-chip .cal-chip-time{ font-family:'JetBrains Mono',monospace; font-size:9.5px; color:var(--text-muted); flex:0 0 auto; }
+        .cal-chip .cal-chip-name{ overflow:hidden; text-overflow:ellipsis; flex:1 1 auto; min-width:0; }
+        .cal-chip.is-run{ box-shadow:0 2px 10px rgba(0,0,0,0.18); }
+        .cal-chip.is-run .cal-chip-name{ text-decoration:none; }
+        .cal-chip.run-success{ --chip-c:#10b981; }
+        .cal-chip.run-failure{ --chip-c:#ef4444; }
+        .cal-chip.run-cancelled,.cal-chip.run-skipped{ --chip-c:#9ca3af; }
+        .cal-chip.run-link-icon::after{ content:'\2197'; font-size:10px; color:var(--chip-c,var(--orange)); margin-left:auto; }
+        .cal-chip.is-future{ opacity:.92; border-style:dashed; }
+        .cal-chip.is-missed{ opacity:.6; }
+        .cal-more{ font-size:10px; font-weight:700; color:var(--orange); cursor:pointer; padding:2px 4px; }
+        .cal-more:hover{ text-decoration:underline; }
+        .cal-empty-note{
+            margin-top:20px; padding:18px; border:1px dashed var(--border-color); border-radius:14px;
+            text-align:center; color:var(--text-secondary); font-size:13px;
+        }
+        .cal-stat-pills{ display:flex; gap:10px; flex-wrap:wrap; }
+        .cal-stat-pill{
+            display:flex; align-items:center; gap:7px; padding:7px 13px; border-radius:999px;
+            background:var(--glass-bg); border:1px solid var(--border-color); font-size:11px; font-weight:700;
+            color:var(--text-secondary);
+        }
+        .cal-stat-pill b{ color:var(--text-primary); font-size:13px; }
+        .cal-cell{ cursor:pointer; }
+        .cal-chip{ cursor:pointer; }
+
+        /* Hover bubble (pipeline name only) */
+        .cal-tip{
+            position:fixed; z-index:3000; pointer-events:none;
+            background:var(--navy, #14233b); color:#fff;
+            border:1px solid rgba(250,167,74,0.45);
+            padding:7px 11px; border-radius:9px; font-size:12px; font-weight:700; max-width:340px;
+            box-shadow:0 10px 30px rgba(0,0,0,0.45); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+            opacity:0; transform:translateY(4px) scale(0.97); transition:opacity .12s var(--ease), transform .12s var(--ease);
+        }
+        [data-theme="light"] .cal-tip{ background:#1E3860; }
+        .cal-tip.show{ opacity:1; transform:translateY(0) scale(1); }
+
+        /* Schedule detail modal internals */
+        .cal-modal-status{
+            display:flex; align-items:center; gap:13px; padding:14px 16px; border-radius:13px; margin-bottom:16px;
+            background:color-mix(in srgb, var(--st) 12%, transparent);
+            border:1px solid color-mix(in srgb, var(--st) 38%, transparent);
+        }
+        .cal-modal-status-ico{ font-size:22px; line-height:1; color:var(--st); flex:0 0 auto; }
+        .cal-modal-status-label{ font-size:14px; font-weight:800; color:var(--text-primary); }
+        .cal-modal-status-when{ font-size:12px; color:var(--text-secondary); margin-top:2px; }
+        .cal-info-grid{ display:flex; flex-direction:column; gap:2px; }
+        .cal-info-row{
+            display:grid; grid-template-columns:26px 120px 1fr; align-items:center; gap:8px;
+            padding:9px 6px; border-bottom:1px solid var(--border-color); font-size:13px;
+        }
+        .cal-info-row:last-child{ border-bottom:none; }
+        .cal-info-ico{ text-align:center; opacity:.85; }
+        .cal-info-label{ color:var(--text-muted); font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:.5px; }
+        .cal-info-val{ color:var(--text-primary); font-weight:600; overflow-wrap:anywhere; }
+        .cal-info-val code{ font-family:'JetBrains Mono',monospace; font-size:12px; background:var(--glass-bg); padding:2px 7px; border-radius:6px; border:1px solid var(--border-color); }
+
+        /* Day modal list */
+        .cal-day-summary{ display:flex; gap:16px; flex-wrap:wrap; font-size:12px; color:var(--text-secondary); margin-bottom:14px; }
+        .cal-day-summary b{ color:var(--text-primary); }
+        .cal-day-list{ display:flex; flex-direction:column; gap:8px; max-height:50vh; overflow-y:auto; }
+        .cal-day-item{
+            display:flex; align-items:center; gap:11px; padding:11px 13px; border-radius:11px;
+            border:1px solid var(--border-color); background:var(--glass-bg); cursor:pointer;
+            transition:all .15s var(--ease);
+        }
+        .cal-day-item:hover{ border-color:var(--orange); background:rgba(250,167,74,0.07); transform:translateX(2px); }
+        .cal-day-dot{ width:10px; height:10px; border-radius:50%; flex:0 0 auto; box-shadow:0 0 8px rgba(0,0,0,.25); }
+        .cal-day-time{ font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--text-secondary); flex:0 0 auto; min-width:78px; }
+        .cal-day-name{ font-size:13px; font-weight:600; color:var(--text-primary); flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .cal-day-link{ font-size:12px; font-weight:700; color:var(--orange); text-decoration:none; flex:0 0 auto; }
+        .cal-day-link:hover{ text-decoration:underline; }
+        .cal-day-tag{ font-size:11px; font-weight:700; flex:0 0 auto; }
+
+        @media (max-width: 760px){
+            .cal-cell{ min-height:92px; }
+            .cal-chip-time{ display:none; }
+            .cal-info-row{ grid-template-columns:24px 100px 1fr; }
+        }
+
+        /* ═══════════════════════════════════════════ */
         /*  DASHBOARDS TAB                             */
         /* ═══════════════════════════════════════════ */
         #panelDashboards .sidebar { border-right: none; max-width: 44vw; }
@@ -1235,6 +1447,7 @@
     <div class="top-tabs">
         <div class="top-tabs-left">
             <button class="top-tab active" onclick="switchTopTab('pipelines')" id="tabPipelines">Pipelines</button>
+            <button class="top-tab" onclick="switchTopTab('calendar')" id="tabCalendar">Calendar</button>
             <button class="top-tab" onclick="switchTopTab('results')" id="tabResults">Results & Metrics</button>
             <button class="top-tab" onclick="switchTopTab('dashboards')" id="tabDashboards" style="display:none;">Dashboards</button>
             <button class="top-tab" onclick="switchTopTab('email')" id="tabEmail">Email Report</button>
@@ -1300,6 +1513,42 @@
         </div>
     </div>
     </div><!-- /panelPipelines -->
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!--  CALENDAR PANEL                                 -->
+    <!-- ═══════════════════════════════════════════════ -->
+    <div class="tab-content" id="panelCalendar">
+        <div class="cal-shell">
+            <div class="cal-head">
+                <div>
+                    <div class="cal-title-wrap">
+                        <div class="cal-nav">
+                            <button class="cal-arrow" onclick="calShiftMonth(-1)" title="Previous month" aria-label="Previous month">&#8249;</button>
+                            <button onclick="calGoToday()" title="Jump to current month">Today</button>
+                            <button class="cal-arrow" onclick="calShiftMonth(1)" title="Next month" aria-label="Next month">&#8250;</button>
+                        </div>
+                        <div class="cal-title"><span id="calMonthName">&nbsp;</span><span class="cal-year" id="calYear"></span></div>
+                    </div>
+                    <div class="cal-sub" id="calSubText">Scheduled pipeline runs, parsed from each pipeline's cron schedule (UTC &rarr; your local time).</div>
+                </div>
+                <div class="cal-stat-pills" id="calStatPills"></div>
+            </div>
+            <div class="cal-legend">
+                <span class="lg"><span class="dot" style="background:var(--orange);"></span> Scheduled (upcoming)</span>
+                <span class="lg"><span class="dot" style="background:#10b981;"></span> Ran &mdash; passed</span>
+                <span class="lg"><span class="dot" style="background:#ef4444;"></span> Ran &mdash; failed</span>
+                <span class="lg"><span class="dot" style="background:#9ca3af;"></span> Cancelled / skipped / no run</span>
+                <span class="lg" style="margin-left:auto; color:var(--text-muted);">Run links appear on past dates after you Fetch Results.</span>
+            </div>
+            <div class="cal-grid-wrap">
+                <div class="cal-dow">
+                    <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                </div>
+                <div class="cal-grid" id="calGrid"></div>
+            </div>
+            <div id="calEmptyNote"></div>
+        </div>
+    </div><!-- /panelCalendar -->
 
     <!-- ═══════════════════════════════════════════════ -->
     <!--  RESULTS & METRICS TAB                         -->
@@ -3496,6 +3745,7 @@ ${os.map(n => `- ${n}`).join('\n')}
         // Refresh views.
         if (currentView === 'list') showAllPipelines();
         else { buildTree(); showFolderPipelines(selectedFolder); }
+        try { if (document.getElementById('panelCalendar')?.classList.contains('active')) renderCalendar(); } catch { /* ignore */ }
         if (allRuns && allRuns.length) {
             if (o.skipResults !== true) {
                 try { populateResultsRepoFilter(); } catch { /* ignore */ }
@@ -4359,6 +4609,12 @@ ${os.map(n => `- ${n}`).join('\n')}
     // Return to whichever list the user came from (the search-enabled "All Pipelines"
     // list view, or the folder view), preserving search/filters when in list view.
     function returnToPipelineList() {
+        // If we arrived here from the Calendar tab, Back should go back to the Calendar.
+        if (calReturnPending) {
+            calReturnPending = false;
+            switchTopTab('calendar');
+            return;
+        }
         if (currentView === 'list') showAllPipelines();
         else showFolderPipelines(selectedFolder);
     }
@@ -5555,6 +5811,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
     //  CREATE / EDIT FORM
     // ══════════════════════════════════════════
     function showCreateForm(prefill = null, editable = true) {
+        calReturnPending = false; // opening the form normally clears any pending Calendar return
         if (!prefill && editable) { editingPipeline = null; viewOnlyMode = false; }
         document.getElementById('actionBar').style.display = editable ? 'block' : 'none';
         const isEdit = !!editingPipeline;
@@ -10268,6 +10525,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
         document.getElementById('panel' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
         if (tab === 'results' && allRuns.length) renderResults();
+        if (tab === 'calendar') renderCalendar();
         if (tab === 'dashboards') renderDashboards();
         if (tab === 'email') {
             document.getElementById(allRuns.length ? 'emailReady' : 'emailNoData').style.display = 'block';
@@ -10889,7 +11147,9 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             status.innerHTML = `<span style="color:var(--success); font-weight:600;">&#10003; Loaded ${allRuns.length} run(s)</span> across ${resultsPipelines.length} pipeline(s) (${totalMatched} matched in GitHub)${miss}.`;
             status.className = 'pat-status ok';
             renderResults();
+            playDashboardCinematic(document.getElementById('metricsArea'));
             revealDashboardsTab();
+            if (document.getElementById('panelCalendar')?.classList.contains('active')) renderCalendar();
             document.getElementById('emailNoData').style.display = 'none';
             document.getElementById('emailReady').style.display = 'block';
             populateEmailPipePicker();
@@ -10906,7 +11166,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         if (!resultsPipelines.length && !allRuns.length) return;
         const metricsArea = document.getElementById('metricsArea');
         metricsArea.style.display = 'block';
-        metricsArea.style.animation = 'fadeSlideUp 0.5s ease-out both';
+        metricsArea.style.animation = '';
         document.getElementById('resultsEmpty').style.display = 'none';
         document.getElementById('resultsTableWrap').style.display = 'block';
         populateResultsRepoFilter();
@@ -12584,6 +12844,572 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         void btn.offsetWidth;
         btn.classList.add('break-in');
         setTimeout(() => btn.classList.remove('break-in'), 900);
+    }
+
+    // ══════════════════════════════════════════
+    //  CINEMATIC DASHBOARD REVEAL
+    // ══════════════════════════════════════════
+    function playDashboardCinematic(area) {
+        if (!area) return;
+        try {
+            const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            // Make sure the dashboard is in view so the reveal is actually seen.
+            try { area.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }); } catch { /* ignore */ }
+
+            // Restart the container reveal animation cleanly.
+            area.classList.remove('dash-cinematic', 'dash-glow');
+            void area.offsetWidth; // reflow
+            area.classList.add('dash-cinematic', 'dash-glow');
+            setTimeout(() => area.classList.remove('dash-cinematic', 'dash-glow'), 1700);
+
+            if (reduce) return;
+
+            // One-shot light sweep / scan overlay anchored over the dashboard.
+            const host = area.parentElement || area;
+            const hostPos = getComputedStyle(host).position;
+            if (hostPos === 'static') host.style.position = 'relative';
+            const old = document.getElementById('dashCineFx');
+            if (old) old.remove();
+            const fx = document.createElement('div');
+            fx.id = 'dashCineFx';
+            fx.className = 'dash-cine-fx';
+            fx.innerHTML = '<div class="wipe"></div><div class="scan"></div>';
+            const top = area.offsetTop;
+            fx.style.top = top + 'px';
+            fx.style.height = Math.max(area.offsetHeight, 200) + 'px';
+            host.appendChild(fx);
+            setTimeout(() => { try { fx.remove(); } catch { /* ignore */ } }, 1500);
+        } catch { /* animation is best-effort */ }
+    }
+
+    // ══════════════════════════════════════════
+    //  CALENDAR
+    // ══════════════════════════════════════════
+    const CAL_PALETTE = ['#FAA74A','#60a5fa','#34d399','#a78bfa','#f472b6','#fbbf24','#22d3ee','#fb7185','#4ade80','#c084fc','#38bdf8','#facc15'];
+    const CAL_TZ = 'America/Los_Angeles'; // all calendar times shown in PST/PDT
+    let calYearState = null;   // displayed year
+    let calMonthState = null;  // displayed month (0-11)
+    let calOcc = [];           // per-render registry of occurrences, indexed by data-cid
+    let calReturnPending = false; // when true, the pipeline form's Back button returns to the Calendar
+
+    // YYYY-MM-DD for the given instant, evaluated in PST (so buckets/labels are PST-aligned).
+    function calPSTDateKey(ms) {
+        return new Date(ms).toLocaleDateString('en-CA', { timeZone: CAL_TZ });
+    }
+    function calFmtPSTTime(ms) {
+        return new Date(ms).toLocaleTimeString('en-US', { timeZone: CAL_TZ, hour: 'numeric', minute: '2-digit' }) + ' PT';
+    }
+    function calFmtPSTDateLong(ms) {
+        return new Date(ms).toLocaleDateString('en-US', { timeZone: CAL_TZ, weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    }
+    function calFmtPSTDateTime(ms) {
+        return calFmtPSTDateLong(ms) + ' · ' + calFmtPSTTime(ms);
+    }
+
+    function calColorFor(key) {
+        const s = String(key || '');
+        let h = 0;
+        for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+        return CAL_PALETTE[h % CAL_PALETTE.length];
+    }
+
+    function calPad(n) { return String(n).padStart(2, '0'); }
+    function calLocalKey(d) { return d.getFullYear() + '-' + calPad(d.getMonth() + 1) + '-' + calPad(d.getDate()); }
+
+    // Parse one cron field into an array of allowed integers, or null for '*'.
+    function calParseCronField(field, min, max) {
+        const f = String(field || '').trim();
+        if (!f || f === '*') return null;
+        const out = new Set();
+        for (const partRaw of f.split(',')) {
+            const part = partRaw.trim();
+            if (!part) continue;
+            let stepStr = null, rangeStr = part;
+            if (part.includes('/')) { const [r, s] = part.split('/'); rangeStr = r; stepStr = s; }
+            const step = stepStr ? parseInt(stepStr, 10) : 1;
+            if (!Number.isFinite(step) || step < 1) continue;
+            let lo, hi;
+            if (rangeStr === '*') { lo = min; hi = max; }
+            else if (rangeStr.includes('-')) {
+                const [a, b] = rangeStr.split('-').map(x => parseInt(x, 10));
+                if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
+                lo = a; hi = b;
+            } else {
+                const v = parseInt(rangeStr, 10);
+                if (!Number.isFinite(v)) continue;
+                lo = v; hi = v;
+            }
+            for (let i = lo; i <= hi; i += step) {
+                if (i < min || i > max) continue;
+                out.add(i);
+            }
+        }
+        return out.size ? out : null;
+    }
+
+    // Parse a 5-field cron string. day-of-week: 0/7 = Sunday.
+    function calParseCron(cronStr) {
+        const parts = String(cronStr || '').trim().split(/\s+/);
+        if (parts.length !== 5) return null;
+        const minute = calParseCronField(parts[0], 0, 59);
+        const hour = calParseCronField(parts[1], 0, 23);
+        const dom = calParseCronField(parts[2], 1, 31);
+        const month = calParseCronField(parts[3], 1, 12);
+        let dow = calParseCronField(parts[4], 0, 7);
+        if (dow) { // normalize 7 -> 0
+            const norm = new Set();
+            dow.forEach(v => norm.add(v === 7 ? 0 : v));
+            dow = norm;
+        }
+        return {
+            minute: minute || new Set([0]),
+            hour: hour || new Set([0]),
+            dom, month, dow,
+            domRestricted: !!dom,
+            dowRestricted: !!dow
+        };
+    }
+
+    // Does the cron fire on this UTC date (ignoring time-of-day)?
+    function calCronMatchesUTCDate(c, utcDate) {
+        if (!c) return false;
+        const mo = utcDate.getUTCMonth() + 1;
+        if (c.month && !c.month.has(mo)) return false;
+        const domOk = c.dom ? c.dom.has(utcDate.getUTCDate()) : true;
+        const dowOk = c.dow ? c.dow.has(utcDate.getUTCDay()) : true;
+        // POSIX cron: when both dom and dow are restricted, match if EITHER holds.
+        if (c.domRestricted && c.dowRestricted) return domOk || dowOk;
+        return domOk && dowOk;
+    }
+
+    // Generate scheduled run instants (Date objects) within [startMs, endMs].
+    function calCronOccurrences(cronStr, startMs, endMs) {
+        const c = calParseCron(cronStr);
+        if (!c) return [];
+        const occ = [];
+        // Walk UTC days across a padded window so local-time placement is exact.
+        const startDay = new Date(startMs - 36 * 3600 * 1000);
+        const endDay = new Date(endMs + 36 * 3600 * 1000);
+        const cursor = new Date(Date.UTC(startDay.getUTCFullYear(), startDay.getUTCMonth(), startDay.getUTCDate()));
+        const lastMs = Date.UTC(endDay.getUTCFullYear(), endDay.getUTCMonth(), endDay.getUTCDate());
+        let guard = 0;
+        while (cursor.getTime() <= lastMs && guard < 800) {
+            guard++;
+            if (calCronMatchesUTCDate(c, cursor)) {
+                for (const h of c.hour) {
+                    for (const mi of c.minute) {
+                        const inst = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth(), cursor.getUTCDate(), h, mi));
+                        const t = inst.getTime();
+                        if (t >= startMs && t <= endMs) occ.push(inst);
+                    }
+                }
+            }
+            cursor.setUTCDate(cursor.getUTCDate() + 1);
+        }
+        return occ;
+    }
+
+    function calScheduledPipelines() {
+        const out = [];
+        const seen = new Set();
+        for (const p of (pipelines || [])) {
+            if (!p || !p.scheduleEnabled || !p.schedule) continue;
+            if (!calParseCron(p.schedule)) continue;
+            const repo = getPipelineRepo(p);
+            if (!repoFilterMatches(globalRepoFilter, repo)) continue;
+            const key = repo + '::' + (p.name || p.filename);
+            if (seen.has(key)) continue;
+            seen.add(key);
+            out.push({ ...p, repo, _key: key });
+        }
+        return out;
+    }
+
+    // Index fetched runs by repo::name::localDateKey for past-run matching.
+    function calBuildRunIndex() {
+        const idx = new Map();
+        for (const r of (allRuns || [])) {
+            if (!r || !r.createdAt) continue;
+            const d = new Date(r.createdAt);
+            if (isNaN(d)) continue;
+            const key = r.repo + '::' + r.workflowName + '::' + calPSTDateKey(d.getTime());
+            if (!idx.has(key)) idx.set(key, []);
+            idx.get(key).push(r);
+        }
+        return idx;
+    }
+
+    function calRunStatusClass(r) {
+        if (!r) return 'run-skipped';
+        if (r.gateSkipped) return 'run-skipped';
+        const c = String(r.conclusion || '').toLowerCase();
+        if (c === 'success') return 'run-success';
+        if (c === 'failure' || c === 'timed_out' || c === 'startup_failure') return 'run-failure';
+        if (c === 'cancelled' || c === 'skipped') return 'run-cancelled';
+        return 'run-skipped';
+    }
+
+    function calShortName(name) {
+        let s = String(name || '');
+        s = s.replace(/-Testim$/i, '').replace(/_Regression$/i, '').replace(/_Testim$/i, '');
+        return s;
+    }
+
+    function calShiftMonth(delta) {
+        if (calYearState == null) calGoToday();
+        let m = calMonthState + delta;
+        let y = calYearState;
+        while (m < 0) { m += 12; y--; }
+        while (m > 11) { m -= 12; y++; }
+        calMonthState = m; calYearState = y;
+        renderCalendar();
+    }
+
+    function calGoToday() {
+        const now = new Date();
+        calYearState = now.getFullYear();
+        calMonthState = now.getMonth();
+        renderCalendar();
+    }
+
+    function renderCalendar() {
+        if (calYearState == null || calMonthState == null) {
+            const now = new Date();
+            calYearState = now.getFullYear();
+            calMonthState = now.getMonth();
+        }
+        const grid = document.getElementById('calGrid');
+        if (!grid) return;
+
+        const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        document.getElementById('calMonthName').textContent = MONTHS[calMonthState];
+        document.getElementById('calYear').textContent = calYearState;
+
+        // Visible 6-week window: from the Sunday on/before the 1st, 42 cells.
+        const first = new Date(calYearState, calMonthState, 1);
+        const gridStart = new Date(calYearState, calMonthState, 1 - first.getDay());
+        const cells = [];
+        for (let i = 0; i < 42; i++) {
+            const d = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i);
+            cells.push(d);
+        }
+        const winStart = cells[0].getTime();
+        const winEnd = new Date(cells[41].getFullYear(), cells[41].getMonth(), cells[41].getDate(), 23, 59, 59, 999).getTime();
+
+        const sched = calScheduledPipelines();
+        const runIdx = calBuildRunIndex();
+        const haveRuns = (allRuns || []).length > 0;
+
+        // Bucket occurrences by PST date key.
+        const byDay = new Map(); // pstKey -> [{p, instMs}]
+        for (const p of sched) {
+            const occ = calCronOccurrences(p.schedule, winStart, winEnd);
+            for (const inst of occ) {
+                const key = calPSTDateKey(inst.getTime());
+                if (!byDay.has(key)) byDay.set(key, []);
+                byDay.get(key).push({ p, instMs: inst.getTime() });
+            }
+        }
+
+        const todayKey = calPSTDateKey(Date.now());
+        const nowMs = Date.now();
+        let ranCount = 0, upcomingCount = 0, totalOccThisMonth = 0;
+        calOcc = []; // reset registry
+
+        // Build a registry entry for an occurrence, return its cid.
+        const registerOcc = (p, instMs, dateKey) => {
+            const matchKey = p.repo + '::' + p.name + '::' + dateKey;
+            const runs = (runIdx.get(matchKey) || []).slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            const isPast = instMs < nowMs;
+            let status = 'future', run = null;
+            if (runs.length) { status = 'run'; run = runs[0]; }
+            else if (isPast) status = 'missed';
+            const cid = calOcc.length;
+            calOcc.push({
+                cid,
+                name: p.name, repo: p.repo, schedule: p.schedule,
+                repeatEvery: parseInt(p.repeatEvery || '1', 10) || 1,
+                repeatUnit: p.repeatUnit || 'weeks',
+                filename: p.filename, key: pipelineKey(p),
+                color: calColorFor(p._key),
+                instMs, dateKey, status, run, runsCount: runs.length
+            });
+            return calOcc[cid];
+        };
+
+        const html = cells.map((d, i) => {
+            const key = calLocalKey(d); // cell's own date label (matches PST bucket keys)
+            const inMonth = d.getMonth() === calMonthState;
+            const isToday = key === todayKey;
+            const dow = d.getDay();
+            const isWeekend = dow === 0 || dow === 6;
+
+            let events = (byDay.get(key) || []).slice();
+            events.sort((a, b) => a.instMs - b.instMs || String(a.p.name).localeCompare(String(b.p.name)));
+
+            // Register every occurrence for this day (so the day modal can show all of them).
+            const evObjs = events.map(ev => registerOcc(ev.p, ev.instMs, key));
+            if (inMonth) {
+                totalOccThisMonth += evObjs.length;
+                for (const o of evObjs) {
+                    if (o.status === 'run' && calRunStatusClass(o.run) === 'run-success') ranCount++;
+                    else if (o.status === 'future') upcomingCount++;
+                }
+            }
+
+            const MAX = 4;
+            const shown = evObjs.slice(0, MAX);
+            const extra = evObjs.length - shown.length;
+
+            const chipsHtml = shown.map(o => {
+                const nm = calShortName(o.name);
+                const timeStr = calFmtPSTTime(o.instMs);
+                const repeatBadge = (o.repeatEvery > 1) ? ` &middot; ${o.repeatEvery}w` : '';
+                let cls = 'cal-chip', chipColor = o.color;
+                if (o.status === 'run') {
+                    const rc = calRunStatusClass(o.run);
+                    cls += ' is-run ' + rc;
+                    if (rc === 'run-success') chipColor = '#10b981';
+                    else if (rc === 'run-failure') chipColor = '#ef4444';
+                    else if (rc === 'run-cancelled') chipColor = '#9ca3af';
+                } else if (o.status === 'missed') {
+                    cls += ' is-missed';
+                } else {
+                    cls += ' is-future';
+                }
+                return `<div class="${cls}" data-cid="${o.cid}" style="--chip-c:${chipColor};">
+                    <span class="cal-chip-dot"></span>
+                    <span class="cal-chip-time">${timeStr.replace(' PT','')}</span>
+                    <span class="cal-chip-name">${escapeHtml(nm)}${o.status === 'future' ? repeatBadge : ''}</span>
+                </div>`;
+            }).join('');
+
+            const moreHtml = extra > 0
+                ? `<div class="cal-more" data-day="${key}">+${extra} more</div>`
+                : '';
+
+            const clsList = ['cal-cell'];
+            if (!inMonth) clsList.push('cal-out');
+            if (isToday) clsList.push('cal-today');
+            if (isWeekend) clsList.push('cal-weekend');
+
+            return `<div class="${clsList.join(' ')}" data-day="${key}" style="animation-delay:${(i * 8)}ms;">
+                <div class="cal-daynum">${d.getDate()}</div>
+                <div class="cal-events">${chipsHtml}${moreHtml}</div>
+            </div>`;
+        }).join('');
+
+        grid.innerHTML = html;
+        calBindGridEvents(grid);
+
+        // Stat pills
+        const pills = document.getElementById('calStatPills');
+        if (pills) {
+            pills.innerHTML =
+                `<span class="cal-stat-pill"><b>${sched.length}</b> scheduled pipeline${sched.length === 1 ? '' : 's'}</span>` +
+                `<span class="cal-stat-pill"><b>${totalOccThisMonth}</b> run${totalOccThisMonth === 1 ? '' : 's'} this month</span>` +
+                (haveRuns ? `<span class="cal-stat-pill" style="border-color:rgba(16,185,129,0.4);"><b style="color:#10b981;">${ranCount}</b> passed (matched)</span>` : '');
+        }
+
+        const note = document.getElementById('calEmptyNote');
+        if (note) {
+            if (!sched.length) {
+                note.innerHTML = `<div class="cal-empty-note">No pipelines have a schedule enabled${globalRepoFilter && globalRepoFilter !== 'all' ? ' for the selected repo' : ''}.<br>Enable a schedule on a pipeline (Pipelines tab &rarr; edit &rarr; Schedule) and it will appear here.</div>`;
+            } else if (!haveRuns) {
+                note.innerHTML = `<div class="cal-empty-note">Tip: go to <strong>Results &amp; Metrics</strong> and <strong>Fetch Results</strong> &mdash; past scheduled dates will then show clickable run links with pass/fail status.</div>`;
+            } else {
+                note.innerHTML = '';
+            }
+        }
+    }
+
+    // ── Calendar interaction: tooltip bubble + detail modals ──
+    function calBindGridEvents(grid) {
+        if (grid._calBound) return;
+        grid._calBound = true;
+        grid.addEventListener('click', (e) => {
+            const chip = e.target.closest('.cal-chip[data-cid]');
+            if (chip) { e.stopPropagation(); calHideTip(); calOpenScheduleModal(parseInt(chip.dataset.cid, 10)); return; }
+            const more = e.target.closest('.cal-more[data-day]');
+            if (more) { calOpenDayModal(more.dataset.day); return; }
+            const cell = e.target.closest('.cal-cell[data-day]');
+            if (cell) calOpenDayModal(cell.dataset.day);
+        });
+        grid.addEventListener('mouseover', (e) => {
+            const chip = e.target.closest('.cal-chip[data-cid]');
+            if (!chip) return;
+            const o = calOcc[parseInt(chip.dataset.cid, 10)];
+            if (o) calShowTip(chip, o.name);
+        });
+        grid.addEventListener('mouseout', (e) => {
+            if (e.target.closest('.cal-chip[data-cid]')) calHideTip();
+        });
+        grid.addEventListener('mouseleave', calHideTip);
+    }
+
+    function calEnsureTip() {
+        let t = document.getElementById('calTip');
+        if (!t) { t = document.createElement('div'); t.id = 'calTip'; t.className = 'cal-tip'; document.body.appendChild(t); }
+        return t;
+    }
+    function calShowTip(anchor, text) {
+        const t = calEnsureTip();
+        t.textContent = text;
+        t.classList.add('show');
+        const r = anchor.getBoundingClientRect();
+        const tw = t.offsetWidth, th = t.offsetHeight;
+        let left = r.left + r.width / 2 - tw / 2;
+        let top = r.top - th - 9;
+        left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+        if (top < 8) top = r.bottom + 9;
+        t.style.left = left + 'px';
+        t.style.top = top + 'px';
+    }
+    function calHideTip() {
+        const t = document.getElementById('calTip');
+        if (t) t.classList.remove('show');
+    }
+
+    function calEnsureModal() {
+        let m = document.getElementById('calModal');
+        if (m) return m;
+        m = document.createElement('div');
+        m.className = 'modal-overlay';
+        m.id = 'calModal';
+        m.innerHTML = `<div class="modal" style="max-width:560px;">
+            <div class="modal-header" id="calModalHeader">
+                <div class="modal-title" id="calModalTitle">Schedule</div>
+                <button class="modal-close" onclick="closeModal('calModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="calModalBody"></div>
+            <div class="modal-footer" id="calModalFooter"></div>
+        </div>`;
+        document.body.appendChild(m);
+        m.addEventListener('click', (e) => { if (e.target === m) closeModal('calModal'); });
+        return m;
+    }
+
+    function calStatusMeta(o) {
+        if (o.status === 'run') {
+            const rc = calRunStatusClass(o.run);
+            if (rc === 'run-success') return { color: '#10b981', label: 'Ran — passed', icon: '&#10003;' };
+            if (rc === 'run-failure') return { color: '#ef4444', label: 'Ran — failed', icon: '&#10007;' };
+            if (o.run && o.run.gateSkipped) return { color: '#9ca3af', label: 'Skipped by schedule gate', icon: '&#9210;' };
+            return { color: '#9ca3af', label: 'Ran — ' + escapeHtml(o.run?.conclusion || o.run?.status || 'unknown'), icon: '&#9210;' };
+        }
+        if (o.status === 'missed') return { color: '#9ca3af', label: 'Scheduled — no matching run found', icon: '&#9203;' };
+        return { color: 'var(--orange)', label: 'Upcoming scheduled run', icon: '&#128340;' };
+    }
+
+    function calInfoRow(icon, label, value) {
+        return `<div class="cal-info-row">
+            <span class="cal-info-ico">${icon}</span>
+            <span class="cal-info-label">${label}</span>
+            <span class="cal-info-val">${value}</span>
+        </div>`;
+    }
+
+    function calOpenScheduleModal(cid) {
+        const o = calOcc[cid];
+        if (!o) return;
+        const m = calEnsureModal();
+        const meta = calStatusMeta(o);
+        const days = describeCronDays(o.schedule) || 'Custom';
+        const repeatRow = o.repeatEvery > 1
+            ? calInfoRow('&#128260;', 'Repeat', escapeHtml(`Every ${o.repeatEvery} ${o.repeatUnit || 'weeks'}`))
+            : '';
+
+        document.getElementById('calModalHeader').style.borderLeft = `4px solid ${meta.color}`;
+        document.getElementById('calModalTitle').innerHTML = `<span style="display:inline-flex; align-items:center; gap:9px;"><span style="width:11px;height:11px;border-radius:50%;background:${o.color};box-shadow:0 0 10px ${o.color};"></span>${escapeHtml(calShortName(o.name))}</span>`;
+
+        const body = document.getElementById('calModalBody');
+        body.innerHTML = `
+            <div class="cal-modal-status" style="--st:${meta.color};">
+                <span class="cal-modal-status-ico">${meta.icon}</span>
+                <div>
+                    <div class="cal-modal-status-label">${meta.label}</div>
+                    <div class="cal-modal-status-when">${calFmtPSTDateTime(o.instMs)}</div>
+                </div>
+            </div>
+            <div class="cal-info-grid">
+                ${calInfoRow('&#128197;', 'Runs on', escapeHtml(days))}
+                ${calInfoRow('&#9201;', 'Time', escapeHtml(calFmtPSTTime(o.instMs)))}
+                ${repeatRow}
+                ${calInfoRow('&#128193;', 'Repository', escapeHtml(o.repo))}
+                ${calInfoRow('&#128196;', 'Workflow', `<code>${escapeHtml(o.filename || '')}</code>`)}
+                ${o.status === 'run' && o.runsCount > 1 ? calInfoRow('&#128202;', 'Runs that day', `${o.runsCount}`) : ''}
+            </div>`;
+
+        const footer = document.getElementById('calModalFooter');
+        const runBtn = (o.status === 'run' && o.run?.url)
+            ? `<a class="btn" style="background:linear-gradient(135deg, ${meta.color}, ${meta.color}); color:#fff; text-decoration:none;" href="${escapeHtml(o.run.url)}" target="_blank" rel="noopener">&#8599; Open run</a>`
+            : '';
+        footer.innerHTML = `
+            <button class="btn btn-secondary" onclick="closeModal('calModal')">Close</button>
+            <button class="btn btn-secondary" onclick="calGotoPipelineByCid(${cid}, false)" title="Open the pipeline details (read-only)">&#128065; View YAML</button>
+            <button class="btn btn-orange" onclick="calGotoPipelineByCid(${cid}, true)" title="Open the pipeline editor">&#9999; Edit YAML</button>
+            ${runBtn}`;
+
+        m.classList.add('show');
+    }
+
+    function calOpenDayModal(dateKey) {
+        const items = calOcc.filter(o => o.dateKey === dateKey).sort((a, b) => a.instMs - b.instMs);
+        const m = calEnsureModal();
+        // Parse the YYYY-MM-DD label into a readable date (label is date-only, no TZ math needed).
+        const [yy, mm, dd] = dateKey.split('-').map(Number);
+        const labelDate = new Date(yy, (mm || 1) - 1, dd || 1).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+
+        document.getElementById('calModalHeader').style.borderLeft = '4px solid var(--orange)';
+        document.getElementById('calModalTitle').innerHTML = `<span style="display:inline-flex; align-items:center; gap:9px;"><span style="font-size:17px;">&#128197;</span>${escapeHtml(labelDate)}</span>`;
+
+        const body = document.getElementById('calModalBody');
+        if (!items.length) {
+            body.innerHTML = `<div class="cal-empty-note" style="margin:0;">No pipelines are scheduled for this day.</div>`;
+        } else {
+            const haveRuns = (allRuns || []).length > 0;
+            const counts = {
+                run: items.filter(o => o.status === 'run').length,
+                future: items.filter(o => o.status === 'future').length,
+                missed: items.filter(o => o.status === 'missed').length
+            };
+            const summary = `<div class="cal-day-summary">
+                <span><b>${items.length}</b> scheduled</span>
+                ${counts.run ? `<span style="color:#10b981;"><b>${counts.run}</b> ran</span>` : ''}
+                ${counts.future ? `<span style="color:var(--orange);"><b>${counts.future}</b> upcoming</span>` : ''}
+                ${counts.missed ? `<span style="color:#9ca3af;"><b>${counts.missed}</b> no run</span>` : ''}
+            </div>`;
+            const rows = items.map(o => {
+                const meta = calStatusMeta(o);
+                const right = (o.status === 'run' && o.run?.url)
+                    ? `<a class="cal-day-link" href="${escapeHtml(o.run.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Open run &#8599;</a>`
+                    : (o.status === 'future' ? `<span class="cal-day-tag" style="color:var(--orange);">Upcoming</span>` : `<span class="cal-day-tag" style="color:#9ca3af;">${haveRuns ? 'No run' : 'Not fetched'}</span>`);
+                return `<div class="cal-day-item" data-cid="${o.cid}" onclick="calOpenScheduleModal(${o.cid})" title="Click for schedule details">
+                    <span class="cal-day-dot" style="background:${meta.color};"></span>
+                    <span class="cal-day-time">${escapeHtml(calFmtPSTTime(o.instMs))}</span>
+                    <span class="cal-day-name">${escapeHtml(calShortName(o.name))}</span>
+                    ${right}
+                </div>`;
+            }).join('');
+            body.innerHTML = summary + `<div class="cal-day-list">${rows}</div>`;
+        }
+        document.getElementById('calModalFooter').innerHTML = `<button class="btn btn-secondary" onclick="closeModal('calModal')">Close</button>`;
+        m.classList.add('show');
+    }
+
+    function calGotoPipelineByCid(cid, edit) {
+        const o = calOcc[cid];
+        if (!o) return;
+        closeModal('calModal');
+        switchTopTab('pipelines');
+        setTimeout(() => {
+            try {
+                edit ? editPipeline(o.key) : viewPipeline(o.key);
+                // Set AFTER opening (showCreateForm clears it) so Back returns to the Calendar.
+                calReturnPending = true;
+            } catch (e) { showToast('Could not open pipeline: ' + e.message, true); }
+        }, 70);
     }
 
     function getDashboardsRepo() {
