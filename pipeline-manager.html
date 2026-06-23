@@ -258,6 +258,7 @@
         .main { flex: 1; padding: 30px 40px 120px; max-width: 900px; min-width: 0; }
         #panelResults .main { max-width: none; }
         #panelEmail .main { max-width: none; }
+        #panelDashboards .main { max-width: none; }
         .main-header { margin-bottom: 30px; }
         .main-header h1 { font-size: 28px; font-weight: 800; margin-bottom: 6px; }
         .main-header p { color: var(--text-secondary); font-size: 14px; }
@@ -870,6 +871,50 @@
         .dash-group-title{font-size:13px;font-weight:900;letter-spacing:.2px;color:var(--text-primary);}
         .dash-group-actions{display:flex;gap:8px;flex-wrap:wrap;}
         .dash-pipes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;}
+
+        /* Group filter (shown when a dashboard has >1 group) */
+        .dash-group-filter{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:-2px 0 18px;}
+        .dash-group-filter label{font-size:11px;font-weight:900;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted);}
+        .dash-group-filter select{
+            padding:8px 12px;border-radius:10px;border:1px solid var(--border-color);
+            background:var(--glass-bg);color:var(--text-primary);font-size:12px;font-weight:700;min-width:200px;cursor:pointer;
+        }
+        .dash-group-filter select:hover{border-color:var(--orange);}
+        .dash-group-filter .dash-gf-hint{font-size:11px;color:var(--text-muted);}
+
+        /* Duplicate pipelines info panel */
+        .dash-dup{
+            border:1px solid color-mix(in srgb, var(--orange) 32%, transparent);
+            background:color-mix(in srgb, var(--orange) 8%, transparent);
+            border-radius:14px;padding:0;margin:0 0 18px;overflow:hidden;
+        }
+        .dash-dup-head{
+            display:flex;align-items:center;gap:10px;padding:12px 15px;cursor:pointer;user-select:none;
+        }
+        .dash-dup-head .dash-dup-ico{font-size:17px;flex:0 0 auto;}
+        .dash-dup-head .dash-dup-title{font-size:13px;font-weight:800;color:var(--text-primary);}
+        .dash-dup-head .dash-dup-count{
+            font-size:11px;font-weight:800;color:var(--orange);background:color-mix(in srgb, var(--orange) 16%, transparent);
+            padding:2px 9px;border-radius:999px;
+        }
+        .dash-dup-head .dash-dup-caret{margin-left:auto;color:var(--text-muted);transition:transform .2s var(--ease);font-size:12px;}
+        .dash-dup.collapsed .dash-dup-caret{transform:rotate(-90deg);}
+        .dash-dup.collapsed .dash-dup-body{display:none;}
+        .dash-dup-body{padding:2px 15px 14px;display:flex;flex-direction:column;gap:10px;}
+        .dash-dup-item{
+            border-top:1px solid color-mix(in srgb, var(--orange) 18%, transparent);padding-top:10px;
+        }
+        .dash-dup-item:first-child{border-top:none;padding-top:2px;}
+        .dash-dup-name{font-size:12.5px;font-weight:800;color:var(--text-primary);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+        .dash-dup-badge{font-size:10.5px;font-weight:800;color:var(--orange);background:color-mix(in srgb, var(--orange) 16%, transparent);padding:1px 8px;border-radius:999px;}
+        .dash-dup-locs{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;}
+        .dash-dup-loc{
+            font-size:11px;font-weight:600;color:var(--text-secondary);
+            background:var(--glass-bg);border:1px solid var(--border-color);border-radius:8px;padding:4px 9px;
+            display:inline-flex;align-items:center;gap:6px;
+        }
+        .dash-dup-loc b{color:var(--text-primary);font-weight:800;}
+        .dash-dup-loc .dash-dup-loc-here{color:var(--orange);font-weight:800;}
         .dash-pipe-card{
             padding:12px 12px 10px;
             border-radius:14px;
@@ -12165,6 +12210,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     // ══════════════════════════════════════════
     const DASHBOARDS_KEY = 'pm.dashboards.v1';
     const DASH_SELECTED_KEY_PREFIX = 'pm.dashboards.selected.v1.';
+    let dashSelectedGroupId = null; // active dashboard's group filter (null = All groups)
     // Dashboard view mode (graphs) removed — keep dots only.
 
     function loadDashboardsState() {
@@ -12232,6 +12278,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         const v = String(id || '').trim();
         if (!r) return;
         try { localStorage.setItem(DASH_SELECTED_KEY_PREFIX + r, v); } catch { /* ignore */ }
+        dashSelectedGroupId = null; // switching dashboards resets the group filter to "All"
         renderDashboards();
     }
 
@@ -13594,6 +13641,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 </div>
                 <input type="text" id="dashPickSearch" placeholder="Search pipelines..." style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-tertiary); color:var(--text-primary); font-size:12px; margin-bottom:12px;" oninput="filterDashPickList()">
                 <div id="dashPickList" style="max-height:360px; overflow:auto; padding-right:4px;">${listHtml}</div>
+                <div id="dashPickEmpty" style="display:none; padding:14px 6px; color:var(--text-muted); font-size:12px; text-align:center;">No pipelines match your search.</div>
             `,
             `
                 <button class="btn btn-secondary" onclick="closeModal('pmDashModal')">Cancel</button>
@@ -13603,13 +13651,20 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     }
 
     function filterDashPickList() {
-        const q = String(document.getElementById('dashPickSearch')?.value || '').toLowerCase();
+        const q = String(document.getElementById('dashPickSearch')?.value || '').trim().toLowerCase();
         const list = document.getElementById('dashPickList');
         if (!list) return;
+        let shown = 0;
         list.querySelectorAll('label').forEach(lbl => {
             const t = (lbl.textContent || '').toLowerCase();
-            lbl.style.display = (!q || t.includes(q)) ? '' : 'none';
+            const match = (!q || t.includes(q));
+            // .dash-pick-row uses `display:flex !important`, so an inline display is ignored
+            // unless we also set it !important. Use setProperty/removeProperty accordingly.
+            if (match) { lbl.style.removeProperty('display'); shown++; }
+            else { lbl.style.setProperty('display', 'none', 'important'); }
         });
+        const empty = document.getElementById('dashPickEmpty');
+        if (empty) empty.style.display = shown ? 'none' : 'block';
     }
 
     function confirmPipelinePicker(dashId, groupId) {
@@ -13869,10 +13924,10 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 
         const viewMode = 'dots';
 
-        const computeDashboardStats = (dash) => {
+        const computeDashboardStats = (groupsList) => {
             const repoName = String(repo || '').trim();
             const limit = loadResultsRunCountPref();
-            const pipelineKeys = [...new Set((dash?.groups || []).flatMap(g => (g?.pipelines || [])))].map(x => String(x || '').trim()).filter(Boolean);
+            const pipelineKeys = [...new Set((groupsList || []).flatMap(g => (g?.pipelines || [])))].map(x => String(x || '').trim()).filter(Boolean);
             const wfFiles = pipelineKeys.map(pk => {
                 const pp = findPipeline(pk);
                 return String(pp?.filename || parsePipelineKey(pk).filename || '').trim();
@@ -13906,7 +13961,12 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             };
         };
 
-        const stats = computeDashboardStats(active);
+        const allGroups = active.groups || [];
+        // Validate/resolve the group filter against the active dashboard.
+        if (dashSelectedGroupId && !allGroups.some(g => g.id === dashSelectedGroupId)) dashSelectedGroupId = null;
+        const visibleGroups = dashSelectedGroupId ? allGroups.filter(g => g.id === dashSelectedGroupId) : allGroups;
+
+        const stats = computeDashboardStats(visibleGroups);
         const prClass = stats.passRate >= 90 ? 'v-green' : stats.passRate >= 70 ? 'v-orange' : 'v-red';
         const dashMetrics = `
             <div class="metrics-grid" style="margin:0 0 18px 0; animation:fadeSlideUp 0.45s ease-out both; animation-delay:0.08s;">
@@ -13941,6 +14001,15 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 <span class="dash-pill" style="padding:6px 10px;"><span class="run-dot unknown" style="width:10px;height:10px;"></span> Other</span>
                 <span style="margin-left:auto; font-size:11px;">Click a dot to open that run in GitHub.</span>
             </div>
+            ${allGroups.length > 1 ? `
+            <div class="dash-group-filter">
+                <label for="dashGroupFilter">Group</label>
+                <select id="dashGroupFilter" onchange="onDashGroupFilterChange(this.value)">
+                    <option value="">All groups (${allGroups.length})</option>
+                    ${allGroups.map(g => `<option value="${escapeHtml(g.id)}"${g.id === dashSelectedGroupId ? ' selected' : ''}>${escapeHtml(g.title)} (${(g.pipelines || []).length})</option>`).join('')}
+                </select>
+                <span class="dash-gf-hint">${dashSelectedGroupId ? 'Metrics &amp; view scoped to this group.' : 'Metrics cover all groups. Pick one to focus.'}</span>
+            </div>` : ''}
         `;
         const header = `
             <div class="dash-head" style="animation:fadeSlideUp 0.45s ease-out both;">
@@ -13962,7 +14031,9 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             </div>
         `;
 
-        const groupsHtml = (active.groups || []).map(g => {
+        const dupHtml = buildDashDuplicatesPanel(repo, active);
+
+        const groupsHtml = visibleGroups.map(g => {
             const pipesHtml = (g.pipelines || []).length
                 ? `<div class="dash-pipes">` + (g.pipelines || []).map(pk => {
                     const p = findPipeline(pk);
@@ -14018,8 +14089,79 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             </div>`;
         }).join('');
 
-        contentEl.innerHTML = header + dashMetrics + groupsHtml;
+        contentEl.innerHTML = header + dashMetrics + dupHtml + groupsHtml;
         try { animateCounters(); } catch { /* ignore */ }
+    }
+
+    function onDashGroupFilterChange(value) {
+        dashSelectedGroupId = String(value || '').trim() || null;
+        renderDashboards();
+    }
+
+    function toggleDashDuplicates(el) {
+        const box = el && el.closest ? el.closest('.dash-dup') : null;
+        if (box) box.classList.toggle('collapsed');
+    }
+
+    // Find pipelines that appear more than once across ALL dashboards for this repo
+    // (across groups within a dashboard and across other dashboards). Returns entries
+    // relevant to the active dashboard, each with every location it occurs in.
+    function buildDashDuplicatesPanel(repo, activeDash) {
+        const all = dashboardsForRepo(repo);
+        // pipelineKey -> [{ dashId, dashName, groupId, groupTitle, isActiveDash }]
+        const locs = new Map();
+        for (const d of all) {
+            for (const g of (d.groups || [])) {
+                for (const pkRaw of (g.pipelines || [])) {
+                    const pk = String(pkRaw || '').trim();
+                    if (!pk) continue;
+                    if (!locs.has(pk)) locs.set(pk, []);
+                    locs.get(pk).push({
+                        dashId: d.id, dashName: d.name || 'Dashboard',
+                        groupId: g.id, groupTitle: g.title || 'Group',
+                        isActiveDash: d.id === activeDash.id
+                    });
+                }
+            }
+        }
+
+        // Keep only true duplicates (2+ locations) that involve the active dashboard.
+        const dups = [];
+        for (const [pk, where] of locs.entries()) {
+            if (where.length < 2) continue;
+            if (!where.some(w => w.isActiveDash)) continue;
+            dups.push({ pk, where });
+        }
+        if (!dups.length) return '';
+
+        dups.sort((a, b) => b.where.length - a.where.length);
+
+        const itemsHtml = dups.map(({ pk, where }) => {
+            const p = findPipeline(pk);
+            const name = escapeHtml(String(p?.name || p?.filename || parsePipelineKey(pk).filename || pk).replace(/-Testim$/, ''));
+            const locsHtml = where.map(w => {
+                const here = w.isActiveDash ? ' dash-dup-loc-here' : '';
+                const tag = w.isActiveDash ? ' &middot; <span class="dash-dup-loc-here">this dashboard</span>' : '';
+                return `<span class="dash-dup-loc"><b>${escapeHtml(w.dashName)}</b> &rsaquo; <span class="${here.trim()}">${escapeHtml(w.groupTitle)}</span>${tag}</span>`;
+            }).join('');
+            return `<div class="dash-dup-item">
+                <div class="dash-dup-name">${name} <span class="dash-dup-badge">found ${where.length}&times;</span></div>
+                <div class="dash-dup-locs">${locsHtml}</div>
+            </div>`;
+        }).join('');
+
+        return `<div class="dash-dup">
+            <div class="dash-dup-head" onclick="toggleDashDuplicates(this)">
+                <span class="dash-dup-ico">&#128279;</span>
+                <span class="dash-dup-title">Duplicate pipelines</span>
+                <span class="dash-dup-count">${dups.length}</span>
+                <span class="dash-dup-caret">&#9660;</span>
+            </div>
+            <div class="dash-dup-body">
+                <div style="font-size:11px; color:var(--text-muted); margin:2px 0 2px;">These pipelines appear in more than one place across this repo's dashboards. Not an error &mdash; just so you know where they live.</div>
+                ${itemsHtml}
+            </div>
+        </div>`;
     }
 
     // ══════════════════════════════════════════
