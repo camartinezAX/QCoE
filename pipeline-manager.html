@@ -675,7 +675,27 @@
         /* ═══════════════════════════════════════════ */
         /*  CALENDAR TAB                               */
         /* ═══════════════════════════════════════════ */
-        #panelCalendar .cal-shell{ max-width:1280px; margin:0 auto; padding:26px 30px 60px; }
+        #panelCalendar .cal-shell{ max-width:1560px; margin:0 auto; padding:26px 34px 60px; }
+        /* Calendar filter toolbar */
+        .cal-filters{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:0 0 14px; }
+        .cal-filters .cal-search-wrap{ position:relative; flex:1 1 260px; min-width:200px; max-width:420px; }
+        .cal-filters .cal-search-wrap .cal-search-ico{ position:absolute; left:11px; top:50%; transform:translateY(-50%); font-size:13px; opacity:.6; pointer-events:none; }
+        .cal-filters input.cal-search{
+            width:100%; padding:9px 12px 9px 32px; border-radius:10px; border:1px solid var(--border-color);
+            background:var(--glass-bg); color:var(--text-primary); font-size:12px; transition:border-color .18s var(--ease);
+        }
+        .cal-filters input.cal-search:focus{ outline:none; border-color:var(--orange); }
+        .cal-filters select{
+            padding:9px 12px; border-radius:10px; border:1px solid var(--border-color);
+            background:var(--glass-bg); color:var(--text-primary); font-size:12px; font-weight:700; min-width:160px; cursor:pointer;
+        }
+        .cal-filters select:hover{ border-color:var(--orange); }
+        .cal-filters .cal-filter-label{ font-size:11px; font-weight:900; letter-spacing:.6px; text-transform:uppercase; color:var(--text-muted); }
+        .cal-filters .cal-clear{
+            border:1px solid var(--border-color); background:transparent; color:var(--text-secondary);
+            border-radius:10px; padding:9px 13px; font-size:12px; font-weight:700; cursor:pointer; transition:all .18s var(--ease);
+        }
+        .cal-filters .cal-clear:hover{ border-color:var(--orange); color:var(--orange); }
         .cal-head{
             display:flex; align-items:center; justify-content:space-between; gap:16px;
             flex-wrap:wrap; margin-bottom:20px;
@@ -958,8 +978,12 @@
         .queue-caveat{ color:var(--text-muted); cursor:help; }
         @keyframes queuePulse{ 0%,100%{ opacity:1; } 50%{ opacity:.4; } }
 
-        .queue-section-title{ font-size:12px; font-weight:900; letter-spacing:.5px; text-transform:uppercase; color:var(--text-muted); margin:18px 0 10px; display:flex; align-items:center; gap:8px; }
+        .queue-section-title{ font-size:12px; font-weight:900; letter-spacing:.5px; text-transform:uppercase; color:var(--text-muted); margin:18px 0 10px; display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; }
+        .queue-section-title:hover{ color:var(--text-primary); }
         .queue-section-title .qcount{ color:var(--text-primary); }
+        .queue-caret{ font-size:10px; transition:transform .18s var(--ease); display:inline-block; }
+        .queue-section.collapsed .queue-caret{ transform:rotate(-90deg); }
+        .queue-section.collapsed .queue-list{ display:none; }
 
         .queue-list{ display:flex; flex-direction:column; gap:8px; }
         .queue-row{
@@ -985,6 +1009,9 @@
         .queue-meta{ display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-top:4px; font-size:11px; color:var(--text-muted); }
         .queue-repo-chip{ font-weight:700; color:var(--text-secondary); background:var(--glass-bg); border:1px solid var(--border-color); border-radius:7px; padding:2px 8px; }
         .queue-evt{ font-family:'JetBrains Mono',monospace; }
+        .queue-orch{ color:#a78bfa; font-weight:700; text-decoration:none; }
+        .queue-orch:hover{ text-decoration:underline; }
+        .queue-runner{ font-weight:700; color:#3b82f6; background:rgba(59,130,246,0.12); border:1px solid rgba(59,130,246,0.3); border-radius:7px; padding:2px 8px; font-family:'JetBrains Mono',monospace; font-size:10.5px; }
         .queue-wait{ font-weight:700; }
         .queue-right{ flex:0 0 auto; display:flex; align-items:center; gap:10px; }
         .queue-link{ font-size:12px; font-weight:700; color:var(--orange); text-decoration:none; white-space:nowrap; }
@@ -1109,6 +1136,9 @@
             transition: transform 0.25s ease, box-shadow 0.25s ease;
         }
         .metric-card:hover { transform:translateY(-4px); box-shadow:0 12px 32px rgba(0,0,0,0.3); }
+        .metric-clickable { cursor:pointer; }
+        .metric-clickable:hover { box-shadow:0 12px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(250,167,74,0.45) inset; }
+        .funnel-clickable:hover .funnel-ring { transform:rotateX(30deg) scale(1.05); }
         .metric-card::before {
             content:''; position:absolute; top:0; left:0; right:0; height:3px;
             border-radius:16px 16px 0 0;
@@ -1166,9 +1196,11 @@
 
         /* ── Health ── */
         .health-bars { margin-top:8px; }
-        .health-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; animation:fadeSlideUp 0.5s ease-out both; }
-        .health-label { font-size:11px; font-weight:600; color:var(--text-secondary); width:160px; min-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .health-bar { flex:1; height:22px; border-radius:6px; background:rgba(255,255,255,0.04); overflow:hidden; display:flex; position:relative; }
+        .health-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; animation:fadeSlideUp 0.5s ease-out both; border-radius:8px; padding:2px 4px; transition:background .15s var(--ease); }
+        .health-clickable { cursor:pointer; }
+        .health-clickable:hover { background:rgba(250,167,74,0.07); }
+        .health-label { font-size:11px; font-weight:600; color:var(--text-primary); flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .health-bar { flex:0 0 200px; width:200px; height:18px; border-radius:6px; background:rgba(255,255,255,0.04); overflow:hidden; display:flex; position:relative; }
         .health-seg { height:100%; transition:width 1s cubic-bezier(0.4,0,0.2,1); position:relative; }
         .health-seg.pass { background:linear-gradient(90deg, #10b981, #34d399); }
         .health-seg.fail { background:linear-gradient(90deg, #ef4444, #f87171); }
@@ -1575,8 +1607,8 @@
             <button class="top-tab active" onclick="switchTopTab('pipelines')" id="tabPipelines">Pipelines</button>
             <button class="top-tab" onclick="switchTopTab('calendar')" id="tabCalendar">Calendar</button>
             <button class="top-tab" onclick="switchTopTab('results')" id="tabResults">Results & Metrics</button>
-            <button class="top-tab" onclick="switchTopTab('queue')" id="tabQueue" style="display:none;">Queue</button>
-            <button class="top-tab" onclick="switchTopTab('dashboards')" id="tabDashboards" style="display:none;">Dashboards</button>
+            <button class="top-tab" onclick="switchTopTab('queue')" id="tabQueue">Queue</button>
+            <button class="top-tab" onclick="switchTopTab('dashboards')" id="tabDashboards">Dashboards</button>
             <button class="top-tab" onclick="switchTopTab('email')" id="tabEmail">Email Report</button>
         </div>
         <div class="top-tabs-right">
@@ -1656,7 +1688,7 @@
                         </div>
                         <div class="cal-title"><span id="calMonthName">&nbsp;</span><span class="cal-year" id="calYear"></span></div>
                     </div>
-                    <div class="cal-sub" id="calSubText">Scheduled pipeline runs, parsed from each pipeline's cron schedule (UTC &rarr; your local time).</div>
+                    <div class="cal-sub" id="calSubText">Scheduled pipeline runs, parsed from each pipeline's cron schedule (UTC &rarr; Pacific time).</div>
                 </div>
                 <div class="cal-stat-pills" id="calStatPills"></div>
             </div>
@@ -1666,6 +1698,17 @@
                 <span class="lg"><span class="dot" style="background:#ef4444;"></span> Ran &mdash; failed</span>
                 <span class="lg"><span class="dot" style="background:#9ca3af;"></span> Cancelled / skipped / no run</span>
                 <span class="lg" style="margin-left:auto; color:var(--text-muted);">Run links appear on past dates after you Fetch Results.</span>
+            </div>
+            <div class="cal-filters">
+                <div class="cal-search-wrap">
+                    <span class="cal-search-ico">&#128269;</span>
+                    <input type="text" id="calSearch" class="cal-search" placeholder="Search pipelines..." oninput="onCalSearchChange(this.value)" autocomplete="off">
+                </div>
+                <span class="cal-filter-label">Repo</span>
+                <select id="calRepoFilter" onchange="onCalRepoFilterChange(this.value)"><option value="all">All repos</option></select>
+                <span class="cal-filter-label">Dashboard</span>
+                <select id="calDashFilter" onchange="onCalDashFilterChange(this.value)"><option value="">All</option></select>
+                <button class="cal-clear" id="calClearBtn" onclick="calClearFilters()" style="display:none;">Clear filters</button>
             </div>
             <div class="cal-grid-wrap">
                 <div class="cal-dow">
@@ -1857,7 +1900,7 @@
             <div class="queue-head">
                 <div>
                     <div class="queue-title"><span class="queue-title-ico">&#128229;</span> Runner Queue</div>
-                    <div class="queue-sub">All repos share the same self-hosted runner pool &mdash; this is the live, shared line. <span id="queueUpdated"></span></div>
+                    <div class="queue-sub">Live queue across your tracked repos. The self-hosted runners are shared org-wide, so jobs from other repos can also keep them busy (those won't appear here). <span id="queueUpdated"></span></div>
                 </div>
                 <div class="queue-head-actions">
                     <label class="queue-auto" title="Auto-refresh every 30s while this tab is open">
@@ -2181,6 +2224,7 @@
                         <div id="deleteListPreview" style="font-size:12px; color:var(--text-secondary); line-height:1.8; margin-top:8px;"></div>
                     </div>
                 </div>
+                <div id="deleteDashWarn" style="display:none; background:rgba(250,167,74,0.10); border:1px solid rgba(250,167,74,0.35); border-radius:12px; padding:12px 16px; margin-bottom:16px; font-size:12px; color:var(--text-secondary); line-height:1.7;"></div>
                 <label class="toggle-row" onclick="event.stopPropagation()" style="margin-top:8px;">
                     <div class="toggle-switch">
                         <input type="checkbox" id="deleteCommitPush" checked>
@@ -5526,6 +5570,28 @@ ${os.map(n => `- ${n}`).join('\n')}
             return p ? p.name : String(k);
         });
         document.getElementById('deleteListPreview').innerHTML = list.map(n => `<div style="padding:3px 0;">&#128196; ${n}</div>`).join('');
+
+        // Heads-up if any selected pipeline lives in a dashboard — it'll be removed from there too.
+        const warn = document.getElementById('deleteDashWarn');
+        if (warn) {
+            const lines = [];
+            for (const k of selectedPipelines) {
+                const hits = dashboardsReferencingKey(k);
+                if (!hits.length) continue;
+                const p = findPipeline(k);
+                const nm = escapeHtml(p ? (p.name || p.filename) : String(k));
+                const where = hits.map(h => `${escapeHtml(h.dashName)} › ${escapeHtml(h.groupTitle)}`).join(', ');
+                lines.push(`<div style="margin-top:4px;"><b>${nm}</b> &mdash; ${where}</div>`);
+            }
+            if (lines.length) {
+                warn.innerHTML = `<div style="font-weight:800; color:var(--orange); margin-bottom:4px;">&#9888; Heads up — also in dashboard(s)</div>` +
+                    `These pipelines are used in the dashboard(s) below. They'll be removed from those dashboards automatically once the deleted files are next synced from GitHub:` + lines.join('');
+                warn.style.display = '';
+            } else {
+                warn.style.display = 'none';
+                warn.innerHTML = '';
+            }
+        }
         document.getElementById('deleteModal').classList.add('show');
     }
 
@@ -5556,6 +5622,11 @@ ${os.map(n => `- ${n}`).join('\n')}
 
         prompt = prompt.trimEnd();
         if (commitPush) prompt += `\n\nAfter deleting, commit and push your current branch (e.g. \`git push origin HEAD\`).`;
+
+        // NOTE: this only builds a text prompt — it does not delete files or remove
+        // in-app pipeline entries, so we must NOT mutate dashboards here. Dashboard
+        // cleanup happens when the pipeline actually leaves the app (a sync prune,
+        // once the deleted workflow files are gone from the repo).
 
         closeModal('deleteModal');
         document.getElementById('outputBox').textContent = prompt;
@@ -8784,6 +8855,21 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             base.renamedFrom = oldFilename;
         }
 
+        // Heads-up BEFORE saving: if this is a rename (the dashboard key changes) and the
+        // pipeline lives in one or more dashboards, let the user bail out. If they proceed,
+        // we migrate those dashboard entries to the new file so it isn't silently orphaned.
+        const isRename = !!editingPipeline && oldKey !== newKey;
+        const dashHits = isRename ? dashboardsReferencingKey(oldKey) : [];
+        if (dashHits.length) {
+            const where = dashHits.map(h => `• ${h.dashName} › ${h.groupTitle}`).join('\n');
+            const ok = confirm(
+                `Heads up: "${base.name || filename}" is used in ${dashHits.length} dashboard group(s):\n\n${where}\n\n` +
+                `You're changing its workflow file (${oldFilename || '—'} → ${filename}). ` +
+                `Saving will update those dashboard entries to point at the new file.\n\nSave changes?`
+            );
+            if (!ok) return; // user chose not to save
+        }
+
         // Remove old entry (if editing/renaming), then add/update (unique per repo).
         const existingIdx = pipelines.findIndex(p => pipelineKey(p) === oldKey);
         if (existingIdx >= 0) pipelines.splice(existingIdx, 1);
@@ -8792,6 +8878,12 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         if (alreadyIdx >= 0) pipelines.splice(alreadyIdx, 1);
 
         pipelines.push(base);
+
+        // Keep dashboards pointing at the renamed pipeline.
+        if (dashHits.length) {
+            const n = migrateDashboardKey(oldKey, newKey);
+            if (n) { showToast(`Updated ${n} dashboard group(s) to match the new file.`); refreshDashboardsIfActive(); }
+        }
 
         editingPipeline = null;
         viewOnlyMode = false;
@@ -9829,7 +9921,10 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 // Replace mode: make the local list match the sync payload (destructive by design).
                 removed = pipelines.filter(p => !repoKeys.has(pipelineKey(p))).length;
                 for (let i = pipelines.length - 1; i >= 0; i--) {
-                    if (!repoKeys.has(pipelineKey(pipelines[i]))) pipelines.splice(i, 1);
+                    if (!repoKeys.has(pipelineKey(pipelines[i]))) {
+                        removeKeyFromAllDashboards(pipelineKey(pipelines[i])); // drop stale dashboard refs
+                        pipelines.splice(i, 1);
+                    }
                 }
             } else {
                 const incomingRepos = new Set(
@@ -9845,7 +9940,10 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 
                 removed = pipelines.filter(p => shouldPrune(p) && !repoKeys.has(pipelineKey(p))).length;
                 for (let i = pipelines.length - 1; i >= 0; i--) {
-                    if (shouldPrune(pipelines[i]) && !repoKeys.has(pipelineKey(pipelines[i]))) pipelines.splice(i, 1);
+                    if (shouldPrune(pipelines[i]) && !repoKeys.has(pipelineKey(pipelines[i]))) {
+                        removeKeyFromAllDashboards(pipelineKey(pipelines[i])); // drop stale dashboard refs
+                        pipelines.splice(i, 1);
+                    }
                 }
             }
 
@@ -9944,6 +10042,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         selectedPipelines.clear();
         buildTree();
         showFolderPipelines(selectedFolder);
+        refreshDashboardsIfActive(); // sync may have pruned pipelines out of dashboards
 
         document.getElementById('syncFileName').textContent = 'No file selected';
         document.getElementById('syncFileName').style.color = '';
@@ -11598,62 +11697,23 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         const total = runs.length;
         const actionable = outcomes.filter(o => o === 'success' || o === 'failure').length;
         const passRate = actionable ? ((passed / actionable) * 100).toFixed(1) : '0.0';
-        const durations = runs.filter(r => r.duration > 0 && getRunOutcome(r) !== 'skipped').map(r => r.duration);
+        const timedRuns = runs.filter(r => r.duration > 0 && getRunOutcome(r) !== 'skipped');
+        const durations = timedRuns.map(r => r.duration);
         const avgDur = durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0;
+        // Longest / shortest individual runs (+ which pipeline they belong to, for click-to-focus).
+        let longestRun = null, shortestRun = null;
+        for (const r of timedRuns) {
+            if (!longestRun || r.duration > longestRun.duration) longestRun = r;
+            if (!shortestRun || r.duration < shortestRun.duration) shortestRun = r;
+        }
+        const lrKey = longestRun ? resultsPipelineKey(longestRun.repo, longestRun.workflowName) : '';
+        const srKey = shortestRun ? resultsPipelineKey(shortestRun.repo, shortestRun.workflowName) : '';
+        const lrName = longestRun ? String(longestRun.workflowName || '').replace(/-Testim$/, '') : '—';
+        const srName = shortestRun ? String(shortestRun.workflowName || '').replace(/-Testim$/, '') : '—';
         const uniquePipelines = resultsSelectedPipelines.size
             ? resultsSelectedPipelines.size
             : new Set(runs.map(r => resultsPipelineKey(r.repo, r.workflowName))).size;
         const prClass = parseFloat(passRate) >= 90 ? 'v-green' : parseFloat(passRate) >= 70 ? 'v-orange' : 'v-red';
-
-        // Scheduler insights — which pipeline ran the most via its scheduler.
-        // Source of truth is the run's own trigger (event === 'schedule'), NOT a
-        // separately-recomputed scheduleEnabled scope set. A schedule-triggered run
-        // can only come from a scheduled pipeline, so the run's event already proves
-        // it. The old code re-gated each run through a config/selection-derived scope
-        // set; when that set didn't line up (stale parsed flag, partial selection),
-        // every real scheduler run got dropped and the card showed 0 even though the
-        // sidebar clock badges (which read the run event directly) showed runs. This
-        // now mirrors the sidebar badge logic exactly, scoped to the runs in view.
-        const schedExecRuns = runs.filter(r => r && r.event === 'schedule' && !r.gateSkipped);
-
-        // Still surface the card when scheduled pipelines are in scope (so an empty
-        // window reads "0 scheduler run(s) in view" rather than hiding the card).
-        const hasScheduledPipelinesInScope = (() => {
-            if (resultsSelectedPipelines.size) {
-                for (const k of resultsSelectedPipelines) {
-                    if (resultsPipelineIndex.get(k)?.scheduleEnabled) return true;
-                }
-                return false;
-            }
-            return (getResultsVisiblePipelines() || []).some(p => p?.scheduleEnabled);
-        })();
-
-        let schedMetricHtml = '';
-        if (schedExecRuns.length || hasScheduledPipelinesInScope) {
-            const byPipe = new Map();
-            for (const r of schedExecRuns) {
-                const k = resultsPipelineKey(r.repo, r.workflowName);
-                byPipe.set(k, (byPipe.get(k) || 0) + 1);
-            }
-            let topKey = '';
-            let topCount = 0;
-            for (const [k, c] of byPipe.entries()) {
-                if (c > topCount) { topKey = k; topCount = c; }
-            }
-            const totalSched = [...byPipe.values()].reduce((a, b) => a + b, 0);
-            const topNameRaw = topKey ? (resultsPipelineIndex.get(topKey)?.name || parseResultsPipelineKey(topKey).workflowName) : '';
-            const topName = topNameRaw ? String(topNameRaw).replace(/-Testim$/, '') : '—';
-            const topLine = totalSched ? `Top: ${escapeHtml(topName)} (${topCount})` : 'No scheduler runs in view';
-            schedMetricHtml = `
-                <div class="metric-card m-green">
-                    <div class="metric-icon">&#128337;</div>
-                    <div class="metric-label">Most scheduled</div>
-                    <div class="metric-value v-green" data-count="${topCount}">${topCount}</div>
-                    <div class="metric-sub">${totalSched} scheduler run(s) in view<br>${topLine}</div>
-                    <div class="metric-bar"><div class="metric-bar-fill" style="width:${totalSched ? Math.min(100, (topCount / Math.max(1, totalSched)) * 100) : 0}%; background:linear-gradient(90deg,#10b981,#34d399);"></div></div>
-                </div>
-            `;
-        }
 
         document.getElementById('metricsGrid').innerHTML = `
             <div class="metric-card m-blue">
@@ -11684,15 +11744,22 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 <div class="metric-sub">${durations.length} runs with timing</div>
                 <div class="metric-bar"><div class="metric-bar-fill" style="width:${durations.length ? Math.min(avgDur / (Math.max(...durations) || 1) * 100, 100) : 0}%; background:linear-gradient(90deg,#FAA74A,#fbbf24);"></div></div>
             </div>
-            <div class="metric-card m-purple">
+            <div class="metric-card m-purple${lrKey ? ' metric-clickable' : ''}"${lrKey ? ` data-focus-key="${escapeHtml(lrKey)}" title="Click to focus this pipeline"` : ''}>
                 <div class="metric-icon">&#128200;</div>
                 <div class="metric-label">Longest Run</div>
-                <div class="metric-value">${fmtDuration(durations.length ? Math.max(...durations) : 0)}</div>
-                <div class="metric-sub">Shortest: ${fmtDuration(durations.length ? Math.min(...durations) : 0)}</div>
+                <div class="metric-value">${fmtDuration(longestRun ? longestRun.duration : 0)}</div>
+                <div class="metric-sub">${escapeHtml(lrName)}${lrKey ? ' &middot; click to focus' : ''}</div>
                 <div class="metric-bar"><div class="metric-bar-fill" style="width:100%; background:linear-gradient(90deg,#8b5cf6,#a78bfa);"></div></div>
             </div>
-            ${schedMetricHtml}
+            <div class="metric-card m-green${srKey ? ' metric-clickable' : ''}"${srKey ? ` data-focus-key="${escapeHtml(srKey)}" title="Click to focus this pipeline"` : ''}>
+                <div class="metric-icon">&#9889;</div>
+                <div class="metric-label">Shortest Run</div>
+                <div class="metric-value v-green">${fmtDuration(shortestRun ? shortestRun.duration : 0)}</div>
+                <div class="metric-sub">${escapeHtml(srName)}${srKey ? ' &middot; click to focus' : ''}</div>
+                <div class="metric-bar"><div class="metric-bar-fill" style="width:100%; background:linear-gradient(90deg,#10b981,#34d399);"></div></div>
+            </div>
         `;
+        bindResultsFocusDelegation(document.getElementById('metricsGrid'));
         animateCounters();
     }
 
@@ -11796,10 +11863,10 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     function buildFunnel(total, passed, failed, other) {
         const isLight = (document.documentElement.getAttribute('data-theme') || 'light') === 'light';
         const items = [
-            { label: 'Total Runs', val: total, color: isLight ? '#2563eb' : '#3b82f6', colorEnd: isLight ? '#60a5fa' : '#93c5fd', pct: '100%' },
-            { label: 'Passed', val: passed, color: isLight ? '#16a34a' : '#10b981', colorEnd: isLight ? '#4ade80' : '#6ee7b7', pct: total ? (passed/total*100).toFixed(1)+'%' : '0%' },
-            { label: 'Failed', val: failed, color: isLight ? '#dc2626' : '#ef4444', colorEnd: isLight ? '#f87171' : '#fca5a5', pct: total ? (failed/total*100).toFixed(1)+'%' : '0%' },
-            { label: 'Other', val: other, color: isLight ? '#475569' : '#6b7280', colorEnd: isLight ? '#94a3b8' : '#9ca3af', pct: total ? (other/total*100).toFixed(1)+'%' : '0%' }
+            { label: 'Total Runs', kind: 'total', val: total, color: isLight ? '#2563eb' : '#3b82f6', colorEnd: isLight ? '#60a5fa' : '#93c5fd', pct: '100%' },
+            { label: 'Passed', kind: 'success', val: passed, color: isLight ? '#16a34a' : '#10b981', colorEnd: isLight ? '#4ade80' : '#6ee7b7', pct: total ? (passed/total*100).toFixed(1)+'%' : '0%' },
+            { label: 'Failed', kind: 'failure', val: failed, color: isLight ? '#dc2626' : '#ef4444', colorEnd: isLight ? '#f87171' : '#fca5a5', pct: total ? (failed/total*100).toFixed(1)+'%' : '0%' },
+            { label: 'Other', kind: 'other', val: other, color: isLight ? '#475569' : '#6b7280', colorEnd: isLight ? '#94a3b8' : '#9ca3af', pct: total ? (other/total*100).toFixed(1)+'%' : '0%' }
         ];
         const maxVal = Math.max(total, 1);
         const el = document.getElementById('funnelRow');
@@ -11811,7 +11878,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             const dashVal = circ * frac;
             const dashGap = circ - dashVal;
             return `${i > 0 ? '<div class="funnel-arrow">&#10132;</div>' : ''}
-                <div class="funnel-ring-wrap" style="animation:fadeSlideUp 0.5s ease-out ${0.2 + i*0.15}s both;">
+                <div class="funnel-ring-wrap funnel-clickable" onclick="selectResultsByOutcome('${it.kind}')" title="Click to select these pipelines" style="cursor:pointer; animation:fadeSlideUp 0.5s ease-out ${0.2 + i*0.15}s both;">
                     <div class="funnel-ring">
                         <svg viewBox="0 0 110 110">
                             <defs><linearGradient id="fg${i}" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${it.color}"/><stop offset="100%" stop-color="${it.colorEnd}"/></linearGradient></defs>
@@ -11857,6 +11924,12 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             },
             options: {
                 responsive: true, maintainAspectRatio: false, cutout: '68%',
+                onClick: (evt, els) => {
+                    if (!els || !els.length) return;
+                    // Matches the doughnut's own labels: Passed/Failed/Skipped/Cancelled/Other.
+                    const map = ['success', 'failure', 'skipped', 'cancelled', 'unknown'];
+                    selectResultsByOutcome(map[els[0].index]);
+                },
                 plugins: {
                     legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 14, font: { size: 11, family: "'Inter'" }, usePointStyle: true, pointStyle: 'circle' } },
                     tooltip: { backgroundColor: 'rgba(10,14,26,0.95)', padding: 12, cornerRadius: 8, bodyFont: { family: "'Inter'" } }
@@ -11922,6 +11995,11 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             options: {
                 responsive: true, maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
+                onClick: (evt, els) => {
+                    if (!els || !els.length) return;
+                    const d = days[els[0].index];
+                    if (d) selectResultsByDay(d);
+                },
                 scales: {
                     y: { min: 0, max: 100, position: 'left', ticks: { color: '#6b7280', callback: v => v + '%', font: { size: 10 } }, grid: { color: 'rgba(45,55,72,0.3)' } },
                     y1: { min: 0, position: 'right', ticks: { color: '#3b82f680', font: { size: 10 } }, grid: { display: false } },
@@ -11938,10 +12016,14 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         // Pipeline health bars
         const healthEl = document.getElementById('healthBars');
         if (healthEl) {
-            const wfNames = [...new Set(runs.map(r => r.workflowName))].sort();
+            // Aggregate by repo+name (a pipeline), not name alone — otherwise the same
+            // workflow name in two repos would merge into one bar and focus the wrong repo.
+            const keys = [...new Set(runs.map(r => resultsPipelineKey(r.repo, r.workflowName)))].sort();
             let html = '';
-            wfNames.forEach((name, i) => {
-                const wfRuns = runs.filter(r => r.workflowName === name);
+            keys.forEach((hKey, i) => {
+                const wfRuns = runs.filter(r => resultsPipelineKey(r.repo, r.workflowName) === hKey);
+                const name = wfRuns[0].workflowName;
+                const repo = wfRuns[0].repo;
                 const p = wfRuns.filter(r => getRunOutcome(r) === 'success').length;
                 const f = wfRuns.filter(r => getRunOutcome(r) === 'failure').length;
                 const s = wfRuns.filter(r => getRunOutcome(r) === 'skipped').length;
@@ -11953,8 +12035,8 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 const oW = (t ? (o / t * 100) : 0).toFixed(0);
                 const actionable = p + f;
                 const passPct = (actionable ? (p / actionable * 100) : 0).toFixed(0);
-                html += `<div class="health-row" style="animation-delay:${i * 0.08}s;">
-                    <div class="health-label" title="${name}">${name.replace(/-Testim$/, '').replace(/^Web_AxosBank_[^_]+(?:-OLB)?_/, '')}</div>
+                html += `<div class="health-row health-clickable" data-focus-key="${escapeHtml(hKey)}" title="${escapeHtml(name)} (${escapeHtml(repo)}) — click to focus" style="animation-delay:${i * 0.08}s;">
+                    <div class="health-label">${escapeHtml(name.replace(/-Testim$/, '').replace(/^Web_AxosBank_[^_]+(?:-OLB)?_/, ''))}</div>
                     <div class="health-bar">
                         <div class="health-seg pass" style="width:${pW}%;" title="${p} passed"></div>
                         <div class="health-seg fail" style="width:${fW}%;" title="${f} failed"></div>
@@ -11965,6 +12047,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 </div>`;
             });
             healthEl.innerHTML = html;
+            bindResultsFocusDelegation(healthEl);
         }
     }
 
@@ -11980,13 +12063,14 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 
         const parsed = parseResultsPipelineKey(k);
         const repo = String(parsed.repo || '').trim();
+        // Scope only the Results repo filter (silently) — don't rewrite the global filter.
         if (repo) {
-            try { setGlobalRepoFilter(repo, { persist: true, skipResults: true, skipEmail: true }); } catch { /* ignore */ }
             try { repoMsSetValue('resultsRepoFilter', repo, { silent: true }); } catch { /* ignore */ }
         }
 
         resultsSelectedPipelines.clear();
         resultsSelectedPipelines.add(k);
+        clearResultsDashboardSelect(); // manual focus isn't a saved-dashboard selection
         renderResultsTree();
         filterResults();
 
@@ -11998,6 +12082,68 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 if (node && typeof node.scrollIntoView === 'function') node.scrollIntoView({ block: 'center' });
             } catch { /* ignore */ }
         }, 60);
+    }
+
+    // Select a set of pipelines (from a chart/funnel click) and align the repo filter.
+    function selectResultsPipelineKeys(keys, label) {
+        const list = [...new Set((keys || []).map(k => String(k || '').trim()).filter(Boolean))];
+        if (!list.length) { showToast('No pipelines for that selection.'); return; }
+        // Scope ONLY the Results repo filter (silently) so the selection is visible here —
+        // never touch the app-wide global filter (that would persist and refresh Pipelines/Calendar).
+        const repos = [...new Set(list.map(k => parseResultsPipelineKey(k).repo).filter(Boolean))];
+        try { repoMsSetValue('resultsRepoFilter', repos.length === 1 ? repos[0] : 'all', { silent: true }); } catch { /* ignore */ }
+        resultsSelectedPipelines = new Set(list);
+        clearResultsDashboardSelect(); // this is a manual selection, not a saved dashboard
+        renderResultsTree();
+        filterResults();
+        showToast(`Selected ${list.length} pipeline(s)${label ? ' — ' + label : ''}.`);
+    }
+
+    // Pipeline keys (in current scope) whose runs match a predicate(outcome, run).
+    function resultsPipelineKeysWhere(pred) {
+        const set = new Set();
+        for (const r of getMetricsRuns()) {
+            if (pred(getRunOutcome(r), r)) set.add(resultsPipelineKey(r.repo, r.workflowName));
+        }
+        return [...set];
+    }
+
+    // Funnel / pie segment -> select the pipelines that contributed to it.
+    function selectResultsByOutcome(kind) {
+        let keys, label;
+        switch (kind) {
+            case 'total': keys = resultsPipelineKeysWhere(() => true); label = 'all runs'; break;
+            case 'success': keys = resultsPipelineKeysWhere(o => o === 'success'); label = 'passed'; break;
+            case 'failure': keys = resultsPipelineKeysWhere(o => o === 'failure'); label = 'failed'; break;
+            case 'skipped': keys = resultsPipelineKeysWhere(o => o === 'skipped'); label = 'skipped'; break;
+            case 'cancelled': keys = resultsPipelineKeysWhere(o => o === 'cancelled'); label = 'cancelled'; break;
+            case 'other': keys = resultsPipelineKeysWhere(o => o !== 'success' && o !== 'failure'); label = 'other'; break;
+            // Pie "Other" = anything that isn't its own slice (success/failure/skipped/cancelled).
+            case 'unknown': keys = resultsPipelineKeysWhere(o => o !== 'success' && o !== 'failure' && o !== 'skipped' && o !== 'cancelled'); label = 'other'; break;
+            default: keys = []; label = '';
+        }
+        selectResultsPipelineKeys(keys, label);
+    }
+
+    // Line-chart day click -> pipelines that ran that day.
+    function selectResultsByDay(dayISO) {
+        const day = String(dayISO || '').slice(0, 10);
+        if (!day) return;
+        const set = new Set();
+        for (const r of getMetricsRuns()) {
+            if (String(r.createdAt || '').slice(0, 10) === day) set.add(resultsPipelineKey(r.repo, r.workflowName));
+        }
+        selectResultsPipelineKeys([...set], day);
+    }
+
+    // One-time delegated click handler so clickable metric cards / health rows focus a pipeline.
+    function bindResultsFocusDelegation(el) {
+        if (!el || el._focusBound) return;
+        el._focusBound = true;
+        el.addEventListener('click', (e) => {
+            const node = e.target.closest('[data-focus-key]');
+            if (node && node.dataset.focusKey) focusResultsPipelineKey(node.dataset.focusKey);
+        });
     }
 
     function renderTopPipelinesByRuns() {
@@ -12054,11 +12200,11 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             return String(a.name || '').localeCompare(String(b.name || ''));
         });
 
-        const maxRows = resultsTopPipelinesShowAll ? rows.length : Math.min(30, rows.length);
+        const maxRows = resultsTopPipelinesShowAll ? rows.length : Math.min(10, rows.length);
         const shown = rows.slice(0, maxRows);
 
         const btnShowAll = document.getElementById('topPipesShowAllBtn');
-        if (btnShowAll) btnShowAll.textContent = resultsTopPipelinesShowAll ? 'Show top 30' : 'Show all';
+        if (btnShowAll) btnShowAll.textContent = resultsTopPipelinesShowAll ? 'Show top 10' : 'Show all';
 
         el.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
@@ -12323,12 +12469,24 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         filterResults();
     }
 
+    // Roll a duration up through days/hours/minutes/seconds, skipping leading zero
+    // units (e.g. 1020m10s -> "17h 10s", 90061s -> "1d 1h 1m 1s", 45s -> "45s").
+    function fmtDurationParts(totalSec) {
+        let s = Math.max(0, Math.floor(totalSec || 0));
+        const d = Math.floor(s / 86400); s -= d * 86400;
+        const h = Math.floor(s / 3600); s -= h * 3600;
+        const m = Math.floor(s / 60); s -= m * 60;
+        const parts = [];
+        if (d) parts.push(d + 'd');
+        if (h) parts.push(h + 'h');
+        if (m) parts.push(m + 'm');
+        if (s || !parts.length) parts.push(s + 's');
+        return parts.join(' ');
+    }
+
     function fmtDuration(sec) {
         if (!sec || sec <= 0) return '--';
-        const m = Math.floor(sec / 60);
-        const s = sec % 60;
-        if (m === 0) return s + 's';
-        return m + 'm ' + s + 's';
+        return fmtDurationParts(sec);
     }
 
     // ══════════════════════════════════════════
@@ -13065,6 +13223,9 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     let calMonthState = null;  // displayed month (0-11)
     let calOcc = [];           // per-render registry of occurrences, indexed by data-cid
     let calReturnPending = false; // when true, the pipeline form's Back button returns to the Calendar
+    let calRepoFilter = 'all'; // calendar-local repo filter
+    let calDashFilter = '';    // calendar-local dashboard filter (dashboard id; '' = all)
+    let calSearch = '';        // calendar pipeline search text
 
     // YYYY-MM-DD for the given instant, evaluated in PST (so buckets/labels are PST-aligned).
     function calPSTDateKey(ms) {
@@ -13186,11 +13347,19 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     function calScheduledPipelines() {
         const out = [];
         const seen = new Set();
+        const q = calSearch.trim().toLowerCase();
+        const dashSet = calDashFilter ? calDashboardPipelineKeySet(calDashFilter) : null;
         for (const p of (pipelines || [])) {
             if (!p || !p.scheduleEnabled || !p.schedule) continue;
             if (!calParseCron(p.schedule)) continue;
             const repo = getPipelineRepo(p);
             if (!repoFilterMatches(globalRepoFilter, repo)) continue;
+            if (calRepoFilter !== 'all' && repo !== calRepoFilter) continue;
+            if (dashSet && !dashSet.has(pipelineKey(p))) continue;
+            if (q) {
+                const hay = ((p.name || '') + ' ' + (p.filename || '')).toLowerCase();
+                if (!hay.includes(q)) continue;
+            }
             const key = repo + '::' + (p.name || p.filename);
             if (seen.has(key)) continue;
             seen.add(key);
@@ -13198,6 +13367,74 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         }
         return out;
     }
+
+    // ── Calendar filters (repo / dashboard / search) ──
+    function calDashboardPipelineKeySet(dashId) {
+        const set = new Set();
+        const d = (dashboardsState?.dashboards || []).find(x => x && x.id === dashId);
+        if (!d) return set;
+        for (const g of (d.groups || [])) {
+            for (const pk of (g.pipelines || [])) {
+                const s = String(pk || '').trim();
+                if (s) set.add(s);
+            }
+        }
+        return set;
+    }
+
+    function calAllScheduledRepos() {
+        const set = new Set();
+        for (const p of (pipelines || [])) {
+            if (!p || !p.scheduleEnabled || !p.schedule || !calParseCron(p.schedule)) continue;
+            const repo = getPipelineRepo(p);
+            if (!repoFilterMatches(globalRepoFilter, repo)) continue;
+            set.add(repo);
+        }
+        return [...set].sort((a, b) => a.localeCompare(b));
+    }
+
+    function calDashboardsForFilter() {
+        const all = (dashboardsState?.dashboards || []).filter(Boolean);
+        return all
+            .filter(d => repoFilterMatches(globalRepoFilter, String(d.repo || '')))
+            .filter(d => calRepoFilter === 'all' || String(d.repo || '') === calRepoFilter)
+            .slice()
+            .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+    }
+
+    function calPopulateFilters() {
+        const repos = calAllScheduledRepos();
+        const repoSel = document.getElementById('calRepoFilter');
+        if (repoSel) {
+            if (calRepoFilter !== 'all' && !repos.includes(calRepoFilter)) calRepoFilter = 'all';
+            repoSel.innerHTML = `<option value="all">All repos (${repos.length})</option>` +
+                repos.map(r => `<option value="${escapeHtml(r)}"${r === calRepoFilter ? ' selected' : ''}>${escapeHtml(r)}</option>`).join('');
+        }
+        const dashes = calDashboardsForFilter();
+        const dashSel = document.getElementById('calDashFilter');
+        if (dashSel) {
+            if (calDashFilter && !dashes.some(d => d.id === calDashFilter)) calDashFilter = '';
+            const showRepo = (calRepoFilter === 'all');
+            dashSel.innerHTML = `<option value="">All dashboards</option>` +
+                dashes.map(d => `<option value="${escapeHtml(d.id)}"${d.id === calDashFilter ? ' selected' : ''}>${escapeHtml(d.name || 'Dashboard')}${showRepo ? ` — ${escapeHtml(d.repo || '')}` : ''}</option>`).join('');
+            dashSel.disabled = !dashes.length;
+        }
+        const searchInput = document.getElementById('calSearch');
+        if (searchInput && searchInput.value !== calSearch) searchInput.value = calSearch;
+        const clearBtn = document.getElementById('calClearBtn');
+        if (clearBtn) clearBtn.style.display = (calRepoFilter !== 'all' || calDashFilter || calSearch.trim()) ? '' : 'none';
+    }
+
+    function onCalSearchChange(v) { calSearch = String(v || ''); renderCalendar(); }
+    function onCalRepoFilterChange(v) {
+        calRepoFilter = String(v || 'all');
+        // Don't force-clear the dashboard filter — calPopulateFilters() drops it only if the
+        // selected dashboard no longer applies to the chosen repo, so valid repo+dashboard
+        // combinations are preserved.
+        renderCalendar();
+    }
+    function onCalDashFilterChange(v) { calDashFilter = String(v || ''); renderCalendar(); }
+    function calClearFilters() { calRepoFilter = 'all'; calDashFilter = ''; calSearch = ''; renderCalendar(); }
 
     // Index fetched runs by repo::name::localDateKey for past-run matching.
     function calBuildRunIndex() {
@@ -13240,17 +13477,19 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     }
 
     function calGoToday() {
-        const now = new Date();
-        calYearState = now.getFullYear();
-        calMonthState = now.getMonth();
+        // Anchor on the PST "today" so the grid, buckets, and the today-highlight all
+        // use the same Pacific calendar reference (the whole calendar is PST-based).
+        const [y, m] = calPSTDateKey(Date.now()).split('-').map(Number);
+        calYearState = y;
+        calMonthState = m - 1;
         renderCalendar();
     }
 
     function renderCalendar() {
         if (calYearState == null || calMonthState == null) {
-            const now = new Date();
-            calYearState = now.getFullYear();
-            calMonthState = now.getMonth();
+            const [y, m] = calPSTDateKey(Date.now()).split('-').map(Number);
+            calYearState = y;
+            calMonthState = m - 1;
         }
         const grid = document.getElementById('calGrid');
         if (!grid) return;
@@ -13258,6 +13497,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
         document.getElementById('calMonthName').textContent = MONTHS[calMonthState];
         document.getElementById('calYear').textContent = calYearState;
+        calPopulateFilters();
 
         // Visible 6-week window: from the Sunday on/before the 1st, 42 cells.
         const first = new Date(calYearState, calMonthState, 1);
@@ -13267,8 +13507,13 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             const d = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i);
             cells.push(d);
         }
-        const winStart = cells[0].getTime();
-        const winEnd = new Date(cells[41].getFullYear(), cells[41].getMonth(), cells[41].getDate(), 23, 59, 59, 999).getTime();
+        // Pad the window by 36h on each side so an occurrence whose PST date lands on a
+        // visible cell is never dropped just because the browser's local midnight differs
+        // from Pacific midnight. Placement is still by PST date, so only the correct cell
+        // (matched by date label) renders each occurrence.
+        const DAY_PAD = 36 * 3600 * 1000;
+        const winStart = cells[0].getTime() - DAY_PAD;
+        const winEnd = new Date(cells[41].getFullYear(), cells[41].getMonth(), cells[41].getDate(), 23, 59, 59, 999).getTime() + DAY_PAD;
 
         const sched = calScheduledPipelines();
         const runIdx = calBuildRunIndex();
@@ -13386,8 +13631,11 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         }
 
         const note = document.getElementById('calEmptyNote');
+        const filtersActive = (calRepoFilter !== 'all' || calDashFilter || calSearch.trim());
         if (note) {
-            if (!sched.length) {
+            if (!sched.length && filtersActive) {
+                note.innerHTML = `<div class="cal-empty-note">No scheduled pipelines match the current filters.<br><button class="cal-clear" style="margin-top:10px;" onclick="calClearFilters()">Clear filters</button></div>`;
+            } else if (!sched.length) {
                 note.innerHTML = `<div class="cal-empty-note">No pipelines have a schedule enabled${globalRepoFilter && globalRepoFilter !== 'all' ? ' for the selected repo' : ''}.<br>Enable a schedule on a pipeline (Pipelines tab &rarr; edit &rarr; Schedule) and it will appear here.</div>`;
             } else if (!haveRuns) {
                 note.innerHTML = `<div class="cal-empty-note">Tip: go to <strong>Results &amp; Metrics</strong> and <strong>Fetch Results</strong> &mdash; past scheduled dates will then show clickable run links with pass/fail status.</div>`;
@@ -13594,6 +13842,12 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     let queueRepoFilter = 'all';
     let queueAutoTimer = null;
     let queueFetching = false;
+    let queueCollapsed = { running: false, queued: false }; // collapse state per section
+
+    function toggleQueueSection(which) {
+        queueCollapsed[which] = !queueCollapsed[which];
+        renderQueue();
+    }
 
     function queueBasename(path) {
         const s = String(path || '').trim();
@@ -13621,12 +13875,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     }
 
     function queueFmtDur(ms) {
-        const s = Math.max(0, Math.floor((ms || 0) / 1000));
-        if (s < 60) return s + 's';
-        const m = Math.floor(s / 60);
-        if (m < 60) return m + 'm';
-        const h = Math.floor(m / 60), mm = m % 60;
-        return mm ? `${h}h ${mm}m` : `${h}h`;
+        return fmtDurationParts(Math.floor((ms || 0) / 1000));
     }
     function queueAgo(fromMs) {
         if (!fromMs) return '';
@@ -13637,8 +13886,13 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         const file = queueBasename(r.path || '');
         const created = r.created_at ? new Date(r.created_at).getTime() : 0;
         const started = r.run_started_at ? new Date(r.run_started_at).getTime() : created;
+        const updated = r.updated_at ? new Date(r.updated_at).getTime() : started;
         const wfName = String(r.name || '').trim();
         const clean = (wfName || file).replace(/\.ya?ml$/i, '').replace(/-Testim$/i, '');
+        const actor = String(r.actor?.login || '').trim();
+        const triggeringActor = String(r.triggering_actor?.login || actor).trim();
+        const isBot = /\[bot\]$/i.test(actor) || /\[bot\]$/i.test(triggeringActor);
+        const isOrchestrator = /orchestrat/i.test(file) || /orchestrat/i.test(wfName);
         return {
             id: r.id, repo, file,
             name: clean,
@@ -13646,9 +13900,35 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             runNumber: r.run_number,
             url: r.html_url,
             branch: r.head_branch || '',
-            createdMs: created, startedMs: started,
-            status: r.status
+            createdMs: created, startedMs: started, updatedMs: updated,
+            status: r.status,
+            actor, triggeringActor, isBot, isOrchestrator,
+            orchestrator: null // filled by resolveQueueOrchestrators()
         };
+    }
+
+    // GitHub doesn't link a workflow_dispatch run to the workflow that dispatched it, but the
+    // dispatching orchestrator is itself a run that's usually still in-progress while its
+    // children run. Best-effort: match each automated child to an orchestrator in the same
+    // repo whose run window covers the child's creation time.
+    function resolveQueueOrchestrators() {
+        const all = [...queueRunning, ...queueQueued];
+        const orchs = all.filter(o => o.isOrchestrator);
+        if (!orchs.length) return;
+        const now = Date.now();
+        for (const c of all) {
+            if (c.isOrchestrator) continue;
+            if (!(c.event === 'workflow_dispatch' && c.isBot)) continue;
+            const cands = orchs.filter(o =>
+                o.repo === c.repo &&
+                o.startedMs <= c.createdMs + 60000 &&            // started at/just before the child
+                (o.status !== 'completed' ? now : o.updatedMs) >= c.createdMs - 60000 // still covering it
+            );
+            if (!cands.length) continue;
+            cands.sort((a, b) => b.startedMs - a.startedMs); // closest preceding orchestrator
+            const o = cands[0];
+            c.orchestrator = { name: o.name, url: o.url };
+        }
     }
 
     async function fetchQueueRunsForRepo(owner, repo, status) {
@@ -13697,6 +13977,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             // so "running for" reflects real execution, not the long wait.
             await enrichRunningJobStarts(owner);
             queueRunning.sort((a, b) => (a.jobStartMs || a.startedMs) - (b.jobStartMs || b.startedMs));
+            resolveQueueOrchestrators();
             queueLastFetchMs = Date.now();
             renderQueue();
         } catch (e) {
@@ -13715,10 +13996,11 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             try {
                 const data = await ghFetch(`/repos/${owner}/${encodeURIComponent(run.repo)}/actions/runs/${run.id}/jobs?per_page=100`);
                 const jobs = data?.jobs || [];
-                const ipStarts = jobs
-                    .filter(j => j && j.status === 'in_progress' && j.started_at)
-                    .map(j => new Date(j.started_at).getTime())
-                    .filter(n => Number.isFinite(n));
+                const ipJobs = jobs.filter(j => j && j.status === 'in_progress' && j.started_at);
+                const ipStarts = ipJobs.map(j => new Date(j.started_at).getTime()).filter(n => Number.isFinite(n));
+                // Which self-hosted runner(s) the in-progress job(s) are on.
+                const runners = [...new Set(ipJobs.map(j => String(j.runner_name || '').trim()).filter(Boolean))];
+                if (runners.length) run.runners = runners;
                 if (ipStarts.length) {
                     run.jobStartMs = Math.min(...ipStarts);
                     run.heavyQueued = false;
@@ -13784,14 +14066,33 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             timeLabel = `waiting ${queueAgo(r.createdMs)}`;
         }
 
-        const evt = r.event ? `<span class="queue-evt-wrap">&middot; <span class="queue-evt">${escapeHtml(r.event)}</span></span>` : '';
+        // Trigger label — surface the orchestrator (best-effort, time-matched) instead of a bare event.
+        let trigInner;
+        if (r.orchestrator) {
+            const oName = String(r.orchestrator.name || 'orchestrator').replace(/^Web_[^_]*_[^_]*_Orchestrators?_/i, '').replace(/_Orchestrator$/i, '');
+            trigInner = `via <a class="queue-orch" href="${escapeHtml(r.orchestrator.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Likely dispatched by this orchestrator (matched by time — GitHub doesn't link them directly)">${escapeHtml(oName)} &#8599;</a>`;
+        } else if (r.event === 'schedule') {
+            trigInner = `<span class="queue-evt">schedule</span>`;
+        } else if (r.event === 'workflow_dispatch' && r.isBot) {
+            trigInner = `<span class="queue-evt">automated dispatch</span>`;
+        } else if (r.event === 'workflow_dispatch') {
+            trigInner = `<span class="queue-evt">manual${r.actor ? ' by ' + escapeHtml(r.actor) : ''}</span>`;
+        } else {
+            trigInner = `<span class="queue-evt">${escapeHtml(r.event)}</span>`;
+        }
+        const evt = `<span class="queue-evt-wrap">&middot; ${trigInner}</span>`;
         const branch = r.branch ? ` &middot; ${escapeHtml(r.branch)}` : '';
+        // Which runner(s) the job is executing on (running rows only).
+        const runnerChip = (running && r.runners && r.runners.length)
+            ? `<span class="queue-runner" title="Executing on this self-hosted runner">&#128421; ${escapeHtml(r.runners.join(', '))}</span>`
+            : '';
         return `<div class="queue-row ${running ? 'running' : 'queued'}">
             ${posCell}
             <div class="queue-main">
                 <div class="queue-name">${escapeHtml(r.name)}</div>
                 <div class="queue-meta">
                     <span class="queue-repo-chip">${escapeHtml(r.repo)}</span>
+                    ${runnerChip}
                     <span class="queue-wait">${timeLabel}</span>
                     ${evt}${branch ? `<span>${branch}</span>` : ''}
                 </div>
@@ -13834,7 +14135,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         const statsEl = document.getElementById('queueStats');
         if (statsEl) {
             statsEl.innerHTML =
-                queueStatCard('#3b82f6', 'Running now', rFiltered.length, 'runners busy') +
+                queueStatCard('#3b82f6', 'Running now', rFiltered.length, 'in progress (tracked repos)') +
                 queueStatCard('var(--orange)', 'Queued', qFiltered.length, 'waiting for a runner') +
                 queueStatCard('#34d399', 'Longest wait', longestWaitMs ? queueFmtDur(longestWaitMs) : '—', longestWaitMs ? 'front of the line' : 'nothing waiting');
         }
@@ -13850,14 +14151,21 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             return;
         }
 
-        const runningHtml = rFiltered.length
-            ? `<div class="queue-section-title">&#9654; Running now <span class="qcount">(${rFiltered.length})</span></div>
-               <div class="queue-list">${rFiltered.map(r => queueRowHtml(r, { running: true })).join('')}</div>`
-            : '';
+        const section = (which, label, count, listHtml) => {
+            const collapsed = !!queueCollapsed[which];
+            return `<div class="queue-section ${collapsed ? 'collapsed' : ''}">
+                <div class="queue-section-title" onclick="toggleQueueSection('${which}')" title="Click to collapse/expand">
+                    <span class="queue-caret">&#9662;</span> ${label} <span class="qcount">(${count})</span>
+                </div>
+                <div class="queue-list">${listHtml}</div>
+            </div>`;
+        };
 
+        const runningHtml = rFiltered.length
+            ? section('running', '&#9654; Running now', rFiltered.length, rFiltered.map(r => queueRowHtml(r, { running: true })).join(''))
+            : '';
         const queuedHtml = qFiltered.length
-            ? `<div class="queue-section-title">&#9203; Queued <span class="qcount">(${qFiltered.length})</span></div>
-               <div class="queue-list">${qFiltered.map(r => queueRowHtml(r, { running: false, position: posById.get(r.id) })).join('')}</div>`
+            ? section('queued', '&#9203; Queued', qFiltered.length, qFiltered.map(r => queueRowHtml(r, { running: false, position: posById.get(r.id) })).join(''))
             : '';
 
         body.innerHTML = runningHtml + queuedHtml;
@@ -14097,6 +14405,67 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         showToast('Pipeline removed.');
     }
 
+    // ── Dashboard membership helpers (keep dashboards in sync when pipelines change) ──
+    // Every place a given pipeline key appears across ALL dashboards/groups.
+    function dashboardsReferencingKey(pkey) {
+        const key = String(pkey || '').trim();
+        const hits = [];
+        if (!key) return hits;
+        for (const d of (dashboardsState?.dashboards || [])) {
+            for (const g of (d?.groups || [])) {
+                if ((g.pipelines || []).some(x => String(x || '').trim() === key)) {
+                    hits.push({ dashId: d.id, dashName: d.name || 'Dashboard', groupId: g.id, groupTitle: g.title || 'Group', repo: d.repo || '' });
+                }
+            }
+        }
+        return hits;
+    }
+
+    // Rename a pipeline's key everywhere it's referenced (so it stays in its dashboards).
+    function migrateDashboardKey(oldKey, newKey) {
+        const o = String(oldKey || '').trim(), n = String(newKey || '').trim();
+        if (!o || !n || o === n) return 0;
+        let changed = 0;
+        for (const d of (dashboardsState?.dashboards || [])) {
+            for (const g of (d?.groups || [])) {
+                const arr = g.pipelines || [];
+                if (!arr.some(x => String(x || '').trim() === o)) continue;
+                const next = [];
+                const seen = new Set();
+                for (const x of arr) {
+                    const v = (String(x || '').trim() === o) ? n : String(x || '').trim();
+                    if (v && !seen.has(v)) { seen.add(v); next.push(v); }
+                }
+                g.pipelines = next;
+                changed++;
+            }
+        }
+        if (changed) saveDashboardsState();
+        return changed;
+    }
+
+    // Re-render the Dashboards tab if it's currently visible (after membership changes).
+    function refreshDashboardsIfActive() {
+        try { if (document.getElementById('panelDashboards')?.classList.contains('active')) renderDashboards(); } catch { /* ignore */ }
+    }
+
+    // Remove a pipeline key from every dashboard/group it appears in.
+    function removeKeyFromAllDashboards(pkey) {
+        const key = String(pkey || '').trim();
+        if (!key) return 0;
+        let changed = 0;
+        for (const d of (dashboardsState?.dashboards || [])) {
+            for (const g of (d?.groups || [])) {
+                const arr = g.pipelines || [];
+                if (!arr.some(x => String(x || '').trim() === key)) continue;
+                g.pipelines = arr.filter(x => String(x || '').trim() !== key);
+                changed++;
+            }
+        }
+        if (changed) saveDashboardsState();
+        return changed;
+    }
+
     function dashboardRunDots(repo, workflowFile) {
         const mode = (document.getElementById('resultsFetchMode')?.value || loadResultsFetchModePref() || 'count').toLowerCase();
         const limit = (mode === 'count') ? loadResultsRunCountPref() : 15;
@@ -14235,17 +14604,8 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         const contentEl = document.getElementById('dashboardsContent');
         if (!listEl || !contentEl) return;
 
-        if (!allRuns || !allRuns.length) {
-            listEl.innerHTML = `<div style="padding:6px 0; color:var(--text-muted); font-size:12px;">Fetch results first to unlock dashboards.</div>`;
-            contentEl.innerHTML = `
-                <div class="empty-state" style="animation:fadeSlideUp 0.5s ease-out both;">
-                    <div class="empty-icon">&#128202;</div>
-                    <h3>No results loaded</h3>
-                    <p>Go to <b>Results & Metrics</b> and click <b>Fetch Results</b> first.</p>
-                </div>`;
-            return;
-        }
-
+        // Dashboards are usable without fetching — you can build groups and see schedules
+        // any time. Pass/fail dots simply stay empty until Results are fetched.
         const repo = getDashboardsRepo();
         if (!repo) {
             const repos = getKnownRepoNames();
