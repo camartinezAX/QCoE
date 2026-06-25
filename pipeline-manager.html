@@ -308,6 +308,13 @@
             display: flex; align-items: center; justify-content: center; transition: all 0.2s;
         }
         .card-btn:hover { border-color: var(--axos-orange); color: var(--axos-orange); }
+        .copy-name-btn {
+            flex: 0 0 auto; width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--border-color);
+            background: var(--bg-tertiary); color: var(--text-muted); cursor: pointer; padding: 0;
+            display: inline-flex; align-items: center; justify-content: center; transition: all 0.15s; margin-top: 1px;
+        }
+        .copy-name-btn:hover { border-color: var(--axos-orange); color: var(--axos-orange); }
+        .copy-name-btn.copied { border-color: var(--success); color: var(--success); }
         .pipeline-card-meta { display: flex; gap: 16px; font-size: 12px; color: var(--text-muted); }
         .meta-item { display: flex; align-items: center; gap: 4px; }
         .test-badge {
@@ -1139,6 +1146,11 @@
         .metric-clickable { cursor:pointer; }
         .metric-clickable:hover { box-shadow:0 12px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(250,167,74,0.45) inset; }
         .funnel-clickable:hover .funnel-ring { transform:rotateX(30deg) scale(1.05); }
+        /* Active (clicked) funnel segment — highlighted, not collapsed. */
+        .funnel-active .funnel-ring { transform:rotateX(30deg) scale(1.12); }
+        .funnel-active .funnel-lbl { color:var(--axos-orange); font-weight:900; }
+        .funnel-active .funnel-val { text-shadow:0 0 14px rgba(250,167,74,0.5); }
+        .funnel-active::after { content:'viewing'; display:block; text-align:center; font-size:9px; font-weight:900; letter-spacing:0.6px; text-transform:uppercase; color:var(--axos-orange); margin-top:2px; }
         .metric-card::before {
             content:''; position:absolute; top:0; left:0; right:0; height:3px;
             border-radius:16px 16px 0 0;
@@ -1196,7 +1208,9 @@
 
         /* ── Health ── */
         .health-bars { margin-top:8px; }
-        .health-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; animation:fadeSlideUp 0.5s ease-out both; border-radius:8px; padding:2px 4px; transition:background .15s var(--ease); }
+        .health-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; animation:fadeSlideUp 0.5s ease-out both; border-radius:8px; padding:2px 6px; transition:background .15s var(--ease); }
+        .health-check { flex:0 0 auto; width:15px; height:15px; cursor:pointer; }
+        .health-selected { background:rgba(250,167,74,0.12); box-shadow:inset 3px 0 0 var(--axos-orange); }
         .health-clickable { cursor:pointer; }
         .health-clickable:hover { background:rgba(250,167,74,0.07); }
         .health-label { font-size:11px; font-weight:600; color:var(--text-primary); flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -1323,6 +1337,10 @@
         .run-table tbody tr:hover { transform:scale(1.005); }
         .run-table tbody tr:hover td { background:rgba(250,167,74,0.06); }
         .run-table .run-name { font-weight:600; color:var(--text-primary); max-width:320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .dur-cell .dur-total { font-weight:700; }
+        .dur-cell .dur-split { font-size:10px; margin-top:2px; display:flex; gap:8px; white-space:nowrap; }
+        .dur-cell .dur-wait { color:#f59e0b; }      /* time spent waiting for a runner */
+        .dur-cell .dur-run { color:#10b981; }       /* actual execution time */
         .run-table a { color:var(--info); text-decoration:none; font-weight:600; }
         .run-table a:hover { text-decoration:underline; color:#60a5fa; }
 
@@ -1767,6 +1785,7 @@
                 <div class="results-pick-actions">
                     <button type="button" onclick="resultsPickAllPipelines(true)" title="Select all pipelines in the current view">Select All</button>
                     <button type="button" onclick="resultsPickAllPipelines(false)" title="Clear selection (returns to All Pipelines)">Deselect All</button>
+                    <button type="button" onclick="resetResultsFilters()" title="Reset search, status, repo, schedule, dashboard filters and selection">&#8634; Reset</button>
                 </div>
             </div>
             <div class="results-folder-tree" id="resultsTree"></div>
@@ -1873,7 +1892,6 @@
                         <table class="run-table" id="runsTable">
                             <thead>
                                 <tr>
-                                    <th><input type="checkbox" id="runCheckAll" onchange="toggleAllRunChecks(this.checked)" style="accent-color:var(--axos-orange);"></th>
                                     <th>Pipeline</th>
                                     <th>Run #</th>
                                     <th>Status</th>
@@ -1988,11 +2006,6 @@
                     <div class="pipe-picker" id="emailPipePicker">
                         <div class="pipe-picker-header">
                             <h4>Select Pipelines to Include</h4>
-                            <div class="pipe-picker-actions">
-                                <button onclick="emailPickAll(true)">Select All</button>
-                                <button onclick="emailPickAll(false)">Deselect All</button>
-                                <button onclick="emailReplaceWithVisible()" title="Replace selection with current filtered list">Only these</button>
-                            </div>
                         </div>
                         <div id="emailDashQuickPick" style="margin:10px 0 0; padding:12px; border:1px solid var(--border-color); background:var(--bg-tertiary); border-radius:12px;">
                             <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px; flex-wrap:wrap;">
@@ -2006,7 +2019,6 @@
                             </div>
                             <div id="emailDashHint" style="font-size:11px; color:var(--text-muted); margin-top:8px;"></div>
                         </div>
-                        <div class="pipe-picker-tabs" id="emailPickerTabs"></div>
                         <div class="pipe-picker-toolbar">
                             <input type="text" id="emailPipeSearch" placeholder="Search pipelines..." oninput="filterEmailPipeList()">
                             <div class="repo-ms" id="emailRepoFilter__ms" title="Filter pipelines by repo">
@@ -3993,7 +4005,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                 showToast('No repos available. Add repos to sync first.', true);
                 return;
             }
-            setGlobalRepoFilter(next, { persist: true });
+            setDashboardsRepo(next);
         } catch {
             // If something went sideways, try to re-render dashboards anyway.
             try { renderDashboards(); } catch { /* ignore */ }
@@ -5536,6 +5548,12 @@ ${os.map(n => `- ${n}`).join('\n')}
                     <div class="pipeline-card-check" onclick="togglePipelineCheck('${pKey}', event)" title="Select"></div>
                     <span class="test-badge ${badgeClass}">${escapeHtml(badgeLabel)}</span>
                     <span class="pipeline-card-title">${escapeHtml(p.name)}</span>
+                    <button class="copy-name-btn" data-pname="${escapeHtml(p.name)}" onclick="event.stopPropagation(); copyPipelineName(this)" title="Copy name" aria-label="Copy pipeline name">
+                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/>
+                            <path d="M3.5 10.5h-1a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v1"/>
+                        </svg>
+                    </button>
                 </div>
                 <div class="pipeline-card-actions">
                     ${ghRepoPill}
@@ -5554,6 +5572,37 @@ ${os.map(n => `- ${n}`).join('\n')}
                 ${p.scheduleEnabled ? `<div class="meta-item" style="color:var(--success);">&#128337; Scheduled</div>` : ''}
             </div>
         </div>`;
+    }
+
+    function copyPipelineName(btn) {
+        // Read the real name from the data attribute (browser decodes entities for us),
+        // so '&', apostrophes, quotes etc. are copied verbatim rather than as HTML entities.
+        const name = btn.getAttribute('data-pname') || '';
+        const done = () => {
+            const orig = btn.innerHTML;
+            btn.classList.add('copied');
+            btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8.5l3.5 3.5L13 4.5"/></svg>';
+            btn.title = 'Copied!';
+            setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = orig; btn.title = 'Copy name'; }, 1200);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(name).then(done).catch(() => fallbackCopy(name, done));
+        } else {
+            fallbackCopy(name, done);
+        }
+    }
+    function fallbackCopy(text, onDone) {
+        try {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            if (onDone) onDone();
+        } catch (e) { /* clipboard unavailable */ }
     }
 
     function getGhWorkflowUrl(workflowName, repoName) {
@@ -7165,7 +7214,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                         </div>
 
                         <div class="form-group" id="timePickerGroup">
-                            <label class="form-label" style="margin-bottom:6px;">Time (PST)</label>
+                            <label class="form-label" style="margin-bottom:6px;">Time (Pacific)</label>
                             <div style="display:flex; gap:8px; align-items:center;" id="timePickerRow">
                                 <select id="fSchedHour" onchange="updateSchedPreview()" style="width:80px;" ${isView ? 'disabled' : ''}>
                                     ${Array.from({length:12}, (_,i) => {
@@ -7295,7 +7344,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                                         <option value="AM">AM</option>
                                         <option value="PM" selected>PM</option>
                                     </select>
-                                    <span style="font-size:11px; color:var(--text-muted);">PST</span>
+                                    <span style="font-size:11px; color:var(--text-muted);">PT</span>
                                 </div>
                             </div>
                             <div id="customCronBlock" style="display:none; margin-top:10px; padding:12px 14px; background:var(--bg-tertiary); border:1px solid var(--border-color); border-radius:10px;">
@@ -7478,8 +7527,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
     }
 
     function setTimeFromUTC(utcH, utcM, hourId, minId, ampmId) {
-        let pst = utcH - 8;
-        if (pst < 0) pst += 24;
+        let pst = utcH - pacOffsetHours(new Date());
+        pst = ((pst % 24) + 24) % 24;
         const ampm = pst >= 12 ? 'PM' : 'AM';
         let h12 = pst % 12; if (h12 === 0) h12 = 12;
         const hEl = document.getElementById(hourId);
@@ -7646,20 +7695,46 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         return weekNo;
     }
 
+    // ── Pacific-time helpers (DST-aware via Intl; no fixed -8/+8) ───────────────
+    // The browser's own tz database knows when PDT/PST applies — no network needed.
+    function pacOffsetHours(dateUtc) {
+        // Hours Pacific is behind UTC at the given instant: 7 (PDT, summer) or 8 (PST, winter).
+        const d = dateUtc instanceof Date ? dateUtc : new Date();
+        const dtf = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hour12: false,
+            year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const p = {};
+        dtf.formatToParts(d).forEach(x => { if (x.type !== 'literal') p[x.type] = parseInt(x.value, 10); });
+        const asUTC = Date.UTC(p.year, p.month - 1, p.day, p.hour % 24, p.minute, p.second);
+        return Math.round((d.getTime() - asUTC) / 3600000);
+    }
+    function pacWallToUtc(y, mo0, d, h, mi) {
+        // Pacific wall-clock (year, month0, day, hour, min) -> exact UTC Date, DST-aware.
+        const base = Date.UTC(y, mo0, d, h, mi, 0);
+        let utc = new Date(base + 8 * 3600000);
+        const off = pacOffsetHours(utc);
+        utc = new Date(base + off * 3600000);
+        const off2 = pacOffsetHours(utc); // refine if the guess fell on the wrong side of a DST switch
+        if (off2 !== off) utc = new Date(base + off2 * 3600000);
+        return utc;
+    }
+    function pacPartsFromUtc(dateUtc) {
+        // Pacific calendar + clock parts for a UTC instant.
+        const dtf = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hour12: false,
+            weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+        const p = {};
+        dtf.formatToParts(dateUtc).forEach(x => { if (x.type !== 'literal') p[x.type] = x.value; });
+        return { year: +p.year, month: +p.month, day: +p.day, hour: (+p.hour) % 24, minute: +p.minute, weekday: p.weekday };
+    }
+    function pacLabel(dateUtc) { return pacOffsetHours(dateUtc) === 7 ? 'PDT' : 'PST'; }
+
     function fmtPstDateTimeFromUtc(utcDate) {
-        // UI uses fixed PST offset (no DST) elsewhere; keep consistent.
-        const pst = new Date(utcDate.getTime() - 8 * 3600 * 1000);
-        const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        const p = pacPartsFromUtc(utcDate);
         const monNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        const dow = dayNames[pst.getUTCDay()];
-        const mon = monNames[pst.getUTCMonth()];
-        const dd = pst.getUTCDate();
-        const yyyy = pst.getUTCFullYear();
-        let hh = pst.getUTCHours();
-        const mm = String(pst.getUTCMinutes()).padStart(2, '0');
+        let hh = p.hour;
+        const mm = String(p.minute).padStart(2, '0');
         const ap = hh >= 12 ? 'PM' : 'AM';
         hh = hh % 12 || 12;
-        return `${dow} ${mon} ${dd}, ${yyyy} ${hh}:${mm} ${ap} PST`;
+        return `${p.weekday} ${monNames[p.month - 1]} ${p.day}, ${p.year} ${hh}:${mm} ${ap} ${pacLabel(utcDate)}`;
     }
 
     function computeNextScheduledRunUtc({ nowUtc, repeatUnit, repeatEvery, selectedDays, timesPst, monthlyDom, monthlyStep }) {
@@ -7667,40 +7742,42 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         const unit = repeatUnit || 'weeks';
         const every = Math.max(1, parseInt(repeatEvery || '1', 10) || 1);
 
-        const startPstMs = now.getTime() - 8 * 3600 * 1000;
-        const startDayPst = new Date(startPstMs);
-        startDayPst.setUTCHours(0, 0, 0, 0);
+        // Walk the Pacific calendar day-by-day (DST-aware), starting today in Pacific terms.
+        const pnow = pacPartsFromUtc(now);
+        // Noon UTC of the Pacific calendar date — noon keeps us clear of midnight DST edges while iterating.
+        const cursor = new Date(Date.UTC(pnow.year, pnow.month - 1, pnow.day, 12, 0, 0));
 
         const scanDays = 370; // safety window
         for (let dayOffset = 0; dayOffset <= scanDays; dayOffset++) {
-            const dayPst = new Date(startDayPst.getTime());
-            dayPst.setUTCDate(dayPst.getUTCDate() + dayOffset);
+            const cy = cursor.getUTCFullYear(), cmo = cursor.getUTCMonth(), cd = cursor.getUTCDate();
+            const dow = new Date(Date.UTC(cy, cmo, cd)).getUTCDay();
 
+            let dayOk = true;
             if (unit === 'months') {
                 const dom = Math.min(28, Math.max(1, parseInt(monthlyDom || '1', 10) || 1));
-                if (dayPst.getUTCDate() !== dom) continue;
-                const step = Math.max(1, parseInt(monthlyStep || every, 10) || 1);
-                const monthNum = dayPst.getUTCMonth() + 1; // 1..12
-                if (step > 1 && ((monthNum - 1) % step) !== 0) continue;
-            } else {
-                const dow = dayPst.getUTCDay();
-                if (!selectedDays || !selectedDays.includes(dow)) continue;
-            }
-
-            const times = Array.isArray(timesPst) && timesPst.length ? timesPst : [{ hour24: 6, minute: 0 }];
-            const sortedTimes = [...times].sort((a, b) => (a.hour24 * 60 + a.minute) - (b.hour24 * 60 + b.minute));
-            for (const t of sortedTimes) {
-                const candPst = new Date(dayPst.getTime());
-                candPst.setUTCHours(t.hour24, t.minute, 0, 0);
-                const candUtc = new Date(candPst.getTime() + 8 * 3600 * 1000);
-                if (candUtc.getTime() <= now.getTime() + 500) continue;
-
-                if (unit === 'weeks' && every > 1) {
-                    const wk = isoWeekUTC(candUtc);
-                    if ((wk % every) !== 0) continue;
+                if (cd !== dom) dayOk = false;
+                else {
+                    const step = Math.max(1, parseInt(monthlyStep || every, 10) || 1);
+                    if (step > 1 && (((cmo + 1) - 1) % step) !== 0) dayOk = false;
                 }
-                return candUtc;
+            } else {
+                if (!selectedDays || !selectedDays.includes(dow)) dayOk = false;
             }
+
+            if (dayOk) {
+                const times = Array.isArray(timesPst) && timesPst.length ? timesPst : [{ hour24: 6, minute: 0 }];
+                const sortedTimes = [...times].sort((a, b) => (a.hour24 * 60 + a.minute) - (b.hour24 * 60 + b.minute));
+                for (const t of sortedTimes) {
+                    const candUtc = pacWallToUtc(cy, cmo, cd, t.hour24, t.minute);
+                    if (candUtc.getTime() <= now.getTime() + 500) continue;
+                    if (unit === 'weeks' && every > 1) {
+                        const wk = isoWeekUTC(candUtc);
+                        if ((wk % every) !== 0) continue;
+                    }
+                    return candUtc;
+                }
+            }
+            cursor.setUTCDate(cursor.getUTCDate() + 1);
         }
         return null;
     }
@@ -7748,14 +7825,14 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         const m1 = parseInt(document.getElementById('fSchedMin')?.value || 0);
         const ap1 = document.getElementById('fSchedAmPm')?.value || 'AM';
         const pst1 = pstTo24(h1, ap1);
-        const utc1h = (pst1 + 8) % 24;
+        const utc1h = (pst1 + pacOffsetHours(new Date())) % 24;
 
         if (repeatUnit === 'months') {
             const dom = Math.min(28, Math.max(1, parseInt(document.getElementById('fRepeatDom')?.value || 1)));
             const monField = repeatEvery === 1 ? '*' : `*/${Math.min(repeatEvery, 12)}`;
             const cron = `${m1} ${utc1h} ${dom} ${monField} *`;
             cronInput.value = cron;
-            if (ht) ht.textContent = `Every ${repeatEvery === 1 ? 'month' : (repeatEvery + ' months')} on day ${dom} at ${fmtTime(h1, m1, ap1)} PST`;
+            if (ht) ht.textContent = `Every ${repeatEvery === 1 ? 'month' : (repeatEvery + ' months')} on day ${dom} at ${fmtTime(h1, m1, ap1)} ${pacLabel(new Date())}`;
             if (ct) ct.textContent = 'cron: ' + cron;
             if (nt) {
                 const next = computeNextScheduledRunUtc({
@@ -7822,12 +7899,13 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 for (let h = (interval - (24 - fromH) % interval) % interval; h <= untilH; h += interval) pstHours.push(h);
             }
 
-            const utcHours = pstHours.map(h => (h + 8) % 24);
+            const pacOff = pacOffsetHours(new Date());
+            const utcHours = pstHours.map(h => (h + pacOff) % 24);
             cronLines = [`${minute} ${utcHours.join(',')} * * ${dayStr}`];
 
             const fmtH = h => { const ap = h >= 12 ? 'PM' : 'AM'; const hh = h % 12 || 12; return hh + ' ' + ap; };
             const minLabel = minSel === 'random' ? `random :${String(minute).padStart(2,'0')}` : `:${String(minute).padStart(2,'0')}`;
-            timeDesc = `every ${interval}h from ${fmtH(fromH)} to ${fmtH(untilH)} PST (at ${minLabel})`;
+            timeDesc = `every ${interval}h from ${fmtH(fromH)} to ${fmtH(untilH)} ${pacLabel(new Date())} (at ${minLabel})`;
 
             if (ht) ht.textContent = `${dayDesc}, ${timeDesc}`;
             if (ct) ct.textContent = 'cron: ' + cronLines[0];
@@ -7837,16 +7915,16 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         }
 
         cronLines = [`${m1} ${utc1h} * * ${dayStr}`];
-        timeDesc = fmtTime(h1, m1, ap1) + ' PST';
+        timeDesc = fmtTime(h1, m1, ap1) + ' ' + pacLabel(new Date());
 
         if (freq === 'twice') {
             const h2 = parseInt(document.getElementById('fSchedHour2')?.value || 6);
             const m2 = parseInt(document.getElementById('fSchedMin2')?.value || 0);
             const ap2 = document.getElementById('fSchedAmPm2')?.value || 'PM';
             const pst2 = pstTo24(h2, ap2);
-            const utc2h = (pst2 + 8) % 24;
+            const utc2h = (pst2 + pacOffsetHours(new Date())) % 24;
             cronLines.push(`${m2} ${utc2h} * * ${dayStr}`);
-            timeDesc = fmtTime(h1, m1, ap1) + ' and ' + fmtTime(h2, m2, ap2) + ' PST';
+            timeDesc = fmtTime(h1, m1, ap1) + ' and ' + fmtTime(h2, m2, ap2) + ' ' + pacLabel(new Date());
         }
 
         cronInput.value = cronLines.join('\n');
@@ -11302,6 +11380,46 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         });
     }
 
+    // A run's run-level duration includes time the self-hosted job spent QUEUED waiting for a
+    // runner (the run flips to in_progress at the hosted preflight, then the test job can wait
+    // hours). The real execution = sum of each job's own (completed - started); the wait = the
+    // gaps in between (dominated by the runner queue). Only enrich genuinely long runs so we
+    // don't spam the jobs API for short ones (where wait is negligible).
+    async function enrichRunDurations(owner) {
+        const LONG_SEC = 40 * 60; // only split runs longer than 40 min (where wait actually matters)
+        const targets = (allRuns || [])
+            .filter(r => r && r.status === 'completed' && r.execSec == null && (r.totalSec || r.duration || 0) >= LONG_SEC)
+            .sort((a, b) => (b.totalSec || 0) - (a.totalSec || 0))
+            .slice(0, 120);
+
+        await mapLimit(targets, 6, async (r) => {
+            try {
+                const data = await ghFetch(`/repos/${owner}/${r.repo}/actions/runs/${r.id}/jobs?per_page=100`);
+                const jobs = data?.jobs || [];
+                // Execution = union of job [start,end] intervals (NOT the sum) — parallel jobs
+                // overlap, so summing would overcount and could exceed wall-clock total.
+                const ivs = [];
+                for (const j of jobs) {
+                    if (!j || !j.started_at || !j.completed_at) continue;
+                    const s = new Date(j.started_at).getTime(), e = new Date(j.completed_at).getTime();
+                    if (Number.isFinite(s) && Number.isFinite(e) && e > s) ivs.push([s, e]);
+                }
+                ivs.sort((a, b) => a[0] - b[0]);
+                let execMs = 0, curS = null, curE = null;
+                for (const [s, e] of ivs) {
+                    if (curE === null || s > curE) { if (curE !== null) execMs += curE - curS; curS = s; curE = e; }
+                    else if (e > curE) curE = e;
+                }
+                if (curE !== null) execMs += curE - curS;
+                const total = r.totalSec || r.duration || 0;
+                r.execSec = Math.min(Math.round(execMs / 1000), total); // never exceed wall-clock total
+                r.waitSec = Math.max(0, total - r.execSec);             // exec + wait == total, wait >= 0
+            } catch (e) {
+                // Leave execSec null — the cell falls back to showing total only.
+            }
+        });
+    }
+
     async function fetchWorkflowRunsInRange(owner, repo, workflowFilename, startMs, endMs) {
         const wfIdOrFile = encodeURIComponent(String(workflowFilename || '').trim());
         const per = 100;
@@ -11381,6 +11499,10 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                             const duration = r.updated_at && r.run_started_at
                                 ? Math.round((new Date(r.updated_at) - new Date(r.run_started_at)) / 1000)
                                 : 0;
+                            // Full wall-clock span from when the run was created (queued) to last update.
+                            const totalSec = r.updated_at && r.created_at
+                                ? Math.max(0, Math.round((new Date(r.updated_at) - new Date(r.created_at)) / 1000))
+                                : duration;
                             allRuns.push({
                                 id: r.id,
                                 repo,
@@ -11390,9 +11512,14 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                                 conclusion: r.conclusion || 'unknown',
                                 status: r.status,
                                 duration,
+                                totalSec,
+                                execSec: null,   // filled by enrichRunDurations() for long runs
+                                waitSec: null,
                                 event: r.event,
                                 actor: r.actor?.login || '',
                                 createdAt: r.created_at,
+                                runStartedAt: r.run_started_at || r.created_at,
+                                updatedAt: r.updated_at || null,
                                 url: r.html_url,
                                 branch: r.head_branch,
                                 headSha: r.head_sha,
@@ -11412,7 +11539,10 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             // Classify "gate-skipped" schedule runs so we don't show them as Passed.
             status.innerHTML = `<span style="color:var(--axos-orange); font-weight:600;">Analyzing</span> scheduled runs (skip gate)...`;
             await enrichGateSkippedRuns(owner);
-            const miss = missingWorkflows.length ? ` &mdash; <span style="color:var(--danger); font-weight:700;">${missingWorkflows.length} issue(s)</span>` : '';
+            // Split long runs into wait vs. execution (queue time inflates run-level duration).
+            status.innerHTML = `<span style="color:var(--axos-orange); font-weight:600;">Analyzing</span> run durations (wait vs. execution)...`;
+            await enrichRunDurations(owner);
+            const miss = missingWorkflows.length ? ` &mdash; <a onclick="showMissingWorkflowsModal()" style="color:var(--danger); font-weight:700; cursor:pointer; text-decoration:underline;" title="Click to see which pipelines couldn't be loaded">${missingWorkflows.length} issue(s)</a>` : '';
             status.innerHTML = `<span style="color:var(--success); font-weight:600;">&#10003; Loaded ${allRuns.length} run(s)</span> across ${resultsPipelines.length} pipeline(s) (${totalMatched} matched in GitHub)${miss}.`;
             status.className = 'pat-status ok';
             renderResults();
@@ -11497,6 +11627,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         saveResultsScheduleFilterPref(v);
         // Keep the UI predictable: changing schedule filter resets pipeline selection to "All".
         resultsSelectedPipelines.clear();
+        resultsActiveOutcome = null; resultsActiveDay = null; // changing scope clears chart highlights
         resultsTopPipelinesShowAll = false;
         clearResultsDashboardSelect();
         renderResultsTree();
@@ -11516,6 +11647,22 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             }
             return true;
         });
+    }
+
+    function resetResultsFilters() {
+        try {
+            const s = document.getElementById('resultsSearch'); if (s) s.value = '';
+            const st = document.getElementById('resultsStatusFilter'); if (st) st.value = 'all';
+            const ex = document.getElementById('excludeCancelledMetrics'); if (ex) ex.checked = false;
+            try { saveResultsExcludeCancelledPref(); } catch { /* ignore */ }
+            try { repoMsSetValue('resultsRepoFilter', 'all', { silent: true }); } catch { /* ignore */ }
+            const sf = document.getElementById('resultsScheduleFilter'); if (sf) sf.value = 'all';
+        } catch { /* ignore */ }
+        resultsActiveOutcome = null; resultsActiveDay = null; // clear chart highlights
+        // onResultsScheduleFilterChange persists the schedule pref, clears the selection,
+        // clears the dashboard pick, and re-renders the tree + results.
+        onResultsScheduleFilterChange();
+        showToast('Filters reset.');
     }
 
     function resultsPickAllPipelines(select) {
@@ -11551,6 +11698,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             }
         } catch { /* ignore */ }
         resultsSelectedPipelines.clear();
+        resultsActiveOutcome = null; resultsActiveDay = null; // changing scope clears chart highlights
         resultsTopPipelinesShowAll = false;
         clearResultsDashboardSelect();
         renderResultsTree();
@@ -11697,14 +11845,17 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         const total = runs.length;
         const actionable = outcomes.filter(o => o === 'success' || o === 'failure').length;
         const passRate = actionable ? ((passed / actionable) * 100).toFixed(1) : '0.0';
-        const timedRuns = runs.filter(r => r.duration > 0 && getRunOutcome(r) !== 'skipped');
-        const durations = timedRuns.map(r => r.duration);
+        // Use the same wall-clock total the run table shows (totalSec, queue-inclusive), falling
+        // back to the run-level duration when total isn't available — keeps metrics and table in sync.
+        const runDur = r => (r.totalSec != null ? r.totalSec : r.duration) || 0;
+        const timedRuns = runs.filter(r => runDur(r) > 0 && getRunOutcome(r) !== 'skipped');
+        const durations = timedRuns.map(runDur);
         const avgDur = durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0;
         // Longest / shortest individual runs (+ which pipeline they belong to, for click-to-focus).
         let longestRun = null, shortestRun = null;
         for (const r of timedRuns) {
-            if (!longestRun || r.duration > longestRun.duration) longestRun = r;
-            if (!shortestRun || r.duration < shortestRun.duration) shortestRun = r;
+            if (!longestRun || runDur(r) > runDur(longestRun)) longestRun = r;
+            if (!shortestRun || runDur(r) < runDur(shortestRun)) shortestRun = r;
         }
         const lrKey = longestRun ? resultsPipelineKey(longestRun.repo, longestRun.workflowName) : '';
         const srKey = shortestRun ? resultsPipelineKey(shortestRun.repo, shortestRun.workflowName) : '';
@@ -11747,14 +11898,14 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             <div class="metric-card m-purple${lrKey ? ' metric-clickable' : ''}"${lrKey ? ` data-focus-key="${escapeHtml(lrKey)}" title="Click to focus this pipeline"` : ''}>
                 <div class="metric-icon">&#128200;</div>
                 <div class="metric-label">Longest Run</div>
-                <div class="metric-value">${fmtDuration(longestRun ? longestRun.duration : 0)}</div>
+                <div class="metric-value">${fmtDuration(longestRun ? runDur(longestRun) : 0)}</div>
                 <div class="metric-sub">${escapeHtml(lrName)}${lrKey ? ' &middot; click to focus' : ''}</div>
                 <div class="metric-bar"><div class="metric-bar-fill" style="width:100%; background:linear-gradient(90deg,#8b5cf6,#a78bfa);"></div></div>
             </div>
             <div class="metric-card m-green${srKey ? ' metric-clickable' : ''}"${srKey ? ` data-focus-key="${escapeHtml(srKey)}" title="Click to focus this pipeline"` : ''}>
                 <div class="metric-icon">&#9889;</div>
                 <div class="metric-label">Shortest Run</div>
-                <div class="metric-value v-green">${fmtDuration(shortestRun ? shortestRun.duration : 0)}</div>
+                <div class="metric-value v-green">${fmtDuration(shortestRun ? runDur(shortestRun) : 0)}</div>
                 <div class="metric-sub">${escapeHtml(srName)}${srKey ? ' &middot; click to focus' : ''}</div>
                 <div class="metric-bar"><div class="metric-bar-fill" style="width:100%; background:linear-gradient(90deg,#10b981,#34d399);"></div></div>
             </div>
@@ -11877,8 +12028,10 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             const circ = 2 * Math.PI * r;
             const dashVal = circ * frac;
             const dashGap = circ - dashVal;
+            // Pie's catch-all slice uses key 'unknown'; the funnel's uses 'other' — treat them as the same bucket.
+            const isActive = (resultsActiveOutcome === it.kind) || (it.kind === 'other' && resultsActiveOutcome === 'unknown');
             return `${i > 0 ? '<div class="funnel-arrow">&#10132;</div>' : ''}
-                <div class="funnel-ring-wrap funnel-clickable" onclick="selectResultsByOutcome('${it.kind}')" title="Click to select these pipelines" style="cursor:pointer; animation:fadeSlideUp 0.5s ease-out ${0.2 + i*0.15}s both;">
+                <div class="funnel-ring-wrap funnel-clickable${isActive ? ' funnel-active' : ''}" onclick="selectResultsByOutcome('${it.kind}')" title="Click to view these pipelines" style="cursor:pointer; animation:fadeSlideUp 0.5s ease-out ${0.2 + i*0.15}s both;">
                     <div class="funnel-ring">
                         <svg viewBox="0 0 110 110">
                             <defs><linearGradient id="fg${i}" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${it.color}"/><stop offset="100%" stop-color="${it.colorEnd}"/></linearGradient></defs>
@@ -11896,7 +12049,8 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     }
 
     function renderCharts() {
-        const runs = getMetricsRuns();
+        const runs = getChartRuns(); // full in-scope set so a click doesn't collapse the charts
+        const selKeys = resultsSelectedPipelines;
         const outcomes = runs.map(getRunOutcome);
         const passed = outcomes.filter(o => o === 'success').length;
         const failed = outcomes.filter(o => o === 'failure').length;
@@ -11919,7 +12073,9 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 datasets: [{
                     data: [passed, failed, skipped, cancelled, runs.length - passed - failed - skipped - cancelled],
                     backgroundColor: ['#10b981', '#ef4444', '#60a5fa', '#6b7280', '#f59e0b'],
-                    borderWidth: 0, hoverOffset: 10, borderRadius: 4
+                    borderWidth: 0, hoverOffset: 10, borderRadius: 4,
+                    // Pop the slice you clicked (highlight the active outcome) without changing the data.
+                    offset: (() => { const ai = {success:0,failure:1,skipped:2,cancelled:3,unknown:4,other:4}[resultsActiveOutcome]; return [0,1,2,3,4].map(ix => ix === ai ? 18 : 0); })()
                 }]
             },
             options: {
@@ -11981,8 +12137,11 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                     {
                         label: 'Pass Rate %', data: rates,
                         borderColor: '#10b981', borderWidth: 2.5, backgroundColor: lineGrad,
-                        fill: true, tension: 0.4, pointRadius: 5,
-                        pointBackgroundColor: '#10b981', pointBorderColor: '#0a0e1a', pointBorderWidth: 2.5,
+                        fill: true, tension: 0.4,
+                        // Enlarge/recolor the clicked day's point (highlight the active day).
+                        pointRadius: days.map(d => d === resultsActiveDay ? 9 : 5),
+                        pointBackgroundColor: days.map(d => d === resultsActiveDay ? '#f59e0b' : '#10b981'),
+                        pointBorderColor: '#0a0e1a', pointBorderWidth: 2.5,
                         pointHoverRadius: 8, yAxisID: 'y'
                     },
                     {
@@ -12035,8 +12194,10 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 const oW = (t ? (o / t * 100) : 0).toFixed(0);
                 const actionable = p + f;
                 const passPct = (actionable ? (p / actionable * 100) : 0).toFixed(0);
-                html += `<div class="health-row health-clickable" data-focus-key="${escapeHtml(hKey)}" title="${escapeHtml(name)} (${escapeHtml(repo)}) — click to focus" style="animation-delay:${i * 0.08}s;">
-                    <div class="health-label">${escapeHtml(name.replace(/-Testim$/, '').replace(/^Web_AxosBank_[^_]+(?:-OLB)?_/, ''))}</div>
+                const sel = selKeys.has(hKey);
+                html += `<div class="health-row${sel ? ' health-selected' : ''}" title="${escapeHtml(name)} (${escapeHtml(repo)})" style="animation-delay:${i * 0.08}s;">
+                    <input type="checkbox" class="health-check" ${sel ? 'checked' : ''} onchange="toggleResultsHealthPipe('${escapeHtml(hKey).replace(/'/g, "\\'")}', this.checked)" title="Select this pipeline" style="accent-color:var(--axos-orange);">
+                    <div class="health-label">${escapeHtml(name)}</div>
                     <div class="health-bar">
                         <div class="health-seg pass" style="width:${pW}%;" title="${p} passed"></div>
                         <div class="health-seg fail" style="width:${fW}%;" title="${f} failed"></div>
@@ -12047,8 +12208,18 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 </div>`;
             });
             healthEl.innerHTML = html;
-            bindResultsFocusDelegation(healthEl);
         }
+    }
+
+    // Health-bar checkbox: multi-select pipelines without collapsing the charts.
+    function toggleResultsHealthPipe(key, checked) {
+        const k = String(key || '').trim();
+        if (!k) return;
+        if (checked) resultsSelectedPipelines.add(k); else resultsSelectedPipelines.delete(k);
+        resultsActiveOutcome = null; resultsActiveDay = null; // explicit pipeline picks clear outcome/day highlight
+        clearResultsDashboardSelect();
+        renderResults();
+        filterResults();
     }
 
     function toggleResultsTopPipelinesShowAll() {
@@ -12070,6 +12241,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 
         resultsSelectedPipelines.clear();
         resultsSelectedPipelines.add(k);
+        resultsActiveOutcome = null; resultsActiveDay = null; // explicit pipeline focus
         clearResultsDashboardSelect(); // manual focus isn't a saved-dashboard selection
         renderResultsTree();
         filterResults();
@@ -12100,9 +12272,41 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     }
 
     // Pipeline keys (in current scope) whose runs match a predicate(outcome, run).
+    // Show which configured pipelines couldn't be loaded from GitHub (the "N issue(s)" link).
+    function showMissingWorkflowsModal() {
+        if (!missingWorkflows || !missingWorkflows.length) { showToast('No issues 🎉'); return; }
+        let m = document.getElementById('missingWfModal');
+        if (!m) {
+            m = document.createElement('div');
+            m.id = 'missingWfModal';
+            m.className = 'modal-overlay';
+            m.innerHTML = `<div class="modal" style="max-width:560px;">
+                <div class="modal-header" style="border-left:4px solid var(--error);">
+                    <div class="modal-title" style="color:var(--error);">Fetch issues</div>
+                    <button class="modal-close" onclick="closeModal('missingWfModal')">&times;</button>
+                </div>
+                <div class="modal-body" id="missingWfBody"></div>
+                <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('missingWfModal')">Close</button></div>
+            </div>`;
+            document.body.appendChild(m);
+            m.addEventListener('click', (e) => { if (e.target === m) closeModal('missingWfModal'); });
+        }
+        const reasonText = (r) => r === 'not_found'
+            ? 'Workflow file not found in the repo — likely renamed or deleted in GitHub but still configured here.'
+            : 'Couldn’t fetch its runs (GitHub API error or no access).';
+        document.getElementById('missingWfBody').innerHTML =
+            `<div style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">These <b>${missingWorkflows.length}</b> configured pipeline(s) couldn’t be loaded from GitHub, so they aren’t in the results above:</div>` +
+            missingWorkflows.map(w => `<div style="padding:9px 11px; border:1px solid var(--border-color); border-radius:10px; margin-bottom:8px;">
+                <div style="font-weight:800; color:var(--text-primary); font-size:13px;">${escapeHtml(String(w.name || w.filename || '').replace(/-Testim$/, ''))}</div>
+                <div style="font-size:11px; color:var(--text-muted); margin-top:3px;"><code>${escapeHtml(w.repo)}</code> &middot; <code>${escapeHtml(w.filename)}</code></div>
+                <div style="font-size:11px; color:var(--error); margin-top:4px;">${escapeHtml(reasonText(w.reason))}</div>
+            </div>`).join('');
+        m.classList.add('show');
+    }
+
     function resultsPipelineKeysWhere(pred) {
         const set = new Set();
-        for (const r of getMetricsRuns()) {
+        for (const r of getChartRuns()) { // full in-scope set, not the current selection
             if (pred(getRunOutcome(r), r)) set.add(resultsPipelineKey(r.repo, r.workflowName));
         }
         return [...set];
@@ -12110,6 +12314,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 
     // Funnel / pie segment -> select the pipelines that contributed to it.
     function selectResultsByOutcome(kind) {
+        resultsActiveOutcome = kind; resultsActiveDay = null; // highlight this funnel/pie segment
         let keys, label;
         switch (kind) {
             case 'total': keys = resultsPipelineKeysWhere(() => true); label = 'all runs'; break;
@@ -12129,8 +12334,9 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     function selectResultsByDay(dayISO) {
         const day = String(dayISO || '').slice(0, 10);
         if (!day) return;
+        resultsActiveDay = day; resultsActiveOutcome = null; // highlight this day on the trend
         const set = new Set();
-        for (const r of getMetricsRuns()) {
+        for (const r of getChartRuns()) {
             if (String(r.createdAt || '').slice(0, 10) === day) set.add(resultsPipelineKey(r.repo, r.workflowName));
         }
         selectResultsPipelineKeys([...set], day);
@@ -12150,16 +12356,14 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         const el = document.getElementById('topPipelinesList');
         if (!el) return;
 
-        const runs = getMetricsRuns();
+        const runs = getChartRuns(); // full in-scope set so a selection doesn't collapse the list
         if (!runs.length) {
             el.innerHTML = `<div style="padding:10px 2px; color:var(--text-muted); font-size:12px;">No runs match the current filters.</div>`;
             return;
         }
 
-        // Determine which pipelines are in-scope for the list: current multi-select, else all visible pipelines.
-        const inScopeKeys = resultsSelectedPipelines.size
-            ? [...resultsSelectedPipelines]
-            : (getResultsVisiblePipelines() || []).map(p => resultsPipelineKey(p.repo, p.name));
+        // Always list all in-scope pipelines; the selected ones get highlighted (not isolated).
+        const inScopeKeys = (getResultsVisiblePipelines() || []).map(p => resultsPipelineKey(p.repo, p.name));
 
         const agg = new Map();
         for (const k of inScopeKeys) {
@@ -12229,10 +12433,12 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                         const nameEsc = escapeHtml(r.name || '(unknown)');
                         const repoEsc = escapeHtml(r.repo || '');
                         const tip = `${repoEsc}${repoEsc ? ' — ' : ''}${nameEsc} (${r.total} run(s))`;
-                        const rowBg = i % 2 ? 'rgba(255,255,255,0.015)' : 'transparent';
+                        const isSel = resultsSelectedPipelines.has(r.key);
+                        const rowBg = isSel ? 'rgba(250,167,74,0.12)' : (i % 2 ? 'rgba(255,255,255,0.015)' : 'transparent');
+                        const selBorder = isSel ? 'box-shadow: inset 3px 0 0 var(--axos-orange);' : '';
                         return `
                             <div data-focus-key="${keyEsc}" title="${escapeHtml(tip)}"
-                                 style="display:grid; grid-template-columns: 44px 1fr 90px 64px 64px 64px 64px; padding:10px 12px; gap:0; cursor:pointer; border-top:1px solid rgba(255,255,255,0.05); background:${rowBg}; align-items:center;">
+                                 style="display:grid; grid-template-columns: 44px 1fr 90px 64px 64px 64px 64px; padding:10px 12px; gap:0; cursor:pointer; border-top:1px solid rgba(255,255,255,0.05); background:${rowBg}; ${selBorder} align-items:center;">
                                 <div style="font-family:'JetBrains Mono',monospace; color:var(--text-muted); font-size:11px;">${i + 1}</div>
                                 <div style="min-width:0;">
                                     <div style="font-weight:800; color:var(--text-primary); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${nameEsc}</div>
@@ -12365,7 +12571,8 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         filterResults();
     }
 
-    function getFilteredRuns() {
+    function getFilteredRuns(opts) {
+        const ignoreSelection = !!(opts && opts.ignoreSelection);
         let runs = [...allRuns];
         const repoFilter = getResultsRepoFilterValue();
         if (repoFilterList(repoFilter)) runs = runs.filter(r => repoFilterMatches(repoFilter, String(r.repo || '').trim()));
@@ -12377,12 +12584,29 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 return schedFilter === 'scheduled' ? isSched : !isSched;
             });
         }
-        if (resultsSelectedPipelines.size) runs = runs.filter(r => resultsSelectedPipelines.has(resultsPipelineKey(r.repo, r.workflowName)));
+        // Charts pass ignoreSelection so a click-to-select doesn't collapse them — they keep
+        // showing the full in-scope picture and highlight the selection instead.
+        if (!ignoreSelection && resultsSelectedPipelines.size) runs = runs.filter(r => resultsSelectedPipelines.has(resultsPipelineKey(r.repo, r.workflowName)));
         const search = document.getElementById('resultsSearch')?.value?.toLowerCase() || '';
         if (search) runs = runs.filter(r => r.workflowName.toLowerCase().includes(search));
         const statusFilter = document.getElementById('resultsStatusFilter')?.value || 'all';
         if (statusFilter !== 'all') runs = runs.filter(r => getRunOutcome(r) === statusFilter);
         return runs;
+    }
+
+    // Runs for the charts/lists: full in-scope set, NOT narrowed by the click-selection.
+    function getChartRuns() {
+        let runs = getFilteredRuns({ ignoreSelection: true });
+        const exclude = !!document.getElementById('excludeCancelledMetrics')?.checked;
+        if (exclude) runs = runs.filter(r => getRunOutcome(r) !== 'cancelled');
+        return runs;
+    }
+
+    // Selection highlight state (so charts can show what you clicked without collapsing).
+    let resultsActiveOutcome = null; // 'success'|'failure'|'skipped'|'cancelled'|'unknown'|'other'|'total'|null
+    let resultsActiveDay = null;     // 'YYYY-MM-DD' | null
+    function resultsSelectionActive() {
+        return !!(resultsSelectedPipelines.size || resultsActiveOutcome || resultsActiveDay);
     }
 
     // Tests/test-summary UI intentionally removed (too flaky across repos).
@@ -12407,7 +12631,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 
         const tbody = document.getElementById('runsTableBody');
         if (!runs.length) {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:var(--text-muted);">No runs match the current filter.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">No runs match the current filter.</td></tr>';
             return;
         }
 
@@ -12447,11 +12671,10 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 })()
                 : '';
             return `<tr>
-                <td><input type="checkbox" class="run-check" value="${r.id}" onchange="toggleRunCheck(${r.id})" ${selectedRuns.has(r.id) ? 'checked' : ''} style="accent-color:var(--axos-orange);"></td>
                 <td class="run-name" title="${r.workflowName}">${r.workflowName.replace(/-Testim$/, '')}</td>
                 <td style="font-family:'JetBrains Mono',monospace; font-size:12px;">#${r.runNumber}</td>
                 <td><span class="${badge}">${label}</span>${skipInfo}</td>
-                <td style="font-family:'JetBrains Mono',monospace; font-size:12px;">${fmtDuration(r.duration)}</td>
+                <td style="font-family:'JetBrains Mono',monospace; font-size:12px;">${runDurationCell(r)}</td>
                 <td style="font-size:12px;">${r.event === 'schedule' ? '&#128337; Schedule' : r.event === 'workflow_dispatch' ? '&#9654; Manual' : r.event}</td>
                 <td style="font-size:12px; color:var(--text-secondary);">${dateStr}<br><span style="color:var(--text-muted);">${timeStr}</span></td>
                 <td><a href="${r.url}" target="_blank">View</a></td>
@@ -12487,6 +12710,22 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     function fmtDuration(sec) {
         if (!sec || sec <= 0) return '--';
         return fmtDurationParts(sec);
+    }
+
+    // Run-table Duration cell: total wall-clock, plus a wait/run split for long runs whose
+    // run-level time was inflated by queue wait (enrichRunDurations fills execSec/waitSec).
+    function runDurationCell(r) {
+        const total = (r.totalSec != null ? r.totalSec : r.duration) || 0;
+        const totalStr = fmtDuration(total);
+        const hasSplit = (r.execSec != null && r.waitSec != null && r.waitSec >= 60);
+        if (!hasSplit) {
+            return `<div style="font-weight:700;">${totalStr}</div>`;
+        }
+        const tip = `Total ${fmtDuration(total)} = waited ${fmtDuration(r.waitSec)} for a runner + ran ${fmtDuration(r.execSec)}`;
+        return `<div class="dur-cell" title="${escapeHtml(tip)}">
+            <div class="dur-total">${totalStr}</div>
+            <div class="dur-split"><span class="dur-wait">&#9203; ${fmtDuration(r.waitSec)}</span> <span class="dur-run">&#9654; ${fmtDuration(r.execSec)}</span></div>
+        </div>`;
     }
 
     // ══════════════════════════════════════════
@@ -13040,8 +13279,8 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             dashboardsState = loadDashboardsState();
             setActiveDashboardId(newDash.repo, newDash.id);
             closeModal('pmDashXferModal');
-            // Switch to imported repo so user can see it immediately.
-            setGlobalRepoFilter(newDash.repo, { persist: true, skipResults: true, skipEmail: true });
+            // Switch the Dashboards view to the imported repo (local only).
+            setDashboardsRepo(newDash.repo);
             const after = dashboardsState.dashboards.find(d => d.id === newDash.id) || newDash;
             const afterShape = summarizeDashboardShape(after);
             const ds = diffSets(beforeShape.pipelineSet, afterShape.pipelineSet);
@@ -13064,7 +13303,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         if (mode === 'replace') {
             closeModal('pmDashXferModal');
             const next = applyReplace();
-            setGlobalRepoFilter(next.repo, { persist: true, skipResults: true, skipEmail: true });
+            setDashboardsRepo(next.repo);
             const after = dashboardsState.dashboards.find(d => d.id === next.id) || next;
             const afterShape = summarizeDashboardShape(after);
             const ds = diffSets(beforeShape.pipelineSet, afterShape.pipelineSet);
@@ -13088,7 +13327,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             closeModal('pmDashXferModal');
             const res = applyMerge(null);
             const after = res?.next || dashboardsState.dashboards.find(d => d.id === existing.id) || existing;
-            setGlobalRepoFilter(String(after.repo || ''), { persist: true, skipResults: true, skipEmail: true });
+            setDashboardsRepo(String(after.repo || ''));
             const afterShape = summarizeDashboardShape(after);
             const ds = diffSets(beforeShape.pipelineSet, afterShape.pipelineSet);
             showDashImportSummary({
@@ -13117,7 +13356,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             closeModal('pmDashXferModal');
             const res = applyMerge(plan);
             const after = res?.next || dashboardsState.dashboards.find(d => d.id === existing.id) || existing;
-            setGlobalRepoFilter(String(after.repo || ''), { persist: true, skipResults: true, skipEmail: true });
+            setDashboardsRepo(String(after.repo || ''));
             const afterShape = summarizeDashboardShape(after);
             const ds = diffSets(beforeShape.pipelineSet, afterShape.pipelineSet);
             // Build group details with explicit per-group action.
@@ -14171,10 +14410,20 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         body.innerHTML = runningHtml + queuedHtml;
     }
 
+    let dashSelectedRepo = null; // Dashboards-tab-local repo (does NOT touch the global filter)
+
     function getDashboardsRepo() {
-        // Dashboards are single-repo; if the global filter holds multiple repos, use the first.
+        // Dashboards repo is LOCAL to this tab so picking it here doesn't change Pipelines,
+        // Results, Email or Calendar. Default to the global repo on first open, then stay local.
+        if (dashSelectedRepo) return dashSelectedRepo;
         const list = repoFilterList(globalRepoFilter);
         return list && list.length ? list[0] : '';
+    }
+
+    function setDashboardsRepo(repo) {
+        dashSelectedRepo = String(repo || '').trim() || null;
+        dashSelectedGroupId = null; // reset group filter when repo changes
+        renderDashboards();
     }
 
     function ensureDashModal() {
@@ -14620,7 +14869,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 <div class="empty-state" style="animation:fadeSlideUp 0.5s ease-out both;">
                     <div class="empty-icon">&#128205;</div>
                     <h3>Select a repo to view dashboards</h3>
-                    <p>Pick the repo you want dashboards for. This will also filter the left side across the app.</p>
+                    <p>Pick the repo you want dashboards for. This choice only affects the Dashboards tab — it won't change the filter on other tabs.</p>
                     <div class="dash-repo-card" style="margin-top:16px; max-width:520px; margin-left:auto; margin-right:auto; text-align:left; padding:16px 16px;">
                         <div style="font-size:11px; font-weight:900; letter-spacing:0.6px; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px;">Repo</div>
                         <select id="dashRepoPickTop" class="dash-select" style="width:100%;">
@@ -14657,7 +14906,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             const repoSwitchEmpty = `
                 <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:14px;">
                     <span style="font-size:11px; color:var(--text-muted); font-weight:900; letter-spacing:0.6px; text-transform:uppercase;">Repo</span>
-                    <select id="dashRepoSwitchEmpty" class="dash-select" onchange="setGlobalRepoFilter(this.value || 'all', {persist:true});" style="min-width:260px;">
+                    <select id="dashRepoSwitchEmpty" class="dash-select" onchange="setDashboardsRepo(this.value)" style="min-width:260px;">
                         ${reposAll.map(r => `<option value="${escapeHtml(r)}"${r===repo?' selected':''}>${escapeHtml(r)}</option>`).join('')}
                     </select>
                 </div>
@@ -14679,7 +14928,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         const repoSwitch = `
             <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px;">
                 <span style="font-size:11px; color:var(--text-muted); font-weight:900; letter-spacing:0.6px; text-transform:uppercase;">Repo</span>
-                <select id="dashRepoSwitch" class="dash-select" onchange="setGlobalRepoFilter(this.value || 'all', {persist:true});" style="min-width:220px;">
+                <select id="dashRepoSwitch" class="dash-select" onchange="setDashboardsRepo(this.value)" style="min-width:220px;">
                     ${reposAll.map(r => `<option value="${escapeHtml(r)}"${r===repo?' selected':''}>${escapeHtml(r)}</option>`).join('')}
                 </select>
                 <span style="font-size:11px; color:var(--text-muted);">Switching changes the global repo filter.</span>
@@ -15072,17 +15321,6 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 
         if (repoFilterList(repoFilter)) keys = keys.filter(k => repoFilterMatches(repoFilter, parseEmailPipelineKey(k).repo));
 
-        if (emailPickerTab !== 'all') {
-            keys = keys.filter(k => {
-                const n = parseEmailPipelineKey(k).workflowName;
-                if (emailPickerTab === 'Mobile > Android') return n.startsWith('Mobile_Android');
-                if (emailPickerTab === 'Mobile > iOS') return n.startsWith('Mobile_iOS');
-                if (emailPickerTab === 'Web') return n.startsWith('Web_');
-                if (emailPickerTab === 'API') return n.startsWith('API_');
-                return !n.startsWith('Mobile_') && !n.startsWith('Web_') && !n.startsWith('API_');
-            });
-        }
-
         if (health !== 'all') {
             keys = keys.filter(k => {
                 const { repo, workflowName } = parseEmailPipelineKey(k);
@@ -15100,23 +15338,6 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         }
 
         if (includeSearch && search) keys = keys.filter(k => parseEmailPipelineKey(k).workflowName.toLowerCase().includes(search));
-        return keys;
-    }
-
-    function getEmailRepoTabScopeKeys() {
-        const repoFilter = getEmailRepoFilter();
-        let keys = [...new Set((allRuns || []).map(r => emailPipelineKey(r.repo, r.workflowName)))].sort();
-        if (repoFilterList(repoFilter)) keys = keys.filter(k => repoFilterMatches(repoFilter, parseEmailPipelineKey(k).repo));
-        if (emailPickerTab !== 'all') {
-            keys = keys.filter(k => {
-                const n = parseEmailPipelineKey(k).workflowName;
-                if (emailPickerTab === 'Mobile > Android') return n.startsWith('Mobile_Android');
-                if (emailPickerTab === 'Mobile > iOS') return n.startsWith('Mobile_iOS');
-                if (emailPickerTab === 'Web') return n.startsWith('Web_');
-                if (emailPickerTab === 'API') return n.startsWith('API_');
-                return !n.startsWith('Mobile_') && !n.startsWith('Web_') && !n.startsWith('API_');
-            });
-        }
         return keys;
     }
 
@@ -15155,32 +15376,6 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 
         populateEmailRepoFilter();
         try { populateEmailDashQuickPick(); } catch { /* ignore */ }
-        buildEmailPickerTabs();
-        renderEmailPipeList();
-    }
-
-    function buildEmailPickerTabs() {
-        const folders = new Set();
-        folders.add('all');
-        allRuns.forEach(r => {
-            const n = r.workflowName;
-            if (n.startsWith('Mobile_Android')) folders.add('Mobile > Android');
-            else if (n.startsWith('Mobile_iOS')) folders.add('Mobile > iOS');
-            else if (n.startsWith('Web_')) folders.add('Web');
-            else if (n.startsWith('API_')) folders.add('API');
-            else folders.add('Other');
-        });
-        const tabsEl = document.getElementById('emailPickerTabs');
-        tabsEl.innerHTML = [...folders].map(f => {
-            const label = f === 'all' ? 'All Pipelines' : f;
-            return `<div class="pipe-picker-tab ${emailPickerTab === f ? 'active' : ''}" onclick="setEmailPickerTab('${f}', this)">${label}</div>`;
-        }).join('');
-    }
-
-    function setEmailPickerTab(tab, el) {
-        emailPickerTab = tab;
-        document.querySelectorAll('.pipe-picker-tab').forEach(t => t.classList.remove('active'));
-        if (el) el.classList.add('active');
         renderEmailPipeList();
     }
 
@@ -15266,14 +15461,17 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     }
 
     function updateEmailPipeCount() {
-        const scope = getEmailRepoTabScopeKeys();
+        // Scope = the currently VISIBLE list (repo + health + search), so the count always
+        // matches what's shown — not the whole repo when a search is active.
+        const scope = getEmailFilteredPipes();
         const total = scope.length;
-        const sel = [...emailSelectedPipelines].filter(k => scope.includes(k)).length;
-        document.getElementById('emailPipeSelected').textContent = `${sel} of ${total} pipeline${total !== 1 ? 's' : ''} selected`;
+        const sel = scope.filter(k => emailSelectedPipelines.has(k)).length;
+        document.getElementById('emailPipeSelected').textContent = `${sel} of ${total} pipeline${total !== 1 ? 's' : ''} selected (in view)`;
     }
 
     function generateEmailReport() {
-        const scopeKeys = new Set(getEmailRepoTabScopeKeys());
+        // Only the in-view pipelines are in scope — what you see/filter is what you get.
+        const scopeKeys = new Set(getEmailFilteredPipes());
         const selectedInScope = [...emailSelectedPipelines].filter(k => scopeKeys.has(k));
         if (selectedInScope.length === 0) {
             showToast('Select at least one pipeline (or click Select All).', true);
