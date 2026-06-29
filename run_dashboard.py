@@ -7,6 +7,7 @@ No credentials needed. No manual steps. Just run it.
 import http.server
 import json
 import os
+import re
 from urllib.parse import urlparse, parse_qs
 import signal
 import subprocess
@@ -30,6 +31,158 @@ DASHBOARD_URL = "https://camartinezax.github.io/QCoE/Environment_Downtime_Dashbo
 COOKIE_CACHE_FILE = Path(__file__).parent / ".snow_cookie_jar.json"
 COOKIE_JAR_MAX_AGE = timedelta(hours=12)
 
+# Keep the dashboard resilient when the system Python is removed/updated.
+# We prefer running from a local venv under SCRIPT_DIR so pip installs are isolated.
+MIN_PYTHON = (3, 11)
+VENV_DIR = SCRIPT_DIR / ".venv"
+
+
+def _venv_python_path():
+    return VENV_DIR / ("Scripts" if os.name == "nt" else "bin") / (
+        "python.exe" if os.name == "nt" else "python"
+    )
+
+
+def _in_venv():
+    return getattr(sys, "base_prefix", sys.prefix) != sys.prefix
+
+
+def _run(cmd, timeout=None):
+    return subprocess.run(
+        cmd,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+    )
+
+
+def _python_ok(python_path):
+    if not python_path:
+        return False
+    try:
+        r = _run(
+            [str(python_path), "-c", "import sys; print(sys.version_info[0], sys.version_info[1])"],
+            timeout=5,
+        )
+        if r.returncode != 0:
+            return False
+        parts = (r.stdout or "").strip().split()
+        if len(parts) < 2:
+            return False
+        major, minor = int(parts[0]), int(parts[1])
+        return (major, minor) >= MIN_PYTHON
+    except Exception:
+        return False
+
+
+def _find_bootstrap_python():
+    # Prefer user-managed Python (survives CLT removals), then fall back to current.
+    candidates = []
+    if os.name != "nt":
+        candidates.extend(
+            [
+                Path.home() / ".local" / "bin" / "python3.12",
+                Path.home() / ".local" / "bin" / "python3.11",
+                Path("/opt/homebrew/bin/python3.12"),
+                Path("/usr/local/bin/python3.12"),
+            ]
+        )
+    # Last resort: whatever is running us now.
+    candidates.append(Path(sys.executable))
+
+    for c in candidates:
+        try:
+            if c and c.exists() and _python_ok(c):
+                return c
+        except Exception:
+            continue
+    return Path(sys.executable)
+
+
+def _reexec_into_supported_python_if_needed():
+    """If we were started with an unsupported Python (< MIN_PYTHON), try to re-exec into a supported one."""
+    if os.environ.get("AXOS_DASHBOARD_NO_PY_REEXEC") == "1":
+        return
+
+    current = Path(sys.executable)
+    if _python_ok(current):
+        return
+
+    # Try to find a supported Python (excluding the current interpreter).
+    candidates = []
+    if os.name != "nt":
+        candidates.extend(
+            [
+                Path.home() / ".local" / "bin" / "python3.12",
+                Path.home() / ".local" / "bin" / "python3.11",
+                Path("/opt/homebrew/bin/python3.12"),
+                Path("/usr/local/bin/python3.12"),
+            ]
+        )
+
+    for c in candidates:
+        try:
+            if c and c.exists() and _python_ok(c):
+                os.environ["AXOS_DASHBOARD_NO_PY_REEXEC"] = "1"
+                os.execv(str(c), [str(c), os.path.abspath(__file__), *sys.argv[1:]])
+        except Exception:
+            continue
+
+    print(
+        f"{C_RED}ERROR:{C_RESET} Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]}+ is required. "
+        "Please install Python 3.12+ (python.org) or ensure python3.12 is available, then retry."
+    )
+    raise SystemExit(2)
+
+
+def _ensure_venv_and_deps():
+    """Create/repair a local venv and install required deps into it.
+
+    Returns the venv python path when available, otherwise None.
+    """
+    vpy = _venv_python_path()
+    try:
+        if vpy.exists():
+            return vpy
+
+        bootstrap_py = _find_bootstrap_python()
+        if not _python_ok(Path(bootstrap_py)):
+            return None
+        print(f"  {C_DIM}  Creating local venv: {VENV_DIR}{C_RESET}")
+        r = _run([str(bootstrap_py), "-m", "venv", str(VENV_DIR)], timeout=120)
+        if r.returncode != 0:
+            return None
+
+        vpy = _venv_python_path()
+        if not vpy.exists():
+            return None
+
+        # Install deps into the venv (not system Python).
+        pip_base = [str(vpy), "-m", "pip", "install", "--disable-pip-version-check", "--no-input"]
+        _run(pip_base + ["--upgrade", "pip"], timeout=120)
+        deps = ["browser_cookie3", "requests", "pycryptodome", "rookiepy", "websocket-client"]
+        r2 = _run(pip_base + deps, timeout=180)
+        if r2.returncode != 0:
+            # Non-fatal: the dashboard can still serve /api/progress even if fetch deps fail.
+            print(f"  {C_DIM}  Note: dependency install had issues; fetch may fail until resolved.{C_RESET}")
+        return vpy
+    except Exception:
+        return None
+
+
+def _reexec_into_venv_if_present():
+    """If a local venv exists, re-exec into it so sys.executable points at venv python."""
+    if _in_venv():
+        return
+    if os.environ.get("AXOS_DASHBOARD_NO_REEXEC") == "1":
+        return
+    vpy = _venv_python_path()
+    if not vpy.exists():
+        return
+    os.environ["AXOS_DASHBOARD_NO_REEXEC"] = "1"
+    os.execv(str(vpy), [str(vpy), os.path.abspath(__file__), *sys.argv[1:]])
+
 SNOW_TABLES = {
     "sc_req_item": {
         "url": f"https://{INSTANCE}/sc_req_item.do",
@@ -39,6 +192,12 @@ SNOW_TABLES = {
     "incident": {
         "url": f"https://{INSTANCE}/incident.do",
         "date_field": "opened_at",
+        "segments": [""],
+    },
+    "change_request": {
+        "url": f"https://{INSTANCE}/change_request.do",
+        # For downtime scheduling, planned start date is the meaningful timeline.
+        "date_field": "start_date",
         "segments": [""],
     },
 }
@@ -320,6 +479,16 @@ def _do_fetch_background(date_from=None, date_to=None, fetch_filters=None):
     if fetch_filters.get("rf"): ff_parts.append(f"requested_for~{fetch_filters['rf']}")
     if fetch_filters.get("rt"): ff_parts.append(f"request_type~{fetch_filters['rt']}")
     if fetch_filters.get("st"): ff_parts.append(f"state~{fetch_filters['st']}")
+    adv_raw = fetch_filters.get("adv") or ""
+    adv_n = 0
+    if isinstance(adv_raw, str) and adv_raw.strip():
+        try:
+            adv_obj = json.loads(adv_raw)
+            adv_n = len((adv_obj or {}).get("rules") or [])
+        except Exception:
+            adv_n = 0
+    if adv_n:
+        ff_parts.append(f"adv_rules~{adv_n}")
     ff_label = (" | " + ", ".join(ff_parts)) if ff_parts else ""
     print(f"  {C_CYAN}⟳ Fetching data from ServiceNow{date_label}{ff_label}...{C_RESET}")
 
@@ -474,6 +643,18 @@ def _do_fetch_background(date_from=None, date_to=None, fetch_filters=None):
 
     headers = {"Accept": "application/json", "X-Requested-With": "XMLHttpRequest"}
 
+    # Parse advanced rules once (if provided)
+    adv_raw_global = fetch_filters.get("adv") or ""
+    adv_rules_global = []
+    if isinstance(adv_raw_global, str) and adv_raw_global.strip():
+        try:
+            adv_obj = json.loads(adv_raw_global) or {}
+            rr = adv_obj.get("rules") or []
+            if isinstance(rr, list):
+                adv_rules_global = [r for r in rr if isinstance(r, dict)]
+        except Exception:
+            adv_rules_global = []
+
     def _date_clause_for(field_name: str) -> str:
         clause = ""
         if date_from:
@@ -498,6 +679,7 @@ def _do_fetch_background(date_from=None, date_to=None, fetch_filters=None):
         rf = _clean_user_text(fetch_filters.get("rf", ""))
         rt = _clean_user_text(fetch_filters.get("rt", ""))
         st = _clean_user_text(fetch_filters.get("st", ""))
+        adv_raw = fetch_filters.get("adv", "")
 
         clause = ""
 
@@ -511,12 +693,17 @@ def _do_fetch_background(date_from=None, date_to=None, fetch_filters=None):
         if rf:
             if table_name == "incident":
                 clause += f"^caller_id.nameLIKE{rf}"
+            elif table_name == "change_request":
+                clause += f"^requested_by.nameLIKE{rf}"
             else:
                 clause += f"^requested_for.nameLIKE{rf}"
 
         if rt:
             if table_name == "incident":
                 clause += f"^categoryLIKE{rt}"
+            elif table_name == "change_request":
+                # Best-effort mapping: change type/model varies by org; LIKE keeps it usable.
+                clause += f"^typeLIKE{rt}"
             else:
                 clause += f"^cat_item.nameLIKE{rt}"
 
@@ -524,13 +711,378 @@ def _do_fetch_background(date_from=None, date_to=None, fetch_filters=None):
             # Choice fields are instance-specific; LIKE works best with labels.
             clause += f"^stateLIKE{st}"
 
-        return clause
+        # Advanced AND/OR builder (optional)
+        adv_clause = ""
+        if isinstance(adv_raw, str) and adv_raw.strip():
+            try:
+                adv_obj = json.loads(adv_raw) or {}
+                rules = adv_obj.get("rules") or []
+                if not isinstance(rules, list):
+                    rules = []
+            except Exception:
+                rules = []
+
+            FIELD_RE = re.compile(r"^[A-Za-z0-9_.]+$")
+            RAW_OP_RE = re.compile(r"^[A-Za-z0-9_ !><=]+$")
+
+            def _safe_field(name: str):
+                name = (name or "").strip()
+                if not name or any(c.isspace() for c in name):
+                    return None
+                if "^" in name or "\n" in name or "\r" in name:
+                    return None
+                if not FIELD_RE.match(name):
+                    return None
+                return name
+
+            def _safe_date(d: str):
+                d = (d or "").strip()
+                try:
+                    datetime.strptime(d, "%Y-%m-%d")
+                    return d
+                except Exception:
+                    return None
+
+            def _safe_value(v: str, max_len: int = 240):
+                v = _clean_user_text(v)
+                if len(v) > max_len:
+                    v = v[:max_len]
+                return v
+
+            def _safe_raw_op(op: str):
+                op = (op or "").replace("^", " ").replace("\n", " ").replace("\r", " ").strip()
+                if not op or len(op) > 40:
+                    return None
+                if not RAW_OP_RE.match(op):
+                    return None
+                return op
+
+            SYSID_RE = re.compile(r"^[0-9a-f]{32}$", re.IGNORECASE)
+            TEXT_OPS = {"like", "not_like", "eq", "neq", "startswith", "endswith"}
+            # Choice fields where users typically type the display label (not the internal value).
+            CHOICE_LABEL_FIELDS = {"state", "approval", "impact", "urgency", "priority", "risk", "phase_state", "type"}
+
+            def _maybe_dotwalk_name(field_name: str, op_key: str, user_val: str) -> str:
+                # IMPORTANT: Do not auto-dotwalk. Users can specify dot-walk fields explicitly.
+                return field_name
+
+            # Field existence cache (to avoid invalid-field queries wiping out entire tables)
+            _field_keys_cache = {}
+
+            def _get_field_keys(table: str):
+                if table in _field_keys_cache:
+                    return _field_keys_cache[table]
+                cfg = SNOW_TABLES.get(table) or {}
+                table_url = cfg.get("url")
+                date_field = cfg.get("date_field") or "opened_at"
+                keys = None
+                if table_url:
+                    try:
+                        resp = req.get(
+                            table_url,
+                            params={
+                                "JSONv2": "",
+                                "sysparm_query": f"sys_idISNOTEMPTY^ORDERBYDESC{date_field}^ORDERBYDESCsys_id",
+                                "displayvalue": "true",
+                                "sysparm_record_count": "1",
+                            },
+                            cookies=cj,
+                            headers=headers,
+                            timeout=30,
+                        )
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            recs = data.get("records", data.get("result", [])) or []
+                            if recs and isinstance(recs[0], dict):
+                                keys = set(recs[0].keys())
+                    except Exception:
+                        keys = None
+                _field_keys_cache[table] = keys
+                return keys
+
+            def _field_exists(table: str, element: str) -> bool:
+                if not element:
+                    return False
+                if element == "123TEXTQUERY321":
+                    return True
+                if "." in element:
+                    root = element.split(".", 1)[0]
+                    keys = _get_field_keys(table)
+                    if keys is None:
+                        return True
+                    return root in keys
+                keys = _get_field_keys(table)
+                if keys is None:
+                    # If we can't determine, don't block it (best effort).
+                    return True
+                return element in keys
+
+            # Choice label -> internal value resolution.
+            # We cannot rely on sys_choice (often ACL-restricted), so we infer by sampling recent records:
+            # - find a record where display label matches
+            # - refetch same sys_id with displayvalue=all to get internal numeric value
+            _choice_label_cache = {}
+
+            def _disp_str(v):
+                if v is None:
+                    return ""
+                if isinstance(v, dict):
+                    return str(v.get("display_value") or v.get("value") or "")
+                return str(v)
+
+            def _get_choice_internal(table: str, element: str, label: str):
+                lbl = (label or "").strip().lower()
+                if not lbl or not table or not element:
+                    return None
+                ck = (table, element, lbl)
+                if ck in _choice_label_cache:
+                    return _choice_label_cache[ck]
+
+                cfg = SNOW_TABLES.get(table) or {}
+                table_url = cfg.get("url")
+                date_field = cfg.get("date_field") or "opened_at"
+                if not table_url:
+                    _choice_label_cache[ck] = None
+                    return None
+
+                # Pull a recent sample and look for label match.
+                sys_id = None
+                try:
+                    resp = req.get(
+                        table_url,
+                        params={
+                            "JSONv2": "",
+                            "sysparm_query": f"sys_idISNOTEMPTY^ORDERBYDESC{date_field}^ORDERBYDESCsys_id",
+                            "displayvalue": "true",
+                            "sysparm_record_count": "500",
+                        },
+                        cookies=cj,
+                        headers=headers,
+                        timeout=60,
+                    )
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        recs = data.get("records", data.get("result", [])) or []
+                        for r0 in recs:
+                            if not isinstance(r0, dict):
+                                continue
+                            disp = _disp_str(r0.get(element)).strip().lower()
+                            if not disp:
+                                continue
+                            if disp == lbl or lbl in disp or disp in lbl:
+                                sys_id = _disp_str(r0.get("sys_id")).strip()
+                                break
+                except Exception:
+                    sys_id = None
+
+                if not sys_id:
+                    _choice_label_cache[ck] = None
+                    return None
+
+                # Fetch internal value for that sys_id.
+                internal = None
+                try:
+                    resp2 = req.get(
+                        table_url,
+                        params={
+                            "JSONv2": "",
+                            "sysparm_query": f"sys_id={sys_id}",
+                            "displayvalue": "all",
+                            "sysparm_record_count": "1",
+                        },
+                        cookies=cj,
+                        headers=headers,
+                        timeout=30,
+                    )
+                    if resp2.status_code == 200:
+                        data2 = resp2.json()
+                        recs2 = data2.get("records", data2.get("result", [])) or []
+                        if recs2 and isinstance(recs2[0], dict):
+                            internal = _disp_str(recs2[0].get(element)).strip()
+                except Exception:
+                    internal = None
+
+                _choice_label_cache[ck] = internal or None
+                return internal
+
+            first = True
+            for r in (rules[:25] if isinstance(rules, list) else []):
+                if not isinstance(r, dict):
+                    continue
+                join = (r.get("join") or "AND").upper()
+                join = "OR" if join == "OR" else "AND"
+                op = (r.get("op") or "like").strip().lower()
+                field = _safe_field(r.get("field") or "")
+                if not field:
+                    continue
+                if not _field_exists(table_name, field):
+                    continue
+
+                enc = ""
+                if op in ("isempty", "isnotempty"):
+                    enc = f"{field}{'ISEMPTY' if op == 'isempty' else 'ISNOTEMPTY'}"
+                elif op == "between":
+                    d1 = _safe_date(r.get("valueFrom") or "")
+                    d2 = _safe_date(r.get("valueTo") or "")
+                    if d1 and d2:
+                        enc = (f"{field}BETWEENjavascript:gs.dateGenerate('{d1}','00:00:00')"
+                               f"@javascript:gs.dateGenerate('{d2}','23:59:59')")
+                elif op in ("on", "noton"):
+                    d = _safe_date(r.get("value") or "")
+                    if d:
+                        token = "ON" if op == "on" else "NOTON"
+                        enc = (f"{field}{token}{d}"
+                               f"@javascript:gs.dateGenerate('{d}','start')"
+                               f"@javascript:gs.dateGenerate('{d}','end')")
+                elif op in ("before", "at_or_before", "after", "at_or_after"):
+                    v = _safe_value(r.get("value") or "")
+                    if v:
+                        sym = {
+                            "before": "<",
+                            "at_or_before": "<=",
+                            "after": ">",
+                            "at_or_after": ">=",
+                        }[op]
+                        enc = f"{field}{sym}{v}"
+                elif op == "like":
+                    v = _safe_value(r.get("value") or "")
+                    if v:
+                        f2 = _maybe_dotwalk_name(field, "like", v)
+                        enc = f"{f2}LIKE{v}"
+                elif op == "not_like":
+                    v = _safe_value(r.get("value") or "")
+                    if v:
+                        f2 = _maybe_dotwalk_name(field, "not_like", v)
+                        enc = f"{f2}NOTLIKE{v}"
+                elif op == "eq":
+                    v = _safe_value(r.get("value") or "")
+                    if v:
+                        # For choice fields, treat user input as display label by default.
+                        if field in CHOICE_LABEL_FIELDS and (not v.isdigit()) and (not SYSID_RE.match(v)):
+                            enc = f"{field}LIKE{v}"
+                        else:
+                            f2 = _maybe_dotwalk_name(field, "eq", v)
+                            enc = f"{f2}={v}"
+                elif op == "neq":
+                    v = _safe_value(r.get("value") or "")
+                    if v:
+                        # For choice fields, treat user input as display label by default.
+                        if field in CHOICE_LABEL_FIELDS and (not v.isdigit()) and (not SYSID_RE.match(v)):
+                            enc = f"{field}NOTLIKE{v}"
+                        else:
+                            f2 = _maybe_dotwalk_name(field, "neq", v)
+                            enc = f"{f2}!={v}"
+                elif op == "startswith":
+                    v = _safe_value(r.get("value") or "")
+                    if v:
+                        f2 = _maybe_dotwalk_name(field, "startswith", v)
+                        enc = f"{f2}STARTSWITH{v}"
+                elif op == "endswith":
+                    v = _safe_value(r.get("value") or "")
+                    if v:
+                        f2 = _maybe_dotwalk_name(field, "endswith", v)
+                        enc = f"{f2}ENDSWITH{v}"
+                elif op == "in":
+                    v = _safe_value(r.get("value") or "", max_len=400)
+                    if v:
+                        enc = f"{field}IN{v}"
+                elif op == "not_in":
+                    v = _safe_value(r.get("value") or "", max_len=400)
+                    if v:
+                        enc = f"{field}NOT IN{v}"
+                elif op == "custom":
+                    raw_op = _safe_raw_op(r.get("rawOp") or "")
+                    v = _safe_value(r.get("value") or "", max_len=400)
+                    if raw_op and v:
+                        enc = f"{field}{raw_op}{v}"
+
+                if not enc:
+                    continue
+
+                if first:
+                    adv_clause += f"^{enc}"
+                    first = False
+                else:
+                    adv_clause += (f"^OR{enc}" if join == "OR" else f"^{enc}")
+
+        return clause + adv_clause
 
     all_records = []
     page_num = 0
     seen_ids = set()
 
+    # In advanced mode, only query tables that can support the requested fields.
+    adv_fields_needed = []
+    if adv_rules_global:
+        FIELD_RE2 = re.compile(r"^[A-Za-z0-9_.]+$")
+        for r in adv_rules_global[:50]:
+            f = (r.get("field") or "").strip()
+            if not f:
+                continue
+            if "^" in f or "\n" in f or "\r" in f or any(c.isspace() for c in f):
+                continue
+            if not FIELD_RE2.match(f):
+                continue
+            adv_fields_needed.append(f)
+        # de-dupe preserving order
+        seen_f = set()
+        adv_fields_needed = [f for f in adv_fields_needed if not (f in seen_f or seen_f.add(f))]
+
+    table_keys_cache = {}
+
+    def _get_any_record_keys(table_name: str):
+        if table_name in table_keys_cache:
+            return table_keys_cache[table_name]
+        cfg = SNOW_TABLES.get(table_name) or {}
+        table_url = cfg.get("url")
+        date_field = cfg.get("date_field") or "opened_at"
+        keys = None
+        if table_url:
+            try:
+                resp = req.get(
+                    table_url,
+                    params={
+                        "JSONv2": "",
+                        "sysparm_query": f"sys_idISNOTEMPTY^ORDERBYDESC{date_field}^ORDERBYDESCsys_id",
+                        "displayvalue": "true",
+                        "sysparm_record_count": "1",
+                    },
+                    cookies=cj,
+                    headers=headers,
+                    timeout=30,
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    recs = data.get("records", data.get("result", [])) or []
+                    if recs and isinstance(recs[0], dict):
+                        keys = set(recs[0].keys())
+            except Exception:
+                keys = None
+        table_keys_cache[table_name] = keys
+        return keys
+
+    def _table_supports_adv(table_name: str) -> bool:
+        if not adv_fields_needed:
+            return True
+        keys = _get_any_record_keys(table_name)
+        if keys is None:
+            # Best-effort: if we can't determine, don't exclude.
+            return True
+        for f in adv_fields_needed:
+            if f == "123TEXTQUERY321":
+                continue
+            if "." in f:
+                root = f.split(".", 1)[0]
+                if root not in keys:
+                    return False
+                continue
+            if f not in keys:
+                return False
+        return True
+
     for table_name, table_cfg in SNOW_TABLES.items():
+        if adv_rules_global and not _table_supports_adv(table_name):
+            continue
         table_url = table_cfg["url"]
         date_field = table_cfg.get("date_field") or "opened_at"
         date_clause = _date_clause_for(date_field)
@@ -747,6 +1299,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             "rf": qs.get("rf", [""])[0] or "",
             "rt": qs.get("rt", [""])[0] or "",
             "st": qs.get("st", [""])[0] or "",
+            "adv": qs.get("adv", [""])[0] or "",
         }
 
     def do_GET(self):
@@ -911,7 +1464,8 @@ def run_daemon():
 def install_autostart():
     """Install as auto-start background service."""
     script_path = os.path.abspath(__file__)
-    python_path = sys.executable
+    vpy = _ensure_venv_and_deps()
+    python_path = str(vpy) if vpy else sys.executable
 
     if sys.platform == "darwin":
         plist_name = "com.axos.snow-dashboard.plist"
@@ -953,6 +1507,26 @@ def install_autostart():
         print(f"  {C_DIM}  The dashboard proxy will auto-start on login.{C_RESET}")
         print(f"  {C_DIM}  To uninstall: launchctl unload {plist_path}{C_RESET}\n")
 
+        # Best-effort: wait briefly for the daemon to be reachable so automation can curl /api/progress.
+        try:
+            from urllib.request import urlopen
+            from urllib.error import URLError
+
+            for _ in range(30):
+                try:
+                    with urlopen(f"http://localhost:{PORT}/api/progress", timeout=2) as resp:
+                        if 200 <= getattr(resp, "status", 200) < 300:
+                            break
+                except URLError:
+                    pass
+                except Exception:
+                    pass
+                import time
+
+                time.sleep(1)
+        except Exception:
+            pass
+
     elif os.name == "nt":
         bat_dir = Path(os.environ.get("APPDATA", "")) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup"
         bat_path = bat_dir / "snow_dashboard.bat"
@@ -979,6 +1553,7 @@ def install_autostart():
 
 
 if __name__ == "__main__":
+    _reexec_into_venv_if_present()
     if "--daemon" in sys.argv:
         run_daemon()
     elif "--install" in sys.argv:
