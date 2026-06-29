@@ -298,15 +298,16 @@
 ├── <span class="file">package-lock.json</span>         <span class="cmt">← Single lockfile for the entire repo</span>
 ├── <span class="folder">packages/</span>
 │   └── <span class="folder">shared/</span>               <span class="cmt">← @axos-qe/shared (npm workspace)</span>
-│       ├── <span class="file">index.js</span>            <span class="cmt">← Barrel export: test, expect, helpers, Data</span>
-│       ├── <span class="folder">fixtures/</span>           <span class="cmt">← base.fixture.js, global-setup, global-teardown</span>
-│       ├── <span class="folder">utils/</span>              <span class="cmt">← helpers.js, data.js, browserstack.js</span>
-│       └── <span class="folder">config/</span>             <span class="cmt">← playwright.base.config.js, browsers.json</span>
+│       ├── <span class="file">index.ts</span>            <span class="cmt">← Barrel export: test, expect, helpers, Data</span>
+│       ├── <span class="folder">fixtures/</span>           <span class="cmt">← base.fixture.ts, global-setup.ts, global-teardown.ts</span>
+│       ├── <span class="folder">utils/</span>              <span class="cmt">← helpers.ts, data.ts, browserstack.ts, term-utils.ts</span>
+│       ├── <span class="folder">config/</span>             <span class="cmt">← playwright.base.config.ts, browsers.json</span>
+│       └── <span class="file">tsconfig.json</span>        <span class="cmt">← strict gate (whole package is .ts &amp; strict-clean)</span>
 │
 ├── <span class="folder">projects/</span>                 <span class="cmt">← One folder per team / application</span>
 │   ├── <span class="folder">Axos.Enr.Web/</span>     <span class="cmt">← Enrollment Web (team-owned)</span>
 │   │   ├── <span class="file">package.json</span>       <span class="cmt">← @axos-qe/enr-web</span>
-│   │   ├── <span class="file">playwright.config.js</span>
+│   │   ├── <span class="file">playwright.config.ts</span>
 │   │   ├── <span class="file">.env</span>              <span class="cmt">← Project settings (included with defaults)</span>
 │   │   ├── <span class="folder">src/</span>               <span class="cmt">← pages/, locators/, fixtures/</span>
 │   │   ├── <span class="folder">suites/</span>            <span class="cmt">← Test spec files</span>
@@ -314,7 +315,7 @@
 │   │
 │   ├── <span class="folder">Axos.OLB_3.0.Web/</span>  <span class="cmt">← OLB 3.0 Web (team-owned)</span>
 │   │   ├── <span class="file">package.json</span>       <span class="cmt">← @axos-qe/olb30-web</span>
-│   │   ├── <span class="file">playwright.config.js</span>
+│   │   ├── <span class="file">playwright.config.ts</span>
 │   │   ├── <span class="file">.env</span>              <span class="cmt">← Project settings (included with defaults)</span>
 │   │   ├── <span class="folder">src/</span>               <span class="cmt">← pages/, locators/, fixtures/</span>
 │   │   ├── <span class="folder">suites/</span>            <span class="cmt">← Test spec files</span>
@@ -362,9 +363,13 @@ npm install                          <span class="cmt"># installs ALL workspaces
 <span class="cmt"># The .env is already in each project with defaults.</span>
 <span class="cmt"># Edit it if you need to set BrowserStack creds or override test data.</span>
 
-<span class="cmt"># Verify setup</span>
+<span class="cmt"># Verify setup (Playwright auto-detects playwright.config.ts — no --config needed)</span>
 cd projects/Axos.Enr.Web
-npx playwright test --config playwright.config.js --list</pre></div>
+npx playwright test --list
+
+<span class="cmt"># Validate the whole repo before pushing (from repo root):</span>
+<span class="cmt"># type-check (repo + shared strict) → lint → .js/.ts dupe guard → structure</span>
+npm run ts:gate</pre></div>
             </div>
 
             <div class="card" style="margin-top:20px">
@@ -378,9 +383,9 @@ Do:
 - From repo root, run: npm install
 - Verify Playwright browsers are installed: npx playwright install chromium
 - cd into projects/Axos.Enr.Web (or whichever project I'm working on)
-- List my tests: npx playwright test --config playwright.config.js --list
-- Run a tag grep (recommended): npx playwright test --config playwright.config.js --grep "@Enr_Sanity_Login"
-- Run headed mode: npx playwright test --config playwright.config.js --headed --grep "@Enr_Sanity_Login"
+- List my tests: npx playwright test --list
+- Run a tag grep (recommended): npx playwright test --grep "@Enr_Sanity_Login"
+- Run headed mode: npx playwright test --headed --grep "@Enr_Sanity_Login"
 
 The .env file in each project already has default config.
 Edit it to add BrowserStack credentials or override test data.
@@ -484,8 +489,8 @@ test.describe(<span class="str">'Login @Enr_Login @Login'</span>, () => {
                 </div>
                 <div class="terminal-body" id="terminalBody">
                     <div class="terminal-line" id="tl1"><span class="terminal-prompt">$</span> <span>cd projects/Axos.Enr.Web</span></div>
-                    <div class="terminal-line" id="tl2"><span class="terminal-prompt">$</span> <span>npx playwright test --config playwright.config.js --grep "@Enr_Sanity_Login"</span></div>
-                    <div class="terminal-line" id="tl3"><span class="terminal-output">> npx playwright test --config playwright.config.js --grep @Enr_Sanity_Login</span></div>
+                    <div class="terminal-line" id="tl2"><span class="terminal-prompt">$</span> <span>npx playwright test --grep "@Enr_Sanity_Login"</span></div>
+                    <div class="terminal-line" id="tl3"><span class="terminal-output">> npx playwright test --grep @Enr_Sanity_Login</span></div>
                     <div class="terminal-line" id="tl4"><span class="terminal-output">Running 1 test using 1 worker</span></div>
                     <div class="terminal-line" id="tl5"><span class="terminal-output" style="color:var(--pw-green)">[env] RUNNING TESTS ON: UAT</span></div>
                     <div class="terminal-line" id="tl6"><span class="terminal-output terminal-ok">✓ OLB Secure Login @Enr_Sanity_Login @Sanity (12.4s)</span></div>
@@ -502,41 +507,41 @@ test.describe(<span class="str">'Login @Enr_Login @Login'</span>, () => {
                 <p style="color:var(--text-secondary);margin-bottom:12px">Copy/paste one-liners. Works in <strong>macOS Terminal</strong>, <strong>Windows PowerShell</strong>, and <strong>Git Bash</strong>.</p>
 
                 <div class="code-block"><div class="code-header"><span class="code-lang">shell</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div><pre><span class="cmt"># Custom grep (recommended)</span>
-npx playwright test --config playwright.config.js --grep <span class="str">"@Enr_Sanity_Login"</span>
+npx playwright test --grep <span class="str">"@Enr_Sanity_Login"</span>
 
 <span class="cmt"># Debug any project/tag (recommended: single browser + single worker)</span>
 <span class="cmt"># UI Mode (best for interactive debugging)</span>
-npx playwright test --config playwright.config.js --ui --project=chromium --workers=1 --grep <span class="str">"@Enr_Sanity_Login"</span>
+npx playwright test --ui --project=chromium --workers=1 --grep <span class="str">"@Enr_Sanity_Login"</span>
 <span class="cmt"># Inspector / Step / Pause Mode</span>
-npx playwright test --config playwright.config.js --debug --project=chromium --workers=1 --grep <span class="str">"@Enr_Sanity_Login"</span>
+npx playwright test --debug --project=chromium --workers=1 --grep <span class="str">"@Enr_Sanity_Login"</span>
 
 <span class="cmt"># Run a suite folder</span>
-npx playwright test --config playwright.config.js <span class="str">"suites/01_Login"</span>
+npx playwright test <span class="str">"suites/01_Login"</span>
 
 <span class="cmt"># Run a single spec</span>
-npx playwright test --config playwright.config.js <span class="str">"suites/01_Login/login.spec.js"</span>
+npx playwright test <span class="str">"suites/01_Login/login.spec.ts"</span>
 
 <span class="cmt"># Terminal output is pretty by default (Axos Pretty Reporter)</span>
 
 <span class="cmt"># Optional: extra-clean local output wrappers (repo root)</span>
-npm run pw:pretty -- --config <span class="str">"projects/Axos.Enr.Web/playwright.config.js"</span> --grep <span class="str">"@Enr_Sanity_Login"</span>
-npm run pretty -- npx playwright test --config <span class="str">"projects/Axos.Enr.Web/playwright.config.js"</span> --grep <span class="str">"@Enr_Sanity_Login"</span>
+npm run pw:pretty -- --config <span class="str">"projects/Axos.Enr.Web/playwright.config.ts"</span> --grep <span class="str">"@Enr_Sanity_Login"</span>
+npm run pretty -- npx playwright test --config <span class="str">"projects/Axos.Enr.Web/playwright.config.ts"</span> --grep <span class="str">"@Enr_Sanity_Login"</span>
 <span class="cmt"># OLB 3.0 uses the same patterns — swap to: projects/Axos.OLB_3.0.Web + @OLB3_* tags</span>
  
 
 <span class="cmt"># OutSystems subproject example</span>
 <span class="cmt"># CWD: projects/Axos.OutSys.Web/ucat</span>
-npx playwright test --config playwright.config.js --grep <span class="str">"@OutSys_UCAT_Smoke"</span>
-npx playwright test --config playwright.config.js <span class="str">"suites/01_Smoke"</span>
-npx playwright test --config playwright.config.js <span class="str">"suites/01_Smoke/ucat-smoke.spec.js"</span>
+npx playwright test --grep <span class="str">"@OutSys_UCAT_Smoke"</span>
+npx playwright test <span class="str">"suites/01_Smoke"</span>
+npx playwright test <span class="str">"suites/01_Smoke/ucat-smoke.spec.ts"</span>
 
 <span class="cmt"># OutSystems WFO debugging (recommended: single browser + single worker)</span>
 <span class="cmt"># CWD: projects/Axos.OutSys.Web/wfo</span>
 <span class="cmt"># UI Mode (best for interactive debugging)</span>
-npx playwright test --config playwright.config.js --ui --project=chromium --workers=1 --grep <span class="str">"@OutSys_WFO_Smoke_Login"</span>
+npx playwright test --ui --project=chromium --workers=1 --grep <span class="str">"@OutSys_WFO_Smoke_Login"</span>
 
 <span class="cmt"># Inspector / Step / Pause Mode</span>
-npx playwright test --config playwright.config.js --debug --project=chromium --workers=1 --grep <span class="str">"@OutSys_WFO_Smoke_Login"</span></pre></div>
+npx playwright test --debug --project=chromium --workers=1 --grep <span class="str">"@OutSys_WFO_Smoke_Login"</span></pre></div>
             </div>
 
             <div class="card" style="margin-top:20px">
@@ -544,29 +549,29 @@ npx playwright test --config playwright.config.js --debug --project=chromium --w
                 <p style="color:var(--text-secondary);margin-bottom:12px">Same commands, just point to the project’s config. No need to <code class="inline-code">cd</code>.</p>
 
                 <div class="code-block"><div class="code-header"><span class="code-lang">shell</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div><pre><span class="cmt"># Grep from repo root</span>
-npx playwright test --config <span class="str">"projects/Axos.Enr.Web/playwright.config.js"</span> --grep <span class="str">"@Enr_Sanity_Login"</span>
+npx playwright test --config <span class="str">"projects/Axos.Enr.Web/playwright.config.ts"</span> --grep <span class="str">"@Enr_Sanity_Login"</span>
 <span class="cmt"># OLB 3.0 uses the same patterns — swap to: projects/Axos.OLB_3.0.Web + @OLB3_* tags</span>
 
 <span class="cmt"># Debug any project/tag from repo root (recommended: single browser + single worker)</span>
 <span class="cmt"># UI Mode (best for interactive debugging)</span>
-npx playwright test --config <span class="str">"projects/Axos.Enr.Web/playwright.config.js"</span> --ui --project=chromium --workers=1 --grep <span class="str">"@Enr_Sanity_Login"</span>
+npx playwright test --config <span class="str">"projects/Axos.Enr.Web/playwright.config.ts"</span> --ui --project=chromium --workers=1 --grep <span class="str">"@Enr_Sanity_Login"</span>
 <span class="cmt"># Inspector / Step / Pause Mode</span>
-npx playwright test --config <span class="str">"projects/Axos.Enr.Web/playwright.config.js"</span> --debug --project=chromium --workers=1 --grep <span class="str">"@Enr_Sanity_Login"</span>
+npx playwright test --config <span class="str">"projects/Axos.Enr.Web/playwright.config.ts"</span> --debug --project=chromium --workers=1 --grep <span class="str">"@Enr_Sanity_Login"</span>
 
-npx playwright test --config <span class="str">"projects/Axos.OutSys.Web/playwright.config.js"</span> --grep <span class="str">"@OutSys_Smoke_Login"</span>
-npx playwright test --config <span class="str">"projects/Axos.OutSys.Web/ucat/playwright.config.js"</span> --grep <span class="str">"@OutSys_UCAT_Smoke"</span>
-npx playwright test --config <span class="str">"projects/Axos.OutSys.Web/wfo/playwright.config.js"</span> --grep <span class="str">"@OutSys_WFO_Smoke"</span>
+npx playwright test --config <span class="str">"projects/Axos.OutSys.Web/playwright.config.ts"</span> --grep <span class="str">"@OutSys_Smoke_Login"</span>
+npx playwright test --config <span class="str">"projects/Axos.OutSys.Web/ucat/playwright.config.ts"</span> --grep <span class="str">"@OutSys_UCAT_Smoke"</span>
+npx playwright test --config <span class="str">"projects/Axos.OutSys.Web/wfo/playwright.config.ts"</span> --grep <span class="str">"@OutSys_WFO_Smoke"</span>
 
 <span class="cmt"># OutSystems WFO debugging (repo root)</span>
 <span class="cmt"># UI Mode (best for interactive debugging)</span>
-npx playwright test --config <span class="str">"projects/Axos.OutSys.Web/wfo/playwright.config.js"</span> --ui --project=chromium --workers=1 --grep <span class="str">"@OutSys_WFO_Smoke_Login"</span>
+npx playwright test --config <span class="str">"projects/Axos.OutSys.Web/wfo/playwright.config.ts"</span> --ui --project=chromium --workers=1 --grep <span class="str">"@OutSys_WFO_Smoke_Login"</span>
 <span class="cmt"># Inspector / Step / Pause Mode</span>
-npx playwright test --config <span class="str">"projects/Axos.OutSys.Web/wfo/playwright.config.js"</span> --debug --project=chromium --workers=1 --grep <span class="str">"@OutSys_WFO_Smoke_Login"</span>
+npx playwright test --config <span class="str">"projects/Axos.OutSys.Web/wfo/playwright.config.ts"</span> --debug --project=chromium --workers=1 --grep <span class="str">"@OutSys_WFO_Smoke_Login"</span>
 
 <span class="cmt"># Run a single spec from repo root</span>
-npx playwright test --config <span class="str">"projects/Axos.Enr.Web/playwright.config.js"</span> <span class="str">"projects/Axos.Enr.Web/suites/01_Login/login.spec.js"</span>
-npx playwright test --config <span class="str">"projects/Axos.OutSys.Web/ucat/playwright.config.js"</span> <span class="str">"projects/Axos.OutSys.Web/ucat/suites/01_Smoke/ucat-smoke.spec.js"</span>
-npx playwright test --config <span class="str">"projects/Axos.OutSys.Web/wfo/playwright.config.js"</span> <span class="str">"projects/Axos.OutSys.Web/wfo/suites/01_Smoke/wfo-smoke.spec.js"</span></pre></div>
+npx playwright test --config <span class="str">"projects/Axos.Enr.Web/playwright.config.ts"</span> <span class="str">"projects/Axos.Enr.Web/suites/01_Login/login.spec.ts"</span>
+npx playwright test --config <span class="str">"projects/Axos.OutSys.Web/ucat/playwright.config.ts"</span> <span class="str">"projects/Axos.OutSys.Web/ucat/suites/01_Smoke/ucat-smoke.spec.ts"</span>
+npx playwright test --config <span class="str">"projects/Axos.OutSys.Web/wfo/playwright.config.ts"</span> <span class="str">"projects/Axos.OutSys.Web/wfo/suites/01_Smoke/wfo-smoke.spec.ts"</span></pre></div>
             </div>
 
             <div class="card" style="margin-top:20px">
@@ -581,13 +586,13 @@ node <span class="str">"../../tools/bs-run.js"</span> --project-dir <span class=
 node <span class="str">"../../tools/bs-run.js"</span> --project-dir <span class="str">"."</span> --path <span class="str">"suites/01_Login"</span>
 
 <span class="cmt"># Single spec</span>
-node <span class="str">"../../tools/bs-run.js"</span> --project-dir <span class="str">"."</span> --path <span class="str">"suites/01_Login/login.spec.js"</span>
+node <span class="str">"../../tools/bs-run.js"</span> --project-dir <span class="str">"."</span> --path <span class="str">"suites/01_Login/login.spec.ts"</span>
 
 <span class="cmt"># OutSystems subproject folder (same patterns, different runner path)</span>
 <span class="cmt"># CWD: projects/Axos.OutSys.Web/wfo/aml</span>
 node <span class="str">"../../../../tools/bs-run.js"</span> --project-dir <span class="str">"."</span> --grep <span class="str">"@OutSys_WFO_Smoke"</span>
 node <span class="str">"../../../../tools/bs-run.js"</span> --project-dir <span class="str">"."</span> --path <span class="str">"suites/01_Smoke"</span>
-node <span class="str">"../../../../tools/bs-run.js"</span> --project-dir <span class="str">"."</span> --path <span class="str">"suites/01_Smoke/wfo-smoke.spec.js"</span></pre></div>
+node <span class="str">"../../../../tools/bs-run.js"</span> --project-dir <span class="str">"."</span> --path <span class="str">"suites/01_Smoke/wfo-smoke.spec.ts"</span></pre></div>
             </div>
 
             <div class="card" style="margin-top:20px">
@@ -601,12 +606,12 @@ node <span class="str">"tools/bs-run.js"</span> --project-dir <span class="str">
 node <span class="str">"tools/bs-run.js"</span> --project-dir <span class="str">"projects/Axos.Enr.Web"</span> --path <span class="str">"suites/01_Login"</span>
 
 <span class="cmt"># Single spec</span>
-node <span class="str">"tools/bs-run.js"</span> --project-dir <span class="str">"projects/Axos.Enr.Web"</span> --path <span class="str">"suites/01_Login/login.spec.js"</span>
+node <span class="str">"tools/bs-run.js"</span> --project-dir <span class="str">"projects/Axos.Enr.Web"</span> --path <span class="str">"suites/01_Login/login.spec.ts"</span>
 
 <span class="cmt"># OutSystems subproject (repo root)</span>
 node <span class="str">"tools/bs-run.js"</span> --project-dir <span class="str">"projects/Axos.OutSys.Web/ucat"</span> --grep <span class="str">"@OutSys_UCAT_Smoke"</span>
 node <span class="str">"tools/bs-run.js"</span> --project-dir <span class="str">"projects/Axos.OutSys.Web/ucat"</span> --path <span class="str">"suites/01_Smoke"</span>
-node <span class="str">"tools/bs-run.js"</span> --project-dir <span class="str">"projects/Axos.OutSys.Web/ucat"</span> --path <span class="str">"suites/01_Smoke/ucat-smoke.spec.js"</span></pre></div>
+node <span class="str">"tools/bs-run.js"</span> --project-dir <span class="str">"projects/Axos.OutSys.Web/ucat"</span> --path <span class="str">"suites/01_Smoke/ucat-smoke.spec.ts"</span></pre></div>
             </div>
 
             <div class="card" style="margin-top:20px">
@@ -615,29 +620,29 @@ node <span class="str">"tools/bs-run.js"</span> --project-dir <span class="str">
                 <p style="color:var(--text-secondary);margin-bottom:12px">OutSystems subprojects (e.g. <code class="inline-code">projects/Axos.OutSys.Web/ucat</code>) are nested one level deeper, so the tool path becomes <code class="inline-code">node "../../../tools/perf-gen/create-perf-test.js"</code>.</p>
 
                 <div class="code-block"><div class="code-header"><span class="code-lang">shell</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div><pre><span class="cmt"># Example (OutSys project dir)</span>
-node <span class="str">"../../tools/perf-gen/create-perf-test.js"</span> --pw-cwd <span class="str">"."</span> --config <span class="str">"playwright.config.js"</span> --grep <span class="str">"@OutSys_Smoke_Login"</span> --project <span class="str">"outsys"</span> --name <span class="str">"outsys-smoke-login"</span>
+node <span class="str">"../../tools/perf-gen/create-perf-test.js"</span> --pw-cwd <span class="str">"."</span> --config <span class="str">"playwright.config.ts"</span> --grep <span class="str">"@OutSys_Smoke_Login"</span> --project <span class="str">"outsys"</span> --name <span class="str">"outsys-smoke-login"</span>
 
 <span class="cmt"># Optional: choose where perf output is written</span>
-node <span class="str">"../../tools/perf-gen/create-perf-test.js"</span> --pw-cwd <span class="str">"."</span> --config <span class="str">"playwright.config.js"</span> --grep <span class="str">"@OutSys_Smoke_Login"</span> --project <span class="str">"outsys"</span> --name <span class="str">"outsys-smoke-login"</span> --out-base <span class="str">"/path/to/performance-output"</span>
+node <span class="str">"../../tools/perf-gen/create-perf-test.js"</span> --pw-cwd <span class="str">"."</span> --config <span class="str">"playwright.config.ts"</span> --grep <span class="str">"@OutSys_Smoke_Login"</span> --project <span class="str">"outsys"</span> --name <span class="str">"outsys-smoke-login"</span> --out-base <span class="str">"/path/to/performance-output"</span>
 
 <span class="cmt"># OutSystems subproject folder (e.g. Axos.OutSys.Web/ucat)</span>
 <span class="cmt"># CWD: projects/Axos.OutSys.Web/ucat</span>
 <span class="cmt"># NOTE: perf-gen is grep-based — tag the test and generate via --grep.</span>
-node <span class="str">"../../../tools/perf-gen/create-perf-test.js"</span> --pw-cwd <span class="str">"."</span> --config <span class="str">"playwright.config.js"</span> --grep <span class="str">"@OutSys_UCAT_Smoke"</span> --project <span class="str">"outsys"</span> --name <span class="str">"ucat-smoke"</span></pre></div>
+node <span class="str">"../../../tools/perf-gen/create-perf-test.js"</span> --pw-cwd <span class="str">"."</span> --config <span class="str">"playwright.config.ts"</span> --grep <span class="str">"@OutSys_UCAT_Smoke"</span> --project <span class="str">"outsys"</span> --name <span class="str">"ucat-smoke"</span></pre></div>
             </div>
 
             <div class="card" style="margin-top:20px">
                 <h3 class="card-title">🚄 Performance (Generate JMeter Scaffold) — From Repo Root</h3>
                 <p style="color:var(--text-secondary);margin-bottom:12px">Same generator, but no <code class="inline-code">cd</code> into the project folder. Output defaults to <code class="inline-code">~/Documents/Performance</code> if you don’t pass <code class="inline-code">--out-base</code>.</p>
 
-                <div class="code-block"><div class="code-header"><span class="code-lang">shell</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div><pre><span class="cmt"># Example (OutSys container) — runs ALM via projects/Axos.OutSys.Web/playwright.config.js</span>
-node <span class="str">"tools/perf-gen/create-perf-test.js"</span> --pw-cwd <span class="str">"projects/Axos.OutSys.Web"</span> --config <span class="str">"playwright.config.js"</span> --grep <span class="str">"@OutSys_Smoke_Login"</span> --project <span class="str">"outsys"</span> --name <span class="str">"outsys-alm-smoke"</span>
+                <div class="code-block"><div class="code-header"><span class="code-lang">shell</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div><pre><span class="cmt"># Example (OutSys container) — runs ALM via projects/Axos.OutSys.Web/playwright.config.ts</span>
+node <span class="str">"tools/perf-gen/create-perf-test.js"</span> --pw-cwd <span class="str">"projects/Axos.OutSys.Web"</span> --config <span class="str">"playwright.config.ts"</span> --grep <span class="str">"@OutSys_Smoke_Login"</span> --project <span class="str">"outsys"</span> --name <span class="str">"outsys-alm-smoke"</span>
 
 <span class="cmt"># Example (OutSys subproject) — UCAT</span>
-node <span class="str">"tools/perf-gen/create-perf-test.js"</span> --pw-cwd <span class="str">"projects/Axos.OutSys.Web/ucat"</span> --config <span class="str">"playwright.config.js"</span> --grep <span class="str">"@OutSys_UCAT_Smoke"</span> --project <span class="str">"outsys"</span> --name <span class="str">"outsys-ucat-smoke"</span>
+node <span class="str">"tools/perf-gen/create-perf-test.js"</span> --pw-cwd <span class="str">"projects/Axos.OutSys.Web/ucat"</span> --config <span class="str">"playwright.config.ts"</span> --grep <span class="str">"@OutSys_UCAT_Smoke"</span> --project <span class="str">"outsys"</span> --name <span class="str">"outsys-ucat-smoke"</span>
 
 <span class="cmt"># Optional: override environment</span>
-node <span class="str">"tools/perf-gen/create-perf-test.js"</span> --pw-cwd <span class="str">"projects/Axos.OutSys.Web"</span> --config <span class="str">"playwright.config.js"</span> --grep <span class="str">"@OutSys_Smoke_Login"</span> --project <span class="str">"outsys"</span> --name <span class="str">"outsys-smoke-login"</span> --env <span class="str">"uat"</span></pre></div>
+node <span class="str">"tools/perf-gen/create-perf-test.js"</span> --pw-cwd <span class="str">"projects/Axos.OutSys.Web"</span> --config <span class="str">"playwright.config.ts"</span> --grep <span class="str">"@OutSys_Smoke_Login"</span> --project <span class="str">"outsys"</span> --name <span class="str">"outsys-smoke-login"</span> --env <span class="str">"uat"</span></pre></div>
             </div>
         </section>
 
@@ -707,18 +712,19 @@ RETRIES=1</pre></div>
             <div class="comparison-grid">
                 <div class="card do-card">
                     <h3 class="card-title">✅ Correct (Functional)</h3>
-                    <div class="code-block"><pre><span class="cmt">// src/pages/login.page.js</span>
-<span class="kw">const</span> locators = <span class="fn">require</span>(<span class="str">'../locators/login.locators'</span>);
-<span class="kw">const</span> { helpers } = <span class="fn">require</span>(<span class="str">'@axos-qe/shared'</span>);
+                    <div class="code-block"><pre><span class="cmt">// src/pages/login.page.ts</span>
+<span class="kw">import</span> * <span class="kw">as</span> locators <span class="kw">from</span> <span class="str">'../locators/login.locators'</span>;
+<span class="kw">import</span> { helpers } <span class="kw">from</span> <span class="str">'@axos-qe/shared'</span>;
+<span class="kw">import type</span> { Page } <span class="kw">from</span> <span class="str">'@playwright/test'</span>;
 
-<span class="kw">async function</span> <span class="fn">login</span>(page, { username, password, baseUrl }) {
+<span class="kw">async function</span> <span class="fn">login</span>(page: Page, { username, password, baseUrl }: { username: string; password: string; baseUrl: string }) {
   <span class="kw">await</span> page.goto(baseUrl + <span class="str">'/login'</span>);
   <span class="kw">await</span> helpers.inputText(page, locators.usernameInput, username);
   <span class="kw">await</span> helpers.inputText(page, locators.passwordInput, password);
   <span class="kw">await</span> helpers.clickElement(page, locators.signInButton);
 }
 
-module.exports = { login };</pre></div>
+export { login };</pre></div>
                 </div>
                 <div class="card dont-card">
                     <h3 class="card-title">❌ Wrong (Class-Based)</h3>
@@ -733,14 +739,14 @@ module.exports = { login };</pre></div>
   }
 }
 
-module.exports = LoginPage;</pre></div>
+export default LoginPage;</pre></div>
                 </div>
             </div>
             <div class="card" style="margin-top:20px">
                 <h3 class="card-title">📝 Using in Tests</h3>
-                <div class="code-block"><div class="code-header"><span class="code-lang">javascript</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div><pre><span class="kw">const</span> { test, expect } = <span class="fn">require</span>(<span class="str">'../../src/fixtures'</span>);
-<span class="kw">const</span> { login } = <span class="fn">require</span>(<span class="str">'../../src/pages/login.page'</span>);
-<span class="kw">const</span> { Data } = <span class="fn">require</span>(<span class="str">'@axos-qe/shared'</span>);
+                <div class="code-block"><div class="code-header"><span class="code-lang">typescript</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div><pre><span class="kw">import</span> { test, expect } <span class="kw">from</span> <span class="str">'../../src/fixtures'</span>;
+<span class="kw">import</span> { login } <span class="kw">from</span> <span class="str">'../../src/pages/login.page'</span>;
+<span class="kw">import</span> { Data } <span class="kw">from</span> <span class="str">'@axos-qe/shared'</span>;
 
 test.describe(<span class="str">'Login @Enr_Login @Login'</span>, () => {
   test(<span class="str">'OLB Secure Login @Enr_Sanity_Login @Sanity @Smoke'</span>, <span class="kw">async</span> ({ page }) => {
@@ -832,7 +838,7 @@ npm run allure:open               <span class="cmt"># Open existing report</span
                 <div class="card">
                     <h3 class="card-title">📛 Session Naming</h3>
                     <div class="table-container"><table><thead><tr><th>Shows As</th><th>Instead Of</th></tr></thead><tbody>
-                        <tr><td style="color:var(--success)">OLB Secure Login</td><td style="color:var(--error);font-size:11px">01_Login/login.spec.js - Login @Enr_Login - OLB Secure Login @Enr_Sanity ...</td></tr>
+                        <tr><td style="color:var(--success)">OLB Secure Login</td><td style="color:var(--error);font-size:11px">01_Login/login.spec.ts - Login @Enr_Login - OLB Secure Login @Enr_Sanity ...</td></tr>
                     </tbody></table></div>
                 </div>
                 <div class="card">
@@ -881,7 +887,7 @@ npm run allure:open               <span class="cmt"># Open existing report</span
                         <div class="alert alert-warning" style="margin:0 0 14px">
                             <span class="alert-icon">⚠️</span>
                             <div>
-                                If a test fails because the UI changed, <strong>update the locator</strong> in <code class="inline-code">src/locators/*.locators.js</code>.
+                                If a test fails because the UI changed, <strong>update the locator</strong> in <code class="inline-code">src/locators/*.locators.ts</code>.
                                 Do <strong>not</strong> “work around” it by adding waits, sleeps, or brittle selector chains.
                             </div>
                         </div>
@@ -910,11 +916,11 @@ npm run allure:open               <span class="cmt"># Open existing report</span
                             <pre><span class="cmt"># AutoHeal workflow (example)</span>
 cd projects/Axos.YourProject
 <span class="cmt"># Tip for debugging: run a single browser + a single worker</span>
-npx playwright test --config playwright.config.js --grep "@YourTag" --ui --project=chromium --workers=1
+npx playwright test --grep "@YourTag" --ui --project=chromium --workers=1
 
-<span class="cmt"># Update only: src/locators/&lt;feature&gt;.locators.js</span>
+<span class="cmt"># Update only: src/locators/&lt;feature&gt;.locators.ts</span>
 <span class="cmt"># Re-run until green:</span>
-npx playwright test --config playwright.config.js --grep "@YourTag"
+npx playwright test --grep "@YourTag"
 
 <span class="cmt"># Verify repo structure from root:</span>
 cd ../..
@@ -934,9 +940,9 @@ npm run health-check</pre>
                     <div class="accordion-header" onclick="toggleAcc(this)"><span class="accordion-title"><span style="color:var(--success)">✅</span> Correct File Placement</span><span class="accordion-arrow">▼</span></div>
                     <div class="accordion-content"><div class="accordion-body">
                         <div class="table-container"><table><thead><tr><th>Type</th><th>Location</th></tr></thead><tbody>
-                            <tr><td>Page Objects</td><td><code class="inline-code">projects/YourProject/src/pages/{feature}.page.js</code></td></tr>
-                            <tr><td>Locators</td><td><code class="inline-code">projects/YourProject/src/locators/{feature}.locators.js</code></td></tr>
-                            <tr><td>Tests</td><td><code class="inline-code">projects/YourProject/suites/{##}_{Feature}/{test}.spec.js</code></td></tr>
+                            <tr><td>Page Objects</td><td><code class="inline-code">projects/YourProject/src/pages/{feature}.page.ts</code></td></tr>
+                            <tr><td>Locators</td><td><code class="inline-code">projects/YourProject/src/locators/{feature}.locators.ts</code></td></tr>
+                            <tr><td>Tests</td><td><code class="inline-code">projects/YourProject/suites/{##}_{Feature}/{test}.spec.ts</code></td></tr>
                             <tr><td>Test Data</td><td><code class="inline-code">projects/YourProject/data/env/{env}.json</code></td></tr>
                         </tbody></table></div>
                     </div></div>
@@ -973,7 +979,7 @@ npm run health-check</pre>
                     <div class="step-num">4</div>
                     <p class="step-title">Configure</p>
                     <div class="step-sub">Update</div>
-                    <div class="step-code"><code class="inline-code">playwright.config.js</code></div>
+                    <div class="step-code"><code class="inline-code">playwright.config.ts</code></div>
                     <div class="step-sub" style="margin-top:6px">base URLs</div>
                 </div>
                 <div class="step-card">
@@ -1005,13 +1011,13 @@ npm run health-check</pre>
             <div class="quick-ref-section">
                 <h4>Run Commands (from project dir)</h4>
                 <div style="color:var(--text-secondary)">
-                    Local: <code style="color:var(--pw-green)">npx playwright test --config playwright.config.js --grep "@Sanity"</code><br>
+                    Local: <code style="color:var(--pw-green)">npx playwright test --grep "@Sanity"</code><br>
                     BrowserStack: <code style="color:var(--pw-green)">node ../../tools/bs-run.js --project-dir . --grep "@Smoke"</code><br>
                     Debug:<br>
                     <span style="color:var(--text-secondary)">UI Mode (best for interactive debugging):</span>
-                    <code style="color:var(--pw-green)">npx playwright test --config playwright.config.js --ui --project=chromium --workers=1 --grep "@Sanity"</code><br>
+                    <code style="color:var(--pw-green)">npx playwright test --ui --project=chromium --workers=1 --grep "@Sanity"</code><br>
                     <span style="color:var(--text-secondary)">Inspector / Step / Pause Mode:</span>
-                    <code style="color:var(--pw-green)">npx playwright test --config playwright.config.js --debug --project=chromium --workers=1 --grep "@Sanity"</code>
+                    <code style="color:var(--pw-green)">npx playwright test --debug --project=chromium --workers=1 --grep "@Sanity"</code>
                 </div>
             </div>
             <div class="quick-ref-section">
@@ -1024,17 +1030,25 @@ npm run health-check</pre>
             <div class="quick-ref-section">
                 <h4>File Placement</h4>
                 <div style="color:var(--text-secondary)">
-                    Pages: <code style="color:var(--axos-orange)">projects/YourProject/src/pages/{feature}.page.js</code><br>
-                    Locators: <code style="color:var(--axos-orange)">projects/YourProject/src/locators/{feature}.locators.js</code><br>
-                    Tests: <code style="color:var(--axos-orange)">projects/YourProject/suites/{##}_{Feature}/{test}.spec.js</code>
+                    Pages: <code style="color:var(--axos-orange)">projects/YourProject/src/pages/{feature}.page.ts</code><br>
+                    Locators: <code style="color:var(--axos-orange)">projects/YourProject/src/locators/{feature}.locators.ts</code><br>
+                    Tests: <code style="color:var(--axos-orange)">projects/YourProject/suites/{##}_{Feature}/{test}.spec.ts</code>
                 </div>
             </div>
             <div class="quick-ref-section">
                 <h4>Imports</h4>
                 <div style="color:var(--text-secondary)">
-                    Fixtures: <code style="color:var(--axos-orange)">require('../../src/fixtures')</code><br>
-                    Helpers/Data: <code style="color:var(--axos-orange)">require('@axos-qe/shared')</code><br>
-                    Locators: <code style="color:var(--axos-orange)">require('../locators/{feature}.locators')</code> (project-local)
+                    Fixtures: <code style="color:var(--axos-orange)">import { test, expect } from '../../src/fixtures'</code><br>
+                    Helpers/Data: <code style="color:var(--axos-orange)">import { helpers, Data } from '@axos-qe/shared'</code><br>
+                    Locators: <code style="color:var(--axos-orange)">import * as locators from '../locators/{feature}.locators'</code> (project-local)
+                </div>
+            </div>
+            <div class="quick-ref-section">
+                <h4>Quality Gate</h4>
+                <div style="color:var(--text-secondary)">
+                    All-in-one (repo root): <code style="color:var(--pw-green)">npm run ts:gate</code> — type-check (repo + shared strict) → ESLint → .js/.ts dupe guard → health-check.<br>
+                    Lint only: <code style="color:var(--pw-green)">npm run lint</code> / auto-fix: <code style="color:var(--pw-green)">npm run lint:fix</code><br>
+                    Same gate runs as a <strong>required</strong> check on every PR. Write <code class="inline-code">.ts</code> with ESM <code class="inline-code">import</code>/<code class="inline-code">export</code>.
                 </div>
             </div>
         </div>
