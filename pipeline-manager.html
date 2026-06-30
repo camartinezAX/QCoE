@@ -722,6 +722,14 @@
         .cal-legend{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; font-size:11px; color:var(--text-secondary); }
         .cal-legend .lg{ display:inline-flex; align-items:center; gap:6px; }
         .cal-legend .dot{ width:9px; height:9px; border-radius:50%; display:inline-block; box-shadow:0 0 8px rgba(0,0,0,.25); }
+        /* Legend swatches mirror the calendar chips so the key teaches the visual language:
+           filled = executed (we have a result), dashed/faded = not executed. */
+        .cal-legend .lg-chip{ display:inline-flex; align-items:center; justify-content:center; width:17px; height:14px; border-radius:5px; font-size:9px; font-weight:900; border:1px solid transparent; }
+        .cal-legend .lg-pass{ background:rgba(16,185,129,0.16); border-color:rgba(16,185,129,0.45); color:#10b981; border-left:3px solid #10b981; }
+        .cal-legend .lg-fail{ background:rgba(239,68,68,0.17); border-color:rgba(239,68,68,0.5); color:#ef4444; border-left:3px solid #ef4444; }
+        .cal-legend .lg-cancel{ background:rgba(156,163,175,0.16); border-color:rgba(156,163,175,0.4); color:#9ca3af; border-left:3px solid #9ca3af; }
+        .cal-legend .lg-up{ background:transparent; border:1px dashed var(--text-muted); border-left:3px solid var(--orange); opacity:.85; }
+        .cal-legend .lg-miss{ background:transparent; border:1px dashed var(--text-muted); opacity:.4; }
         .cal-grid-wrap{
             border:1px solid var(--border-color); border-radius:18px; overflow:hidden;
             background:linear-gradient(135deg, rgba(22,29,46,0.55), rgba(31,41,55,0.45));
@@ -772,16 +780,29 @@
         a.cal-chip{ cursor:pointer; }
         a.cal-chip:hover{ transform:translateX(2px); border-color:var(--chip-c,var(--orange)); background:rgba(250,167,74,0.10); }
         .cal-chip .cal-chip-dot{ width:7px; height:7px; border-radius:50%; flex:0 0 auto; background:var(--chip-c,var(--orange)); }
+        .cal-chip .cal-chip-dot.hollow{ background:transparent; border:1.5px solid var(--chip-c,var(--text-muted)); }
+        /* Status glyph (✓/✗/⊘) shown for executed runs so they read at a glance. */
+        .cal-chip .cal-chip-ic{ flex:0 0 auto; width:12px; text-align:center; font-size:11px; font-weight:900; line-height:1; color:var(--chip-c,var(--orange)); }
         .cal-chip .cal-chip-time{ font-family:'JetBrains Mono',monospace; font-size:9.5px; color:var(--text-muted); flex:0 0 auto; }
         .cal-chip .cal-chip-name{ overflow:hidden; text-overflow:ellipsis; flex:1 1 auto; min-width:0; }
-        .cal-chip.is-run{ box-shadow:0 2px 10px rgba(0,0,0,0.18); }
-        .cal-chip.is-run .cal-chip-name{ text-decoration:none; }
-        .cal-chip.run-success{ --chip-c:#10b981; }
-        .cal-chip.run-failure{ --chip-c:#ef4444; }
-        .cal-chip.run-cancelled,.cal-chip.run-skipped{ --chip-c:#9ca3af; }
+
+        /* ── Executed (we have a run result): make it POP — solid color-tinted fill,
+              thick status border, full opacity, bold text, status icon. ── */
+        .cal-chip.is-run{ opacity:1; font-weight:800; border-left-width:4px; box-shadow:0 1px 7px rgba(0,0,0,0.16); }
+        .cal-chip.is-run .cal-chip-name{ text-decoration:none; color:var(--text-primary); }
+        .cal-chip.is-run .cal-chip-time{ color:var(--text-secondary); }
+        .cal-chip.run-success{ --chip-c:#10b981; background:rgba(16,185,129,0.16); border-color:rgba(16,185,129,0.45); }
+        .cal-chip.run-failure{ --chip-c:#ef4444; background:rgba(239,68,68,0.17); border-color:rgba(239,68,68,0.5); }
+        .cal-chip.run-cancelled,.cal-chip.run-skipped{ --chip-c:#9ca3af; background:rgba(156,163,175,0.16); border-color:rgba(156,163,175,0.4); }
+        [data-theme="light"] .cal-chip.run-success{ background:rgba(16,185,129,0.13); }
+        [data-theme="light"] .cal-chip.run-failure{ background:rgba(239,68,68,0.12); }
+        [data-theme="light"] .cal-chip.run-cancelled,[data-theme="light"] .cal-chip.run-skipped{ background:rgba(156,163,175,0.14); }
         .cal-chip.run-link-icon::after{ content:'\2197'; font-size:10px; color:var(--chip-c,var(--orange)); margin-left:auto; }
-        .cal-chip.is-future{ opacity:.92; border-style:dashed; }
-        .cal-chip.is-missed{ opacity:.6; }
+
+        /* ── Not executed: clearly recede — transparent fill, dashed, faded. ── */
+        .cal-chip.is-future{ opacity:.85; border-style:dashed; background:transparent; font-weight:600; }
+        .cal-chip.is-missed{ opacity:.4; border-style:dashed; background:transparent; font-weight:500; filter:grayscale(0.5); }
+        .cal-chip.is-missed .cal-chip-name{ color:var(--text-muted); }
         .cal-more{ font-size:10px; font-weight:700; color:var(--orange); cursor:pointer; padding:2px 4px; }
         .cal-more:hover{ text-decoration:underline; }
         .cal-empty-note{
@@ -1711,11 +1732,12 @@
                 <div class="cal-stat-pills" id="calStatPills"></div>
             </div>
             <div class="cal-legend">
-                <span class="lg"><span class="dot" style="background:var(--orange);"></span> Scheduled (upcoming)</span>
-                <span class="lg"><span class="dot" style="background:#10b981;"></span> Ran &mdash; passed</span>
-                <span class="lg"><span class="dot" style="background:#ef4444;"></span> Ran &mdash; failed</span>
-                <span class="lg"><span class="dot" style="background:#9ca3af;"></span> Cancelled / skipped / no run</span>
-                <span class="lg" style="margin-left:auto; color:var(--text-muted);">Run links appear on past dates after you Fetch Results.</span>
+                <span class="lg"><span class="lg-chip lg-pass">&#10003;</span> Ran &mdash; passed</span>
+                <span class="lg"><span class="lg-chip lg-fail">&#10005;</span> Ran &mdash; failed</span>
+                <span class="lg"><span class="lg-chip lg-cancel">&#8856;</span> Cancelled / skipped</span>
+                <span class="lg"><span class="lg-chip lg-up"></span> Upcoming (scheduled)</span>
+                <span class="lg"><span class="lg-chip lg-miss"></span> Past &mdash; no run details</span>
+                <span class="lg" style="margin-left:auto; color:var(--text-muted);">Filled = executed &middot; dashed = not run. Run links appear after you Fetch Results.</span>
             </div>
             <div class="cal-filters">
                 <div class="cal-search-wrap">
@@ -14427,19 +14449,24 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 const timeStr = calFmtPSTTime(o.instMs);
                 const repeatBadge = (o.repeatEvery > 1) ? ` &middot; ${o.repeatEvery}w` : '';
                 let cls = 'cal-chip', chipColor = o.color;
+                // Marker: executed runs get a bold status glyph (✓/✗/⊘) so they jump out;
+                // not-yet-run shows a plain dot, and "missed / no details" a hollow ring.
+                let marker = '<span class="cal-chip-dot"></span>';
                 if (o.status === 'run') {
                     const rc = calRunStatusClass(o.run);
                     cls += ' is-run ' + rc;
-                    if (rc === 'run-success') chipColor = '#10b981';
-                    else if (rc === 'run-failure') chipColor = '#ef4444';
-                    else if (rc === 'run-cancelled') chipColor = '#9ca3af';
+                    if (rc === 'run-success') { chipColor = '#10b981'; marker = '<span class="cal-chip-ic">✓</span>'; }
+                    else if (rc === 'run-failure') { chipColor = '#ef4444'; marker = '<span class="cal-chip-ic">✕</span>'; }
+                    else if (rc === 'run-cancelled') { chipColor = '#9ca3af'; marker = '<span class="cal-chip-ic">⊘</span>'; }
+                    else { marker = '<span class="cal-chip-ic">•</span>'; }
                 } else if (o.status === 'missed') {
                     cls += ' is-missed';
+                    marker = '<span class="cal-chip-dot hollow"></span>';
                 } else {
                     cls += ' is-future';
                 }
                 return `<div class="${cls}" data-cid="${o.cid}" style="--chip-c:${chipColor};">
-                    <span class="cal-chip-dot"></span>
+                    ${marker}
                     <span class="cal-chip-time">${timeStr.replace(' PT','')}</span>
                     <span class="cal-chip-name">${escapeHtml(nm)}${o.status === 'future' ? repeatBadge : ''}</span>
                 </div>`;
