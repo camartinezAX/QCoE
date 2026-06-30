@@ -2479,6 +2479,11 @@
         if (repo === 'Axos.QE.API_WFO') return 'windows';
         if (repo === 'Axos.QE.Mobile') return 'windows';
         if (repo === 'Axos.QE.Crypto.Web') return 'windows';
+        // Performance: JMeter runs on self-hosted Windows; BlazeMeter runs on
+        // GitHub-hosted Linux (load executes in the BlazeMeter cloud).
+        if (repo === 'Axos.QE.Performance.Automation') {
+            return String(runTarget || '').trim().toLowerCase() === 'blazemeter' ? 'linux' : 'windows';
+        }
         if (repo === 'Axos.QE.Web') {
             const rt = String(runTarget || '').trim().toLowerCase() || 'local';
             return rt === 'browserstack' ? 'linux' : 'windows';
@@ -2602,6 +2607,10 @@
             'UDB API': null,
             'CS API': null,
             'WFO API': null
+        },
+        '04 Performance': {
+            'JMeter': null,
+            'BlazeMeter': null
         }
     };
 
@@ -3101,6 +3110,19 @@
         // Skip orchestrators (feature catalog actions are not intended to rename orchestrator workflows)
         if (testType === 'Orchestrator' || feature === 'Orchestrators') return '';
 
+        // Performance (JMeter / BlazeMeter). Pattern: Perf_<Feature>_<Env>_<TestType>-<Tool>
+        // e.g. Perf_OLB_UAT_Regression-JMeter, Perf_OLB_UAT_Sanity-BlazeMeter.
+        if (repoName === 'Axos.QE.Performance.Automation') {
+            const tool = (brand === 'BlazeMeter') ? 'BlazeMeter' : 'JMeter';
+            const fKey = feature.replace(/\s+/g, '');
+            // featureDetail already holds feature[_suffix]; use it directly so the
+            // Custom Suffix is included (falls back to the bare feature when unset).
+            const fd = String(p.featureDetail || '').trim().replace(/\s+/g, '');
+            const featureStr = fd || fKey;
+            const tKey = testType.replace(/\s+/g, '');
+            return `Perf_${featureStr}_${env}_${tKey}-${tool}`;
+        }
+
         // Monorepo Playwright (Axos.QE.Web)
         if (repoName === 'Axos.QE.Web' || isWebMonorepoPipeline(p)) {
             const teamKey = (brand === 'OLB 3.0') ? 'OLB3' : brand;
@@ -3563,7 +3585,7 @@ ${os.map(n => `- ${n}`).join('\n')}
         suffixEl.value = '';
     }
 
-    const PLATFORM_KEY_MAP = { '01 Mobile': 'Mobile', '02 Web': 'Web', '03 API': 'API' };
+    const PLATFORM_KEY_MAP = { '01 Mobile': 'Mobile', '02 Web': 'Web', '03 API': 'API', '04 Performance': 'Perf' };
 
     const ENV_URLS = {
         DEV: 'https://secure.dev.axosbank.com/login',
@@ -3594,6 +3616,14 @@ ${os.map(n => `- ${n}`).join('\n')}
     const MOBILE_TEST_TYPES = ['Smoke', 'Sanity', 'Regression', 'Health Check'];
 
     function isMobilePipeline(p) { return p && p.platform === '01 Mobile'; }
+    function isPerfPipeline(p) {
+        if (!p) return false;
+        if (String(p.platform || '') === '04 Performance') return true;
+        const fn = String(p.filename || p.name || '').toLowerCase();
+        if (fn.startsWith('perf_') || fn.includes('-jmeter') || fn.includes('-blazemeter')) return true;
+        const b = String(p.brand || '');
+        return b === 'JMeter' || b === 'BlazeMeter';
+    }
     function isCryptoRepo(repo) { return String(repo || '').trim() === 'Axos.QE.Crypto.Web'; }
     function isWebMonorepo(repo) { return String(repo || '').trim() === 'Axos.QE.Web'; }
     function isWebMonorepoPipeline(p) {
@@ -4067,8 +4097,22 @@ ${os.map(n => `- ${n}`).join('\n')}
                     else if (fn.startsWith('api_cs_')) p.repo = 'Axos.QE.API_CS';
                     else if (fn.startsWith('api_udb_')) p.repo = 'Axos.QE.API_UDB';
                     else if (fn.startsWith('api_wfo_')) p.repo = 'Axos.QE.API_WFO';
+                    else if (fn.startsWith('perf_') || fn.includes('-jmeter') || fn.includes('-blazemeter')) p.repo = 'Axos.QE.Performance.Automation';
                     else if (fn.includes('-newman') || fn.startsWith('api_') || fn.startsWith('api-')) p.repo = 'Axos.QE.API_OLB';
                     else p.repo = 'Axos.QE.TestIM';
+                };
+                // Auto-heal Performance pipelines cached before the '04 Performance' platform
+                // existed: set the platform + JMeter/BlazeMeter brand from the filename so they
+                // categorize under 04 Performance instead of Uncategorized.
+                const backfillPerfPlatform = (p) => {
+                    if (!p) return;
+                    const fn = String(p.filename || p.name || '').toLowerCase();
+                    const isPerf = fn.startsWith('perf_') || fn.includes('-jmeter') || fn.includes('-blazemeter') || p.repo === 'Axos.QE.Performance.Automation';
+                    if (!isPerf) return;
+                    if (p.platform !== '04 Performance') p.platform = '04 Performance';
+                    if (p.brand !== 'JMeter' && p.brand !== 'BlazeMeter') {
+                        p.brand = fn.includes('-blazemeter') ? 'BlazeMeter' : 'JMeter';
+                    }
                 };
                 // Auto-heal Web monorepo team display names (e.g. OLB3 → OLB 3.0) for older cached entries.
                 const backfillWebMonorepoTeams = (p) => {
@@ -4189,6 +4233,8 @@ ${os.map(n => `- ${n}`).join('\n')}
                 };
                 (pipelines || []).forEach(backfillRepo);
                 (savedSnapshot || []).forEach(backfillRepo);
+                (pipelines || []).forEach(backfillPerfPlatform);
+                (savedSnapshot || []).forEach(backfillPerfPlatform);
                 (pipelines || []).forEach(backfillWebMonorepoTeams);
                 (savedSnapshot || []).forEach(backfillWebMonorepoTeams);
                 (pipelines || []).forEach(backfillWebMonorepoWorkflowRenames);
@@ -4237,6 +4283,7 @@ ${os.map(n => `- ${n}`).join('\n')}
         if (isWebMonorepoPipeline(p)) return 'Axos.QE.Web';
         if (isCryptoPipeline(p)) return 'Axos.QE.Crypto.Web';
         if (isMobilePipeline(p)) return 'Axos.QE.Mobile';
+        if (isPerfPipeline(p)) return 'Axos.QE.Performance.Automation';
         return 'Axos.QE.TestIM';
     }
 
@@ -4709,6 +4756,11 @@ ${os.map(n => `- ${n}`).join('\n')}
                                 </div>
                                 <div class="tree-children${envOpen ? ' open' : ''}" id="children-${envKey}">`;
 
+                            if (platform === '04 Performance') {
+                                // Performance: env is the deepest folder — list pipelines directly
+                                // under it (no feature level), per the JMeter/BlazeMeter > env layout.
+                                for (const pp of envPipelines) { html += pipelineTreeNode(pp, 72); }
+                            } else {
                             const featureList = isOutsystemsBrand(brandName)
                                 ? OUTSYSTEMS_FEATURES.map(name => ({ id: '', name }))
                                 : FEATURES;
@@ -4743,6 +4795,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                             }
                             const trulyUnmatched = noFeatPipelines.filter(p => !p.feature);
                             for (const pp of trulyUnmatched) { html += pipelineTreeNode(pp, 72); }
+                            }
 
                             html += `</div></div>`;
                         }
@@ -5653,7 +5706,7 @@ ${os.map(n => `- ${n}`).join('\n')}
         })());
         const normRepo = (p) => String(
             p.repo ||
-            (isWebMonorepoPipeline(p) ? 'Axos.QE.Web' : (isCryptoPipeline(p) ? 'Axos.QE.Crypto.Web' : (isMobilePipeline(p) ? 'Axos.QE.Mobile' : 'Axos.QE.TestIM')))
+            (isWebMonorepoPipeline(p) ? 'Axos.QE.Web' : (isCryptoPipeline(p) ? 'Axos.QE.Crypto.Web' : (isMobilePipeline(p) ? 'Axos.QE.Mobile' : (isPerfPipeline(p) ? 'Axos.QE.Performance.Automation' : 'Axos.QE.TestIM'))))
         ).trim();
         const byRepo = new Map();
         for (const it of items) {
@@ -5694,7 +5747,9 @@ ${os.map(n => `- ${n}`).join('\n')}
         `# │  <Platform> > <Brand/Team> > <Env> > <Feature> > <TestType>                  │\n` +
         `# │  Updated by: <name>                                                          │\n` +
         `# └────────────────────────────────────────────────────────────────────────────┘\n` +
-        `Build the breadcrumb from THIS pipeline's own fields (omit any segment that doesn't apply). If a ` +
+        `Build the breadcrumb from THIS pipeline's own fields (omit any segment that doesn't apply). When a ` +
+        `Custom Suffix is set, include it in the <Feature> segment (e.g. "OLB3.0_E2E_UserLoad_Home") so the ` +
+        `breadcrumb matches the workflow's full name, not a generic version. If a ` +
         `header box already exists, just add/refresh the "Updated by:" line inside it. Determine <name> ` +
         `automatically — prefer the GitHub MCP get_me tool, otherwise fall back to \`git config user.name\`. ` +
         `If you cannot resolve a name from either source, omit the "Updated by:" line entirely. Do NOT ask ` +
@@ -5704,7 +5759,7 @@ ${os.map(n => `- ${n}`).join('\n')}
         const isMobile = isMobilePipeline(p);
         const repoName = String(
             p.repo ||
-            (isWebMonorepoPipeline(p) ? 'Axos.QE.Web' : (isCryptoPipeline(p) ? 'Axos.QE.Crypto.Web' : (isMobile ? 'Axos.QE.Mobile' : 'Axos.QE.TestIM')))
+            (isWebMonorepoPipeline(p) ? 'Axos.QE.Web' : (isCryptoPipeline(p) ? 'Axos.QE.Crypto.Web' : (isMobile ? 'Axos.QE.Mobile' : (isPerfPipeline(p) ? 'Axos.QE.Performance.Automation' : 'Axos.QE.TestIM'))))
         ).trim();
         const filePath = `.github/workflows/${p.filename || (p.name + '.yml')}`;
         // Migrated repos use the consolidated single RUNNER_LABEL model (AUTO = group). Force
@@ -5815,6 +5870,41 @@ ${os.map(n => `- ${n}`).join('\n')}
                 prompt += `\n- Add WEEK_MODULO: ${n} to the with: block so the template skips runs on off-weeks (do NOT add a separate gate job)`;
             }
 
+            if (p.renamedFrom) prompt += `\n\nAlso delete the old workflow file: .github/workflows/${p.renamedFrom}`;
+            return prompt;
+        }
+
+        if (repoName === 'Axos.QE.Performance.Automation') {
+            const tool = (p.brand === 'BlazeMeter') ? 'BlazeMeter' : 'JMeter';
+            let prompt;
+            if (tool === 'BlazeMeter') {
+                const bzJobTimeout = parseInt(p.jobTimeout || '250', 10) || 250;
+                prompt = `Create or update a BlazeMeter performance pipeline workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
+                    `This file should call the reusable template _blazemeter-template.yml with these settings:\n\n` +
+                    `PIPELINE_NAME: ${p.name}\n` +
+                    `ACCOUNT: ${p.bzAccount || ''}\n` +
+                    `WORKSPACE: ${p.bzWorkspace || ''}\n` +
+                    `PROJECT: ${p.bzProject || ''}\n` +
+                    `TEST: ${p.bzTestId || ''}\n` +
+                    `TEST_NAME: ${p.bzTestName || ''}\n` +
+                    `JOB_TIMEOUT: ${bzJobTimeout}   # the BlazeMeter poll window is derived as JOB_TIMEOUT - 10\n\n` +
+                    `Pass these repo secrets through to the template: BLAZEMETER_API_KEY, BLAZEMETER_API_SECRET.\n` +
+                    `Use the existing caller workflow Perf_OLB_UAT_Sanity-BlazeMeter.yml as the exact format reference (workflow_dispatch inputs with defaults; permissions contents:read/checks:write/actions:write; jobs calling _blazemeter-template.yml). It runs on a GitHub-hosted Linux runner — the load executes in the BlazeMeter cloud.`;
+            } else {
+                prompt = `Create or update a JMeter performance pipeline workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
+                    `This file should call the reusable template _jmeter-template.yml with these settings:\n\n` +
+                    `PIPELINE_NAME: ${p.name}\n` +
+                    `TEST: ${p.jmxName || ''}   # base name of the .jmx in src/scripts (no .jmx extension)\n` +
+                    `THREADS: ${p.jmxThreads || ''}\n` +
+                    `RAMPUP: ${p.jmxRampup || ''}\n` +
+                    `DURATION: ${p.jmxDuration || ''}\n` +
+                    `GRANULARITY: ${p.jmxGranularity || '1000'}\n` +
+                    `JOB_TIMEOUT: ${p.jobTimeout || 120}\n` +
+                    `RUNNER_LABEL: ${p.runnerLabel || 'AUTO'}\nCUSTOM_RUNNER_LABEL: ${p.customRunnerLabel || ''}\n\n` +
+                    `No repo secrets are required. It runs on a self-hosted Windows runner via runner group ${runnerGroup} (labels [self-hosted, windows, x64]); JMeter is expected at C:\\JMeter\\apache-jmeter-5.6.3 with a self-heal install fallback. Use the existing caller workflow Perf_OLB_UAT_Regression-JMeter.yml as the exact format reference.`;
+            }
+            if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
+            else prompt += `\n\nKeep the schedule block as-is.`;
             if (p.renamedFrom) prompt += `\n\nAlso delete the old workflow file: .github/workflows/${p.renamedFrom}`;
             return prompt;
         }
@@ -6092,6 +6182,20 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         showCreateForm(clone, true);
     }
 
+    // Performance form: toggle JMeter vs BlazeMeter config + secrets + runner blocks.
+    function onPerfBrandChange() {
+        const brand = document.getElementById('fBrand')?.value || 'JMeter';
+        const isJ = brand === 'JMeter';
+        const show = (id, on) => { const el = document.getElementById(id); if (el) el.style.display = on ? 'block' : 'none'; };
+        show('jmeterConfigSection', isJ);
+        show('blazemeterConfigSection', !isJ);
+        show('jmeterSecretsInfo', isJ);
+        show('blazemeterSecretsInfo', !isJ);
+        // JMeter = self-hosted Windows runner dropdown; BlazeMeter = cloud note (no runner picker).
+        show('perfJmeterRunner', isJ);
+        show('perfBlazeRunner', !isJ);
+    }
+
     // ══════════════════════════════════════════
     //  CREATE / EDIT FORM
     // ══════════════════════════════════════════
@@ -6123,12 +6227,18 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         // Normalize repo for older entries (default based on filename/platform).
         const repoName = String(
             p.repo ||
-            (isWebMonorepoPipeline(p) ? 'Axos.QE.Web' : (isCryptoPipeline(p) ? 'Axos.QE.Crypto.Web' : (isMobilePipeline(p) ? 'Axos.QE.Mobile' : 'Axos.QE.TestIM')))
+            (isWebMonorepoPipeline(p) ? 'Axos.QE.Web' : (isCryptoPipeline(p) ? 'Axos.QE.Crypto.Web' : (isMobilePipeline(p) ? 'Axos.QE.Mobile' : (isPerfPipeline(p) ? 'Axos.QE.Performance.Automation' : 'Axos.QE.TestIM'))))
         ).trim();
         p.repo = repoName;
         const runnerStrategyUi = getRunnerStrategy(p);
         const runnerGroupUi = getRunnerGroup(p);
-        const runnerOsUi = getRunnerOsForRepo(repoName, p.runTarget);
+        // Performance pipelines encode the engine in `brand` (JMeter/BlazeMeter), not
+        // runTarget — map BlazeMeter to the 'blazemeter' run target so its runner OS
+        // resolves to Linux instead of defaulting to Windows.
+        const runnerOsRunTarget = (repoName === 'Axos.QE.Performance.Automation')
+            ? (p.brand === 'BlazeMeter' ? 'blazemeter' : 'jmeter')
+            : p.runTarget;
+        const runnerOsUi = getRunnerOsForRepo(repoName, runnerOsRunTarget);
         const cryptoScenarioPrefill = (repoName === 'Axos.QE.Crypto.Web')
             ? (String(p.cryptoScenario || '').trim() || (() => {
                 const fd = String(p.featureDetail || '').trim();
@@ -6143,7 +6253,9 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 ? 'Orchestrator workflow'
                 : ((repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB' || repoName === 'Axos.QE.API_WFO')
                     ? 'Newman pipeline'
-                    : ((isCryptoPipeline(p) || repoName === 'Axos.QE.Web') ? 'Playwright pipeline' : 'Testim pipeline')));
+                    : (repoName === 'Axos.QE.Performance.Automation'
+                        ? `${p.brand === 'BlazeMeter' ? 'BlazeMeter' : 'JMeter'} performance pipeline`
+                        : ((isCryptoPipeline(p) || repoName === 'Axos.QE.Web') ? 'Playwright pipeline' : 'Testim pipeline'))));
         let html = `<div class="main-header">
             <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
                 <div style="min-width:0;">
@@ -6175,6 +6287,13 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                         if (!fd) return '';
                         if (repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB' || repoName === 'Axos.QE.API_WFO') {
                             // For API pipelines, derive suffix after the feature is selected (avoids feature duplication).
+                            return '';
+                        }
+                        if (repoName === 'Axos.QE.Performance.Automation') {
+                            // Performance stores the full feature[_suffix] in featureDetail and the
+                            // Feature field, so we cannot reliably split it back (the Web OLB rule
+                            // would mis-derive, and re-save would double the suffix). Leave the
+                            // suffix field empty on edit; the full value lives in the Feature field.
                             return '';
                         }
                         const parts = fd.split('_').filter(Boolean);
@@ -6708,6 +6827,176 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 </div>
             </div>
         </div>`;
+        } else if (repoName === 'Axos.QE.Performance.Automation') {
+            // Performance (JMeter / BlazeMeter) form
+            const perfBrand = p.brand || 'JMeter';
+            html += `<div class="section">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <div class="section-title"><span class="section-icon">&#128193;</span> Location & Category <span class="section-badge" style="background:rgba(168,85,247,0.12);color:#a855f7;">Required</span></div>
+                    <div class="section-toggle">&#9660;</div>
+                </div>
+                <div class="section-content">
+                    <div class="form-row-3">
+                        <div class="form-group">
+                            <label class="form-label">Platform <span class="req">*</span></label>
+                            <select id="fPlatform" onchange="updateNamePreview();" ${isView ? 'disabled' : ''}>
+                                <option value="04 Performance" selected>04 Performance</option>
+                            </select>
+                            <span class="field-help">Fixed for this repo. The Tool below selects JMeter vs BlazeMeter.</span>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Tool (Engine) <span class="req">*</span></label>
+                            <select id="fBrand" onchange="onPerfBrandChange(); updateNamePreview();" ${isView ? 'disabled' : ''}>
+                                <option value="JMeter" ${perfBrand === 'JMeter' ? 'selected' : ''}>JMeter</option>
+                                <option value="BlazeMeter" ${perfBrand === 'BlazeMeter' ? 'selected' : ''}>BlazeMeter</option>
+                            </select>
+                            <span class="field-help">JMeter = self-hosted Windows · BlazeMeter = cloud (GitHub-hosted runner)</span>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Environment <span class="req">*</span></label>
+                            <select id="fEnv" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
+                                <option value="">Select...</option>
+                                ${ENVIRONMENTS.map(e => `<option value="${e}" ${p.env === e ? 'selected' : ''}>${e}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Feature <span class="req">*</span></label>
+                            <input type="text" id="fFeature" placeholder="e.g. OLB, CreditCard, UDB" value="${p.feature || ''}" oninput="updateNamePreview()" ${isView ? 'disabled' : ''}>
+                            <span class="field-help">Domain under test (becomes part of the pipeline name)</span>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Test Type <span class="req">*</span></label>
+                            <select id="fTestType" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
+                                <option value="">Select...</option>
+                                ${TEST_TYPES.filter(t => t !== 'Orchestrator').map(t => `<option value="${t}" ${p.testType === t ? 'selected' : ''}>${t}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+
+            // ── JMeter config ──
+            html += `<div class="section" id="jmeterConfigSection" style="display:${perfBrand === 'JMeter' ? 'block' : 'none'};">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <div class="section-title"><span class="section-icon">&#9881;</span> JMeter Configuration <span class="section-badge" style="background:rgba(34,197,94,0.12);color:#22c55e;">JMeter</span></div>
+                    <div class="section-toggle">&#9660;</div>
+                </div>
+                <div class="section-content">
+                    <div class="form-group">
+                        <label class="form-label">JMX Script <span class="req">*</span></label>
+                        <input type="text" id="fJmxName" placeholder="OLB_UAT_PerformanceTest" value="${p.jmxName || ''}" oninput="updateFormStatus && updateFormStatus()" ${isView ? 'disabled' : ''}>
+                        <span class="field-help">Base name of the .jmx in <code>src/scripts</code> (without the <code>.jmx</code> extension)</span>
+                    </div>
+                    <div class="form-row-3">
+                        <div class="form-group">
+                            <label class="form-label">Threads (-Jthreads)</label>
+                            <input type="number" id="fJmxThreads" min="1" placeholder="(use .jmx value)" value="${p.jmxThreads || ''}" ${isView ? 'disabled' : ''}>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Ramp-up sec (-Jrampup)</label>
+                            <input type="number" id="fJmxRampup" min="0" placeholder="(use .jmx value)" value="${p.jmxRampup || ''}" ${isView ? 'disabled' : ''}>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Duration sec (-Jduration)</label>
+                            <input type="number" id="fJmxDuration" min="1" placeholder="(use .jmx value)" value="${p.jmxDuration || ''}" ${isView ? 'disabled' : ''}>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Report granularity (ms)</label>
+                        <input type="number" id="fJmxGranularity" min="100" value="${p.jmxGranularity || '1000'}" ${isView ? 'disabled' : ''}>
+                        <span class="field-help">Blank thread/ramp/duration = run the .jmx exactly as authored (parity with ADO 5385).</span>
+                    </div>
+                </div>
+            </div>`;
+
+            // ── BlazeMeter config ──
+            html += `<div class="section" id="blazemeterConfigSection" style="display:${perfBrand === 'BlazeMeter' ? 'block' : 'none'};">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <div class="section-title"><span class="section-icon">&#9881;</span> BlazeMeter Configuration <span class="section-badge" style="background:rgba(59,130,246,0.12);color:#60a5fa;">BlazeMeter</span></div>
+                    <div class="section-toggle">&#9660;</div>
+                </div>
+                <div class="section-content">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Test ID <span class="req">*</span></label>
+                            <input type="text" id="fBzTestId" placeholder="15558117" value="${p.bzTestId || ''}" oninput="updateFormStatus && updateFormStatus()" ${isView ? 'disabled' : ''}>
+                            <span class="field-help">Numeric BlazeMeter test id to run (the existing test).</span>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Test Name (display)</label>
+                            <input type="text" id="fBzTestName" placeholder="UAT - Main flows in OLB - SANITY - 100VU" value="${p.bzTestName || ''}" ${isView ? 'disabled' : ''}>
+                        </div>
+                    </div>
+                    <div class="form-row-3">
+                        <div class="form-group">
+                            <label class="form-label">Account ID</label>
+                            <input type="text" id="fBzAccount" placeholder="1607162" value="${p.bzAccount || ''}" ${isView ? 'disabled' : ''}>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Workspace ID</label>
+                            <input type="text" id="fBzWorkspace" placeholder="1663446" value="${p.bzWorkspace || ''}" ${isView ? 'disabled' : ''}>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Project ID</label>
+                            <input type="text" id="fBzProject" placeholder="2334179" value="${p.bzProject || ''}" ${isView ? 'disabled' : ''}>
+                        </div>
+                    </div>
+                    <p style="font-size:11px; color:var(--text-muted); margin:4px 0 0;">The BlazeMeter poll window is derived automatically from <strong>Pipeline Timeout</strong> (in Execution Settings) — no separate poll timeout needed.</p>
+                </div>
+            </div>`;
+
+            // ── Required secrets ──
+            html += `<div class="section">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <div class="section-title"><span class="section-icon">&#128273;</span> Required Secrets</div>
+                    <div class="section-toggle">&#9660;</div>
+                </div>
+                <div class="section-content">
+                    <div id="jmeterSecretsInfo" style="display:${perfBrand === 'JMeter' ? 'block' : 'none'}; font-size:12px; color:var(--text-secondary);">
+                        <strong>JMeter:</strong> no repo secrets required. Runs on a self-hosted Windows runner (<code>${escapeHtml(DEFAULT_RUNNER_GROUP)}</code> group) with JMeter at <code>C:\\JMeter\\apache-jmeter-5.6.3</code> (auto-installed if missing).
+                    </div>
+                    <div id="blazemeterSecretsInfo" style="display:${perfBrand === 'BlazeMeter' ? 'block' : 'none'}; font-size:12px; color:var(--text-secondary);">
+                        <strong>BlazeMeter:</strong> set these repo secrets in <em>Settings → Secrets and variables → Actions</em>:
+                        <ul style="margin:8px 0 0 0;">
+                            <li><code>BLAZEMETER_API_KEY</code></li>
+                            <li><code>BLAZEMETER_API_SECRET</code></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>`;
+
+            // ── Runner ── (Pipeline Timeout is rendered by the shared Execution Settings
+            // section below; do NOT add another fJobTimeout here — a duplicate id would
+            // shadow it and break getElementById/save.)
+            html += `<div class="section">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <div class="section-title"><span class="section-icon">&#128421;</span> Runner</div>
+                    <div class="section-toggle">&#9660;</div>
+                </div>
+                <div class="section-content">
+                    <!-- JMeter: consolidated single Runner Label dropdown (AUTO = group), same as the other repos. -->
+                    <div id="perfJmeterRunner" style="display:${perfBrand === 'JMeter' ? 'block' : 'none'};">
+                        <div class="form-group">
+                            <label class="form-label">Runner Label</label>
+                            <select id="fRunnerLabel" ${isView ? 'disabled' : ''}>
+                                ${['AUTO','QSDW-TFSBA01','QSDW-TFSBA02','QSDW-TFSBA03','QSDW-TFSBA04'].map(r => `<option value="${r}" ${(p.runnerLabel || 'AUTO') === r ? 'selected' : ''}>${r}</option>`).join('')}
+                            </select>
+                            <span class="field-help">AUTO = the axos-qe-gh-runners group assigns a free runner; or pin a specific host (QSDW-TFSBA*).</span>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Custom Runner Label <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional)</span></label>
+                            <input type="text" id="fCustomRunnerLabel" placeholder="e.g. QSDW-TFSBA05" value="${p.customRunnerLabel || ''}" ${isView ? 'disabled' : ''}>
+                            <span class="field-help">Overrides the dropdown when you need a host not listed.</span>
+                        </div>
+                    </div>
+                    <!-- BlazeMeter: load runs in the BlazeMeter cloud; the GH job only triggers/polls it. -->
+                    <div id="perfBlazeRunner" style="display:${perfBrand === 'BlazeMeter' ? 'block' : 'none'};">
+                        <p style="font-size:12px; color:var(--text-secondary); margin:0;">Runs on a GitHub-hosted <strong>Linux</strong> runner — no self-hosted runner selection needed. The load test itself executes in the BlazeMeter cloud.</p>
+                    </div>
+                </div>
+            </div>`;
         } else if (repoName === 'Axos.QE.Web') {
         // Web Monorepo (Playwright) form
         const webMonoTeamBrand = p.brand || 'Enrollment';
@@ -7447,6 +7736,10 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         updateNamePreview();
         updateFormStatus();
         toggleRunnerStrategyUI();
+        // For Performance, re-apply the JMeter/BlazeMeter visibility AFTER the generic
+        // toggleRunnerStrategyUI(): BlazeMeter must keep the self-hosted runner controls
+        // hidden on load (toggleRunnerStrategyUI alone would re-show them by strategy).
+        if (repoName === 'Axos.QE.Performance.Automation') onPerfBrandChange();
     }
 
     function initScheduleFromCron(cronStr) {
@@ -8357,6 +8650,37 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             return;
         }
 
+        if (repo === 'Axos.QE.Performance.Automation') {
+            const brand = document.getElementById('fBrand')?.value; // JMeter | BlazeMeter
+            const feature = document.getElementById('fFeature')?.value?.trim();
+            if (!brand || !env || !testType || !feature) {
+                document.getElementById('namePreview').innerHTML = '<span class="dim">Select tool, environment, feature, and test type...</span>';
+                updateFormStatus();
+                return;
+            }
+            // Must match computeNameForPipelineData() and parseFilename():
+            // Perf_<Feature>[_<Suffix>]_<Env>_<TestType>-<JMeter|BlazeMeter>
+            const suffix = document.getElementById('fCustomSuffix')?.value?.trim();
+            const tool = (brand === 'BlazeMeter') ? 'BlazeMeter' : 'JMeter';
+            const fKey = feature.replace(/\s+/g, '');
+            const sKey = suffix ? suffix.replace(/\s+/g, '_') : '';
+            const featureStr = sKey ? `${fKey}_${sKey}` : fKey;
+            const tKey = testType.replace(/\s+/g, '');
+            const name = `Perf_${featureStr}_${env}_${tKey}-${tool}`;
+            const previewEl = document.getElementById('namePreview');
+            const currentRepo = 'Axos.QE.Performance.Automation';
+            const duplicate = !viewOnlyMode && pipelines.some(p => pipeNamesEqual(p.name, name) && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
+            if (duplicate) {
+                previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:var(--font-b);">&#9888; A pipeline with this exact name already exists.</div>`;
+                previewEl.style.borderColor = 'var(--error)';
+            } else {
+                previewEl.textContent = name;
+                previewEl.style.borderColor = '';
+            }
+            updateFormStatus();
+            return;
+        }
+
         // Web (Testim) naming
         const brand = document.getElementById('fBrand')?.value;
         const feature = document.getElementById('fFeature')?.value;
@@ -8558,6 +8882,16 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             return missing;
         }
 
+        if (repo === 'Axos.QE.Performance.Automation') {
+            need('fBrand', 'Tool (JMeter/BlazeMeter)');
+            need('fEnv', 'Environment');
+            need('fFeature', 'Feature');
+            need('fTestType', 'Test Type');
+            if (val('fBrand') === 'BlazeMeter') need('fBzTestId', 'BlazeMeter Test ID');
+            else need('fJmxName', 'JMX Script');
+            return missing;
+        }
+
         // Default: Web (Testim)
         need('fPlatform', 'Platform');
         need('fBrand', 'Brand');
@@ -8615,6 +8949,14 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                         el('fBrand')?.value && el('fEnv')?.value &&
                         el('fFeature')?.value && el('fTestType')?.value;
                 }
+                return fieldsOk && !isNameDuplicate();
+            }
+            if (repo === 'Axos.QE.Performance.Automation') {
+                const brand = el('fBrand')?.value || 'JMeter';
+                const common = el('fBrand')?.value && el('fEnv')?.value && el('fFeature')?.value && el('fTestType')?.value;
+                fieldsOk = (brand === 'BlazeMeter')
+                    ? (common && el('fBzTestId')?.value)
+                    : (common && el('fJmxName')?.value);
                 return fieldsOk && !isNameDuplicate();
             }
             const isOrch = (el('fFeature')?.value || '') === 'Orchestrators';
@@ -8765,6 +9107,39 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     base.customRunnerLabel = v('fCustomRunnerLabel');
                     base.jobTimeout = n('fJobTimeout', 120);
                 }
+            } else if (repo === 'Axos.QE.Performance.Automation') {
+                base.brand = v('fBrand') || base.brand || 'JMeter';
+                base.env = v('fEnv') || base.env;
+                base.feature = v('fFeature') || base.feature || 'OLB';
+                base.testType = v('fTestType') || base.testType || 'Regression';
+                // Custom Suffix is appended to the feature in the name; persist it in
+                // featureDetail (feature_suffix) so the name + Custom Suffix field round-trip.
+                {
+                    const fSuffix = (v('fCustomSuffix') || '').replace(/\s+/g, '_');
+                    const fKey = String(base.feature || '').replace(/\s+/g, '');
+                    base.featureDetail = fSuffix ? `${fKey}_${fSuffix}` : fKey;
+                }
+                if (base.brand === 'BlazeMeter') {
+                    base.bzAccount = v('fBzAccount');
+                    base.bzWorkspace = v('fBzWorkspace');
+                    base.bzProject = v('fBzProject');
+                    base.bzTestId = v('fBzTestId');
+                    base.bzTestName = v('fBzTestName');
+                    base.jmxName = ''; base.jmxThreads = ''; base.jmxRampup = ''; base.jmxDuration = ''; base.jmxGranularity = '1000';
+                } else {
+                    base.jmxName = v('fJmxName');
+                    base.jmxThreads = v('fJmxThreads');
+                    base.jmxRampup = v('fJmxRampup');
+                    base.jmxDuration = v('fJmxDuration');
+                    base.jmxGranularity = v('fJmxGranularity') || '1000';
+                    base.bzAccount = ''; base.bzWorkspace = ''; base.bzProject = ''; base.bzTestId = ''; base.bzTestName = '';
+                }
+                base.runnerLabel = v('fRunnerLabel') || 'AUTO';
+                base.customRunnerLabel = v('fCustomRunnerLabel');
+                // Single timeout: the BlazeMeter poll window is derived from this at runtime
+                // (JOB_TIMEOUT - 10), so no separate poll field. BlazeMeter defaults higher
+                // (cloud tests run long); JMeter stays at the ADO 120 default.
+                base.jobTimeout = n('fJobTimeout', base.brand === 'BlazeMeter' ? 250 : 120);
             } else if (repo === 'Axos.QE.Web') {
                 base.brand = v('fBrand') || base.brand;
                 base.env = v('fEnv') || base.env;
@@ -9131,6 +9506,23 @@ JOB_TIMEOUT: ${el('fJobTimeout') || '120'}`;
                     `  group: ${runnerGroup}\n` +
                     `  labels: [self-hosted, windows, x64]`;
             }
+
+        } else if (el('fRepo') === 'Axos.QE.Performance.Automation') {
+            const tool = (el('fBrand') === 'BlazeMeter') ? 'BlazeMeter' : 'JMeter';
+            if (tool === 'BlazeMeter') {
+                const bzJobTimeout = parseInt(el('fJobTimeout') || '250', 10) || 250;
+                prompt = `Create or update a BlazeMeter performance pipeline workflow file in the repo Axos.QE.Performance.Automation at:\n.github/workflows/${name}.yml\n\n` +
+                    `This file should call the reusable template _blazemeter-template.yml with these settings:\n\n` +
+                    `PIPELINE_NAME: ${name}\nACCOUNT: ${el('fBzAccount')}\nWORKSPACE: ${el('fBzWorkspace')}\nPROJECT: ${el('fBzProject')}\nTEST: ${el('fBzTestId')}\nTEST_NAME: ${el('fBzTestName')}\nJOB_TIMEOUT: ${bzJobTimeout}   # poll window derived as JOB_TIMEOUT - 10\n\n` +
+                    `Pass repo secrets BLAZEMETER_API_KEY and BLAZEMETER_API_SECRET through to the template. Use Perf_OLB_UAT_Sanity-BlazeMeter.yml as the exact format reference. Runs on a GitHub-hosted Linux runner (load executes in the BlazeMeter cloud).`;
+            } else {
+                prompt = `Create or update a JMeter performance pipeline workflow file in the repo Axos.QE.Performance.Automation at:\n.github/workflows/${name}.yml\n\n` +
+                    `This file should call the reusable template _jmeter-template.yml with these settings:\n\n` +
+                    `PIPELINE_NAME: ${name}\nTEST: ${el('fJmxName')}   # .jmx base name in src/scripts (no extension)\nTHREADS: ${el('fJmxThreads')}\nRAMPUP: ${el('fJmxRampup')}\nDURATION: ${el('fJmxDuration')}\nGRANULARITY: ${el('fJmxGranularity') || '1000'}\nJOB_TIMEOUT: ${el('fJobTimeout') || '120'}\nRUNNER_LABEL: ${el('fRunnerLabel') || 'AUTO'}\nCUSTOM_RUNNER_LABEL: ${el('fCustomRunnerLabel') || ''}\n\n` +
+                    `No repo secrets required. Runs on a self-hosted Windows runner via group ${runnerGroup} (labels [self-hosted, windows, x64]); JMeter expected at C:\\JMeter\\apache-jmeter-5.6.3 (self-heal install fallback). Use Perf_OLB_UAT_Regression-JMeter.yml as the exact format reference.`;
+            }
+            if (scheduleEnabled && scheduleCron) prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron}`;
+            else prompt += `\n\nKeep the schedule block as-is.`;
 
         } else if (el('fRepo') === 'Axos.QE.Web') {
             const brand = el('fBrand') || 'Enrollment';
@@ -9552,6 +9944,34 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 runnerLabel: 'QSDW-TFSBA01',
             };
         }
+        if (repo === 'Axos.QE.Performance.Automation') {
+            return {
+                repo,
+                platform: '04 Performance',
+                brand: 'JMeter',
+                env: 'UAT',
+                feature: 'OLB',
+                testType: 'Regression',
+                // JMeter
+                jmxName: 'OLB_UAT_PerformanceTest',
+                jmxThreads: '',
+                jmxRampup: '',
+                jmxDuration: '',
+                jmxGranularity: '1000',
+                // BlazeMeter
+                bzAccount: '',
+                bzWorkspace: '',
+                bzProject: '',
+                bzTestId: '',
+                bzTestName: '',
+                bzPollTimeout: '240',
+                runnerStrategy: 'group',
+                runnerGroup: DEFAULT_RUNNER_GROUP,
+                runnerLabel: 'AUTO',
+                customRunnerLabel: '',
+                jobTimeout: 120,
+            };
+        }
         // Default: TestIM pipelines
         return {
             repo,
@@ -9585,7 +10005,10 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         const repos = loadSyncRepos().map(r => r.repo);
         const unique = [...new Set(repos.filter(Boolean))];
         const defaultRepo = 'Axos.QE.Web';
-        const baseList = unique.length ? unique : ['Axos.QE.TestIM', 'Axos.QE.Mobile', 'Axos.QE.Crypto.Web', defaultRepo, 'Axos.QE.API_OLB', 'Axos.QE.API_CS', 'Axos.QE.API_UDB', 'Axos.QE.API_WFO'];
+        const KNOWN_REPOS = ['Axos.QE.TestIM', 'Axos.QE.Mobile', 'Axos.QE.Crypto.Web', defaultRepo, 'Axos.QE.API_OLB', 'Axos.QE.API_CS', 'Axos.QE.API_UDB', 'Axos.QE.API_WFO', 'Axos.QE.Performance.Automation'];
+        // Always offer the known repos (so Performance is selectable even when the
+        // user has only synced a subset), unioned with any extra synced repos.
+        const baseList = [...new Set([...(unique.length ? unique : []), ...KNOWN_REPOS])];
         if (!baseList.includes(defaultRepo)) baseList.unshift(defaultRepo);
         const current = String(prefill?.repo || '').trim() || defaultRepo;
         sel.innerHTML = baseList.map(r => `<option value="${r}" ${current === r ? 'selected' : ''}>${r}</option>`).join('');
@@ -9828,6 +10251,27 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         };
         for (const [k, outKey] of Object.entries(newmanMap)) {
             if (merged[k] !== undefined && merged[k] !== null && String(merged[k]).trim() !== '') entry[outKey] = merged[k];
+        }
+
+        // Performance (JMeter / BlazeMeter). Disambiguate the engine by which reusable
+        // template the caller uses — TEST/PROJECT mean different things per engine, so a
+        // repo-agnostic map can't be used here.
+        const usesBlaze = /_blazemeter-template\.yml/i.test(yamlText);
+        const usesJmeter = /_jmeter-template\.yml/i.test(yamlText);
+        if (usesBlaze) {
+            if (merged.ACCOUNT) entry.bzAccount = merged.ACCOUNT;
+            if (merged.WORKSPACE) entry.bzWorkspace = merged.WORKSPACE;
+            if (merged.PROJECT) entry.bzProject = merged.PROJECT;
+            if (merged.TEST) entry.bzTestId = merged.TEST;
+            if (merged.TEST_NAME) entry.bzTestName = merged.TEST_NAME;
+            if (merged.POLL_TIMEOUT_MIN) entry.bzPollTimeout = merged.POLL_TIMEOUT_MIN;
+            entry.project = ''; // PROJECT here is a BlazeMeter id, not a Testim project
+        } else if (usesJmeter) {
+            if (merged.TEST) entry.jmxName = merged.TEST;
+            if (merged.THREADS) entry.jmxThreads = merged.THREADS;
+            if (merged.RAMPUP) entry.jmxRampup = merged.RAMPUP;
+            if (merged.DURATION) entry.jmxDuration = merged.DURATION;
+            if (merged.GRANULARITY) entry.jmxGranularity = merged.GRANULARITY;
         }
 
         entry.schedule = scheduleCron;
@@ -10355,6 +10799,45 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 jobTimeout: 120,
                 schedule: '',
                 scheduleEnabled: false
+            };
+        }
+
+        // Performance pipelines (Axos.QE.Performance.Automation):
+        // Perf_{Feature}_{Env}_{TestType}-{JMeter|BlazeMeter}
+        // e.g. Perf_OLB_UAT_Regression-JMeter, Perf_OLB_UAT_Sanity-BlazeMeter
+        const perfMatch = name.match(/^Perf_(.+)_(DEV|QA|STG|UAT|PROD)_([A-Za-z]+)-(JMeter|BlazeMeter)$/i);
+        if (perfMatch) {
+            // The captured group is the full feature[_suffix]. We CANNOT reliably split
+            // it back into feature vs suffix (no marker; numeric IDs like "201_Registration"
+            // and suffixed names like "OLB3.0_E2E_UserLoad_Home" both use "_"), so keep the
+            // whole thing as the feature. featureDetail mirrors it; the name builder uses
+            // featureDetail, so it round-trips exactly. Fresh-create still composes
+            // feature + Custom Suffix from the separate form fields.
+            const featureFull = String(perfMatch[1] || '').trim();
+            const feature = featureFull;
+            const env = String(perfMatch[2] || 'UAT').toUpperCase();
+            const ttRaw = String(perfMatch[3] || 'Regression').toLowerCase();
+            const ttMap = { smoke: 'Smoke', sanity: 'Sanity', regression: 'Regression', healthcheck: 'Health Check', health: 'Health Check', load: 'Regression', stress: 'Regression' };
+            const testType = ttMap[ttRaw] || 'Regression';
+            const tool = /blazemeter/i.test(perfMatch[4]) ? 'BlazeMeter' : 'JMeter';
+            return {
+                filename, name,
+                repo: 'Axos.QE.Performance.Automation',
+                platform: '04 Performance',
+                brand: tool,
+                env,
+                feature,
+                featureDetail: featureFull,
+                testType,
+                jmxName: tool === 'JMeter' ? `${feature}_${env}_PerformanceTest` : '',
+                jmxThreads: '', jmxRampup: '', jmxDuration: '', jmxGranularity: '1000',
+                bzAccount: '', bzWorkspace: '', bzProject: '', bzTestId: '', bzTestName: '', bzPollTimeout: '240',
+                runnerStrategy: 'group',
+                runnerGroup: DEFAULT_RUNNER_GROUP,
+                runnerLabel: 'AUTO',
+                customRunnerLabel: '',
+                jobTimeout: 120,
+                schedule: '', scheduleEnabled: false
             };
         }
 
@@ -11108,6 +11591,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         if (isWebMonorepoPipeline(p)) return 'Axos.QE.Web';
         if (isCryptoPipeline(p)) return 'Axos.QE.Crypto.Web';
         if (isMobilePipeline(p)) return 'Axos.QE.Mobile';
+        if (isPerfPipeline(p)) return 'Axos.QE.Performance.Automation';
         return 'Axos.QE.TestIM';
     }
 
