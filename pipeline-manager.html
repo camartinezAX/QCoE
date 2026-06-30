@@ -2656,6 +2656,36 @@
         'Orchestrators'
     ];
 
+    // Performance feature catalog (JMeter / BlazeMeter). Performance names encode
+    // feature[_suffix] in one filename segment with no boundary marker, so — exactly like
+    // the Web/OutSystems dropdowns — a known catalog is what lets the parser split the
+    // feature from the Custom Suffix and survive a re-sync. Longest match wins (OLB3.0
+    // before OLB). User-added features persist via the custom-feature store below.
+    const PERF_FEATURES = [
+        'OLB',
+        'OLB3.0',
+        'UDB',
+        'UDB3.0'
+    ];
+
+    // Single source of truth for splitting a Performance feature segment into the catalog
+    // base feature + Custom Suffix. Longest catalog match wins (OLB3.0 before OLB), matched
+    // case-insensitively but returning the catalog's canonical casing for the feature and
+    // preserving the original casing of the suffix. No match → the whole string is the
+    // feature, suffix empty. Used by parseFilename, the edit form, and the prompt builder so
+    // they can never disagree — and so a stale stored feature (the full string) still renders
+    // as base + suffix instead of leaking the combined value into the dropdown.
+    function splitPerfFeature(full) {
+        const s = String(full || '').trim();
+        if (!s) return { feature: '', suffix: '' };
+        const lf = s.toLowerCase();
+        const match = [...PERF_FEATURES]
+            .sort((a, b) => b.length - a.length)
+            .find(f => lf === f.toLowerCase() || lf.startsWith(f.toLowerCase() + '_'));
+        if (!match) return { feature: s, suffix: '' };
+        return { feature: match, suffix: s.slice(match.length).replace(/^_/, '') };
+    }
+
     // Custom Feature persistence (per-browser).
     // Keeps user-added features available across refreshes and improves parsing/grouping for custom workflows.
     const CUSTOM_FEATURES_KEY = 'axos_pipeline_manager_custom_features_v1';
@@ -2666,6 +2696,7 @@
 
     const DEFAULT_WEB_FEATURE_KEYS = new Set((FEATURES || []).map(f => _featureKey(f?.name)).filter(Boolean));
     const DEFAULT_OUTSYSTEMS_FEATURE_KEYS = new Set((OUTSYSTEMS_FEATURES || []).map(n => _featureKey(n)).filter(Boolean));
+    const DEFAULT_PERF_FEATURE_KEYS = new Set((PERF_FEATURES || []).map(n => _featureKey(n)).filter(Boolean));
 
     function readCustomFeatureStore() {
         try {
@@ -2673,14 +2704,15 @@
             const parsed = raw ? JSON.parse(raw) : null;
             const web = Array.isArray(parsed?.web) ? parsed.web : [];
             const outsystems = Array.isArray(parsed?.outsystems) ? parsed.outsystems : [];
-            return { web, outsystems };
+            const performance = Array.isArray(parsed?.performance) ? parsed.performance : [];
+            return { web, outsystems, performance };
         } catch {
-            return { web: [], outsystems: [] };
+            return { web: [], outsystems: [], performance: [] };
         }
     }
 
     function writeCustomFeatureStore(store) {
-        try { localStorage.setItem(CUSTOM_FEATURES_KEY, JSON.stringify(store || { web: [], outsystems: [] })); } catch { /* ignore */ }
+        try { localStorage.setItem(CUSTOM_FEATURES_KEY, JSON.stringify(store || { web: [], outsystems: [], performance: [] })); } catch { /* ignore */ }
     }
 
     function computeNextWebFeatureId() {
@@ -2739,7 +2771,44 @@
             // best-effort
         }
 
+        // Normalize Performance custom feature names and merge into PERF_FEATURES
+        const existingPerfKeys = new Set((PERF_FEATURES || []).map(n => _featureKey(n)));
+        const normalizedPerf = [];
+        for (const entry of (store.performance || [])) {
+            const n = String(entry || '').trim();
+            if (!n) continue;
+            const k = _featureKey(n);
+            if (!k) continue;
+            normalizedPerf.push(n);
+        }
+        for (const n of normalizedPerf) {
+            const k = _featureKey(n);
+            if (existingPerfKeys.has(k)) continue;
+            PERF_FEATURES.push(n);
+            existingPerfKeys.add(k);
+        }
+        try {
+            if (JSON.stringify(store.performance || []) !== JSON.stringify(normalizedPerf)) { store.performance = normalizedPerf; changed = true; }
+        } catch {
+            // best-effort
+        }
+
         if (changed) writeCustomFeatureStore(store);
+    }
+
+    function addCustomPerfFeature(name) {
+        const n = String(name || '').trim();
+        if (!n) return null;
+        const k = _featureKey(n);
+        if (!k) return null;
+        const existing = PERF_FEATURES.find(x => _featureKey(x) === k);
+        if (existing) return existing;
+        PERF_FEATURES.push(n);
+        const store = readCustomFeatureStore();
+        store.performance = Array.isArray(store.performance) ? store.performance : [];
+        if (!store.performance.some(x => _featureKey(x) === k)) store.performance.push(n);
+        writeCustomFeatureStore(store);
+        return n;
     }
 
     function addCustomOutsystemsFeature(name) {
@@ -5901,13 +5970,11 @@ ${os.map(n => `- ${n}`).join('\n')}
                     `No repo secrets are required. It runs on a self-hosted Windows runner via runner group ${runnerGroup} (labels [self-hosted, windows, x64]); JMeter is expected at C:\\JMeter\\apache-jmeter-5.6.3 with a self-heal install fallback. Use the existing caller workflow Perf_OLB_UAT_Regression-JMeter.yml as the exact format reference.`;
             }
             // Spell out the feature/suffix split so the breadcrumb <Feature> segment is
-            // unambiguous. featureDetail holds feature[_suffix]; recover the suffix by stripping
-            // the leading "feature_" (same deterministic split the edit form uses).
+            // unambiguous. Derive both from the FULL value via the shared catalog split, so the
+            // prompt is correct even if a stale sync left the whole feature[_suffix] in feature.
             {
-                const featureBase = String(p.feature || '').trim();
                 const featureFull = String(p.featureDetail || p.feature || '').trim();
-                const fKey = featureBase.replace(/\s+/g, '');
-                const suffix = (fKey && featureFull.startsWith(fKey + '_')) ? featureFull.slice(fKey.length + 1) : '';
+                const { feature: featureBase, suffix } = splitPerfFeature(featureFull);
                 prompt += `\n\nFeature: ${featureBase}\n` +
                     `Custom Suffix: ${suffix || 'none'}\n` +
                     `For the header breadcrumb, the <Feature> segment is exactly "${featureFull}" (it matches PIPELINE_NAME — do not abbreviate or re-split it).`;
@@ -6299,14 +6366,10 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                             return '';
                         }
                         if (repoName === 'Axos.QE.Performance.Automation') {
-                            // Performance stores the base in feature and feature[_suffix] in
-                            // featureDetail. Because we know the base, the split is unambiguous:
-                            // strip the leading "feature_" to recover the Custom Suffix so it
-                            // round-trips on edit (synced pipelines have feature == featureDetail,
-                            // so nothing is stripped and the suffix stays empty).
-                            const fKey = String(p.feature || '').replace(/\s+/g, '');
-                            if (fKey && fd.startsWith(fKey + '_')) return fd.slice(fKey.length + 1);
-                            return '';
+                            // Recover the Custom Suffix from the FULL value via the catalog split
+                            // (same helper parseFilename/the dropdown/the prompt use), so it works
+                            // even when a stale sync left the whole feature[_suffix] in feature.
+                            return splitPerfFeature(String(p.featureDetail || p.feature || '').trim()).suffix;
                         }
                         const parts = fd.split('_').filter(Boolean);
                         if (parts[0] === 'OLB') return parts.slice(2).join('_') || '';
@@ -6875,8 +6938,21 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Feature <span class="req">*</span></label>
-                            <input type="text" id="fFeature" placeholder="e.g. OLB, CreditCard, UDB" value="${p.feature || ''}" oninput="updateNamePreview()" ${isView ? 'disabled' : ''}>
-                            <span class="field-help">Domain under test (becomes part of the pipeline name)</span>
+                            <select id="fFeature" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
+                                ${(() => {
+                                    // Derive the catalog base from the FULL value (featureDetail), not the stored
+                                    // feature — a stale sync may have left the whole "OLB3.0_E2E_UserLoad_Home" in
+                                    // feature, and we must show OLB3.0 here (suffix goes to the Custom Suffix field),
+                                    // never leak the combined value into the dropdown.
+                                    const cur = splitPerfFeature(String(p.featureDetail || p.feature || '').trim()).feature;
+                                    const opts = [...PERF_FEATURES];
+                                    // Keep an unknown base selectable (no catalog match) so editing never loses it.
+                                    if (cur && !opts.some(f => f.toLowerCase() === cur.toLowerCase())) opts.unshift(cur);
+                                    const optionEls = opts.map(f => `<option value="${escapeHtml(f)}" ${cur.toLowerCase() === f.toLowerCase() ? 'selected' : ''}>${escapeHtml(f)}</option>`).join('');
+                                    return `<option value="">Select...</option>${optionEls}<option value="__custom__">+ Add custom feature…</option>`;
+                                })()}
+                            </select>
+                            <span class="field-help">Domain under test (becomes part of the pipeline name). Custom Suffix below is appended after it.</span>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Test Type <span class="req">*</span></label>
@@ -8285,6 +8361,10 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         if (isMobileForm()) return;
         const repo = document.getElementById('fRepo')?.value || '';
         if (repo === 'Axos.QE.Crypto.Web') return;
+        // Performance renders #fFeature from its own PERF_FEATURES catalog (not the Web/Testim
+        // feature list keyed by brand), so never let a brand change rebuild it from the wrong
+        // catalog — that would wipe the perf options and the "+ Add custom feature" entry.
+        if (repo === 'Axos.QE.Performance.Automation') return;
         const brandSelect = document.getElementById('fBrand');
         if (!brandSelect) return;
         let brand = brandSelect.value || '';
@@ -8665,7 +8745,9 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         if (repo === 'Axos.QE.Performance.Automation') {
             const brand = document.getElementById('fBrand')?.value; // JMeter | BlazeMeter
             const feature = document.getElementById('fFeature')?.value?.trim();
-            if (!brand || !env || !testType || !feature) {
+            // '__custom__' is the transient "+ Add custom feature…" sentinel, not a real
+            // feature — treat it as unselected so the preview never builds Perf___custom__…
+            if (!brand || !env || !testType || !feature || feature === '__custom__') {
                 document.getElementById('namePreview').innerHTML = '<span class="dim">Select tool, environment, feature, and test type...</span>';
                 updateFormStatus();
                 return;
@@ -8898,6 +8980,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             need('fBrand', 'Tool (JMeter/BlazeMeter)');
             need('fEnv', 'Environment');
             need('fFeature', 'Feature');
+            // '__custom__' is the transient add-custom sentinel, not a real feature.
+            if (val('fFeature') === '__custom__') missing.push('Feature');
             need('fTestType', 'Test Type');
             if (val('fBrand') === 'BlazeMeter') need('fBzTestId', 'BlazeMeter Test ID');
             else need('fJmxName', 'JMX Script');
@@ -8965,7 +9049,10 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             }
             if (repo === 'Axos.QE.Performance.Automation') {
                 const brand = el('fBrand')?.value || 'JMeter';
-                const common = el('fBrand')?.value && el('fEnv')?.value && el('fFeature')?.value && el('fTestType')?.value;
+                // Reject the '__custom__' sentinel — it's the transient "+ Add custom feature…"
+                // option, not a real feature, so the form must not be considered valid while selected.
+                const featureVal = el('fFeature')?.value;
+                const common = el('fBrand')?.value && el('fEnv')?.value && featureVal && featureVal !== '__custom__' && el('fTestType')?.value;
                 fieldsOk = (brand === 'BlazeMeter')
                     ? (common && el('fBzTestId')?.value)
                     : (common && el('fJmxName')?.value);
@@ -10833,14 +10920,15 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         // e.g. Perf_OLB_UAT_Regression-JMeter, Perf_OLB_UAT_Sanity-BlazeMeter
         const perfMatch = name.match(/^Perf_(.+)_(DEV|QA|STG|UAT|PROD)_([A-Za-z]+)-(JMeter|BlazeMeter)$/i);
         if (perfMatch) {
-            // The captured group is the full feature[_suffix]. We CANNOT reliably split
-            // it back into feature vs suffix (no marker; numeric IDs like "201_Registration"
-            // and suffixed names like "OLB3.0_E2E_UserLoad_Home" both use "_"), so keep the
-            // whole thing as the feature. featureDetail mirrors it; the name builder uses
-            // featureDetail, so it round-trips exactly. Fresh-create still composes
-            // feature + Custom Suffix from the separate form fields.
+            // The captured group is the full feature[_suffix]. Split it against the known
+            // PERF_FEATURES catalog (longest match first, so "OLB3.0" wins over "OLB"): the
+            // matched catalog entry is the Feature, the remainder is the Custom Suffix. This
+            // is what lets the split survive a sync — the filename itself has no boundary
+            // marker. featureDetail keeps the full string so the name builder round-trips; if
+            // nothing in the catalog matches, fall back to treating the whole thing as the
+            // feature (suffix empty), exactly as before.
             const featureFull = String(perfMatch[1] || '').trim();
-            const feature = featureFull;
+            const feature = splitPerfFeature(featureFull).feature;
             const env = String(perfMatch[2] || 'UAT').toUpperCase();
             const ttRaw = String(perfMatch[3] || 'Regression').toLowerCase();
             const ttMap = { smoke: 'Smoke', sanity: 'Sanity', regression: 'Regression', healthcheck: 'Health Check', health: 'Health Check', load: 'Regression', stress: 'Regression' };
@@ -11327,8 +11415,9 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 
             const brand = String(document.getElementById('fBrand')?.value || '').trim();
             const isOs = isOutsystemsBrand(brand);
+            const isPerf = repo === 'Axos.QE.Performance.Automation';
 
-            const custom = prompt(isOs ? 'Enter new OutSystems feature name:' : 'Enter new feature name:');
+            const custom = prompt(isOs ? 'Enter new OutSystems feature name:' : isPerf ? 'Enter new Performance feature (e.g. OLB, UDB):' : 'Enter new feature name:');
             if (custom && custom.trim()) {
                 const val = custom.trim();
                 if (val === '__custom__') {
@@ -11342,6 +11431,10 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 let insertedLabel = val;
                 if (isOs) {
                     const added = addCustomOutsystemsFeature(val) || val;
+                    insertedValue = String(added);
+                    insertedLabel = String(added);
+                } else if (isPerf) {
+                    const added = addCustomPerfFeature(val) || val;
                     insertedValue = String(added);
                     insertedLabel = String(added);
                 } else {
