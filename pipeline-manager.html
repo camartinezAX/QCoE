@@ -5900,6 +5900,18 @@ ${os.map(n => `- ${n}`).join('\n')}
                     `RUNNER_LABEL: ${p.runnerLabel || 'AUTO'}\nCUSTOM_RUNNER_LABEL: ${p.customRunnerLabel || ''}\n\n` +
                     `No repo secrets are required. It runs on a self-hosted Windows runner via runner group ${runnerGroup} (labels [self-hosted, windows, x64]); JMeter is expected at C:\\JMeter\\apache-jmeter-5.6.3 with a self-heal install fallback. Use the existing caller workflow Perf_OLB_UAT_Regression-JMeter.yml as the exact format reference.`;
             }
+            // Spell out the feature/suffix split so the breadcrumb <Feature> segment is
+            // unambiguous. featureDetail holds feature[_suffix]; recover the suffix by stripping
+            // the leading "feature_" (same deterministic split the edit form uses).
+            {
+                const featureBase = String(p.feature || '').trim();
+                const featureFull = String(p.featureDetail || p.feature || '').trim();
+                const fKey = featureBase.replace(/\s+/g, '');
+                const suffix = (fKey && featureFull.startsWith(fKey + '_')) ? featureFull.slice(fKey.length + 1) : '';
+                prompt += `\n\nFeature: ${featureBase}\n` +
+                    `Custom Suffix: ${suffix || 'none'}\n` +
+                    `For the header breadcrumb, the <Feature> segment is exactly "${featureFull}" (it matches PIPELINE_NAME — do not abbreviate or re-split it).`;
+            }
             if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
             else prompt += `\n\nKeep the schedule block as-is.`;
             if (p.renamedFrom) prompt += `\n\nAlso delete the old workflow file: .github/workflows/${p.renamedFrom}`;
@@ -6287,10 +6299,13 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                             return '';
                         }
                         if (repoName === 'Axos.QE.Performance.Automation') {
-                            // Performance stores the full feature[_suffix] in featureDetail and the
-                            // Feature field, so we cannot reliably split it back (the Web OLB rule
-                            // would mis-derive, and re-save would double the suffix). Leave the
-                            // suffix field empty on edit; the full value lives in the Feature field.
+                            // Performance stores the base in feature and feature[_suffix] in
+                            // featureDetail. Because we know the base, the split is unambiguous:
+                            // strip the leading "feature_" to recover the Custom Suffix so it
+                            // round-trips on edit (synced pipelines have feature == featureDetail,
+                            // so nothing is stripped and the suffix stays empty).
+                            const fKey = String(p.feature || '').replace(/\s+/g, '');
+                            if (fKey && fd.startsWith(fKey + '_')) return fd.slice(fKey.length + 1);
                             return '';
                         }
                         const parts = fd.split('_').filter(Boolean);
@@ -10518,6 +10533,20 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 if (entry.collectionSubfolder !== undefined) parsed.collectionSubfolder = entry.collectionSubfolder;
                 if (entry.hostsUatEnv !== undefined) parsed.hostsUatEnv = entry.hostsUatEnv;
                 if (entry.maxRetries !== undefined) parsed.maxRetries = entry.maxRetries;
+                // Performance (BlazeMeter / JMeter) fields — without these the sync would
+                // reset them to parseFilename's empty defaults, wiping the Test ID / Account /
+                // Workspace / Project (and the JMeter knobs) on every sync.
+                if (entry.bzAccount !== undefined) parsed.bzAccount = entry.bzAccount;
+                if (entry.bzWorkspace !== undefined) parsed.bzWorkspace = entry.bzWorkspace;
+                if (entry.bzProject !== undefined) parsed.bzProject = entry.bzProject;
+                if (entry.bzTestId !== undefined) parsed.bzTestId = entry.bzTestId;
+                if (entry.bzTestName !== undefined) parsed.bzTestName = entry.bzTestName;
+                if (entry.bzPollTimeout !== undefined) parsed.bzPollTimeout = entry.bzPollTimeout;
+                if (entry.jmxName !== undefined) parsed.jmxName = entry.jmxName;
+                if (entry.jmxThreads !== undefined) parsed.jmxThreads = entry.jmxThreads;
+                if (entry.jmxRampup !== undefined) parsed.jmxRampup = entry.jmxRampup;
+                if (entry.jmxDuration !== undefined) parsed.jmxDuration = entry.jmxDuration;
+                if (entry.jmxGranularity !== undefined) parsed.jmxGranularity = entry.jmxGranularity;
                 if (entry.schedule) parsed.schedule = entry.schedule;
                 if (entry.scheduleEnabled !== undefined) parsed.scheduleEnabled = entry.scheduleEnabled;
                 if (entry.repeatUnit !== undefined) parsed.repeatUnit = entry.repeatUnit;
