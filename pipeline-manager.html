@@ -4756,11 +4756,9 @@ ${os.map(n => `- ${n}`).join('\n')}
                                 </div>
                                 <div class="tree-children${envOpen ? ' open' : ''}" id="children-${envKey}">`;
 
-                            if (platform === '04 Performance') {
-                                // Performance: env is the deepest folder — list pipelines directly
-                                // under it (no feature level), per the JMeter/BlazeMeter > env layout.
-                                for (const pp of envPipelines) { html += pipelineTreeNode(pp, 72); }
-                            } else {
+                            // Performance (JMeter/BlazeMeter) has no catalog FEATURES, so its
+                            // suites fall through to the extraFeatures path below and render as
+                            // feature folders — same env > feature > yml layout as API/Web/Mobile.
                             const featureList = isOutsystemsBrand(brandName)
                                 ? OUTSYSTEMS_FEATURES.map(name => ({ id: '', name }))
                                 : FEATURES;
@@ -4795,7 +4793,6 @@ ${os.map(n => `- ${n}`).join('\n')}
                             }
                             const trulyUnmatched = noFeatPipelines.filter(p => !p.feature);
                             for (const pp of trulyUnmatched) { html += pipelineTreeNode(pp, 72); }
-                            }
 
                             html += `</div></div>`;
                         }
