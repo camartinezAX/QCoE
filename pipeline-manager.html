@@ -4552,7 +4552,11 @@ ${os.map(n => `- ${n}`).join('\n')}
             schedule: 'Schedule cron (UTC)',
             repeatUnit: 'Repeat unit',
             repeatEvery: 'Repeat every',
-            repeatDom: 'Day of month'
+            repeatDom: 'Day of month',
+
+            // Email
+            emailEnabled: 'Email results enabled',
+            emailRecipients: 'Email recipients'
         };
         return labels[key] || key;
     }
@@ -4575,6 +4579,7 @@ ${os.map(n => `- ${n}`).join('\n')}
             'grep', 'suite', 'spec', 'parallelSplit', 'tunnel', 'appId', 'deviceName', 'deviceOS', 'bsUsername', 'bsAccessKey',
             'runnerLabel', 'customRunnerLabel', 'jobTimeout',
             'scheduleEnabled', 'schedule', 'repeatUnit', 'repeatEvery', 'repeatDom',
+            'emailEnabled', 'emailRecipients',
             'repo', 'filename', 'name'
         ];
         const orderIndex = new Map(order.map((k, i) => [k, i]));
@@ -5711,6 +5716,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                 <div class="meta-item">&#127760; ${p.env}</div>
                 <div class="meta-item">&#128196; ${suiteOrFeature.substring(0, 50)}${suiteOrFeature.length > 50 ? '...' : ''}</div>
                 ${p.scheduleEnabled ? `<div class="meta-item" style="color:var(--success);">&#128337; Scheduled</div>` : ''}
+                ${p.emailEnabled ? `<div class="meta-item" style="color:var(--axos-orange);">&#128231; Email</div>` : ''}
             </div>
         </div>`;
     }
@@ -6157,6 +6163,18 @@ ${os.map(n => `- ${n}`).join('\n')}
 
         if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
         else prompt += `\n\nKeep the schedule block commented out.`;
+
+        if (p.emailEnabled) {
+            const rec = String(p.emailRecipients || '').trim();
+            prompt += `\n\nEMAIL RESULTS (Power Automate): In the caller workflow's \`test-results\` job, mirror the "Set up Node (for email)" and "Email results (Power Automate)" steps from Web_AxosBank_UAT_HealthCheck-Testim.yml. The email step runs \`node tools/build-email-from-junit.mjs\`, uses continue-on-error: true, and is gated on \`always() && steps.detect.outputs.found == 'true'\`. Env: JUNIT_GLOB_DIR=reports, REPORT_TITLE=${p.name}, REPORT_ENV=${p.env || 'UAT'}, POWER_AUTOMATE_EMAIL_WEBHOOK_URL=\${{ secrets.POWER_AUTOMATE_EMAIL_WEBHOOK_URL }}, plus GITHUB_SERVER_URL/GITHUB_REPOSITORY/GITHUB_RUN_ID.`;
+            if (rec) {
+                prompt += ` Recipients OVERRIDE for this pipeline: set TESTIM_EMAIL_RECIPIENTS="${rec}" (a literal string) and gate the two steps on \`always() && steps.detect.outputs.found == 'true'\` only (no vars gate).`;
+            } else {
+                prompt += ` Recipients: use the shared repo variable — set TESTIM_EMAIL_RECIPIENTS=\${{ vars.TESTIM_EMAIL_RECIPIENTS }} and add \`&& vars.TESTIM_EMAIL_RECIPIENTS != ''\` to the two steps' if: condition (default behavior).`;
+            }
+        } else {
+            prompt += `\n\nEMAIL RESULTS: Do NOT email — omit the "Set up Node (for email)" and "Email results (Power Automate)" steps (remove them from the test-results job if present).`;
+        }
 
         prompt += `\n\nUse the existing caller workflow file Web_AxosBank_UAT_HealthCheck-Testim.yml as the exact format reference. Include:\n` +
             `- A header comment showing the folder path (e.g. Web > Axos Bank > UAT > ...)\n` +
@@ -7574,6 +7592,26 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     </div>
                 </div>
 
+                ${repoName === 'Axos.QE.TestIM' ? `
+                <div style="margin-top:8px;">
+                    <label class="form-label" style="margin-bottom:8px;">Email Results</label>
+                    <label class="toggle-row" onclick="event.stopPropagation()">
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="fEmailEnabled" ${p.emailEnabled ? 'checked' : ''} onchange="toggleEmailUI()" ${isView ? 'disabled' : ''}>
+                            <span class="toggle-slider"></span>
+                        </div>
+                        <div class="toggle-info">
+                            <div class="toggle-label">&#128231; Email results after each run</div>
+                            <div class="toggle-desc">Sends a formatted PASS/FAIL report via Power Automate</div>
+                        </div>
+                    </label>
+                    <div id="emailConfig" style="${p.emailEnabled ? 'display:block;' : 'display:none;'} margin-top:14px;">
+                        <label class="form-label" style="margin-bottom:6px;">Recipients</label>
+                        <input type="text" id="fEmailRecipients" value="${escapeHtml(p.emailRecipients || '')}" placeholder="Default: TESTIM_EMAIL_RECIPIENTS variable" ${isView ? 'disabled' : ''} style="width:100%;">
+                        <div class="toggle-desc" style="margin-top:6px;">Leave blank to use the shared <b>TESTIM_EMAIL_RECIPIENTS</b> variable. Or enter emails separated by <b>;</b> to override for this pipeline.</div>
+                    </div>
+                </div>` : ''}
+
                 <div style="margin-top:8px;">
                     <label class="form-label" style="margin-bottom:8px;">Schedule</label>
                     <label class="toggle-row" onclick="event.stopPropagation()">
@@ -7947,6 +7985,12 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         const show = document.getElementById('fScheduleEnabled').checked;
         document.getElementById('scheduleConfig').style.display = show ? 'flex' : 'none';
         if (show) updateSchedPreview();
+    }
+
+    function toggleEmailUI() {
+        const show = !!document.getElementById('fEmailEnabled')?.checked;
+        const cfg = document.getElementById('emailConfig');
+        if (cfg) cfg.style.display = show ? 'block' : 'none';
     }
 
     function toggleRunnerStrategyUI() {
@@ -9417,6 +9461,9 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         base.repeatEvery = v('fRepeatEvery') || '1';
         base.repeatDom = v('fRepeatDom') || '';
 
+        base.emailEnabled = !!document.getElementById('fEmailEnabled')?.checked;
+        base.emailRecipients = base.emailEnabled ? (v('fEmailRecipients') || '') : '';
+
         const repoName = String(base.repo || '').trim();
         const newKey = pipelineKeyFrom(repoName, filename);
         const oldParsed = editingPipeline ? parsePipelineKey(editingPipeline) : null;
@@ -10398,6 +10445,19 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         entry.schedule = scheduleCron;
         entry.scheduleEnabled = !!scheduleCron;
 
+        // Email report step (mirror schedule detection so sync reflects reality).
+        if (/build-email-from-junit\.mjs/.test(yamlText)) {
+            entry.emailEnabled = true;
+            // Capture a literal recipients override; a ${{ vars.* }} value means "use the default variable".
+            const mRec = yamlText.match(/TESTIM_EMAIL_RECIPIENTS:\s*(.+)/);
+            let rec = mRec ? stripYamlScalarQuotes(mRec[1].trim()) : '';
+            if (/\$\{\{/.test(rec)) rec = '';
+            entry.emailRecipients = rec;
+        } else {
+            entry.emailEnabled = false;
+            entry.emailRecipients = '';
+        }
+
         // WEEK_MODULO drives the template "Schedule gate" (runs every N weeks).
         const wmRaw = merged.WEEK_MODULO;
         const wm = wmRaw !== undefined && wmRaw !== null ? parseInt(String(wmRaw), 10) : 0;
@@ -10658,6 +10718,8 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 if (entry.jmxGranularity !== undefined) parsed.jmxGranularity = entry.jmxGranularity;
                 if (entry.schedule) parsed.schedule = entry.schedule;
                 if (entry.scheduleEnabled !== undefined) parsed.scheduleEnabled = entry.scheduleEnabled;
+                if (entry.emailEnabled !== undefined) parsed.emailEnabled = entry.emailEnabled;
+                if (entry.emailRecipients !== undefined) parsed.emailRecipients = entry.emailRecipients;
                 if (entry.repeatUnit !== undefined) parsed.repeatUnit = entry.repeatUnit;
                 if (entry.repeatEvery !== undefined) parsed.repeatEvery = entry.repeatEvery;
                 if (entry.repeatDom !== undefined) parsed.repeatDom = entry.repeatDom;
