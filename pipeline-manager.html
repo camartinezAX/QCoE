@@ -895,6 +895,14 @@
         .dash-item.active{border-color:rgba(250,167,74,0.85);box-shadow:0 10px 28px rgba(250,167,74,0.10);}
         .dash-item-name{font-size:12px;font-weight:800;color:var(--text-primary);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
         .dash-item-sub{font-size:11px;color:var(--text-muted);display:flex;gap:10px;flex-wrap:wrap;}
+        .dash-change-badge{
+            display:inline-block;margin-left:6px;padding:2px 6px;border-radius:6px;
+            font-size:9px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;vertical-align:middle;
+        }
+        .dash-change-badge.added{background:rgba(34,197,94,0.15);color:var(--success);}
+        .dash-change-badge.modified{background:rgba(59,130,246,0.15);color:var(--info);}
+        .dash-change-badge.removed{background:var(--error-bg);color:var(--error);}
+        .dash-updates-item{border-style:dashed;}
 
         .dash-head{
             display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:16px;
@@ -1981,7 +1989,7 @@
                         <span style="font-size:16px;">&#128202;</span> Dashboards
                     </div>
                     <div style="font-size:11px; color:var(--text-muted); line-height:1.6;">
-                        Dashboards are saved in your browser (localStorage) and scoped per repo.
+                        Edit locally, then review <strong>Updates</strong> and use <strong>Generate Prompt</strong> when ready. Sync clears changes after the repo file is applied.
                     </div>
                 </div>
                 <div id="dashboardsList" style="padding:14px 16px; overflow:auto; flex:1;"></div>
@@ -3779,6 +3787,38 @@ ${os.map(n => `- ${n}`).join('\n')}
     function orchestratorSetFromFeatureDetail(featureDetail) {
         const m = String(featureDetail || '').match(/Orchestrators[_-](.+)$/);
         return m && m[1] ? m[1].trim() : '';
+    }
+
+    // Legacy orchestrators embed the dispatch set in the filename; new-format uses SET_NAME from YAML only.
+    function orchestratorSetForForm(p) {
+        const set = String(p?.orchestratorSet || '').trim();
+        if (set) return set;
+        if (String(p?.testType || '') === 'Orchestrator') {
+            return orchestratorSetFromFeatureDetail(p?.featureDetail) || String(p?.customSuffix || '').trim();
+        }
+        return '';
+    }
+
+    // Filename custom suffix for orchestrators. Legacy pipelines embed the dispatch set in
+    // featureDetail ("Orchestrators_<set>"); that tail is dispatch-only, not a name suffix.
+    function orchestratorCustomSuffixFromPipeline(p) {
+        const setName = String(p?.orchestratorSet || '').trim();
+        const fromDetail = orchestratorSetFromFeatureDetail(p?.featureDetail);
+        if (setName && fromDetail === setName) return '';
+        const stored = String(p?.customSuffix ?? '').trim();
+        if (stored) return stored;
+        return fromDetail || '';
+    }
+
+    // Card/list label for orchestrators: set name when known, else filename custom suffix.
+    function orchestratorDisplayLabel(p) {
+        const set = orchestratorSetForForm(p);
+        if (set) return set;
+        const suffix = String(p?.customSuffix || '').trim();
+        if (suffix) return suffix;
+        const fromDetail = orchestratorSetFromFeatureDetail(p?.featureDetail);
+        if (fromDetail) return fromDetail;
+        return String(p?.feature || 'Orchestrators').trim() || 'Orchestrators';
     }
 
     function orchestratorTargetsToRefs(targets) {
@@ -5655,7 +5695,7 @@ ${os.map(n => `- ${n}`).join('\n')}
         if (field === 'repo') return normRepoForPipeline(p) || '';
         if (field === 'scheduled') return p.scheduleEnabled ? 'true' : 'false';
         if (field === 'suiteOrFeature') {
-            if (isOrchestratorPipeline(p)) return (p.orchestratorSet || p.featureDetail || p.feature || '');
+            if (isOrchestratorPipeline(p)) return orchestratorDisplayLabel(p);
             const repo = normRepoForPipeline(p) || '';
             const f = String(p.feature || '').trim();
             const fd = String(p.featureDetail || '').trim();
@@ -5688,7 +5728,7 @@ ${os.map(n => `- ${n}`).join('\n')}
             'badge-health';
         const badgeLabel = isOrch ? 'Orchestrator' : (p.testType || '');
         let suiteOrFeature = isOrchestratorPipeline(p)
-            ? (p.orchestratorSet || p.featureDetail || p.feature || '')
+            ? orchestratorDisplayLabel(p)
             : (p.testSuite || p.feature || '');
         const ghRepo = normRepoForPipeline(p) || '';
         if (!isOrchestratorPipeline(p) && ghRepo === 'Axos.QE.API_OLB') {
@@ -5874,7 +5914,7 @@ ${os.map(n => `- ${n}`).join('\n')}
         const runnerGroup = getRunnerGroup(p);
 
         if (isOrchestratorPipeline(p)) {
-            const setName = (p.orchestratorSet || '').trim() || orchestratorSetFromFeatureDetail(p.featureDetail) || 'WFO';
+            const setName = orchestratorSetForForm(p) || 'WFO';
             const targets = Array.isArray(p.orchestratorTargets) ? p.orchestratorTargets : [];
             const eventType = `orchestrator-${String(setName || 'wfo').toLowerCase()}`;
             const isWebOrch = repoName === 'Axos.QE.Web';
@@ -6410,6 +6450,10 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     <label class="form-label">Custom Suffix <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional - appended to feature name)</span></label>
                     <input type="text" id="fCustomSuffix" placeholder="e.g. IBD, External, Internal" value="${(() => {
                         const fd = String(p.featureDetail || '').trim();
+                        if (String(p.feature || '') === 'Orchestrators' || fd.startsWith('Orchestrators_')) {
+                            return orchestratorCustomSuffixFromPipeline(p);
+                        }
+                        if (String(p.customSuffix || '').trim()) return String(p.customSuffix).trim();
                         if (!fd) return '';
                         if (repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB' || repoName === 'Axos.QE.API_WFO') {
                             // For API pipelines, derive suffix after the feature is selected (avoids feature duplication).
@@ -6574,7 +6618,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             <div class="section-content">
                 <div class="form-group">
                     <label class="form-label">Team / Set Name <span class="req">*</span></label>
-                    <input type="text" id="fOrchSetName" placeholder="e.g. AndroidSmoke" value="${(p.orchestratorSet || '').trim() || orchestratorSetFromFeatureDetail(p.featureDetail) || (p.customSuffix || '')}" oninput="onOrchSetNameInput()" ${isView ? 'disabled' : ''}>
+                    <input type="text" id="fOrchSetName" placeholder="e.g. AndroidSmoke" value="${orchestratorSetForForm(p)}" oninput="onOrchSetNameInput()" ${isView ? 'disabled' : ''}>
                     <span class="field-help">The targets.json set this orchestrator dispatches. Independent of the pipeline name (Custom Suffix).</span>
                 </div>
 
@@ -6728,7 +6772,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             <div class="section-content">
                 <div class="form-group">
                     <label class="form-label">Team / Set Name <span class="req">*</span></label>
-                    <input type="text" id="fOrchSetName" placeholder="e.g. OLBAPISanity" value="${(p.orchestratorSet || '').trim() || orchestratorSetFromFeatureDetail(p.featureDetail) || (p.customSuffix || '')}" oninput="onOrchSetNameInput()" ${isView ? 'disabled' : ''}>
+                    <input type="text" id="fOrchSetName" placeholder="e.g. OLBAPISanity" value="${orchestratorSetForForm(p)}" oninput="onOrchSetNameInput()" ${isView ? 'disabled' : ''}>
                     <span class="field-help">This should match the team name you put in Custom Suffix. Each team gets its own orchestrator set.</span>
                 </div>
 
@@ -7397,8 +7441,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             <div class="section-content">
                 <div class="form-group">
                     <label class="form-label">Team / Set Name <span class="req">*</span></label>
-                    <input type="text" id="fOrchSetName" placeholder="e.g. OutSystemsAml" value="${(p.orchestratorSet || '').trim() || orchestratorSetFromFeatureDetail(p.featureDetail) || (p.customSuffix || '')}" oninput="onOrchSetNameInput()" ${isView ? 'disabled' : ''}>
-                    <span class="field-help">Each team/set gets its own orchestrator. The Set name becomes part of the workflow name (…_Orchestrators_&lt;Set&gt;_Orchestrator-Playwright).</span>
+                    <input type="text" id="fOrchSetName" placeholder="e.g. OutSystemsAml" value="${orchestratorSetForForm(p)}" oninput="onOrchSetNameInput()" ${isView ? 'disabled' : ''}>
+                    <span class="field-help">Dispatch-only: maps to <code>SET_NAME</code> and <code>targets.json</code>. It does <b>not</b> appear in the workflow filename — use <b>Custom Suffix</b> for an optional name segment and <b>Test Type</b> for the type in the title.</span>
                 </div>
 
                 <div class="form-group">
@@ -7549,7 +7593,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             <div class="section-content">
                 <div class="form-group">
                     <label class="form-label">Team / Set Name <span class="req">*</span></label>
-                    <input type="text" id="fOrchSetName" placeholder="e.g. WFO" value="${(p.orchestratorSet || '').trim() || orchestratorSetFromFeatureDetail(p.featureDetail) || (p.customSuffix || '')}" oninput="onOrchSetNameInput()" ${isView ? 'disabled' : ''}>
+                    <input type="text" id="fOrchSetName" placeholder="e.g. WFO" value="${orchestratorSetForForm(p)}" oninput="onOrchSetNameInput()" ${isView ? 'disabled' : ''}>
                     <span class="field-help">This should match the team name you put in Custom Suffix. Each team gets its own orchestrator set (so you can have multiple orchestrators).</span>
                 </div>
 
@@ -8652,15 +8696,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             }
 
             const bKey = BRAND_KEY_MAP[brand] || brand.replace(/\s+/g, '');
-            // For orchestrators the team (Custom Suffix, or Orchestrator Set Name) acts as the suffix.
-            const effSuffix = isOrch
-                ? String(suffix || (document.getElementById('fOrchSetName')?.value || '').trim()).trim()
-                : suffix;
-            if (isOrch && !effSuffix) {
-                document.getElementById('namePreview').innerHTML = '<span class="dim">Enter a team name in <b>Custom Suffix</b> (example: OLBAPISanity) to name this orchestrator.</span>';
-                updateFormStatus();
-                return;
-            }
+            // Orchestrators: Custom Suffix is optional in the name; Set Name is dispatch-only.
+            const effSuffix = isOrch ? String(suffix || '').trim() : suffix;
 
             const fKey = normalizeApiFeatureValue(feature).replace(/\s+/g, '_');
             let sKey = effSuffix ? effSuffix.replace(/\s+/g, '_') : '';
@@ -8732,19 +8769,10 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 return;
             }
 
-            // Orchestrator mode is driven by the Feature ("Orchestrators"). The Set name comes from the
-            // Orchestrator Set Name field (falling back to Custom Suffix) and becomes the suffix, so the
-            // name reads Web_{Team}_{Env}-Orchestrators_{Set}_Orchestrator-Playwright — matching the
-            // API (-Newman) and Testim (-Testim) orchestrator convention.
+            // Orchestrator mode is driven by the Feature ("Orchestrators"). Custom Suffix is optional
+            // in the name; Team / Set Name is dispatch-only (SET_NAME / targets.json).
             const isOrch = feature === 'Orchestrators';
-            const effSuffix = isOrch
-                ? String(suffix || (document.getElementById('fOrchSetName')?.value || '').trim()).trim()
-                : suffix;
-            if (isOrch && !effSuffix) {
-                document.getElementById('namePreview').innerHTML = '<span class="dim">Enter a team name in <b>Orchestrator Set Name</b> (example: OutSystemsAml) to name this orchestrator.</span>';
-                updateFormStatus();
-                return;
-            }
+            const effSuffix = isOrch ? String(suffix || '').trim() : suffix;
 
             const projectDirEl = document.getElementById('fProjectDir');
             if (!isOrch && projectDirEl && !projectDirEl.dataset.userEdited) {
@@ -8776,10 +8804,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             const teamKey = (String(brand) === 'OLB 3.0') ? 'OLB3' : String(brand);
             const fKey = feature.replace(/\s+/g, '');
             const sKey = effSuffix ? effSuffix.replace(/\s+/g, isOrch ? '_' : '') : '';
-            // Orchestrator mode is driven by the Feature ("Orchestrators"), so the Test Type segment is
-            // always "Orchestrator" regardless of the form dropdown (which offers Regression/Sanity/Smoke).
-            // This keeps the generated name (…_Orchestrator-Playwright) in sync with the parser.
-            const tKey = isOrch ? 'Orchestrator' : testType.replace(/\s+/g, '');
+            const tKey = testType.replace(/\s+/g, '');
             const featureBase = sKey ? `${fKey}_${sKey}` : `${fKey}`;
             const includeOlbPrefix = (() => {
                 // Default OFF: do not auto-insert legacy "OLB_" prefix for new workflows.
@@ -8856,11 +8881,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         const feature = document.getElementById('fFeature')?.value;
         const suffix = document.getElementById('fCustomSuffix')?.value?.trim();
 
-        // Orchestrator mode is driven by the Feature being "Orchestrators" — NOT the Test Type.
-        // The NAME, however, uses the standard convention (feature + suffix + type), so the
-        // chosen Test Type (Regression/Sanity/Smoke/…) appears in the title instead of a fixed
-        // "-Orchestrator" suffix. For orchestrators the team comes from Custom Suffix (or the
-        // Orchestrator Set Name if the suffix is blank).
+        // Orchestrator mode is driven by the Feature being "Orchestrators". Custom Suffix is optional
+        // in the name; Team / Set Name is dispatch-only.
         const isOrch = feature === 'Orchestrators';
         if (!platform || !brand || !env || !feature || !testType) {
             document.getElementById('namePreview').innerHTML = '<span class="dim">Select all required fields to generate pipeline name...</span>';
@@ -8873,14 +8895,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         const fKey = (feature || '').replace(/\s+/g, '');
         const tKey = (testType || '').replace(/\s+/g, '');
 
-        const effSuffix = isOrch
-            ? String(suffix || (document.getElementById('fOrchSetName')?.value || '').trim()).trim()
-            : suffix;
-        if (isOrch && !effSuffix) {
-            document.getElementById('namePreview').innerHTML = '<span class="dim">Enter a team name in <b>Custom Suffix</b> (example: WFO) to name this orchestrator.</span>';
-            updateFormStatus();
-            return;
-        }
+        const effSuffix = isOrch ? String(suffix || '').trim() : suffix;
 
         const featureStr = effSuffix ? `${fKey}_${effSuffix.replace(/\s+/g, '_')}` : `${fKey}`;
 
@@ -9029,7 +9044,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             need('fEnv', 'Environment');
             need('fTestType', 'Test Type');
             if (isOrch) {
-                if (!val('fCustomSuffix') && !val('fOrchSetName')) missing.push('Team / Set Name');
+                if (!val('fOrchSetName')) missing.push('Team / Set Name');
                 if (!val('fOrchTargetRefs')) missing.push('Orchestrator Targets');
             } else {
                 need('fFeature', 'Feature');
@@ -9044,7 +9059,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             need('fEnv', 'Environment');
             need('fTestType', 'Test Type');
             if (repo === 'Axos.QE.Web' && isOrch) {
-                if (!val('fOrchSetName') && !val('fCustomSuffix')) missing.push('Team / Set Name');
+                if (!val('fOrchSetName')) missing.push('Team / Set Name');
                 if (!val('fOrchTargetRefs')) missing.push('Orchestrator Targets');
             } else {
                 need('fFeature', 'Feature');
@@ -9070,7 +9085,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         need('fEnv', 'Environment');
         need('fTestType', 'Test Type');
         if (isOrch) {
-            if (!val('fCustomSuffix') && !val('fOrchSetName')) missing.push('Team / Custom Suffix');
+            if (!val('fOrchSetName')) missing.push('Team / Set Name');
+            if (!val('fOrchTargetRefs')) missing.push('Orchestrator Targets');
         } else {
             need('fFeature', 'Feature');
             need('fTestSuite', 'Test Suite Name');
@@ -9096,7 +9112,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             if (repo === 'Axos.QE.API_OLB' || repo === 'Axos.QE.API_CS' || repo === 'Axos.QE.API_UDB' || repo === 'Axos.QE.API_WFO') {
                 const isOrch = (el('fFeature')?.value || '') === 'Orchestrators';
                 if (isOrch) {
-                    const team = (el('fCustomSuffix')?.value || '').trim() || (el('fOrchSetName')?.value || '').trim();
+                    const team = (el('fOrchSetName')?.value || '').trim();
                     fieldsOk =
                         el('fBrand')?.value && el('fEnv')?.value && el('fTestType')?.value &&
                         team &&
@@ -9112,7 +9128,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             if (repo === 'Axos.QE.Crypto.Web' || repo === 'Axos.QE.Web') {
                 const isOrchWeb = repo === 'Axos.QE.Web' && (el('fFeature')?.value || '') === 'Orchestrators';
                 if (isOrchWeb) {
-                    const team = (el('fOrchSetName')?.value || '').trim() || (el('fCustomSuffix')?.value || '').trim();
+                    const team = (el('fOrchSetName')?.value || '').trim();
                     fieldsOk =
                         el('fBrand')?.value && el('fEnv')?.value && el('fTestType')?.value &&
                         team && (el('fOrchTargetRefs')?.value || '').trim();
@@ -9136,9 +9152,10 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             }
             const isOrch = (el('fFeature')?.value || '') === 'Orchestrators';
             if (isOrch) {
-                const team = (el('fCustomSuffix')?.value || '').trim() || (el('fOrchSetName')?.value || '').trim();
+                const team = (el('fOrchSetName')?.value || '').trim();
                 fieldsOk =
-                    el('fPlatform')?.value && el('fBrand')?.value && el('fEnv')?.value && el('fTestType')?.value && team;
+                    el('fPlatform')?.value && el('fBrand')?.value && el('fEnv')?.value && el('fTestType')?.value &&
+                    team && (el('fOrchTargetRefs')?.value || '').trim();
             } else {
                 fieldsOk = el('fPlatform')?.value && el('fBrand')?.value && el('fEnv')?.value &&
                        el('fFeature')?.value && el('fTestType')?.value && el('fTestSuite')?.value && el('fBaseUrl')?.value;
@@ -9195,6 +9212,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 base.orchestratorSet = (v('fOrchSetName') || '').trim();
                 const nameSuffix = (v('fCustomSuffix') || '').replace(/\s+/g, '');
                 base.featureDetail = nameSuffix ? `Orchestrators_${nameSuffix}` : 'Orchestrators';
+                base.customSuffix = nameSuffix;
                 const refs = (document.getElementById('fOrchTargetRefs')?.value || '').trim();
                 if (refs) {
                     base.orchestratorTargets = orchestratorRefsToTargets(refs);
@@ -9242,13 +9260,14 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 const isOrch = rawFeature === 'Orchestrators';
 
                 if (isOrch) {
-                    const team = (rawSuffix || '').replace(/\s+/g, '');
                     base.feature = 'Orchestrators';
-                    base.featureDetail = `Orchestrators_${team}`;
-                    base.testType = v('fTestType') || base.testType || 'Orchestrator';
+                    const nameSuffix = (rawSuffix || '').replace(/\s+/g, '');
+                    base.featureDetail = nameSuffix ? `Orchestrators_${nameSuffix}` : 'Orchestrators';
+                    base.customSuffix = nameSuffix;
+                    base.testType = chosenTestType;
                     base.jobTimeout = n('fJobTimeout', 30);
 
-                    base.orchestratorSet = (v('fOrchSetName') || v('fCustomSuffix')).trim();
+                    base.orchestratorSet = (v('fOrchSetName') || '').trim();
                     const refs = (document.getElementById('fOrchTargetRefs')?.value || '').trim();
                     base.orchestratorTargets = refs ? orchestratorRefsToTargets(refs) : [];
 
@@ -9320,16 +9339,15 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 base.env = v('fEnv') || base.env;
                 base.feature = v('fFeature') || base.feature || 'Login';
                 if (base.feature === 'Orchestrators') {
-                    base.testType = v('fTestType') || base.testType || 'Orchestrator';
+                    base.testType = v('fTestType') || base.testType || 'Regression';
                     base.grep = ''; base.suite = ''; base.spec = '';
                     base.parallel = ''; base.retries = '';
                     base.runnerLabel = ''; base.customRunnerLabel = '';
                     base.jobTimeout = n('fJobTimeout', 30);
-                    // orchestratorSet = the targets.json set the orchestrator dispatches (Team / Set Name).
-                    // featureDetail / name = the pipeline name component (Custom Suffix). These are independent.
-                    base.orchestratorSet = (v('fOrchSetName') || v('fCustomSuffix') || '').trim();
+                    base.orchestratorSet = (v('fOrchSetName') || '').trim();
                     const nameSuffix = (v('fCustomSuffix') || '').replace(/\s+/g, '');
-                    base.featureDetail = `Orchestrators_${nameSuffix || base.orchestratorSet}`;
+                    base.featureDetail = nameSuffix ? `Orchestrators_${nameSuffix}` : 'Orchestrators';
+                    base.customSuffix = nameSuffix;
                     const refs = (document.getElementById('fOrchTargetRefs')?.value || '').trim();
                     if (refs) {
                         base.orchestratorTargets = orchestratorRefsToTargets(refs);
@@ -9413,7 +9431,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             const isOrch = v('fFeature') === 'Orchestrators';
             if (isOrch) {
                 base.feature = 'Orchestrators';
-                base.testType = v('fTestType') || base.testType || 'Orchestrator';
+                base.testType = v('fTestType') || base.testType || 'Regression';
                 base.testSuite = '';
                 base.baseUrl = '';
                 base.project = '';
@@ -9428,7 +9446,10 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 base.customRunnerLabel = '';
                 base.jobTimeout = n('fJobTimeout', 30);
 
-                base.orchestratorSet = (v('fOrchSetName') || v('fCustomSuffix')).trim();
+                base.orchestratorSet = (v('fOrchSetName') || '').trim();
+                const nameSuffix = (v('fCustomSuffix') || '').replace(/\s+/g, '');
+                base.featureDetail = nameSuffix ? `Orchestrators_${nameSuffix}` : 'Orchestrators';
+                base.customSuffix = nameSuffix;
                 const refs = (document.getElementById('fOrchTargetRefs')?.value || '').trim();
                 if (refs) {
                     base.orchestratorTargets = orchestratorRefsToTargets(refs);
@@ -9595,7 +9616,7 @@ CUSTOM_RUNNER_LABEL: ${el('fCustomRunnerLabel') || ''}`;
             }
 
         } else if ((document.getElementById('fFeature')?.value || '') === 'Orchestrators') {
-            const setName = (document.getElementById('fOrchSetName')?.value || el('fCustomSuffix') || '').trim();
+            const setName = (document.getElementById('fOrchSetName')?.value || '').trim();
             const targets = document.getElementById('fOrchTargets')?.value || '[]';
             const orchRepo = el('fRepo') || 'Axos.QE.TestIM';
             const isWebOrch = orchRepo === 'Axos.QE.Web';
@@ -10572,14 +10593,15 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 
             if (allFiles.length === 0) {
                 statusText.innerHTML += '<br><span style="color:var(--danger);">No workflows found.</span>';
-                btn.disabled = false;
-                btn.textContent = 'Sync from GitHub';
-                return;
+            } else {
+                syncFileContent = JSON.stringify(allFiles);
+                document.getElementById('syncInput').value = syncFileContent;
+                processSyncInput();
             }
 
-            syncFileContent = JSON.stringify(allFiles);
-            document.getElementById('syncInput').value = syncFileContent;
-            processSyncInput();
+            statusText.innerHTML += '<br>Fetching dashboards...';
+            const dashSynced = await syncDashboardsFromGitHub(repos, pat, ref);
+            statusText.innerHTML += ` <span style="color:var(--success);">${dashSynced} repo dashboard file(s)</span>`;
         } catch (err) {
             statusText.innerHTML += `<br><span style="color:var(--danger);">Error: ${err.message}</span>`;
         }
@@ -10933,6 +10955,23 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     }
 
     function parseFilename(filename) {
+        return normalizeParsedPipeline(parseFilenameInner(filename));
+    }
+
+    // Single source of truth: orchestrator customSuffix from featureDetail, except legacy pipelines
+    // where featureDetail's tail is the dispatch set (orchestratorSet), not a filename suffix.
+    function normalizeParsedPipeline(p) {
+        if (!p) return p;
+        const isOrch = p.feature === 'Orchestrators'
+            || p.testType === 'Orchestrator'
+            || /orchestrator/i.test(String(p.name || ''));
+        if (isOrch && (p.customSuffix === undefined || p.customSuffix === null)) {
+            p.customSuffix = orchestratorCustomSuffixFromPipeline(p);
+        }
+        return p;
+    }
+
+    function parseFilenameInner(filename) {
         const name = filename.replace('.yml', '');
         const lower = name.toLowerCase();
 
@@ -11059,14 +11098,34 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             const teamMap = { enrollment: 'Enrollment', outsystems: 'OutSystems', crypto: 'Crypto', olb3: 'OLB 3.0' };
             const team = teamMap[webMonoMatch[1]] || webMonoMatch[1];
 
-            // Orchestrators (dispatcher workflows) in the Web/Playwright repo follow the same
-            // "_Orchestrator-<engine>" convention as API (-Newman) and Testim (-Testim):
-            //   Web_{Team}_{Env}-Orchestrators_{Set}_Orchestrator-Playwright
-            // The Feature is "Orchestrators", the trailing "_Orchestrator" segment is the Test Type,
-            // and the segment(s) between are the orchestrator Set name. Match against the ORIGINAL-case
-            // name so the Set keeps its camelCase (e.g. "OutSystemsAml"), and accept either "-"/"_" as
-            // the env separator. Without this the generic "-playwright" suffix below would mis-parse it
-            // as a normal test suite (losing the Set name and forcing Test Type to Regression).
+            // Orchestrators (dispatcher workflows) in the Web/Playwright repo.
+            // New convention: Web_{Team}_{Env}-Orchestrators[_{Suffix}]_{TestType}-Playwright
+            // Legacy (still parsed): Web_{Team}_{Env}-Orchestrators_{Set}_Orchestrator-Playwright
+            const orchNewM = name.replace(/-Playwright$/i, '')
+                .match(/^Web_[^_]+_(DEV|QA|STG|UAT|PROD)[-_]Orchestrators(?:_(.+))?_(Smoke|Sanity|Regression|HealthCheck|Health|E2E)$/i);
+            if (orchNewM) {
+                const orchEnv = String(orchNewM[1]).toUpperCase();
+                const mid = String(orchNewM[2] || '').trim();
+                const ttRaw = String(orchNewM[3] || 'Regression');
+                const ttMap = { smoke: 'Smoke', sanity: 'Sanity', regression: 'Regression', healthcheck: 'Health Check', health: 'Health Check', e2e: 'E2E' };
+                const parsedType = ttMap[ttRaw.toLowerCase()] || 'Regression';
+                const nameSuffix = String(mid || '').trim();
+                return {
+                    filename, name,
+                    repo: 'Axos.QE.Web',
+                    platform: '02 Web',
+                    brand: team,
+                    env: orchEnv,
+                    feature: 'Orchestrators',
+                    featureDetail: nameSuffix ? `Orchestrators_${nameSuffix}` : 'Orchestrators',
+                    testType: parsedType,
+                    orchestratorSet: '',
+                    orchestratorTargets: [],
+                    grep: '', parallel: '', retries: '', runTarget: '', localBrowser: '',
+                    pwVideo: '', pwHeadless: '', runnerLabel: '', customRunnerLabel: '',
+                    jobTimeout: 30, schedule: '', scheduleEnabled: false
+                };
+            }
             const orchM = name.replace(/-Playwright$/i, '')
                 .match(/^Web_[^_]+_(DEV|QA|STG|UAT|PROD)[-_]Orchestrators_(.+)_Orchestrator$/i);
             if (orchM) {
@@ -11085,7 +11144,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                     orchestratorTargets: [],
                     grep: '', parallel: '', retries: '', runTarget: '', localBrowser: '',
                     pwVideo: '', pwHeadless: '', runnerLabel: '', customRunnerLabel: '',
-                    jobTimeout: 120, schedule: '', scheduleEnabled: false
+                    jobTimeout: 30, schedule: '', scheduleEnabled: false
                 };
             }
 
@@ -11373,7 +11432,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             browserTimeout: isOrchParsed ? '' : '30',
             runnerLabel: isOrchParsed ? '' : 'dsdl-timab31',
             jobTimeout: isOrchParsed ? 30 : 120,
-            orchestratorSet: isOrchParsed ? orchestratorSetFromFeatureDetail(featureDetail) : '',
+            orchestratorSet: (testType === 'Orchestrator') ? orchestratorSetFromFeatureDetail(featureDetail) : '',
             orchestratorTargets: isOrchParsed ? [] : undefined,
             schedule: '', scheduleEnabled: false
         };
@@ -13429,8 +13488,13 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     //  DASHBOARDS
     // ══════════════════════════════════════════
     const DASHBOARDS_KEY = 'pm.dashboards.v1';
+    const DASHBOARDS_SNAPSHOT_KEY = 'pm.dashboards.snapshot.v1';
+    const DASHBOARDS_REMOTE_SYNCED_KEY = 'pm.dashboards.remoteSyncedRepos.v1';
+    const DASHBOARDS_REMOTE_MISSING_KEY = 'pm.dashboards.remoteMissingRepos.v1';
     const DASH_SELECTED_KEY_PREFIX = 'pm.dashboards.selected.v1.';
     let dashSelectedGroupId = null; // active dashboard's group filter (null = All groups)
+    let dashboardsView = 'dashboard'; // 'dashboard' | 'updates'
+    let selectedDashboardUpdates = new Set();
     // Dashboard view mode (graphs) removed — keep dots only.
 
     function loadDashboardsState() {
@@ -13449,6 +13513,119 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         try { localStorage.setItem(DASHBOARDS_KEY, JSON.stringify(dashboardsState)); } catch { /* ignore */ }
         // Keep the Results "Dashboard" filter dropdown in sync with saved dashboards.
         try { populateResultsDashboardFilter(); } catch { /* ignore */ }
+    }
+
+    function loadDashboardsSnapshot() {
+        try {
+            const raw = localStorage.getItem(DASHBOARDS_SNAPSHOT_KEY);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                const dashboards = Array.isArray(parsed?.dashboards) ? parsed.dashboards : [];
+                return dashboards.map(d => cleanDashboard(cloneJson(d))).filter(Boolean);
+            }
+        } catch { /* ignore */ }
+        // First run: empty baseline so local-only dashboards surface in Updates until synced.
+        const initial = [];
+        try { localStorage.setItem(DASHBOARDS_SNAPSHOT_KEY, JSON.stringify({ version: 1, dashboards: initial })); } catch { /* ignore */ }
+        return initial;
+    }
+
+    function saveDashboardsSnapshot() {
+        try { localStorage.setItem(DASHBOARDS_SNAPSHOT_KEY, JSON.stringify({ version: 1, dashboards: savedDashboardsSnapshot })); } catch { /* ignore */ }
+    }
+
+    function dashboardSignature(d) {
+        const c = cleanDashboard(cloneJson(d));
+        if (!c) return '';
+        return JSON.stringify({
+            id: c.id,
+            name: c.name,
+            groups: (c.groups || []).map(g => ({
+                id: g.id,
+                title: g.title,
+                pipelines: [...(g.pipelines || [])].sort()
+            }))
+        });
+    }
+
+    function dashboardsSnapshotForRepo(repo) {
+        const r = String(repo || '').trim();
+        return (savedDashboardsSnapshot || []).filter(d => d && String(d.repo || '').trim() === r);
+    }
+
+    function getDashboardChanges(repo) {
+        const r = String(repo || '').trim();
+        if (!r) return [];
+        const baseline = dashboardsSnapshotForRepo(r);
+        const current = dashboardsForRepo(r);
+        const savedMap = new Map(baseline.map(d => [d.id, dashboardSignature(d)]));
+        const currentMap = new Map(current.map(d => [d.id, dashboardSignature(d)]));
+        const changes = [];
+        for (const d of current) {
+            if (!savedMap.has(d.id)) changes.push({ type: 'added', dashboard: d });
+            else if (savedMap.get(d.id) !== currentMap.get(d.id)) changes.push({ type: 'modified', dashboard: d });
+        }
+        for (const d of baseline) {
+            if (!currentMap.has(d.id)) changes.push({ type: 'removed', dashboard: d });
+        }
+        return changes;
+    }
+
+    function replaceDashboardsSnapshotForRepo(repoKey, incomingDashboards) {
+        const key = String(repoKey || '').trim();
+        savedDashboardsSnapshot = (savedDashboardsSnapshot || []).filter(d => String(d?.repo || '').trim() !== key);
+        const normalized = (incomingDashboards || []).map(d => cloneJson(cleanDashboard(d))).filter(Boolean);
+        savedDashboardsSnapshot.push(...normalized);
+        saveDashboardsSnapshot();
+    }
+
+    function loadDashboardsRemoteSyncedRepos() {
+        try {
+            const raw = localStorage.getItem(DASHBOARDS_REMOTE_SYNCED_KEY);
+            const arr = raw ? JSON.parse(raw) : [];
+            return new Set((Array.isArray(arr) ? arr : []).map(x => String(x || '').trim()).filter(Boolean));
+        } catch { return new Set(); }
+    }
+
+    function saveDashboardsRemoteSyncedRepos(set) {
+        try { localStorage.setItem(DASHBOARDS_REMOTE_SYNCED_KEY, JSON.stringify([...set])); } catch { /* ignore */ }
+    }
+
+    function loadDashboardsRemoteMissingRepos() {
+        try {
+            const raw = localStorage.getItem(DASHBOARDS_REMOTE_MISSING_KEY);
+            const arr = raw ? JSON.parse(raw) : [];
+            return new Set((Array.isArray(arr) ? arr : []).map(x => String(x || '').trim()).filter(Boolean));
+        } catch { return new Set(); }
+    }
+
+    function saveDashboardsRemoteMissingRepos(set) {
+        try { localStorage.setItem(DASHBOARDS_REMOTE_MISSING_KEY, JSON.stringify([...set])); } catch { /* ignore */ }
+    }
+
+    let dashboardsRemoteSyncedRepos = loadDashboardsRemoteSyncedRepos();
+    let dashboardsRemoteMissingRepos = loadDashboardsRemoteMissingRepos();
+
+    function markDashboardsRemoteSynced(repoKey) {
+        const key = String(repoKey || '').trim();
+        if (!key) return;
+        dashboardsRemoteSyncedRepos.add(key);
+        dashboardsRemoteMissingRepos.delete(key);
+        saveDashboardsRemoteSyncedRepos(dashboardsRemoteSyncedRepos);
+        saveDashboardsRemoteMissingRepos(dashboardsRemoteMissingRepos);
+    }
+
+    function markDashboardsRemoteMissing(repoKey) {
+        const key = String(repoKey || '').trim();
+        if (!key) return;
+        dashboardsRemoteMissingRepos.add(key);
+        dashboardsRemoteSyncedRepos.delete(key);
+        saveDashboardsRemoteMissingRepos(dashboardsRemoteMissingRepos);
+        saveDashboardsRemoteSyncedRepos(dashboardsRemoteSyncedRepos);
+    }
+
+    function isDashboardsRemoteMissing(repo) {
+        return dashboardsRemoteMissingRepos.has(String(repo || '').trim());
     }
 
     function cleanDashboard(d) {
@@ -13475,6 +13652,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     }
 
     let dashboardsState = loadDashboardsState();
+    let savedDashboardsSnapshot = loadDashboardsSnapshot();
 
     function dashboardsForRepo(repo) {
         const r = String(repo || '').trim();
@@ -13499,7 +13677,45 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         if (!r) return;
         try { localStorage.setItem(DASH_SELECTED_KEY_PREFIX + r, v); } catch { /* ignore */ }
         dashSelectedGroupId = null; // switching dashboards resets the group filter to "All"
+        dashboardsView = 'dashboard';
         renderDashboards();
+    }
+
+    function setDashboardsView(view) {
+        dashboardsView = view === 'updates' ? 'updates' : 'dashboard';
+        if (dashboardsView === 'updates') {
+            selectedDashboardUpdates.clear();
+            getDashboardChanges(getDashboardsRepo()).forEach(c => selectedDashboardUpdates.add(c.dashboard.id));
+        }
+        renderDashboards();
+    }
+
+    function toggleDashboardUpdateCheck(dashId, event) {
+        if (event) event.stopPropagation();
+        const id = String(dashId || '').trim();
+        if (!id) return;
+        if (selectedDashboardUpdates.has(id)) selectedDashboardUpdates.delete(id);
+        else selectedDashboardUpdates.add(id);
+        refreshDashboardUpdatesSelectionUI();
+    }
+
+    function selectAllDashboardUpdates() {
+        getDashboardChanges(getDashboardsRepo()).forEach(c => selectedDashboardUpdates.add(c.dashboard.id));
+        refreshDashboardUpdatesSelectionUI();
+    }
+
+    function deselectAllDashboardUpdates() {
+        selectedDashboardUpdates.clear();
+        refreshDashboardUpdatesSelectionUI();
+    }
+
+    function refreshDashboardUpdatesSelectionUI() {
+        const count = selectedDashboardUpdates.size;
+        const countEl = document.getElementById('dashUpdatesSelCount');
+        if (countEl) countEl.textContent = count > 0 ? `${count} selected` : '';
+        document.querySelectorAll('.dash-update-item input[type=checkbox]').forEach(cb => {
+            cb.checked = selectedDashboardUpdates.has(String(cb.dataset.dashId || '').trim());
+        });
     }
 
     function makeDashboardId() {
@@ -13518,567 +13734,223 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         return cleaned;
     }
 
-    function exportActiveDashboardToJson() {
+    const DASHBOARD_CONFIG_PATH = '.github/pipeline-manager/dashboards.json';
+
+    function buildDashboardFilePayload(repo) {
+        const r = String(repo || '').trim();
+        const dashboards = (dashboardsState.dashboards || [])
+            .filter(d => d && String(d.repo || '').trim() === r)
+            .map(sanitizeDashboardForExport)
+            .filter(Boolean);
+        return { version: 1, updatedAt: new Date().toISOString(), dashboards };
+    }
+
+    function buildDashboardFilePayloadForSelection(repo, selectedChanges) {
+        const r = String(repo || '').trim();
+
+        // Start from baseline (last synced repo state); apply only the selected changes.
+        let dashboards = dashboardsSnapshotForRepo(r)
+            .map(d => sanitizeDashboardForExport(cloneJson(d)))
+            .filter(Boolean);
+
+        for (const c of (selectedChanges || [])) {
+            if (!c?.dashboard) continue;
+            if (c.type === 'removed') {
+                dashboards = dashboards.filter(d => d.id !== c.dashboard.id);
+                continue;
+            }
+            const working = dashboardsForRepo(r).find(d => d.id === c.dashboard.id);
+            const safe = sanitizeDashboardForExport(working || c.dashboard);
+            if (!safe) continue;
+            const idx = dashboards.findIndex(d => d.id === safe.id);
+            if (idx >= 0) dashboards[idx] = safe;
+            else dashboards.push(safe);
+        }
+
+        return { version: 1, updatedAt: new Date().toISOString(), dashboards };
+    }
+
+    function buildDashboardUpdatesPromptText(repo, selectedChanges) {
+        const r = String(repo || '').trim();
+        if (!r || !selectedChanges?.length) return '';
+        const payload = buildDashboardFilePayloadForSelection(r, selectedChanges);
+        const dashJson = JSON.stringify(payload, null, 2);
+        const lines = selectedChanges.map(c => {
+            const verb = c.type === 'added' ? 'CREATE' : c.type === 'removed' ? 'DELETE' : 'UPDATE';
+            return `- ${verb} "${c.dashboard.name}" (id: ${c.dashboard.id})`;
+        }).join('\n');
+        let prompt = `Create or update Pipeline Manager dashboards in repo ${r} at:\n${DASHBOARD_CONFIG_PATH}\n\n`;
+        prompt += `This JSON file is synced by Pipeline Manager. Schema:\n`;
+        prompt += `{ "version": 1, "updatedAt": "ISO-8601", "dashboards": [{ "id", "repo", "name", "groups": [{ "id", "title", "pipelines": ["RepoName::workflow.yml"] }] }] }\n\n`;
+        prompt += `Apply the following ${selectedChanges.length} dashboard change(s):\n${lines}\n\n`;
+        prompt += `Merge into the file — keep every other dashboard for repo ${r} unchanged (except listed changes).\n`;
+        prompt += `The JSON below applies only the selected changes on top of the last-synced repo state. Unselected pending edits are excluded from this prompt.\n`;
+        prompt += `Create .github/pipeline-manager/ if missing.\n\n`;
+        prompt += `Complete file content after your changes:\n\n${dashJson}\n\n`;
+        prompt += `Pipeline keys must stay as "repo::filename.yml" (example: Axos.QE.TestIM::Web_AxosBank_UAT_HealthCheck-Testim.yml).`;
+        return prompt;
+    }
+
+    function buildPromptForDashboard(action, dashboard, repo) {
+        const r = String(repo || dashboard?.repo || '').trim();
+        const safeDash = sanitizeDashboardForExport(dashboard);
+        if (!r || !safeDash) return '';
+        const pending = getDashboardChanges(r).find(c => c.dashboard.id === safeDash.id);
+        const changeType = pending?.type || (action === 'create' ? 'added' : 'modified');
+        const working = dashboardsForRepo(r).find(d => d.id === safeDash.id) || dashboard;
+        const payload = buildDashboardFilePayloadForSelection(r, [{ type: changeType, dashboard: working }]);
+        const dashJson = JSON.stringify(payload, null, 2);
+        const verb = action === 'create' ? 'CREATE' : 'UPDATE';
+        let prompt = `Create or update Pipeline Manager dashboards in repo ${r} at:\n${DASHBOARD_CONFIG_PATH}\n\n`;
+        prompt += `This JSON file is synced by Pipeline Manager. Schema:\n`;
+        prompt += `{ "version": 1, "updatedAt": "ISO-8601", "dashboards": [{ "id", "repo", "name", "groups": [{ "id", "title", "pipelines": ["RepoName::workflow.yml"] }] }] }\n\n`;
+        prompt += `${verb} dashboard "${safeDash.name}" (id: ${safeDash.id}).\n`;
+        prompt += `Merge into the file — keep every other dashboard for repo ${r} unchanged.\n`;
+        prompt += `The JSON below applies only this dashboard on top of the last-synced repo state. Other pending edits are excluded.\n`;
+        prompt += `Create .github/pipeline-manager/ if missing.\n\n`;
+        prompt += `Complete file content after your change:\n\n${dashJson}\n\n`;
+        prompt += `Pipeline keys must stay as "repo::filename.yml" (example: Axos.QE.TestIM::Web_AxosBank_UAT_HealthCheck-Testim.yml).`;
+        return prompt;
+    }
+
+    function buildPromptForDashboardDelete(dashboard, repo) {
+        const r = String(repo || dashboard?.repo || '').trim();
+        const safeDash = sanitizeDashboardForExport(dashboard);
+        if (!r || !safeDash) return '';
+        const payload = buildDashboardFilePayloadForSelection(r, [{ type: 'removed', dashboard: safeDash }]);
+        const dashJson = JSON.stringify(payload, null, 2);
+        let prompt = `Update Pipeline Manager dashboards in repo ${r} at:\n${DASHBOARD_CONFIG_PATH}\n\n`;
+        prompt += `DELETE dashboard "${safeDash.name}" (id: ${safeDash.id}).\n`;
+        prompt += `Remove only that dashboard entry. Keep all other dashboards for this repo.\n`;
+        prompt += `The JSON below applies only this deletion on top of the last-synced repo state. Other pending edits are excluded.\n`;
+        prompt += `If this was the last dashboard, write an empty dashboards array.\n\n`;
+        prompt += `Complete file content after your change:\n\n${dashJson}`;
+        return prompt;
+    }
+
+    function generateDashboardPrompts(opts = {}) {
+        const action = String(opts.action || 'update').trim().toLowerCase();
+        const dashboard = opts.dashboard;
+        const repo = String(opts.repo || dashboard?.repo || getDashboardsRepo() || '').trim();
+        const includeCommitPush = opts.includeCommitPush !== false;
+        if (!repo || !dashboard) {
+            showToast('No dashboard selected for prompt generation.', true);
+            return;
+        }
+        let prompt = action === 'delete'
+            ? buildPromptForDashboardDelete(dashboard, repo)
+            : buildPromptForDashboard(action, dashboard, repo);
+        if (!prompt) {
+            showToast('Could not build dashboard prompt.', true);
+            return;
+        }
+        if (includeCommitPush) {
+            prompt += `\n\nAfter making these changes, commit and push your current branch (e.g. \`git push origin HEAD\`).`;
+        }
+        document.getElementById('outputBox').textContent = prompt;
+        document.getElementById('outputModal').classList.add('show');
+    }
+
+    function generateActiveDashboardPrompt() {
+        const repo = getDashboardsRepo();
+        const activeId = getActiveDashboardId(repo);
+        const active = dashboardsForRepo(repo).find(d => d.id === activeId);
+        if (!repo || !active) {
+            showToast('Select a dashboard first.', true);
+            return;
+        }
+        const change = getDashboardChanges(repo).find(c => c.dashboard.id === activeId);
+        if (change) {
+            showDashboardUpdatesPromptForSelection(repo, [change]);
+            return;
+        }
+        generateDashboardPrompts({ action: 'update', dashboard: active, repo });
+    }
+
+    function showDashboardUpdatesPromptForSelection(repo, selectedChanges) {
+        const prompt = buildDashboardUpdatesPromptText(repo, selectedChanges);
+        if (!prompt) {
+            showToast('Could not build dashboard prompt.', true);
+            return;
+        }
+        const full = prompt + `\n\nAfter making these changes, commit and push your current branch (e.g. \`git push origin HEAD\`).`;
+        document.getElementById('outputBox').textContent = full;
+        document.getElementById('outputModal').classList.add('show');
+    }
+
+    function generateDashboardUpdatesPrompt() {
         const repo = getDashboardsRepo();
         if (!repo) { showToast('Select a repo first.', true); return; }
-        const list = dashboardsForRepo(repo);
-        const activeId = getActiveDashboardId(repo);
-        const d = list.find(x => x.id === activeId);
-        if (!d) { showToast('No dashboard selected.', true); return; }
-        const payload = {
-            type: 'pm.dashboard.export',
-            version: 1,
-            exportedAt: new Date().toISOString(),
-            dashboard: sanitizeDashboardForExport(d)
-        };
-        return payload;
+        const allChanges = getDashboardChanges(repo);
+        const selected = allChanges.filter(c => selectedDashboardUpdates.has(c.dashboard.id));
+        if (!selected.length) { showToast('Select at least one dashboard change.', true); return; }
+        showDashboardUpdatesPromptForSelection(repo, selected);
     }
 
-    function downloadJsonObject(obj, filename) {
-        try {
-            const s = JSON.stringify(obj, null, 2);
-            const blob = new Blob([s], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename || 'dashboard.json';
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            setTimeout(() => URL.revokeObjectURL(url), 30000);
-        } catch {
-            showToast('Failed to download export.', true);
-        }
-    }
-
-    async function copyJsonObjectToClipboard(obj) {
-        try {
-            const s = JSON.stringify(obj, null, 2);
-            await navigator.clipboard.writeText(s);
-            showToast('Copied export JSON to clipboard.');
-        } catch {
-            showToast('Could not copy to clipboard.', true);
-        }
-    }
-
-    function ensureDashXferModal() {
-        if (document.getElementById('pmDashXferModal')) return;
-        const wrap = document.createElement('div');
-        wrap.id = 'pmDashXferModal';
-        wrap.className = 'modal-overlay';
-        wrap.innerHTML = `
-            <div class="modal" style="max-width:860px;">
-                <div class="modal-header">
-                    <div class="modal-title" id="pmDashXferTitle">Dashboard Export / Import</div>
-                    <button class="modal-close" onclick="closeModal('pmDashXferModal')">x</button>
-                </div>
-                <div class="modal-body" id="pmDashXferBody"></div>
-                <div class="modal-footer" id="pmDashXferFooter"></div>
-            </div>
-        `;
-        document.body.appendChild(wrap);
-    }
-
-    let pendingDashImport = null;
-
-    function openDashboardXferModal(initialTab) {
-        ensureDashXferModal();
-        const tab = (String(initialTab || 'export').trim().toLowerCase() === 'import') ? 'import' : 'export';
-        pendingDashImport = null;
-        renderDashboardXferModal(tab);
-        document.getElementById('pmDashXferModal').classList.add('show');
-    }
-
-    function renderDashboardXferModal(tab) {
-        const body = document.getElementById('pmDashXferBody');
-        const footer = document.getElementById('pmDashXferFooter');
-        const repo = getDashboardsRepo();
-        const payload = exportActiveDashboardToJson();
-        const dash = payload?.dashboard;
-
-        if (!body || !footer) return;
-
-        const tabs = `
-            <div style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
-                <button class="btn-lite ${tab==='export'?'active':''}" onclick="renderDashboardXferModal('export')">Export</button>
-                <button class="btn-lite ${tab==='import'?'active':''}" onclick="renderDashboardXferModal('import')">Import</button>
-                <div style="margin-left:auto; font-size:11px; color:var(--text-muted); align-self:center;">
-                    Saved locally (localStorage) — use export/import to share.
-                </div>
-            </div>
-        `;
-
-        if (tab === 'export') {
-            if (!dash) {
-                body.innerHTML = tabs + `<div style="color:var(--text-secondary); font-size:12px;">Select a repo + dashboard first.</div>`;
-                footer.innerHTML = `<button class="btn btn-secondary" onclick="closeModal('pmDashXferModal')">Close</button>`;
-                return;
-            }
-            const nameSafe = String(dash.name || 'dashboard').replace(/[^A-Za-z0-9._-]+/g, '_').slice(0, 64);
-            const file = `dashboard_${dash.repo}_${nameSafe}.json`.replace(/__+/g, '_');
-            body.innerHTML = tabs + `
-                <div class="dash-repo-card" style="padding:14px 14px;">
-                    <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:center;">
-                        <div>
-                            <div style="font-size:12px; font-weight:900; color:var(--text-primary);">${escapeHtml(dash.name)}</div>
-                            <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Repo: <b>${escapeHtml(dash.repo)}</b> · Groups: <b>${dash.groups.length}</b></div>
-                        </div>
-                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                            <button class="btn btn-secondary" onclick="copyDashboardExport()">Copy JSON</button>
-                            <button class="btn btn-orange" onclick="downloadDashboardExport()">Download</button>
-                        </div>
-                    </div>
-                </div>
-                <div style="margin-top:12px; font-size:11px; color:var(--text-muted);">
-                    Tip: send this JSON file/text to someone else. They can Import and choose merge/replace.
-                </div>
-                <textarea class="dash-xfer-textarea" readonly style="margin-top:12px;">${escapeHtml(JSON.stringify(payload, null, 2))}</textarea>
-            `;
-            footer.innerHTML = `
-                <button class="btn btn-secondary" onclick="closeModal('pmDashXferModal')">Close</button>
-            `;
-            // stash filename for download
-            body.dataset.exportFilename = file;
-            return;
-        }
-
-        // Import tab
-        body.innerHTML = tabs + `
-            <div style="font-size:12px; color:var(--text-secondary); line-height:1.6; margin-bottom:10px;">
-                Paste dashboard export JSON (or choose a file). If a dashboard with the same <b>repo + name</b> exists, you can merge or replace.
-            </div>
-            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
-                <input type="file" id="dashImportFile" accept=".json,application/json" onchange="handleDashImportFile(this.files && this.files[0]); this.value='';">
-                <button class="btn btn-secondary" onclick="analyzeDashImport()">Analyze</button>
-                <button class="btn btn-secondary" onclick="clearDashImport()">Clear</button>
-            </div>
-            <textarea class="dash-xfer-textarea" id="dashImportText" placeholder="{ ... }"></textarea>
-            <div id="dashImportAnalysis" style="margin-top:12px;"></div>
-        `;
-        footer.innerHTML = `
-            <button class="btn btn-secondary" onclick="closeModal('pmDashXferModal')">Close</button>
-        `;
-    }
-
-    function copyDashboardExport() {
-        const payload = exportActiveDashboardToJson();
-        if (!payload) return;
-        copyJsonObjectToClipboard(payload);
-    }
-
-    function downloadDashboardExport() {
-        const payload = exportActiveDashboardToJson();
-        if (!payload) return;
-        const body = document.getElementById('pmDashXferBody');
-        const file = body?.dataset?.exportFilename || 'dashboard.json';
-        downloadJsonObject(payload, file);
-    }
-
-    function clearDashImport() {
-        pendingDashImport = null;
-        const ta = document.getElementById('dashImportText');
-        if (ta) ta.value = '';
-        const a = document.getElementById('dashImportAnalysis');
-        if (a) a.innerHTML = '';
-    }
-
-    async function handleDashImportFile(file) {
-        const f = file;
-        if (!f) return;
-        try {
-            const text = await f.text();
-            const ta = document.getElementById('dashImportText');
-            if (ta) ta.value = text;
-            showToast('File loaded. Click Analyze.');
-        } catch {
-            showToast('Could not read file.', true);
-        }
-    }
-
-    function parseDashImportPayload(rawText) {
-        const text = String(rawText || '').trim();
-        if (!text) return null;
-        const parsed = JSON.parse(text);
-        if (!parsed) return null;
-        // Accept our export wrapper or a raw dashboard object.
-        if (parsed.type === 'pm.dashboard.export' && parsed.dashboard) {
-            return { dashboards: [parsed.dashboard] };
-        }
-        // Accept exporting full state.
-        if (Array.isArray(parsed.dashboards)) {
-            return { dashboards: parsed.dashboards };
-        }
-        // Accept single dashboard.
-        if (parsed.id && parsed.repo && parsed.name) {
-            return { dashboards: [parsed] };
-        }
-        return null;
-    }
-
-    function analyzeDashImport() {
-        const ta = document.getElementById('dashImportText');
-        const analysisEl = document.getElementById('dashImportAnalysis');
-        if (!analysisEl) return;
-        analysisEl.innerHTML = '';
-        pendingDashImport = null;
-
-        let payload = null;
-        try {
-            payload = parseDashImportPayload(ta?.value || '');
-        } catch (e) {
-            analysisEl.innerHTML = `<div style="color:var(--error); font-size:12px;">Invalid JSON: ${escapeHtml(e?.message || String(e))}</div>`;
-            return;
-        }
-        if (!payload || !Array.isArray(payload.dashboards) || !payload.dashboards.length) {
-            analysisEl.innerHTML = `<div style="color:var(--error); font-size:12px;">Paste a valid Pipeline Manager dashboard export JSON.</div>`;
-            return;
-        }
-
-        const cleaned = payload.dashboards.map(d => sanitizeDashboardForExport(d)).filter(Boolean);
-        if (!cleaned.length) {
-            analysisEl.innerHTML = `<div style="color:var(--error); font-size:12px;">No valid dashboards found in JSON.</div>`;
-            return;
-        }
-
-        // For now, import one dashboard at a time (keeps UX simple).
-        const dash = cleaned[0];
-        const existing = (dashboardsState.dashboards || []).find(x =>
-            String(x.repo || '').trim() === String(dash.repo || '').trim() &&
-            String(x.name || '').trim().toLowerCase() === String(dash.name || '').trim().toLowerCase()
-        ) || null;
-
-        pendingDashImport = { dash, existing };
-        const totalPipes = (dash.groups || []).reduce((n, g) => n + (g.pipelines || []).length, 0);
-        const conflictTxt = existing ? `<span style="color:var(--warning); font-weight:900;">Conflict:</span> a dashboard with the same repo+name exists.` : `<span style="color:var(--success); font-weight:900;">No conflict:</span> this will create a new dashboard.`;
-
-        analysisEl.innerHTML = `
-            <div class="dash-repo-card" style="padding:14px 14px;">
-                <div style="font-size:12px; font-weight:900; color:var(--text-primary);">${escapeHtml(dash.name)}</div>
-                <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">Repo: <b>${escapeHtml(dash.repo)}</b> · Groups: <b>${dash.groups.length}</b> · Pipelines: <b>${totalPipes}</b></div>
-                <div style="margin-top:8px; font-size:11px; color:var(--text-secondary);">${conflictTxt}</div>
-            </div>
-            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; justify-content:flex-end;">
-                ${existing ? `
-                    <select id="dashImportMode" class="dash-select" style="min-width:240px;">
-                        <option value="replace">Replace existing</option>
-                        <option value="merge" selected>Merge (by group title)</option>
-                        <option value="advanced">Advanced (choose groups)</option>
-                    </select>
-                ` : `
-                    <select id="dashImportMode" class="dash-select" style="min-width:240px;">
-                        <option value="create" selected>Create new</option>
-                    </select>
-                `}
-                <button class="btn btn-orange" onclick="applyDashImport()">Import</button>
-            </div>
-            <div id="dashImportAdvanced" style="margin-top:12px; display:none;"></div>
-        `;
-
-        if (existing) {
-            const modeSel = document.getElementById('dashImportMode');
-            if (modeSel) {
-                modeSel.addEventListener('change', () => renderDashImportAdvanced());
-            }
-            renderDashImportAdvanced();
-        }
-    }
-
-    function renderDashImportAdvanced() {
-        const adv = document.getElementById('dashImportAdvanced');
-        const mode = (document.getElementById('dashImportMode')?.value || '').toLowerCase();
-        if (!adv) return;
-        if (mode !== 'advanced' || !pendingDashImport?.existing) { adv.style.display = 'none'; adv.innerHTML = ''; return; }
-        const dash = pendingDashImport.dash;
-        const existing = pendingDashImport.existing;
-        const existingGroups = (existing.groups || []).map(g => String(g.title || '').trim().toLowerCase());
-        adv.style.display = 'block';
-        adv.innerHTML = `
-            <div style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">
-                Choose what to do for each imported group.
-            </div>
-            ${(dash.groups || []).map((g, idx) => {
-                const title = String(g.title || 'Pipelines').trim();
-                const has = existingGroups.includes(title.toLowerCase());
-                return `<div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding:10px 10px; border-radius:12px; border:1px solid rgba(255,255,255,0.06); background:rgba(0,0,0,0.14); margin-bottom:8px;">
-                    <div style="min-width:220px; font-weight:900; color:var(--text-primary);">${escapeHtml(title)}</div>
-                    <div style="font-size:11px; color:var(--text-muted);">${(g.pipelines||[]).length} pipeline(s) · ${has ? 'matches existing group' : 'new group'}</div>
-                    <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
-                        <select class="dash-select" data-imp-group="${idx}" style="min-width:170px;">
-                            ${has ? `
-                                <option value="merge" selected>Merge</option>
-                                <option value="replace">Replace</option>
-                                <option value="skip">Skip</option>
-                            ` : `
-                                <option value="add" selected>Add</option>
-                                <option value="skip">Skip</option>
-                            `}
-                        </select>
-                    </div>
-                </div>`;
-            }).join('')}
-        `;
-    }
-
-    function summarizeDashboardShape(d) {
-        const dash = sanitizeDashboardForExport(d);
-        if (!dash) return { groups: 0, pipelines: 0, pipelineSet: new Set(), groupTitles: [] };
-        const groups = dash.groups || [];
-        const pipelineSet = new Set();
-        const titles = [];
-        for (const g of groups) {
-            titles.push(String(g.title || '').trim());
-            for (const pk of (g.pipelines || [])) pipelineSet.add(String(pk || '').trim());
-        }
-        return { groups: groups.length, pipelines: pipelineSet.size, pipelineSet, groupTitles: titles };
-    }
-
-    function diffSets(beforeSet, afterSet) {
-        const before = beforeSet instanceof Set ? beforeSet : new Set();
-        const after = afterSet instanceof Set ? afterSet : new Set();
-        const added = [];
-        const removed = [];
-        for (const v of after) if (!before.has(v)) added.push(v);
-        for (const v of before) if (!after.has(v)) removed.push(v);
-        return { added, removed };
-    }
-
-    function showDashImportSummary(summary) {
-        const s = summary || {};
-        const actionLabel =
-            s.action === 'create' ? 'Created new dashboard' :
-            s.action === 'replace' ? 'Replaced existing dashboard' :
-            s.action === 'merge' ? 'Merged into existing dashboard' :
-            s.action === 'advanced' ? 'Imported with advanced group choices' :
-            'Import complete';
-
-        const pills = [];
-        if (Number.isFinite(s.groupsBefore) && Number.isFinite(s.groupsAfter)) {
-            pills.push(`<span class="dash-pill">Groups: <b>${s.groupsBefore}</b> → <b>${s.groupsAfter}</b></span>`);
-        }
-        if (Number.isFinite(s.pipesBefore) && Number.isFinite(s.pipesAfter)) {
-            pills.push(`<span class="dash-pill">Pipelines: <b>${s.pipesBefore}</b> → <b>${s.pipesAfter}</b></span>`);
-        }
-        if (Number.isFinite(s.added) && Number.isFinite(s.removed)) {
-            pills.push(`<span class="dash-pill" style="border-color:rgba(22,163,74,0.25);">Added: <b>${s.added}</b></span>`);
-            pills.push(`<span class="dash-pill" style="border-color:rgba(220,38,38,0.25);">Removed: <b>${s.removed}</b></span>`);
-        }
-
-        const groupRows = (s.groupDetails || []).length ? `
-            <div style="margin-top:14px;">
-                <div style="font-size:11px; font-weight:900; letter-spacing:0.6px; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px;">Group details</div>
-                ${(s.groupDetails || []).slice(0, 20).map(g => `
-                    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding:10px 10px; border-radius:12px; border:1px solid rgba(255,255,255,0.06); background:rgba(0,0,0,0.12); margin-bottom:8px;">
-                        <div style="min-width:220px; font-weight:900; color:var(--text-primary);">${escapeHtml(g.title || '')}</div>
-                        <div style="font-size:11px; color:var(--text-muted);">${escapeHtml(g.action || '')}</div>
-                        <div style="margin-left:auto; font-size:11px; color:var(--text-secondary);">${escapeHtml(g.note || '')}</div>
-                    </div>
-                `).join('')}
-                ${(s.groupDetails || []).length > 20 ? `<div style="font-size:11px; color:var(--text-muted);">Showing 20 of ${(s.groupDetails || []).length} groups.</div>` : ''}
-            </div>
-        ` : '';
-
-        openDashModal(
-            'Import Summary',
-            `
-                <div class="dash-repo-card" style="padding:14px 14px;">
-                    <div style="display:flex; gap:10px; align-items:flex-start; justify-content:space-between; flex-wrap:wrap;">
-                        <div>
-                            <div style="font-size:12px; font-weight:900; color:var(--text-primary);">${escapeHtml(actionLabel)}</div>
-                            <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">
-                                Repo: <b>${escapeHtml(s.repo || '')}</b> · Dashboard: <b>${escapeHtml(s.name || '')}</b>
-                            </div>
-                        </div>
-                        <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
-                            ${pills.join('')}
-                        </div>
-                    </div>
-                </div>
-                ${groupRows}
-                <div style="margin-top:12px; font-size:11px; color:var(--text-muted);">
-                    Close this window to view your dashboard.
-                </div>
-            `,
-            `
-                <button class="btn btn-secondary" onclick="closeModal('pmDashModal')">Close</button>
-            `
-        );
-    }
-
-    function applyDashImport() {
-        const analysisEl = document.getElementById('dashImportAnalysis');
-        if (!pendingDashImport?.dash) { showToast('Analyze an import first.', true); return; }
-        const dash = pendingDashImport.dash;
-        const existing = pendingDashImport.existing;
-        const mode = (document.getElementById('dashImportMode')?.value || '').toLowerCase();
-
-        const normalize = (d) => sanitizeDashboardForExport(d);
-        const incoming = normalize(dash);
-        if (!incoming) { showToast('Import payload invalid.', true); return; }
-
-        const beforeShape = existing ? summarizeDashboardShape(existing) : { groups: 0, pipelines: 0, pipelineSet: new Set() };
-
-        const applyReplace = () => {
-            const next = normalize(incoming);
-            // Keep existing id so selection stays stable.
-            next.id = existing.id;
-            dashboardsState.dashboards = (dashboardsState.dashboards || []).map(d => d.id === existing.id ? next : d);
-            saveDashboardsState();
-            dashboardsState = loadDashboardsState();
-            setActiveDashboardId(next.repo, next.id);
-            return next;
-        };
-
-        const applyMerge = (groupPlan) => {
-            const target = cloneJson(existing);
-            target.groups = Array.isArray(target.groups) ? target.groups : [];
-
-            const byTitle = new Map(target.groups.map(g => [String(g.title||'').trim().toLowerCase(), g]));
-            const details = [];
-            for (let i = 0; i < (incoming.groups || []).length; i++) {
-                const g = incoming.groups[i];
-                const title = String(g.title || 'Pipelines').trim();
-                const key = title.toLowerCase();
-                const action = groupPlan?.get(i) || (byTitle.has(key) ? 'merge' : 'add');
-                if (action === 'skip') continue;
-                if (action === 'replace' && byTitle.has(key)) {
-                    byTitle.get(key).pipelines = [...new Set((g.pipelines || []).map(String))];
-                    details.push({ title, action: 'Replace', note: `${(g.pipelines || []).length} pipeline(s)` });
+    async function syncDashboardsFromGitHub(repos, pat, ref) {
+        if (!Array.isArray(repos) || !repos.length) return 0;
+        let synced = 0;
+        for (const r of repos) {
+            const repoKey = String(r.repo || '').trim();
+            if (!repoKey) continue;
+            try {
+                const refQ = ref ? `?ref=${encodeURIComponent(ref)}` : '';
+                const resp = await fetch(`https://api.github.com/repos/${r.owner}/${r.repo}/contents/${DASHBOARD_CONFIG_PATH}${refQ}`, {
+                    headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/vnd.github.v3+json' }
+                });
+                if (resp.status === 404) {
+                    // Preserve local working copy. Invalidate stale baseline so UI does not imply the remote file still exists.
+                    const hadBaseline = dashboardsSnapshotForRepo(repoKey).length > 0;
+                    const noPending = getDashboardChanges(repoKey).length === 0;
+                    if (dashboardsRemoteSyncedRepos.has(repoKey) || hadBaseline) {
+                        markDashboardsRemoteMissing(repoKey);
+                    }
+                    if (noPending) {
+                        replaceDashboardsSnapshotForRepo(repoKey, []);
+                    }
+                    synced++;
                     continue;
                 }
-                if (action === 'merge' && byTitle.has(key)) {
-                    const cur = byTitle.get(key).pipelines || [];
-                    const merged = [...new Set([...cur, ...(g.pipelines || [])].map(String))];
-                    byTitle.get(key).pipelines = merged;
-                    details.push({ title, action: 'Merge', note: `+${(g.pipelines || []).length} pipeline(s) considered` });
+                if (!resp.ok) continue;
+                const j = await resp.json();
+                const b64 = (j.content || '').replace(/\n/g, '');
+                const parsed = JSON.parse(b64 ? atob(b64) : '{}');
+                const incoming = (Array.isArray(parsed?.dashboards) ? parsed.dashboards : [])
+                    .map(cleanDashboard)
+                    .filter(Boolean)
+                    .map(d => ({ ...d, repo: d.repo || repoKey }));
+                const hasPending = getDashboardChanges(repoKey).length > 0;
+                if (hasPending) {
+                    // Keep unpushed local edits; refresh baseline from remote. Pull in remote-only
+                    // dashboards so they are not misclassified as removed in Updates.
+                    const workingIds = new Set(dashboardsForRepo(repoKey).map(d => d.id));
+                    const remoteOnly = incoming.filter(d => !workingIds.has(d.id));
+                    if (remoteOnly.length) {
+                        dashboardsState.dashboards.push(...remoteOnly.map(d => cloneJson(cleanDashboard(d))).filter(Boolean));
+                    }
+                    replaceDashboardsSnapshotForRepo(repoKey, incoming);
+                    markDashboardsRemoteSynced(repoKey);
+                    synced++;
                     continue;
                 }
-                // add
-                const gid = `g_${makeDashboardId()}_${i}`;
-                target.groups.push({ id: gid, title, pipelines: [...new Set((g.pipelines || []).map(String))] });
-                byTitle.set(key, target.groups[target.groups.length - 1]);
-                details.push({ title, action: 'Add', note: `${(g.pipelines || []).length} pipeline(s)` });
-            }
-            dashboardsState.dashboards = (dashboardsState.dashboards || []).map(d => d.id === existing.id ? normalize(target) : d);
+                const workingForRepo = dashboardsForRepo(repoKey);
+                const incomingIds = new Set(incoming.map(d => d.id));
+                const localOnly = workingForRepo.filter(d => !incomingIds.has(d.id));
+                dashboardsState.dashboards = (dashboardsState.dashboards || []).filter(d => String(d?.repo || '').trim() !== repoKey);
+                dashboardsState.dashboards.push(...incoming, ...localOnly.map(d => cloneJson(cleanDashboard(d))).filter(Boolean));
+                replaceDashboardsSnapshotForRepo(repoKey, incoming);
+                markDashboardsRemoteSynced(repoKey);
+                synced++;
+            } catch { /* ignore per-repo */ }
+        }
+        if (synced > 0) {
             saveDashboardsState();
             dashboardsState = loadDashboardsState();
-            setActiveDashboardId(existing.repo, existing.id);
-            return { next: dashboardsState.dashboards.find(d => d.id === existing.id) || null, details };
-        };
-
-        if (!existing) {
-            // Create new dashboard (avoid id collisions).
-            const newDash = normalize(incoming);
-            const idTaken = (dashboardsState.dashboards || []).some(d => d.id === newDash.id);
-            if (idTaken) newDash.id = makeDashboardId();
-            dashboardsState.dashboards = dashboardsState.dashboards || [];
-            dashboardsState.dashboards.push(newDash);
-            saveDashboardsState();
-            dashboardsState = loadDashboardsState();
-            setActiveDashboardId(newDash.repo, newDash.id);
-            closeModal('pmDashXferModal');
-            // Switch the Dashboards view to the imported repo (local only).
-            setDashboardsRepo(newDash.repo);
-            const after = dashboardsState.dashboards.find(d => d.id === newDash.id) || newDash;
-            const afterShape = summarizeDashboardShape(after);
-            const ds = diffSets(beforeShape.pipelineSet, afterShape.pipelineSet);
-            showDashImportSummary({
-                action: 'create',
-                repo: newDash.repo,
-                name: newDash.name,
-                groupsBefore: 0,
-                groupsAfter: afterShape.groups,
-                pipesBefore: 0,
-                pipesAfter: afterShape.pipelines,
-                added: ds.added.length,
-                removed: ds.removed.length,
-                groupDetails: (incoming.groups || []).map(g => ({ title: g.title, action: 'Add', note: `${(g.pipelines || []).length} pipeline(s)` }))
-            });
-            showToast('Dashboard imported.');
-            return;
+            refreshDashboardsIfActive();
         }
-
-        if (mode === 'replace') {
-            closeModal('pmDashXferModal');
-            const next = applyReplace();
-            setDashboardsRepo(next.repo);
-            const after = dashboardsState.dashboards.find(d => d.id === next.id) || next;
-            const afterShape = summarizeDashboardShape(after);
-            const ds = diffSets(beforeShape.pipelineSet, afterShape.pipelineSet);
-            showDashImportSummary({
-                action: 'replace',
-                repo: next.repo,
-                name: next.name,
-                groupsBefore: beforeShape.groups,
-                groupsAfter: afterShape.groups,
-                pipesBefore: beforeShape.pipelines,
-                pipesAfter: afterShape.pipelines,
-                added: ds.added.length,
-                removed: ds.removed.length,
-                groupDetails: (incoming.groups || []).map(g => ({ title: g.title, action: 'Replace', note: `${(g.pipelines || []).length} pipeline(s)` }))
-            });
-            showToast('Dashboard replaced.');
-            return;
-        }
-
-        if (mode === 'merge') {
-            closeModal('pmDashXferModal');
-            const res = applyMerge(null);
-            const after = res?.next || dashboardsState.dashboards.find(d => d.id === existing.id) || existing;
-            setDashboardsRepo(String(after.repo || ''));
-            const afterShape = summarizeDashboardShape(after);
-            const ds = diffSets(beforeShape.pipelineSet, afterShape.pipelineSet);
-            showDashImportSummary({
-                action: 'merge',
-                repo: after.repo,
-                name: after.name,
-                groupsBefore: beforeShape.groups,
-                groupsAfter: afterShape.groups,
-                pipesBefore: beforeShape.pipelines,
-                pipesAfter: afterShape.pipelines,
-                added: ds.added.length,
-                removed: ds.removed.length,
-                groupDetails: res?.details || []
-            });
-            showToast('Dashboard merged.');
-            return;
-        }
-
-        if (mode === 'advanced') {
-            const plan = new Map();
-            document.querySelectorAll('#dashImportAdvanced select[data-imp-group]').forEach(sel => {
-                const idx = parseInt(sel.dataset.impGroup, 10);
-                const v = String(sel.value || '').trim().toLowerCase();
-                if (Number.isFinite(idx)) plan.set(idx, v);
-            });
-            closeModal('pmDashXferModal');
-            const res = applyMerge(plan);
-            const after = res?.next || dashboardsState.dashboards.find(d => d.id === existing.id) || existing;
-            setDashboardsRepo(String(after.repo || ''));
-            const afterShape = summarizeDashboardShape(after);
-            const ds = diffSets(beforeShape.pipelineSet, afterShape.pipelineSet);
-            // Build group details with explicit per-group action.
-            const groupDetails = (incoming.groups || []).map((g, idx) => {
-                const title = String(g.title || 'Pipelines').trim();
-                const action = plan.get(idx) || 'merge';
-                const label = action === 'skip' ? 'Skip' : action === 'replace' ? 'Replace' : action === 'merge' ? 'Merge' : action === 'add' ? 'Add' : action;
-                return { title, action: label, note: `${(g.pipelines || []).length} pipeline(s)` };
-            });
-            showDashImportSummary({
-                action: 'advanced',
-                repo: after.repo,
-                name: after.name,
-                groupsBefore: beforeShape.groups,
-                groupsAfter: afterShape.groups,
-                pipesBefore: beforeShape.pipelines,
-                pipesAfter: afterShape.pipelines,
-                added: ds.added.length,
-                removed: ds.removed.length,
-                groupDetails
-            });
-            showToast('Dashboard imported (advanced).');
-            return;
-        }
+        return synced;
     }
+
     function revealDashboardsTab() {
         const btn = document.getElementById('tabDashboards');
         if (!btn) return;
@@ -15125,6 +14997,8 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     function setDashboardsRepo(repo) {
         dashSelectedRepo = String(repo || '').trim() || null;
         dashSelectedGroupId = null; // reset group filter when repo changes
+        dashboardsView = 'dashboard';
+        selectedDashboardUpdates.clear();
         renderDashboards();
     }
 
@@ -15170,7 +15044,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 <div class="form-group">
                     <label class="form-label">Dashboard name <span class="req">*</span></label>
                     <input type="text" id="dashCreateName" placeholder="e.g. UAT — Web smoke" style="font-size:13px;">
-                    <span class="field-help">Saved in your browser only (localStorage).</span>
+                    <span class="field-help">Saved locally first. Pending changes appear in <strong>Updates</strong>; use Generate Prompt when ready.</span>
                 </div>
                 <div class="form-group" style="margin-top:12px;">
                     <label class="form-label">First group title</label>
@@ -15193,13 +15067,13 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         const exists = dashboardsForRepo(repo).some(d => String(d?.name || '').trim().toLowerCase() === name.toLowerCase());
         if (exists) { showToast('A dashboard with that name already exists for this repo.', true); return; }
         const id = `d_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+        const created = { id, repo, name, groups: [{ id: `g_${id}_1`, title: groupTitle, pipelines: [] }], createdAt: new Date().toISOString() };
         dashboardsState.dashboards = dashboardsState.dashboards || [];
-        dashboardsState.dashboards.push({ id, repo, name, groups: [{ id: `g_${id}_1`, title: groupTitle, pipelines: [] }], createdAt: new Date().toISOString() });
+        dashboardsState.dashboards.push(created);
         saveDashboardsState();
         dashboardsState = loadDashboardsState(); // normalize
         closeModal('pmDashModal');
         setActiveDashboardId(repo, id);
-        renderDashboards();
         showToast('Dashboard created.');
     }
 
@@ -15207,9 +15081,11 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         const repo = getDashboardsRepo();
         const id = String(dashId || '').trim();
         if (!repo || !id) return;
-        const ok = confirm('Delete this dashboard? This only affects your browser.');
+        const d = dashboardsForRepo(repo).find(x => x.id === id);
+        if (!d) return;
+        const ok = confirm('Delete this dashboard locally? Use Updates → Generate Prompt to remove it from the repo file.');
         if (!ok) return;
-        dashboardsState.dashboards = (dashboardsState.dashboards || []).filter(d => d.id !== id);
+        dashboardsState.dashboards = (dashboardsState.dashboards || []).filter(x => x.id !== id);
         saveDashboardsState();
         renderDashboards();
         showToast('Dashboard deleted.');
@@ -15550,6 +15426,71 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 
     // Dashboard test enrichment removed.
 
+    function renderDashboardUpdatesView(repo, contentEl) {
+        const changes = getDashboardChanges(repo);
+        const counts = {
+            added: changes.filter(c => c.type === 'added').length,
+            modified: changes.filter(c => c.type === 'modified').length,
+            removed: changes.filter(c => c.type === 'removed').length
+        };
+        changes.sort((a, b) => {
+            const o = (t) => t === 'modified' ? 0 : t === 'added' ? 1 : 2;
+            const d = o(a.type) - o(b.type);
+            if (d) return d;
+            return String(a.dashboard?.name || '').localeCompare(String(b.dashboard?.name || ''));
+        });
+
+        const reposAll = getKnownRepoNames();
+        const repoSwitch = `
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px;">
+                <span style="font-size:11px; color:var(--text-muted); font-weight:900; letter-spacing:0.6px; text-transform:uppercase;">Repo</span>
+                <select class="dash-select" onchange="setDashboardsRepo(this.value)" style="min-width:220px;">
+                    ${reposAll.map(r => `<option value="${escapeHtml(r)}"${r===repo?' selected':''}>${escapeHtml(r)}</option>`).join('')}
+                </select>
+            </div>
+        `;
+
+        let html = `<div class="main-header" style="animation:fadeSlideUp 0.45s ease-out both;">
+            <h1>Updates</h1>
+            <p>${escapeHtml(repo)} • ${changes.length} dashboard change${changes.length !== 1 ? 's' : ''} (${counts.modified} modified, ${counts.added} added, ${counts.removed} removed)</p>
+            ${repoSwitch}
+        </div>`;
+
+        if (!changes.length) {
+            html += `<div class="empty-state" style="margin-top:18px;">
+                <div class="empty-icon" style="font-size:56px;">&#9989;</div>
+                <h3>No updates</h3>
+                <p>Nothing differs from the last synced repo state. Sync from GitHub after applying a prompt to clear changes.</p>
+            </div>`;
+            contentEl.innerHTML = html;
+            return;
+        }
+
+        html += `<div class="selection-bar" style="margin-top:14px;">
+            <div class="selection-bar-left">
+                <button class="sel-link" onclick="selectAllDashboardUpdates()">Select All</button>
+                <button class="sel-link" onclick="deselectAllDashboardUpdates()" style="color:var(--text-muted);">Deselect All</button>
+                <span class="sel-count" id="dashUpdatesSelCount">${selectedDashboardUpdates.size > 0 ? selectedDashboardUpdates.size + ' selected' : ''}</span>
+            </div>
+            <div class="selection-bar-right">
+                <button class="btn btn-orange" onclick="generateDashboardUpdatesPrompt()" style="padding:8px 12px;">&#128196; Generate Prompt</button>
+            </div>
+        </div>`;
+
+        html += `<div style="margin-top:14px; display:flex; flex-direction:column; gap:8px;">`;
+        for (const c of changes) {
+            const checked = selectedDashboardUpdates.has(c.dashboard.id) ? 'checked' : '';
+            html += `<div class="save-change-item dash-update-item">
+                <input type="checkbox" data-dash-id="${escapeHtml(c.dashboard.id)}" ${checked} onchange="toggleDashboardUpdateCheck('${escapeHtml(c.dashboard.id)}', event)">
+                <span class="save-change-type ${c.type}">${c.type}</span>
+                <span class="save-change-name">${escapeHtml(c.dashboard.name)}</span>
+                <span style="margin-left:auto; font-size:11px; color:var(--text-muted);">${escapeHtml(c.dashboard.id)}</span>
+            </div>`;
+        }
+        html += `</div>`;
+        contentEl.innerHTML = html;
+    }
+
     function renderDashboards() {
         const listEl = document.getElementById('dashboardsList');
         const contentEl = document.getElementById('dashboardsContent');
@@ -15588,20 +15529,43 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         const list = dashboardsForRepo(repo);
         const activeId = getActiveDashboardId(repo);
         const active = list.find(d => d.id === activeId) || list[0] || null;
+        const changes = getDashboardChanges(repo);
+        const changeMap = new Map(changes.map(c => [c.dashboard.id, c.type]));
+        const updatesCount = changes.length;
+        if (dashboardsView === 'updates' && updatesCount === 0) dashboardsView = 'dashboard';
 
         listEl.innerHTML = `
             <div class="dash-list-title">${escapeHtml(repo)}</div>
+            ${isDashboardsRemoteMissing(repo) ? `
+                <div style="font-size:11px;color:var(--axos-orange);line-height:1.5;margin:0 0 10px;padding:8px 10px;border-radius:10px;border:1px solid rgba(250,167,74,0.35);background:rgba(250,167,74,0.08);">
+                    <b>Remote file missing.</b> <code>.github/pipeline-manager/dashboards.json</code> was not found on GitHub. Local dashboards are kept; use Updates to commit them.
+                </div>
+            ` : ''}
             <div class="dash-list-actions">
                 <button class="btn btn-orange" onclick="openCreateDashboardModal()">+ Create dashboard</button>
             </div>
+            ${updatesCount > 0 ? `
+                <div class="dash-item dash-updates-item ${dashboardsView === 'updates' ? 'active' : ''}" onclick="setDashboardsView('updates')">
+                    <div class="dash-item-name">Updates (${updatesCount})</div>
+                    <div class="dash-item-sub"><span>Pending dashboard changes</span></div>
+                </div>
+            ` : ''}
             ${list.length ? list.map(d => {
                 const pipes = (d.groups || []).reduce((n, g) => n + ((g.pipelines || []).length), 0);
-                return `<div class="dash-item ${active && d.id === active.id ? 'active' : ''}" onclick="setActiveDashboardId('${escapeHtml(repo)}','${escapeHtml(d.id)}')">
-                    <div class="dash-item-name">${escapeHtml(d.name)}</div>
+                const chType = changeMap.get(d.id);
+                const badge = chType ? `<span class="dash-change-badge ${chType}">${chType}</span>` : '';
+                const isActive = dashboardsView !== 'updates' && active && d.id === active.id;
+                return `<div class="dash-item ${isActive ? 'active' : ''}" onclick="setActiveDashboardId('${escapeHtml(repo)}','${escapeHtml(d.id)}')">
+                    <div class="dash-item-name">${escapeHtml(d.name)}${badge}</div>
                     <div class="dash-item-sub"><span>${(d.groups || []).length} group(s)</span><span>${pipes} pipeline(s)</span></div>
                 </div>`;
             }).join('') : `<div style="padding:10px 2px; color:var(--text-muted); font-size:12px;">No dashboards yet.</div>`}
         `;
+
+        if (dashboardsView === 'updates') {
+            renderDashboardUpdatesView(repo, contentEl);
+            return;
+        }
 
         if (!active) {
             const reposAll = getKnownRepoNames();
@@ -15737,8 +15701,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                     ${repoSwitch}
                 </div>
                 <div class="dash-head-actions">
-                    <button class="btn btn-secondary" onclick="openDashboardXferModal('export')">Export</button>
-                    <button class="btn btn-secondary" onclick="openDashboardXferModal('import')">Import</button>
+                    <button class="btn btn-orange" onclick="generateActiveDashboardPrompt()">&#128196; Generate Prompt</button>
                     <button class="btn btn-secondary" onclick="renameDashboard('${escapeHtml(active.id)}')">Rename</button>
                     <button class="btn btn-secondary" onclick="addGroup('${escapeHtml(active.id)}')">+ Group</button>
                     <button class="btn" style="background:linear-gradient(135deg, var(--error), #dc2626); color:#fff;" onclick="deleteDashboard('${escapeHtml(active.id)}')">Delete</button>
