@@ -2492,6 +2492,25 @@
             : '[self-hosted, linux, x64]';
     }
 
+    // Linux QE hosts with GitHub runners in axos-qe-gh-runners (QAAutomationTestIM).
+    // dsdl-timab32 excluded — ADO agent exists but no GH runner.
+    const LINUX_QE_RUNNERS = [
+        'dsdl-timab21', 'dsdl-timab22', 'dsdl-timab23', 'dsdl-timab24', 'dsdl-timab25',
+        'dsdl-timab26', 'dsdl-timab27', 'dsdl-timab28', 'dsdl-timab29', 'dsdl-timab30',
+        'dsdl-timab31', 'dsdl-timab33', 'dsdl-timab34', 'dsdl-timab35', 'dsdl-timab36',
+        'dsdl-timab37', 'dsdl-timab38', 'dsdl-adtfw06',
+    ];
+    const LINUX_QE_RUNNER_CHOICES = ['AUTO', ...LINUX_QE_RUNNERS];
+
+    // Linux QE hosts with GitHub runners in axos-qe-gh-runners (QAAutomationTestIM pool).
+    // Excludes dsdl-timab32 (ADO agent, no GH runner). Keep in sync with workflow_dispatch options.
+    const LINUX_QE_RUNNERS = [
+        'dsdl-timab21', 'dsdl-timab22', 'dsdl-timab23', 'dsdl-timab24', 'dsdl-timab25',
+        'dsdl-timab26', 'dsdl-timab27', 'dsdl-timab28', 'dsdl-timab29', 'dsdl-timab30',
+        'dsdl-timab31', 'dsdl-timab33', 'dsdl-timab34', 'dsdl-timab35', 'dsdl-timab36',
+        'dsdl-timab37', 'dsdl-timab38', 'dsdl-adtfw06',
+    ];
+
     function getRunnerOsForRepo(repoName, runTarget) {
         const repo = String(repoName || '').trim();
         if (repo === 'Axos.QE.TestIM') return 'linux';
@@ -6016,7 +6035,7 @@ ${os.map(n => `- ${n}`).join('\n')}
         if (repoName === 'Axos.QE.Web' || isWebMonorepoPipeline(p)) {
             const team = getWebMonorepoTeam(p) || 'Unknown';
             const projectDir = String(p.projectDir || '').trim() || computeWebMonorepoProjectDir(team, p.feature || '');
-            const linuxRunners = ['dsdl-timab21','dsdl-timab24','dsdl-timab27','dsdl-timab28','dsdl-timab29','dsdl-timab30','dsdl-timab31'];
+            const linuxRunners = LINUX_QE_RUNNERS;
             const winRunners = ['QSDW-TFSBA01','QSDW-TFSBA02','QSDW-TFSBA03','QSDW-TFSBA04','QSDW-TFSBA05'];
             const rawLinux = String(p.runnerLabelLinux || p.runnerLabel || '').trim();
             const rawWin = String(p.runnerLabelWindows || p.runnerLabel || '').trim();
@@ -6166,9 +6185,9 @@ ${os.map(n => `- ${n}`).join('\n')}
 
         if (p.emailEnabled) {
             const rec = String(p.emailRecipients || '').trim();
-            prompt += `\n\nEMAIL RESULTS (Power Automate): In the caller workflow's \`test-results\` job, mirror the "Set up Node (for email)" and "Email results (Power Automate)" steps from Web_AxosBank_UAT_HealthCheck-Testim.yml. The email step runs \`node tools/build-email-from-junit.mjs\`, uses continue-on-error: true, and is gated on \`always() && steps.detect.outputs.found == 'true'\`. Env: JUNIT_GLOB_DIR=reports, REPORT_TITLE=${p.name}, REPORT_ENV=${p.env || 'UAT'}, POWER_AUTOMATE_EMAIL_WEBHOOK_URL=\${{ secrets.POWER_AUTOMATE_EMAIL_WEBHOOK_URL }}, plus GITHUB_SERVER_URL/GITHUB_REPOSITORY/GITHUB_RUN_ID.`;
+            prompt += `\n\nEMAIL RESULTS (Power Automate): In the caller workflow's \`test-results\` job, mirror the "Set up Node (for email)" and "Email results (Power Automate)" steps from Web_AxosBank_UAT_HealthCheck-Testim.yml. The email step runs \`node tools/build-email-from-junit.mjs\`, uses continue-on-error: true, and is gated on \`always() && (steps.detect.outputs.artifact == 'true' || needs.run.result == 'cancelled')\` (artifact optional for cancel — XML optional otherwise). Env: JUNIT_GLOB_DIR=reports, REPORT_TITLE=${p.name}, REPORT_ENV=${p.env || 'UAT'}, POWER_AUTOMATE_EMAIL_WEBHOOK_URL=\${{ secrets.POWER_AUTOMATE_EMAIL_WEBHOOK_URL }}, GITHUB_SERVER_URL/GITHUB_REPOSITORY/GITHUB_RUN_ID, and RUN_CONCLUSION=\${{ needs.run.result }} (required so cancelled runs email/Teams as CANCELLED instead of a false FAIL or "manual review").`;
             if (rec) {
-                prompt += ` Recipients OVERRIDE for this pipeline: set TESTIM_EMAIL_RECIPIENTS="${rec}" (a literal string) and gate the two steps on \`always() && steps.detect.outputs.found == 'true'\` only (no vars gate).`;
+                prompt += ` Recipients OVERRIDE for this pipeline: set TESTIM_EMAIL_RECIPIENTS="${rec}" (a literal string) and gate the two steps on \`always() && (steps.detect.outputs.artifact == 'true' || needs.run.result == 'cancelled')\` only (no vars gate).`;
             } else {
                 prompt += ` Recipients: use the shared repo variable — set TESTIM_EMAIL_RECIPIENTS=\${{ vars.TESTIM_EMAIL_RECIPIENTS }} and add \`&& vars.TESTIM_EMAIL_RECIPIENTS != ''\` to the two steps' if: condition (default behavior).`;
             }
@@ -6179,10 +6198,10 @@ ${os.map(n => `- ${n}`).join('\n')}
         prompt += `\n\nUse the existing caller workflow file Web_AxosBank_UAT_HealthCheck-Testim.yml as the exact format reference. Include:\n` +
             `- A header comment showing the folder path (e.g. Web > Axos Bank > UAT > ...)\n` +
             `- name: and run-name fields matching the pipeline name\n` +
-            `- workflow_dispatch inputs for ALL variables: TEST_SUITE, BASE_URL, PROJECT, TOKEN, BRANCH, GRID (choice: Testim Grid, Local Agent), PARALLEL, RETRIES, TIMEOUTMIN, BROWSER_TIMEOUT, JOB_TIMEOUT, RUNNER_LABEL (choice: AUTO, dsdl-timab21, dsdl-timab24, dsdl-timab27, dsdl-timab28, dsdl-timab29, dsdl-timab30, dsdl-timab31), and CUSTOM_RUNNER_LABEL (string)\n` +
+            `- workflow_dispatch inputs for ALL variables: TEST_SUITE, BASE_URL, PROJECT, TOKEN, BRANCH, GRID (choice: Testim Grid, Local Agent), PARALLEL, RETRIES, TIMEOUTMIN, BROWSER_TIMEOUT, JOB_TIMEOUT, RUNNER_LABEL (choice: ${LINUX_QE_RUNNER_CHOICES.join(', ')}), and CUSTOM_RUNNER_LABEL (string)\n` +
             `- permissions block (contents: read, checks: write, actions: write)\n` +
             `- jobs section calling _testim-template.yml passing all inputs with fallback defaults using the \${{ inputs.VAR || 'default' }} pattern\n` +
-            `- secrets mapping should pass TESTIM_TOKEN dynamically from TOKEN: \${{ secrets[inputs.TOKEN] || secrets.TESTIM_TOKEN }}`;
+            `- secrets mapping has TWO independent entries: (1) the project CLI token, selected by TOKEN: \${{ secrets[inputs.TOKEN] || secrets.TESTIM_TOKEN }}; (2) the Testim REST API PAK, always fixed: TESTIM_PAK: \${{ secrets.TESTIM_PAK }} (do not tie this to TOKEN)`;
         if (runnerStrategy === 'group') {
             prompt += `\n- Runner targeting: use runner group + labels:\n` +
                 `  runs-on:\n` +
@@ -7334,7 +7353,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                             <label class="form-label">Runner Label (Linux - BrowserStack)</label>
                             <select id="fRunnerLabelLinux" ${isView ? 'disabled' : ''}>
                                 ${(() => {
-                                    const webRunners = ['dsdl-timab21','dsdl-timab24','dsdl-timab27','dsdl-timab28','dsdl-timab29','dsdl-timab30','dsdl-timab31'];
+                                    const webRunners = LINUX_QE_RUNNERS;
                                     const raw = String(p.runnerLabelLinux || p.runnerLabel || '').trim();
                                     const selected = webRunners.includes(raw) ? raw : 'dsdl-timab28';
                                     return webRunners.map(r => `<option value="${r}" ${(selected === r) ? 'selected' : ''}>${r}</option>`).join('');
@@ -7517,7 +7536,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 <div class="form-group">
                     <label class="form-label">Runner Label</label>
                     <select id="fRunnerLabel" ${isView ? 'disabled' : ''}>
-                        ${['AUTO','dsdl-timab21','dsdl-timab24','dsdl-timab27','dsdl-timab28','dsdl-timab29','dsdl-timab30','dsdl-timab31'].map(r => `<option value="${r}" ${(p.runnerLabel || 'AUTO') === r ? 'selected' : ''}>${r}</option>`).join('')}
+                        ${LINUX_QE_RUNNER_CHOICES.map(r => `<option value="${r}" ${(p.runnerLabel || 'AUTO') === r ? 'selected' : ''}>${r}</option>`).join('')}
                     </select>
                     <span class="field-help">AUTO = the axos-qe-gh-runners group assigns a free runner; or pin a specific host (dsdl-timab*).</span>
                 </div>
@@ -9824,7 +9843,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 - workflow_dispatch inputs for ALL variables: TEST_SUITE, BASE_URL, PROJECT, TOKEN, BRANCH, GRID (choice: Testim Grid, Local Agent), PARALLEL, RETRIES, TIMEOUTMIN, BROWSER_TIMEOUT, JOB_TIMEOUT, RUNNER_LABEL (choice: AUTO, dsdl-timab21, dsdl-timab24, dsdl-timab27, dsdl-timab28, dsdl-timab29, dsdl-timab30, dsdl-timab31), and CUSTOM_RUNNER_LABEL (string) — each with the correct default value from the settings above
 - permissions block (contents: read, checks: write, actions: write)
 - The jobs section calling _testim-template.yml passing all inputs with fallback defaults using the \${{ inputs.VAR || 'default' }} pattern
-- secrets mapping should pass TESTIM_TOKEN dynamically from TOKEN: \${{ secrets[inputs.TOKEN] || secrets.TESTIM_TOKEN }}`;
+- secrets mapping has TWO independent entries: (1) the project CLI token, selected by TOKEN: \${{ secrets[inputs.TOKEN] || secrets.TESTIM_TOKEN }}; (2) the Testim REST API PAK, always fixed: TESTIM_PAK: \${{ secrets.TESTIM_PAK }} (do not tie this to TOKEN)`;
         }
 
         if (deleteOld && editingPipeline) {
