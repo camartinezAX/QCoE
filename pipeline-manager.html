@@ -254,8 +254,10 @@
         .tree-pipeline.type-health .tree-icon { color: #3b82f6; }
         .tree-pipeline.type-orchestrator .tree-icon { color: #a78bfa; }
 
-        /* Main */
+        /* Main — pipelines list uses full width; edit forms stay readable via inner sections */
         .main { flex: 1; padding: 30px 40px 120px; max-width: 900px; min-width: 0; }
+        #panelPipelines .main { max-width: none; width: 100%; }
+        #panelPipelines .action-bar-inner { max-width: none; }
         #panelResults .main { max-width: none; }
         #panelEmail .main { max-width: none; }
         #panelDashboards .main { max-width: none; }
@@ -274,7 +276,7 @@
             padding: 18px 22px; margin-bottom: 12px; transition: all 0.2s; cursor: pointer;
         }
         .pipeline-card:hover { border-color: rgba(250,167,74,0.4); transform: translateY(-1px); }
-        .pipeline-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+        .pipeline-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
         /* Keep actions visible: allow name to wrap, don't let actions shrink */
         .pipeline-card-name {
             font-weight: 700;
@@ -284,7 +286,7 @@
             gap: 8px;
             min-width: 0;
             flex: 1 1 auto;
-            overflow-wrap: anywhere;
+            overflow-wrap: break-word;
             word-break: break-word;
         }
         .pipeline-card-actions {
@@ -293,14 +295,17 @@
             flex: 0 0 auto;
             align-items: flex-start;
             justify-content: flex-end;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
         }
         .pipeline-card-title {
             min-width: 0;
             flex: 1 1 auto;
             white-space: normal;
-            overflow-wrap: anywhere;
+            overflow-wrap: break-word;
             word-break: break-word;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.45;
         }
         .card-btn {
             width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border-color);
@@ -319,6 +324,7 @@
         .meta-item { display: flex; align-items: center; gap: 4px; }
         .test-badge {
             padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+            flex-shrink: 0; white-space: nowrap;
         }
         .badge-regression { background: var(--error-bg); color: var(--error); }
         .badge-sanity { background: var(--success-bg); color: var(--success); }
@@ -463,6 +469,10 @@
 
         /* Sync modal */
         .sync-textarea { width: 100%; min-height: 200px; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+        .sync-progress-label { font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+        .sync-progress-track { height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden; }
+        .sync-progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--axos-orange), var(--axos-orange-dark)); border-radius: 4px; transition: width 0.15s ease-out; }
+        .sync-progress-repo { font-size: 11px; color: var(--text-muted); margin-top: 6px; min-height: 16px; font-family: 'JetBrains Mono', monospace; }
 
         /* Toast */
         .toast { position: fixed; bottom: 80px; right: 20px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 14px 18px; display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); transform: translateX(120%); transition: transform 0.3s; z-index: 100000; }
@@ -2168,6 +2178,13 @@
                 </div>
 
                 <div id="syncStatus" style="display:none; background:var(--bg-tertiary); border:1px solid var(--border-color); border-radius:10px; padding:14px 18px; margin-bottom:14px;">
+                    <div id="syncProgressSection" style="margin-bottom:12px;">
+                        <div id="syncProgressLabel" class="sync-progress-label">Syncing workflows… 0 / 0</div>
+                        <div id="syncProgressTrack" class="sync-progress-track">
+                            <div id="syncProgressFill" class="sync-progress-fill"></div>
+                        </div>
+                        <div id="syncCurrentRepo" class="sync-progress-repo"></div>
+                    </div>
                     <div id="syncStatusText" style="font-size:13px; color:var(--text-secondary);"></div>
                 </div>
 
@@ -3724,7 +3741,62 @@ ${os.map(n => `- ${n}`).join('\n')}
 
     const MOBILE_TEST_TYPES = ['Smoke', 'Sanity', 'Regression', 'Health Check'];
 
+    // Single source of truth for splitting a Mobile filename feature segment into the catalog
+    // suite + Custom Suffix. Longest catalog match wins, matched case-insensitively but returning
+    // the catalog's canonical casing. No match → the whole string is the feature, suffix empty.
+    function splitMobileFeature(full) {
+        const s = String(full || '').trim();
+        if (!s) return { feature: '', suffix: '' };
+        if (s === 'Orchestrators' || s.startsWith('Orchestrators_')) {
+            return {
+                feature: 'Orchestrators',
+                suffix: s === 'Orchestrators' ? '' : s.slice('Orchestrators_'.length)
+            };
+        }
+        const lf = s.toLowerCase();
+        const match = [...MOBILE_SUITES]
+            .filter(su => su.name !== 'Orchestrators')
+            .sort((a, b) => b.name.length - a.name.length)
+            .find(f => lf === f.name.toLowerCase() || lf.startsWith(f.name.toLowerCase() + '_'));
+        if (!match) return { feature: s, suffix: '' };
+        return { feature: match.name, suffix: s.slice(match.name.length).replace(/^_/, '') };
+    }
+
     function isMobilePipeline(p) { return p && p.platform === '01 Mobile'; }
+    function mobileFilenameHasEnvSegment(nameOrFilename) {
+        const name = String(nameOrFilename || '').replace(/\.yml$/i, '').replace(/-BrowserStack$/, '');
+        return /^Mobile_(Android|iOS)_(DEV|QA|STG|UAT|PROD)_/i.test(name);
+    }
+    function isMobileEnvSpecific(p) {
+        if (!isMobilePipeline(p) || String(p.feature || '') === 'Orchestrators') return true;
+        if (p.envSpecific === true) return true;
+        if (p.envSpecific === false) return false;
+        // Migrate the short-lived envInputEnabled field (inverted semantics).
+        if (p.envInputEnabled === false) return true;
+        if (p.envInputEnabled === true) return false;
+        return mobileFilenameHasEnvSegment(p.name || p.filename);
+    }
+    function isMobileEnvSpecificForm() {
+        const feature = document.getElementById('fFeature')?.value || '';
+        if (feature === 'Orchestrators') return true;
+        return !!document.getElementById('fEnvSpecific')?.checked;
+    }
+    function mobileEnvDispatchPromptText(env, envSpecific) {
+        const envVal = String(env || 'UAT').trim().toUpperCase();
+        if (envSpecific) {
+            return `- Pipeline is pinned to ${envVal}: the workflow filename must include ${envVal}, hardcode TEST_ENV to "${envVal}", and do NOT expose TEST_ENV as a workflow_dispatch input.\n`;
+        }
+        const envDefault = envVal.toLowerCase();
+        return `- Pipeline is not env-specific: omit the environment from the workflow filename, and expose TEST_ENV as a workflow_dispatch input (description: "Environment (dev, qa, uat, stg, prod)", choice: dev/qa/uat/stg/prod, default: ${envDefault}).\n`;
+    }
+    function mobileWorkflowDispatchInputNames(envSpecific, extraFields) {
+        const names = [];
+        if (!envSpecific) names.push('TEST_ENV');
+        names.push('GREP', 'SUITE', 'SPEC', 'PARALLELS', 'PARALLEL_SPLIT', 'RETRIES');
+        names.push(...extraFields);
+        names.push('USE_BS_LOCAL_TUNNEL', 'BROWSERSTACK_USERNAME', 'BROWSERSTACK_ACCESS_KEY', 'JOB_TIMEOUT', 'RUNNER_LABEL');
+        return names.join(', ');
+    }
     function isPerfPipeline(p) {
         if (!p) return false;
         if (String(p.platform || '') === '04 Performance') return true;
@@ -4400,6 +4472,27 @@ ${os.map(n => `- ${n}`).join('\n')}
                 };
                 (pipelines || []).forEach(backfillMissingFeatureFromDetail);
                 (savedSnapshot || []).forEach(backfillMissingFeatureFromDetail);
+                const backfillMobileFeatureSplit = (p) => {
+                    if (!isMobilePipeline(p) || p.feature === 'Orchestrators') return;
+                    normalizeParsedPipeline(p);
+                };
+                (pipelines || []).forEach(backfillMobileFeatureSplit);
+                (savedSnapshot || []).forEach(backfillMobileFeatureSplit);
+                const backfillMobileEnvSpecific = (p) => {
+                    if (!isMobilePipeline(p) || p.feature === 'Orchestrators') return;
+                    if (p.envSpecific !== undefined && p.envSpecific !== null) {
+                        if (p.envInputEnabled !== undefined) delete p.envInputEnabled;
+                        return;
+                    }
+                    if (p.envInputEnabled !== undefined) {
+                        p.envSpecific = p.envInputEnabled === false;
+                        delete p.envInputEnabled;
+                        return;
+                    }
+                    p.envSpecific = mobileFilenameHasEnvSegment(p.name || p.filename);
+                };
+                (pipelines || []).forEach(backfillMobileEnvSpecific);
+                (savedSnapshot || []).forEach(backfillMobileEnvSpecific);
                 // Load persisted tree open/close state (never auto-expand on first load).
                 try {
                     const t = localStorage.getItem(TREE_STATE_KEY);
@@ -4557,6 +4650,7 @@ ${os.map(n => `- ${n}`).join('\n')}
             platform: 'Platform',
             brand: 'Brand',
             env: 'Environment',
+            envSpecific: 'Pin pipeline to environment',
             feature: 'Feature',
             featureDetail: 'Custom suffix',
             testType: 'Test type',
@@ -4624,7 +4718,7 @@ ${os.map(n => `- ${n}`).join('\n')}
         ]);
 
         const order = [
-            'platform', 'mobilePlatform', 'brand', 'env', 'feature', 'featureDetail', 'testType',
+            'platform', 'mobilePlatform', 'brand', 'env', 'envSpecific', 'feature', 'featureDetail', 'testType',
             'testSuite', 'baseUrl', 'branch', 'grid', 'parallel', 'parallels', 'retries', 'timeoutMin', 'browserTimeout',
             'grep', 'suite', 'spec', 'parallelSplit', 'tunnel', 'appId', 'deviceName', 'deviceOS', 'bsUsername', 'bsAccessKey',
             'runnerLabel', 'customRunnerLabel', 'jobTimeout',
@@ -5972,6 +6066,7 @@ ${os.map(n => `- ${n}`).join('\n')}
             const appField = platform === 'ios' ? 'IOS_APP' : 'ANDROID_APP';
             const deviceNameField = platform === 'ios' ? 'IOS_DEVICE_NAME' : 'ANDROID_DEVICE_NAME';
             const deviceOsField = platform === 'ios' ? 'IOS_DEVICE_OS' : 'ANDROID_DEVICE_OS';
+            const envSpecific = isMobileEnvSpecific(p);
 
             let prompt = `Create or update a mobile pipeline workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
                 `This file should call the reusable template _mobile-template.yml with these settings:\n\n` +
@@ -5998,7 +6093,8 @@ ${os.map(n => `- ${n}`).join('\n')}
 
             prompt += `\n\nUse the existing caller workflow file Mobile_Android_UAT_Smoke-BrowserStack.yml as the exact format reference. Include:\n` +
                 `- name: and run-name fields matching the pipeline name\n` +
-                `- workflow_dispatch inputs for all required variables (including ${appField}, ${deviceNameField}, ${deviceOsField}) with correct defaults\n` +
+                mobileEnvDispatchPromptText(p.env, envSpecific) +
+                `- workflow_dispatch inputs for: ${mobileWorkflowDispatchInputNames(envSpecific, [appField, deviceNameField, deviceOsField])} — each with the correct default value from above\n` +
                 `- permissions block (contents: read, checks: write, actions: write)\n` +
                 `- jobs section calling _mobile-template.yml passing inputs with fallback defaults`;
             if (runnerStrategy === 'group') {
@@ -6383,6 +6479,10 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         if (isOrchestratorPipeline(p) && p.feature !== 'Orchestrators') {
             p.feature = 'Orchestrators';
         }
+        if (isMobilePipeline(p) && p.feature !== 'Orchestrators') {
+            normalizeParsedPipeline(p);
+        }
+        const mobileFeatureSplit = isMobilePipeline(p) ? splitMobileFeature(String(p.featureDetail || p.feature || '')) : null;
 
         // New pipeline: choose the repo first (repo drives the config section).
         if (editable && !isEdit && !String(p.repo || '').trim()) {
@@ -6465,6 +6565,10 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                             // even when a stale sync left the whole feature[_suffix] in feature.
                             return splitPerfFeature(String(p.featureDetail || p.feature || '').trim()).suffix;
                         }
+                        if (isMobilePipeline(p)) {
+                            if (String(p.customSuffix || '').trim()) return String(p.customSuffix).trim();
+                            return splitMobileFeature(String(p.featureDetail || p.feature || '').trim()).suffix;
+                        }
                         const parts = fd.split('_').filter(Boolean);
                         if (parts[0] === 'OLB') return parts.slice(2).join('_') || '';
                         return parts.slice(1).join('_') || '';
@@ -6499,11 +6603,23 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Environment <span class="req">*</span></label>
+                            <label class="form-label">
+                                Environment <span class="req">*</span>
+                                <span class="info-tip" data-tip="When not pinned, the environment is chosen at Run workflow (TEST_ENV) and is omitted from the pipeline name. When pinned, this YAML is fixed to the selected environment and the env appears in the pipeline name." title="When not pinned, the environment is chosen at Run workflow (TEST_ENV) and is omitted from the pipeline name. When pinned, this YAML is fixed to the selected environment and the env appears in the pipeline name.">&#9432;</span>
+                            </label>
                             <select id="fEnv" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
                                 <option value="">Select...</option>
                                 ${ENVIRONMENTS.map(e => `<option value="${e}" ${p.env === e ? 'selected' : ''}>${e}</option>`).join('')}
                             </select>
+                            <label class="toggle-row" id="mobileEnvSpecificToggle" style="margin-top:8px; padding:0;" onclick="event.stopPropagation()">
+                                <div class="toggle-switch" style="transform:scale(0.88); transform-origin:left center;">
+                                    <input type="checkbox" id="fEnvSpecific" ${isMobileEnvSpecific(p) ? 'checked' : ''} onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
+                                    <span class="toggle-slider"></span>
+                                </div>
+                                <div class="toggle-info">
+                                    <div class="toggle-label" style="font-size:12px;">Pin pipeline to this environment</div>
+                                </div>
+                            </label>
                         </div>
                     </div>
                     <div class="form-row">
@@ -6511,7 +6627,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                             <label class="form-label">Suite <span class="req">*</span></label>
                             <select id="fFeature" onchange="toggleOrchestratorSections(); updateNamePreview()" ${isView ? 'disabled' : ''}>
                                 <option value="">Select...</option>
-                                ${MOBILE_SUITES.map(s => `<option value="${s.name}" ${p.feature === s.name ? 'selected' : ''}>${s.id} ${s.name}</option>`).join('')}
+                                ${MOBILE_SUITES.map(s => `<option value="${s.name}" ${(mobileFeatureSplit?.feature || p.feature) === s.name ? 'selected' : ''}>${s.id} ${s.name}</option>`).join('')}
                             </select>
                         </div>
                         <div class="form-group">
@@ -8662,7 +8778,10 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             // never appears in the name.
             const suffix = document.getElementById('fCustomSuffix')?.value?.trim();
             const envVal = document.getElementById('fEnv')?.value;
-            let name = `Mobile_${brand}_${envVal}_${feature}`;
+            const envSpecific = isMobileEnvSpecificForm();
+            let name = `Mobile_${brand}_`;
+            if (envSpecific) name += `${envVal}_`;
+            name += feature;
             if (suffix) name += `_${suffix.replace(/\s+/g, '_')}`;
             if (feature !== testType) name += `_${testType.replace(/\s+/g, '')}`;
             name += `-BrowserStack`;
@@ -8932,6 +9051,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         if (newman) newman.style.display = isOrch ? 'none' : '';
         if (playwright) playwright.style.display = isOrch ? 'none' : '';
         if (browserstack) browserstack.style.display = isOrch ? 'none' : '';
+        const envPin = document.getElementById('mobileEnvSpecificToggle');
+        if (envPin) envPin.style.display = isOrch ? 'none' : '';
 
         // Custom Suffix is the pipeline NAME; Team / Set Name is what the orchestrator dispatches.
         // They are independent. As a convenience only, pre-fill an empty Set Name from Custom Suffix
@@ -9209,8 +9330,12 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 // The Test Type is the real selected type (Smoke/Sanity/Regression). They are independent.
                 base.feature = 'Orchestrators';
                 base.testType = v('fTestType') || base.testType || 'Smoke';
+                base.platform = v('fPlatform') || base.platform || '01 Mobile';
+                base.brand = v('fBrand') || base.brand;
+                base.env = v('fEnv') || base.env;
+                base.envSpecific = true;
                 base.orchestratorSet = (v('fOrchSetName') || '').trim();
-                const nameSuffix = (v('fCustomSuffix') || '').replace(/\s+/g, '');
+                const nameSuffix = (v('fCustomSuffix') || '').trim().replace(/\s+/g, '_');
                 base.featureDetail = nameSuffix ? `Orchestrators_${nameSuffix}` : 'Orchestrators';
                 base.customSuffix = nameSuffix;
                 const refs = (document.getElementById('fOrchTargetRefs')?.value || '').trim();
@@ -9233,6 +9358,16 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 base.deviceName = ''; base.deviceOS = '';
                 base.bsUsername = ''; base.bsAccessKey = '';
             } else {
+            const rawFeature = v('fFeature');
+            const rawSuffix = (v('fCustomSuffix') || '').trim().replace(/\s+/g, '_');
+            base.platform = v('fPlatform') || base.platform || '01 Mobile';
+            base.brand = v('fBrand') || base.brand;
+            base.env = v('fEnv') || base.env;
+            base.envSpecific = isMobileEnvSpecificForm();
+            base.feature = rawFeature;
+            base.testType = v('fTestType') || base.testType;
+            base.customSuffix = rawSuffix;
+            base.featureDetail = rawSuffix ? `${rawFeature}_${rawSuffix}` : rawFeature;
             base.grep = v('fGrep');
             base.suite = v('fSuite');
             base.spec = v('fSpec');
@@ -9575,6 +9710,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             const appField = subPlatform === 'ios' ? 'IOS_APP' : 'ANDROID_APP';
             const deviceNameField = subPlatform === 'ios' ? 'IOS_DEVICE_NAME' : 'ANDROID_DEVICE_NAME';
             const deviceOsField = subPlatform === 'ios' ? 'IOS_DEVICE_OS' : 'ANDROID_DEVICE_OS';
+            const envSpecific = isMobileEnvSpecificForm();
 
             prompt = `Create a new mobile pipeline workflow file in the repo Axos.QE.Mobile at:
 .github/workflows/${name}.yml
@@ -9604,7 +9740,8 @@ CUSTOM_RUNNER_LABEL: ${el('fCustomRunnerLabel') || ''}`;
 
             prompt += `\n\nUse the existing caller workflow file Mobile_Android_UAT_Smoke-BrowserStack.yml as the exact format reference. Include:
 - name: and run-name: fields matching the pipeline name
-- workflow_dispatch inputs for ALL variables: TEST_ENV, GREP, SUITE, SPEC, PARALLELS, PARALLEL_SPLIT, RETRIES, ${appField}, ${deviceNameField}, ${deviceOsField}, USE_BS_LOCAL_TUNNEL, BROWSERSTACK_USERNAME (default: empty; use repo secrets), BROWSERSTACK_ACCESS_KEY (default: empty; use repo secrets), JOB_TIMEOUT, and RUNNER_LABEL (choice: AUTO, QSDW-TFSBA01, QSDW-TFSBA02, QSDW-TFSBA03, QSDW-TFSBA04, QSDW-TFSBA05) — each with the correct default value from above
+${mobileEnvDispatchPromptText(el('fEnv'), envSpecific).trimEnd()}
+- workflow_dispatch inputs for: ${mobileWorkflowDispatchInputNames(envSpecific, [appField, deviceNameField, deviceOsField])} — each with the correct default value from above
 - permissions block (contents: read, checks: write, actions: write)
 - The jobs section calling _mobile-template.yml passing all inputs with fallback defaults
 - BrowserStack creds should be provided via repo secrets; keep inputs optional (blank defaults) for flexibility.`;
@@ -10071,6 +10208,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 platform: '01 Mobile',
                 brand: 'Android',
                 env: 'UAT',
+                envSpecific: false,
                 feature: 'Smoke',
                 testType: 'Smoke',
                 grep: '@Sanity',
@@ -10241,6 +10379,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         if (fiEl) fiEl.value = '';
         const statusEl = document.getElementById('syncStatus');
         if (statusEl) statusEl.style.display = 'none';
+        resetSyncProgress();
         const refEl = document.getElementById('syncRef');
         if (refEl) refEl.value = getStoredSyncRef();
         renderSyncReposDisplay();
@@ -10258,6 +10397,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         const inputs = {};
         const withValues = {};
         let scheduleCron = '';
+        const dispatchInputs = new Set();
 
         let inWorkflowDispatch = false;
         let wdIndent = null;
@@ -10313,9 +10453,10 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             }
 
             if (inInputs) {
-                const mKey = line.match(/^\s*([A-Z0-9_]+)\s*:\s*$/);
+                const mKey = line.match(/^\s*([A-Za-z0-9_]+)\s*:\s*$/);
                 if (mKey) {
                     currentInput = mKey[1];
+                    dispatchInputs.add(currentInput.toUpperCase());
                     currentInputIndent = indent;
                     continue;
                 }
@@ -10496,7 +10637,60 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             entry.repeatUnit = 'weeks';
             entry.repeatEvery = String(wm);
         }
+        entry.dispatchInputs = [...dispatchInputs];
         return entry;
+    }
+
+    function isSyncableWorkflowFile(name) {
+        return name && !name.startsWith('_') && name.endsWith('.yml');
+    }
+
+    function syncRepoLineId(repo) {
+        return `syncRepoLine-${String(repo || '').replace(/[^a-zA-Z0-9]/g, '_')}`;
+    }
+
+    function resetSyncProgress() {
+        const label = document.getElementById('syncProgressLabel');
+        const fill = document.getElementById('syncProgressFill');
+        const current = document.getElementById('syncCurrentRepo');
+        if (label) label.textContent = 'Syncing workflows… 0 / 0';
+        if (fill) fill.style.width = '0%';
+        if (current) current.textContent = '';
+    }
+
+    function updateSyncProgress(done, total, opts = {}) {
+        const label = document.getElementById('syncProgressLabel');
+        const fill = document.getElementById('syncProgressFill');
+        const current = document.getElementById('syncCurrentRepo');
+        const safeTotal = Math.max(0, Number(total) || 0);
+        const safeDone = safeTotal > 0
+            ? Math.min(Math.max(0, Number(done) || 0), safeTotal)
+            : Math.max(0, Number(done) || 0);
+        const pct = safeTotal > 0 ? Math.round((safeDone / safeTotal) * 100) : 0;
+        if (label) {
+            label.textContent = safeTotal > 0
+                ? `Syncing workflows… ${safeDone} / ${safeTotal} (${pct}%)`
+                : 'Discovering workflows…';
+        }
+        if (fill) fill.style.width = `${pct}%`;
+        if (current && opts.repoLabel) {
+            const repoDone = Number(opts.repoDone) || 0;
+            const repoTotal = Number(opts.repoTotal) || 0;
+            const repoPct = repoTotal > 0 ? Math.round((repoDone / repoTotal) * 100) : 0;
+            current.textContent = repoTotal > 0
+                ? `${opts.repoLabel} — ${repoDone} / ${repoTotal} (${repoPct}%)`
+                : opts.repoLabel;
+        }
+    }
+
+    async function listWorkflowFilesForRepo(r, pat, ref) {
+        const refQ = ref ? `?ref=${encodeURIComponent(ref)}` : '';
+        const resp = await fetch(`https://api.github.com/repos/${r.owner}/${r.repo}/contents/.github/workflows${refQ}`, {
+            headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/vnd.github.v3+json' }
+        });
+        if (!resp.ok) throw new Error(`list failed (${resp.status})`);
+        const files = await resp.json();
+        return Array.isArray(files) ? files.filter(f => isSyncableWorkflowFile(f.name)) : [];
     }
 
     async function fetchWorkflowEntry(r, fileName, pat) {
@@ -10526,7 +10720,8 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         btn.disabled = true;
         btn.textContent = 'Syncing...';
         statusEl.style.display = 'block';
-        statusText.innerHTML = 'Fetching workflows from GitHub...';
+        resetSyncProgress();
+        statusText.innerHTML = 'Discovering workflows...';
 
         const repos = loadSyncRepos();
         if (!repos.length) {
@@ -10562,21 +10757,49 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 
         const allFiles = [];
         try {
+            const repoPlans = [];
+            let grandTotal = 0;
+
             for (const r of repos) {
-                statusText.innerHTML += `<br>  ${r.owner}/${r.repo}...`;
-                const orchSets = await loadOrchestratorSetsForRepo(r);
-                const refQ = ref ? `?ref=${encodeURIComponent(ref)}` : '';
-                const resp = await fetch(`https://api.github.com/repos/${r.owner}/${r.repo}/contents/.github/workflows${refQ}`, {
-                    headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/vnd.github.v3+json' }
-                });
-                if (!resp.ok) {
-                    statusText.innerHTML += ` <span style="color:var(--danger);">failed (${resp.status})</span>`;
+                try {
+                    const files = await listWorkflowFilesForRepo(r, pat, ref);
+                    repoPlans.push({ r, files, failed: false });
+                    grandTotal += files.length;
+                } catch (e) {
+                    repoPlans.push({ r, files: [], failed: true, error: e.message || String(e) });
+                }
+            }
+
+            updateSyncProgress(0, grandTotal);
+            statusText.innerHTML = grandTotal > 0
+                ? `Fetching ${grandTotal} workflow${grandTotal === 1 ? '' : 's'} from ${repos.length} repo${repos.length === 1 ? '' : 's'}…`
+                : 'No workflows found to fetch.';
+
+            let doneOverall = 0;
+
+            for (const plan of repoPlans) {
+                const { r, files, failed } = plan;
+                const repoLabel = `${r.owner}/${r.repo}`;
+                const lineId = syncRepoLineId(r.repo);
+
+                if (failed) {
+                    statusText.innerHTML += `<br>  ${repoLabel} <span style="color:var(--danger);">failed (${plan.error})</span>`;
                     continue;
                 }
-                const files = await resp.json();
+
+                const repoTotal = files.length;
+                if (repoTotal === 0) {
+                    statusText.innerHTML += `<br>  ${repoLabel} <span style="color:var(--text-muted);">0 workflows</span>`;
+                    continue;
+                }
+
+                statusText.innerHTML += `<br>  <span id="${lineId}">${repoLabel}…</span>`;
+                updateSyncProgress(doneOverall, grandTotal, { repoLabel, repoDone: 0, repoTotal });
+
+                const orchSets = await loadOrchestratorSetsForRepo(r);
                 let count = 0;
+
                 for (const f of files) {
-                    if (f.name.startsWith('_') || !f.name.endsWith('.yml')) continue;
                     try {
                         const entry = await fetchWorkflowEntry(r, f.name, pat);
                         if (entry && entry.orchestratorSet && orchSets) {
@@ -10587,8 +10810,23 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                         allFiles.push({ filename: f.name, repo: r.repo });
                     }
                     count++;
+                    doneOverall++;
+                    updateSyncProgress(doneOverall, grandTotal, { repoLabel, repoDone: count, repoTotal });
+
+                    const lineEl = document.getElementById(lineId);
+                    if (lineEl) {
+                        lineEl.innerHTML = `${repoLabel} <span style="color:var(--text-muted);">${count}/${repoTotal}</span>`;
+                    }
                 }
-                statusText.innerHTML += ` <span style="color:var(--success);">${count} workflows</span>`;
+
+                const lineEl = document.getElementById(lineId);
+                if (lineEl) {
+                    lineEl.innerHTML = `${repoLabel} <span style="color:var(--success);">${count} workflows</span>`;
+                }
+            }
+
+            if (grandTotal > 0) {
+                updateSyncProgress(grandTotal, grandTotal);
             }
 
             if (allFiles.length === 0) {
@@ -10599,11 +10837,16 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 processSyncInput();
             }
 
+            const currentRepoEl = document.getElementById('syncCurrentRepo');
+            if (currentRepoEl) currentRepoEl.textContent = 'Fetching dashboards…';
             statusText.innerHTML += '<br>Fetching dashboards...';
             const dashSynced = await syncDashboardsFromGitHub(repos, pat, ref);
             statusText.innerHTML += ` <span style="color:var(--success);">${dashSynced} repo dashboard file(s)</span>`;
+            if (currentRepoEl) currentRepoEl.textContent = 'Sync complete';
         } catch (err) {
             statusText.innerHTML += `<br><span style="color:var(--danger);">Error: ${err.message}</span>`;
+            const currentRepoEl = document.getElementById('syncCurrentRepo');
+            if (currentRepoEl) currentRepoEl.textContent = 'Sync failed';
         }
         btn.disabled = false;
         btn.textContent = 'Sync from GitHub';
@@ -10761,6 +11004,14 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 if (entry.deploymentType !== undefined) parsed.deploymentType = entry.deploymentType;
                 if (entry.artifactId !== undefined) parsed.artifactId = entry.artifactId;
                 if (entry.verboseOutput !== undefined) parsed.verboseOutput = entry.verboseOutput;
+
+                // Mobile env pinning: unpinned workflows expose TEST_ENV as workflow_dispatch input.
+                // Only override filename inference when dispatch inputs were parsed; an empty array
+                // means the YAML had no workflow_dispatch inputs block (keep filename envSpecific).
+                if (isMobilePipeline(parsed) && parsed.feature !== 'Orchestrators' && Array.isArray(entry.dispatchInputs) && entry.dispatchInputs.length > 0) {
+                    if (entry.dispatchInputs.includes('TEST_ENV')) parsed.envSpecific = false;
+                    else parsed.envSpecific = true;
+                }
 
                 const k = pipelineKeyFrom(parsed.repo || entry.repo, entry.filename);
                 const idx = pipelines.findIndex(p => pipelineKey(p) === k);
@@ -10967,6 +11218,17 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             || /orchestrator/i.test(String(p.name || ''));
         if (isOrch && (p.customSuffix === undefined || p.customSuffix === null)) {
             p.customSuffix = orchestratorCustomSuffixFromPipeline(p);
+        }
+        if (isMobilePipeline(p) && p.feature !== 'Orchestrators') {
+            const full = String(p.featureDetail || p.feature || '').trim();
+            if (full) {
+                const { feature, suffix } = splitMobileFeature(full);
+                if (feature) p.feature = feature;
+                if (suffix && (p.customSuffix === undefined || p.customSuffix === null || p.customSuffix === '')) {
+                    p.customSuffix = suffix;
+                }
+                p.featureDetail = suffix ? `${feature}_${suffix}` : feature;
+            }
         }
         return p;
     }
@@ -11270,7 +11532,8 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             }
 
             const parts = withoutBs.split('_');
-            if (parts.length < 4) return null;
+            // Non-env-specific names can be 3 segments: Mobile_{OS}_{Feature} (when feature == test type).
+            if (parts.length < 3) return null;
             const subPlatform = parts[1];
             if (subPlatform !== 'Android' && subPlatform !== 'iOS') return null;
             const rest = parts.slice(2);
@@ -11283,16 +11546,25 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             }
             const envs = ['DEV', 'QA', 'STG', 'UAT', 'PROD'];
             let env = 'UAT', feature = featureParts.join('_');
+            let envSpecific = false;
             if (featureParts.length > 0 && envs.includes(featureParts[0])) {
                 env = featureParts[0];
                 feature = featureParts.slice(1).join('_') || '';
+                envSpecific = true;
             }
             if (!feature && MOBILE_SUITES.some(s => s.name === testType)) {
                 feature = testType;
             }
+            const mobileSplit = splitMobileFeature(feature);
+            const suiteName = mobileSplit.feature || feature;
+            const mobileSuffix = mobileSplit.suffix;
             return {
                 filename, name, platform: '01 Mobile', brand: subPlatform, env,
-                feature, featureDetail: feature, testType,
+                feature: suiteName,
+                featureDetail: feature,
+                customSuffix: mobileSuffix,
+                testType,
+                envSpecific,
                 grep: '', suite: '', spec: '', parallel: '10', parallelSplit: 'true',
                 retries: '1', tunnel: 'true', appId: '',
                 deviceName: '', deviceOS: '',
