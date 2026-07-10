@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.min.js"></script>
     <style>
         :root {
             /* Match qe-vision.html design tokens */
@@ -12357,9 +12358,9 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         };
 
         const passed = read(/(\d+)\s+passed\b/i) ?? read(/\bpassed:\s*(\d+)\b/i);
-        const failed = read(/(\d+)\s+failed\b/i) ?? read(/\bfailures?:\s*(\d+)\b/i);
+        const failed = read(/(\d+)\s+failed\b/i) ?? read(/\bfailures?:\s*(\d+)\b/i) ?? read(/\bfailed:\s*(\d+)\b/i);
         const errors = read(/\berrors?:\s*(\d+)\b/i);
-        const skipped = read(/(\d+)\s+skipped\b/i) ?? read(/\bskips?:\s*(\d+)\b/i);
+        const skipped = read(/(\d+)\s+skipped\b/i) ?? read(/\bskipped:\s*(\d+)\b/i) ?? read(/\bskips?:\s*(\d+)\b/i);
         const total = read(/(\d+)\s+tests?\b/i) ?? read(/\btests?:\s*(\d+)\b/i);
 
         const f = (failed ?? 0) + (errors ?? 0);
@@ -12389,64 +12390,257 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         return all;
     }
 
+    function parseTestimCompletionLine(text) {
+        const raw = String(text || '');
+        const re = /completed\s+PASSED:\s*(\d+)\s+FAILED:\s*(\d+)(?:\s+FAILED-EVALUATING:\s*(\d+))?(?:\s+ABORTED:\s*(\d+))?(?:\s+SKIPPED:\s*(\d+))?/gi;
+        let m, last = null;
+        while ((m = re.exec(raw)) !== null) last = m;
+        if (!last) return null;
+        const passed = parseInt(last[1], 10);
+        const failed = parseInt(last[2], 10)
+            + parseInt(last[3] || '0', 10)
+            + parseInt(last[4] || '0', 10);
+        const skipped = parseInt(last[5] || '0', 10);
+        if (!Number.isFinite(passed) || !Number.isFinite(failed)) return null;
+        const total = passed + failed + skipped;
+        if (total <= 0) return null;
+        return { passed, failed, skipped, total };
+    }
+
+    function parseTestCountsFromJUnitXml(xml) {
+        const raw = String(xml || '');
+        if (!raw.trim()) return null;
+        let tests = 0, failures = 0, errors = 0, skipped = 0;
+        const numAttr = (tag, a) => {
+            const r = new RegExp(a + '="([0-9.]+)"').exec(tag);
+            return r ? parseFloat(r[1]) : 0;
+        };
+        const suiteRe = /<testsuite\b[^>]*>/g;
+        let m;
+        while ((m = suiteRe.exec(raw))) {
+            const t = m[0];
+            tests += numAttr(t, 'tests');
+            failures += numAttr(t, 'failures');
+            errors += numAttr(t, 'errors');
+            skipped += numAttr(t, 'skipped');
+        }
+        if (tests === 0) {
+            tests = (raw.match(/<testcase\b/g) || []).length;
+            skipped = (raw.match(/<skipped\b/g) || []).length;
+            const caseRe = /<testcase\b([^>]*[^/])>([\s\S]*?)<\/testcase>/g;
+            let failedCases = 0;
+            while ((m = caseRe.exec(raw))) {
+                if (/<(?:failure|error)\b/.test(m[2])) failedCases++;
+            }
+            failures = failedCases;
+            errors = 0;
+        }
+        const failed = failures + errors;
+        const passed = Math.max(0, tests - failed - skipped);
+        if (tests <= 0) return null;
+        return { passed, failed, skipped, total: tests };
+    }
+
+    function applyParsedTestCounts(r, parsed, gen) {
+        if (!parsed || (r._testCountsGen || 0) !== gen) return null;
+        const passed = parsed.passed ?? 0;
+        const failed = parsed.failed ?? 0;
+        const skipped = parsed.skipped ?? 0;
+        const total = parsed.total ?? (passed + failed + skipped);
+        const actionable = Math.max(0, total - skipped);
+        const passPct = actionable > 0 ? (passed / actionable) * 100 : (total > 0 ? 0 : 100);
+        r.testCounts = { passed, failed, skipped, total, passPct, fallback: false };
+        return r.testCounts;
+    }
+
+    function pickTestimExecutionJob(jobs, workflowName) {
+        const wf = String(workflowName || '').trim();
+        const list = (Array.isArray(jobs) ? jobs : []).filter(j => j && j.id);
+        const execJobs = list.filter(j => !/test results/i.test(String(j.name || '')));
+        if (!execJobs.length) return null;
+        const byWf = execJobs.find(j => wf && String(j.name || '').includes(wf));
+        if (byWf) return byWf;
+        const runSlash = execJobs.find(j => /run\s*\//i.test(String(j.name || '')));
+        if (runSlash) return runSlash;
+        const completed = execJobs.filter(j => j.status === 'completed');
+        return (completed.length ? completed : execJobs)[0] || null;
+    }
+
+    async function fetchJobLogsText(owner, repo, jobId) {
+        const pat = getGitHubToken();
+        if (!pat || !jobId) return null;
+        try {
+            const resp = await fetch(`https://api.github.com/repos/${owner}/${encodeURIComponent(repo)}/actions/jobs/${jobId}/logs`, {
+                headers: {
+                    Authorization: getGhAuthHeader(pat),
+                    Accept: 'application/vnd.github+json',
+                    'X-GitHub-Api-Version': '2022-11-28'
+                }
+            });
+            if (!resp.ok) throw new Error(`Job logs download failed (${resp.status})`);
+            const buf = new Uint8Array(await resp.arrayBuffer());
+            if (buf.length >= 2 && buf[0] === 0x50 && buf[1] === 0x4B) {
+                if (typeof fflate === 'undefined') return null;
+                const files = await new Promise((resolve) => {
+                    fflate.unzip(buf, (err, out) => resolve(err ? null : out));
+                });
+                if (!files) return null;
+                return Object.entries(files)
+                    .filter(([name]) => /\.txt$/i.test(name))
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([, data]) => new TextDecoder().decode(data))
+                    .join('\n');
+            }
+            return new TextDecoder().decode(buf);
+        } catch (err) {
+            if (String(err?.message || '').includes('download failed')) throw err;
+            return null;
+        }
+    }
+
+    async function fetchRunTestCountsFromJobLogs(owner, repo, run) {
+        if (!run?.id) return null;
+        const data = await ghFetch(`/repos/${owner}/${encodeURIComponent(repo)}/actions/runs/${run.id}/jobs?per_page=100`);
+        const job = pickTestimExecutionJob(data?.jobs || [], run.workflowName);
+        if (!job?.id) return null;
+        const logs = await fetchJobLogsText(owner, repo, job.id);
+        if (!logs) return null;
+        return parseTestimCompletionLine(logs);
+    }
+
+    async function unzipFirstXmlFromArtifact(archiveUrl) {
+        const pat = getGitHubToken();
+        const url = String(archiveUrl || '').trim();
+        if (!pat || !url || typeof fflate === 'undefined') return null;
+        try {
+            const resp = await fetch(url, {
+                headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/octet-stream' }
+            });
+            if (!resp.ok) throw new Error(`Artifact download failed (${resp.status})`);
+            const buf = new Uint8Array(await resp.arrayBuffer());
+            const files = await new Promise((resolve) => {
+                fflate.unzip(buf, (err, out) => resolve(err ? null : out));
+            });
+            if (!files) return null;
+            for (const [name, data] of Object.entries(files)) {
+                if (/\.xml$/i.test(name)) {
+                    return new TextDecoder().decode(data);
+                }
+            }
+            return null;
+        } catch (err) {
+            if (String(err?.message || '').includes('download failed')) throw err;
+            return null;
+        }
+    }
+
+    async function fetchRunTestCountsFromArtifact(owner, repo, run) {
+        if (!run?.id) return null;
+        let arts = run.artifacts;
+        if (!arts) {
+            arts = await enrichRunArtifacts(run);
+            if (arts === null) throw new Error('Failed to list run artifacts');
+        }
+        if (!Array.isArray(arts) || !arts.length) return null;
+        const runId = String(run.id);
+        const xmlArt = arts.find(a =>
+            a && !a.expired && a.url &&
+            (/-xml-/i.test(a.name) || a.name.endsWith('-xml-' + runId))
+        );
+        if (!xmlArt?.url) return null;
+        const xml = await unzipFirstXmlFromArtifact(xmlArt.url);
+        return xml ? parseTestCountsFromJUnitXml(xml) : null;
+    }
+
+    const TEST_COUNTS_RETRY_MS = 45000;
+
+    function shouldEnrichRunTestCounts(r) {
+        if (!r || r._testCountsPromise || r.testCounts) return false;
+        if (r._testCountsDone) return false;
+        const attempted = r._testCountsAttemptedAt || 0;
+        if (!attempted) return true;
+        const retryMs = r._testCountsHadError ? Math.min(TEST_COUNTS_RETRY_MS, 15000) : TEST_COUNTS_RETRY_MS;
+        return Date.now() - attempted >= retryMs;
+    }
+
     async function enrichRunTestCounts(run) {
         const r = run;
-        if (!r || r._testCountsDone) return r?.testCounts ?? null;
+        if (!r || !shouldEnrichRunTestCounts(r)) return r?.testCounts ?? null;
         if (r._testCountsPromise) return r._testCountsPromise;
 
         const gen = r._testCountsGen || 0;
         if (r?.status && r.status !== 'completed') {
             r.testCounts = null;
-            r._testCountsDone = true;
             return null;
         }
         r._testCountsPromise = (async () => {
             const owner = getGhOwner();
             const repo = String(r.repo || '').trim();
-            const suiteId = r.checkSuiteId;
-            if (!repo || !suiteId) {
+            let hadError = !!r._testCountsHadError;
+            if (!repo || !r.id) {
                 if ((r._testCountsGen || 0) === gen) r.testCounts = null;
                 return null;
             }
-            const checks = await fetchCheckRunsForSuite(owner, repo, suiteId);
-            if ((r._testCountsGen || 0) !== gen) return null;
-            // Prefer dorny/test-reporter summaries; scan Test Results-named checks first.
-            const sorted = checks.slice().sort((a, b) => {
-                const aScore = /test results/i.test(String(a?.name || '')) ? 1 : 0;
-                const bScore = /test results/i.test(String(b?.name || '')) ? 1 : 0;
-                return bScore - aScore;
-            });
-            for (const cr of sorted) {
-                const out = cr?.output || {};
-                const blob = [out.summary, out.title, out.text].filter(Boolean).join('\n');
-                const parsed = parseTestCountsFromText(blob);
-                if (parsed) {
+
+            const suiteId = r.checkSuiteId;
+            if (suiteId) {
+                try {
+                    const checks = await fetchCheckRunsForSuite(owner, repo, suiteId);
                     if ((r._testCountsGen || 0) !== gen) return null;
-                    const actionable = Math.max(0, parsed.total - parsed.skipped);
-                    const passPct = actionable > 0 ? (parsed.passed / actionable) * 100 : 0;
-                    r.testCounts = {
-                        passed: parsed.passed,
-                        failed: parsed.failed,
-                        skipped: parsed.skipped,
-                        total: parsed.total,
-                        passPct,
-                        fallback: false
-                    };
-                    return r.testCounts;
-                }
+                    const sorted = checks.slice().sort((a, b) => {
+                        const aScore = /test results/i.test(String(a?.name || '')) ? 1 : 0;
+                        const bScore = /test results/i.test(String(b?.name || '')) ? 1 : 0;
+                        return bScore - aScore;
+                    });
+                    for (const cr of sorted) {
+                        const out = cr?.output || {};
+                        const blob = [out.summary, out.title, out.text].filter(Boolean).join('\n');
+                        const parsed = parseTestCountsFromText(blob);
+                        if (parsed) return applyParsedTestCounts(r, parsed, gen);
+                    }
+                } catch { hadError = true; }
             }
-            if ((r._testCountsGen || 0) === gen) r.testCounts = null;
+
+            if ((r._testCountsGen || 0) !== gen) return null;
+
+            try {
+                const fromArtifact = await fetchRunTestCountsFromArtifact(owner, repo, r);
+                if (fromArtifact) return applyParsedTestCounts(r, fromArtifact, gen);
+            } catch { hadError = true; }
+
+            if ((r._testCountsGen || 0) !== gen) return null;
+
+            try {
+                const fromLogs = await fetchRunTestCountsFromJobLogs(owner, repo, r);
+                if (fromLogs) return applyParsedTestCounts(r, fromLogs, gen);
+            } catch { hadError = true; }
+
+            if ((r._testCountsGen || 0) === gen) {
+                r.testCounts = null;
+                r._testCountsHadError = hadError;
+            }
             return null;
         })();
 
         try {
             return await r._testCountsPromise;
         } catch {
-            if ((r._testCountsGen || 0) === gen) r.testCounts = null;
+            if ((r._testCountsGen || 0) === gen) {
+                r.testCounts = null;
+                r._testCountsHadError = true;
+            }
             return null;
         } finally {
             if ((r._testCountsGen || 0) === gen) {
-                r._testCountsDone = true;
+                if (r.testCounts) {
+                    r._testCountsDone = true;
+                    delete r._testCountsHadError;
+                    delete r._testCountsAttemptedAt;
+                } else if (!r._testCountsHadError) {
+                    r._testCountsDone = true;
+                } else {
+                    r._testCountsAttemptedAt = Date.now();
+                }
                 r._testCountsPromise = null;
             }
         }
@@ -12454,7 +12648,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 
     async function enrichDashboardTestCounts(runs) {
         const pending = (runs || []).filter(r => r && r.id);
-        const toStart = pending.filter(r => !r._testCountsDone && !r._testCountsPromise);
+        const toStart = pending.filter(r => shouldEnrichRunTestCounts(r));
         const inFlight = pending.filter(r => r._testCountsPromise).map(r => r._testCountsPromise);
         if (toStart.length) {
             await mapLimit(toStart, 6, async (r) => { await enrichRunTestCounts(r); });
@@ -14041,6 +14235,8 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 r._testCountsGen = (r._testCountsGen || 0) + 1;
                 delete r._testCountsDone;
                 delete r._testCountsPromise;
+                delete r._testCountsAttemptedAt;
+                delete r._testCountsHadError;
                 delete r.testCounts;
             }
         }
@@ -15966,6 +16162,15 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             : dashboardRunDots(repo, workflowFile);
     }
 
+    function dashboardTrendTooltipTitle(run, runs) {
+        if (!run) return '';
+        const wf = String(run.workflowName || run.workflowFile || '').replace(/\.ya?ml$/i, '');
+        let title = wf ? `#${run.runNumber} - ${wf}` : `#${run.runNumber}`;
+        const branches = new Set((runs || []).map(r => String(r?.branch || '').trim()).filter(Boolean));
+        if (branches.size > 1 && run.branch) title += ` (${run.branch})`;
+        return title;
+    }
+
     function buildDashboardTrendChart(canvas, runs, repo) {
         const isLight = (document.documentElement.getAttribute('data-theme') || 'light') === 'light';
         const tickColor = isLight ? 'rgba(30,56,96,0.65)' : '#9ca3af';
@@ -16058,10 +16263,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                         callbacks: {
                             title(items) {
                                 const idx = items?.[0]?.dataIndex ?? 0;
-                                const run = runs[idx];
-                                if (!run) return '';
-                                const branch = String(run.branch || repo || '').trim();
-                                return branch ? `${branch} — #${run.runNumber}` : `#${run.runNumber}`;
+                                return dashboardTrendTooltipTitle(runs[idx], runs);
                             },
                             label(ctx) {
                                 const idx = ctx.dataIndex;
