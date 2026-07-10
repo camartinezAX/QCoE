@@ -12443,12 +12443,16 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 
     function applyParsedTestCounts(r, parsed, gen) {
         if (!parsed || (r._testCountsGen || 0) !== gen) return null;
+        if (parsed.noTests || (parsed.total != null && parsed.total <= 0)) {
+            r.testCounts = { passed: 0, failed: 0, skipped: 0, total: 0, passPct: 0, fallback: false, noTests: true };
+            return r.testCounts;
+        }
         const passed = parsed.passed ?? 0;
         const failed = parsed.failed ?? 0;
         const skipped = parsed.skipped ?? 0;
         const total = parsed.total ?? (passed + failed + skipped);
         const actionable = Math.max(0, total - skipped);
-        const passPct = actionable > 0 ? (passed / actionable) * 100 : (total > 0 ? 0 : 100);
+        const passPct = actionable > 0 ? (passed / actionable) * 100 : 0;
         r.testCounts = { passed, failed, skipped, total, passPct, fallback: false };
         return r.testCounts;
     }
@@ -12554,13 +12558,43 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 
     const TEST_COUNTS_RETRY_MS = 45000;
 
+    function isLegacyRunLevelEstimate(tc) {
+        if (!tc || tc.noTests) return false;
+        return !!tc.fallback && tc.total === 1 && tc.passed === 1 && (tc.failed ?? 0) === 0;
+    }
+
     function shouldEnrichRunTestCounts(r) {
-        if (!r || r._testCountsPromise || r.testCounts) return false;
+        if (!r || r._testCountsPromise) return false;
+        if (r.testCounts) {
+            if (isLegacyRunLevelEstimate(r.testCounts)) {
+                delete r.testCounts;
+                delete r._testCountsDone;
+            } else if (r.testCounts.noTests || (r.testCounts.total ?? 0) > 0) {
+                return false;
+            } else {
+                delete r.testCounts;
+                delete r._testCountsDone;
+            }
+        }
         if (r._testCountsDone) return false;
         const attempted = r._testCountsAttemptedAt || 0;
         if (!attempted) return true;
         const retryMs = r._testCountsHadError ? Math.min(TEST_COUNTS_RETRY_MS, 15000) : TEST_COUNTS_RETRY_MS;
         return Date.now() - attempted >= retryMs;
+    }
+
+    function zeroRunTestCounts(extra = {}) {
+        return {
+            passed: 0,
+            failed: 0,
+            other: 0,
+            skipped: 0,
+            total: 0,
+            passPct: 0,
+            fallback: true,
+            noTests: true,
+            ...extra
+        };
     }
 
     async function enrichRunTestCounts(run) {
@@ -12569,6 +12603,11 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         if (r._testCountsPromise) return r._testCountsPromise;
 
         const gen = r._testCountsGen || 0;
+        if (r?.gateSkipped) {
+            r.testCounts = { passed: 0, failed: 0, skipped: 0, total: 0, passPct: 0, fallback: false, noTests: true };
+            r._testCountsDone = true;
+            return r.testCounts;
+        }
         if (r?.status && r.status !== 'completed') {
             r.testCounts = null;
             return null;
@@ -12638,6 +12677,9 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                     delete r._testCountsAttemptedAt;
                 } else if (!r._testCountsHadError) {
                     r._testCountsDone = true;
+                    if (!r.testCounts) {
+                        r.testCounts = { passed: 0, failed: 0, skipped: 0, total: 0, passPct: 0, fallback: true, noTests: true };
+                    }
                 } else {
                     r._testCountsAttemptedAt = Date.now();
                 }
@@ -12660,7 +12702,13 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 
     function getRunTestCounts(r) {
         if (r?.status && r.status !== 'completed') {
-            return { passed: 0, failed: 0, other: 1, total: 1, passPct: null, fallback: true, active: true };
+            return { ...zeroRunTestCounts(), passPct: null, active: true, noTests: false };
+        }
+        if (r?.gateSkipped) {
+            return zeroRunTestCounts({ fallback: false });
+        }
+        if (r?.testCounts && isLegacyRunLevelEstimate(r.testCounts)) {
+            return zeroRunTestCounts();
         }
         if (r?.testCounts && typeof r.testCounts === 'object') {
             const tc = r.testCounts;
@@ -12668,21 +12716,29 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             const failed = tc.failed ?? 0;
             const skipped = tc.skipped ?? 0;
             const total = tc.total ?? (passed + failed + skipped);
+            if (tc.noTests || total <= 0) {
+                return zeroRunTestCounts({ fallback: !!tc.fallback && !tc.noTests });
+            }
             const actionable = Math.max(0, total - skipped);
-            const passPct = tc.passPct ?? (actionable > 0 ? (passed / actionable) * 100 : 100);
-            return { passed, failed, other: skipped, total, passPct, fallback: !!tc.fallback };
+            const passPct = tc.passPct ?? (actionable > 0 ? (passed / actionable) * 100 : 0);
+            return {
+                passed,
+                failed,
+                other: skipped,
+                total,
+                passPct,
+                fallback: !!tc.fallback,
+                noTests: !!tc.noTests
+            };
         }
         const o = getRunOutcome(r);
         if (o === 'cancelled' || o === 'skipped') {
-            return { passed: 0, failed: 0, other: 1, total: 1, passPct: 0, fallback: true };
+            return zeroRunTestCounts();
         }
-        if (o === 'success') {
-            return { passed: 1, failed: 0, other: 0, total: 1, passPct: 100, fallback: true };
+        if (r?._testCountsDone) {
+            return zeroRunTestCounts();
         }
-        if (o === 'failure') {
-            return { passed: 0, failed: 1, other: 0, total: 1, passPct: 0, fallback: true };
-        }
-        return { passed: 0, failed: 0, other: 1, total: 1, passPct: 0, fallback: true };
+        return { passed: 0, failed: 0, other: 0, total: 0, passPct: null, fallback: true, noTests: false, pending: true };
     }
 
     async function enrichRunArtifacts(run) {
@@ -12767,16 +12823,8 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 
     function isGateSkippedFromSteps(steps) {
         if (!Array.isArray(steps) || !steps.length) return false;
-        const hasGate = steps.some(s => (s?.name || '') === 'Schedule gate');
-        if (!hasGate) return false;
-        const skippedCount = steps.filter(s => (s?.conclusion || s?.status) === 'skipped').length;
-        const ranTest = steps.some(s => {
-            const n = String(s?.name || '');
-            if (!n.startsWith('Execute test')) return false;
-            const c = s?.conclusion || s?.status || '';
-            return c && c !== 'skipped';
-        });
-        return !ranTest && skippedCount >= 3;
+        const checkout = steps.find(s => (s?.name || '') === 'Checkout code');
+        return !!(checkout && (checkout.conclusion || checkout.status) === 'skipped');
     }
 
     async function mapLimit(items, limit, fn) {
@@ -16282,7 +16330,8 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                                 const tc = getRunTestCounts(runs[idx]);
                                 if (tc.active || tc.passPct == null) return ['Run in progress — results pending'];
                                 const lines = [`Pass percentage: ${tc.passPct.toFixed(1)}%`];
-                                if (tc.fallback) lines.push('(run-level estimate — no test summary)');
+                                if (tc.noTests) lines.push('(no tests ran)');
+                                else if (tc.fallback) lines.push('(run-level estimate — no test summary)');
                                 return lines;
                             }
                         }
