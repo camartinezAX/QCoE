@@ -8709,6 +8709,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
     // reads the fields — it never copies between them, so the two stay independent.
     function onOrchSetNameInput() {
         updateNamePreview();
+        updateOrchSetNameFieldHint();
         updateFormStatus();
     }
 
@@ -9070,14 +9071,20 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         const btn = document.getElementById('generateBtn');
         if (!dot) return;
 
-        const duplicate = isNameDuplicate();
+        const nameDuplicate = isNameDuplicate();
+        const setNameDuplicate = isOrchSetNameDuplicate();
         const ready = isFormValid();
 
-        dot.classList.toggle('ready', ready);
-        dot.style.background = duplicate ? 'var(--error)' : '';
+        updateOrchSetNameFieldHint();
 
-        if (duplicate) {
+        dot.classList.toggle('ready', ready);
+        dot.style.background = (nameDuplicate || setNameDuplicate) ? 'var(--error)' : '';
+
+        if (nameDuplicate) {
             text.textContent = 'A pipeline with this name already exists — change a field to make it unique';
+            text.style.color = 'var(--error)';
+        } else if (setNameDuplicate) {
+            text.textContent = 'Team / Set Name already used by another orchestrator in this repo — choose a unique name';
             text.style.color = 'var(--error)';
         } else if (ready) {
             text.textContent = 'Ready to save pipeline!';
@@ -9123,16 +9130,63 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         return text.includes('Select') ? '' : text;
     }
 
+    function getFormRepo() {
+        if (isMobileForm()) return 'Axos.QE.Mobile';
+        const r = String(document.getElementById('fRepo')?.value || '').trim();
+        return r || 'Axos.QE.TestIM';
+    }
+
+    function isOrchestratorForm() {
+        return (document.getElementById('fFeature')?.value || '') === 'Orchestrators';
+    }
+
+    function orchSetNameKey(s) {
+        return String(s || '').trim().toLowerCase();
+    }
+
     function isNameDuplicate() {
         if (viewOnlyMode) return false;
         const name = getGeneratedName();
         if (!name) return false;
-        const repo = (() => {
-            if (isMobileForm()) return 'Axos.QE.Mobile';
-            const r = String(document.getElementById('fRepo')?.value || '').trim();
-            return r || 'Axos.QE.TestIM';
-        })();
+        const repo = getFormRepo();
         return pipelines.some(p => pipeNamesEqual(p.name, name) && normRepoForPipeline(p) === repo && pipelineKey(p) !== editingPipeline);
+    }
+
+    function isOrchSetNameDuplicate() {
+        if (viewOnlyMode) return false;
+        if (!isOrchestratorForm()) return false;
+        const setName = (document.getElementById('fOrchSetName')?.value || '').trim();
+        if (!setName) return false;
+        const key = orchSetNameKey(setName);
+        const repo = getFormRepo();
+        return pipelines.some(p => {
+            if (pipelineKey(p) === editingPipeline) return false;
+            if (normRepoForPipeline(p) !== repo) return false;
+            if (!isOrchestratorPipeline(p)) return false;
+            const other = orchestratorSetForForm(p);
+            return !!other && orchSetNameKey(other) === key;
+        });
+    }
+
+    function updateOrchSetNameFieldHint() {
+        const input = document.getElementById('fOrchSetName');
+        if (!input) return;
+        const hintId = 'fOrchSetNameDupHint';
+        let hint = document.getElementById(hintId);
+        const dup = isOrchestratorForm() && isOrchSetNameDuplicate();
+        if (dup) {
+            if (!hint) {
+                hint = document.createElement('div');
+                hint.id = hintId;
+                hint.style.cssText = 'color:var(--error); font-size:12px; margin-top:6px; font-family:var(--font-b);';
+                input.parentElement?.appendChild(hint);
+            }
+            hint.textContent = '⚠ This set name is already used by another orchestrator in this repo.';
+            input.style.borderColor = 'var(--error)';
+        } else {
+            if (hint) hint.remove();
+            input.style.borderColor = '';
+        }
     }
 
     // Returns the human-readable labels of required fields that are still empty,
@@ -9244,7 +9298,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                         el('fFeature')?.value && el('fTestType')?.value &&
                         el('fCollectionId')?.value && el('fEnvironmentId')?.value;
                 }
-                return fieldsOk && !isNameDuplicate();
+                return fieldsOk && !isNameDuplicate() && !isOrchSetNameDuplicate();
             }
             if (repo === 'Axos.QE.Crypto.Web' || repo === 'Axos.QE.Web') {
                 const isOrchWeb = repo === 'Axos.QE.Web' && (el('fFeature')?.value || '') === 'Orchestrators';
@@ -9258,7 +9312,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                         el('fBrand')?.value && el('fEnv')?.value &&
                         el('fFeature')?.value && el('fTestType')?.value;
                 }
-                return fieldsOk && !isNameDuplicate();
+                return fieldsOk && !isNameDuplicate() && !isOrchSetNameDuplicate();
             }
             if (repo === 'Axos.QE.Performance.Automation') {
                 const brand = el('fBrand')?.value || 'JMeter';
@@ -9269,7 +9323,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 fieldsOk = (brand === 'BlazeMeter')
                     ? (common && el('fBzTestId')?.value)
                     : (common && el('fJmxName')?.value);
-                return fieldsOk && !isNameDuplicate();
+                return fieldsOk && !isNameDuplicate() && !isOrchSetNameDuplicate();
             }
             const isOrch = (el('fFeature')?.value || '') === 'Orchestrators';
             if (isOrch) {
@@ -9282,7 +9336,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                        el('fFeature')?.value && el('fTestType')?.value && el('fTestSuite')?.value && el('fBaseUrl')?.value;
             }
         }
-        return fieldsOk && !isNameDuplicate();
+        return fieldsOk && !isNameDuplicate() && !isOrchSetNameDuplicate();
     }
 
     function savePipelineFromForm() {
