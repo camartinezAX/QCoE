@@ -937,6 +937,7 @@
         .dash-group-title{font-size:13px;font-weight:900;letter-spacing:.2px;color:var(--text-primary);}
         .dash-group-actions{display:flex;gap:8px;flex-wrap:wrap;}
         .dash-pipes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;}
+        .dash-pipes.graphs{grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;}
 
         /* Group filter (shown when a dashboard has >1 group) */
         .dash-group-filter{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:-2px 0 18px;}
@@ -1088,7 +1089,18 @@
         .run-dot.skipped{background:rgba(250,167,74,0.9);}
         .run-dot.unknown{background:rgba(59,130,246,0.9);}
         .run-dot.attn{box-shadow:0 0 0 2px rgba(250,167,74,0.40), 0 10px 24px rgba(250,167,74,0.14);}
-        /* Dashboard graphs removed (status dots only). */
+        .dash-trend-wrap{
+            position:relative;width:100%;height:240px;margin-top:4px;
+            border-radius:10px;background:rgba(0,0,0,0.12);border:1px solid rgba(255,255,255,0.05);
+            overflow:hidden;
+        }
+        [data-theme="light"] .dash-trend-wrap{background:rgba(30,56,96,0.04);border-color:rgba(30,56,96,0.10);}
+        .dash-trend-wrap canvas{width:100%!important;height:100%!important;cursor:pointer;}
+        .dash-trend-loading{
+            position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+            font-size:11px;font-weight:700;color:var(--text-muted);pointer-events:none;
+        }
+        .dash-trend-wrap.ready .dash-trend-loading{display:none;}
         .dash-pipe-foot{display:flex;justify-content:space-between;gap:10px;margin-top:10px;font-size:11px;color:var(--text-muted);}
         .dash-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);font-weight:800;}
         [data-theme="light"] .dash-pill{background:#fff;border-color:rgba(30,56,96,0.16);color:var(--navy);}
@@ -1864,6 +1876,13 @@
                 </div>
                 <button class="btn btn-orange" onclick="fetchAllResults()" id="fetchBtn" style="background:linear-gradient(135deg, #FAA74A, #f59e0b); font-weight:700; letter-spacing:0.3px; box-shadow:0 4px 14px rgba(250,167,74,0.25); transition:all 0.2s;">Fetch Results</button>
                 <span class="pat-status" id="patStatus"></span>
+            </div>
+            <div id="fetchProgressSection" style="display:none; margin:0 0 16px; padding:12px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-tertiary);">
+                <div id="fetchProgressLabel" class="sync-progress-label">Fetching results… 0 / 0</div>
+                <div id="fetchProgressTrack" class="sync-progress-track">
+                    <div id="fetchProgressFill" class="sync-progress-fill"></div>
+                </div>
+                <div id="fetchCurrentPipeline" class="sync-progress-repo"></div>
             </div>
 
             <!-- Metrics -->
@@ -10737,6 +10756,47 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         }
     }
 
+    function showFetchProgress(show) {
+        if (fetchProgressHideTimer) {
+            clearTimeout(fetchProgressHideTimer);
+            fetchProgressHideTimer = null;
+        }
+        const section = document.getElementById('fetchProgressSection');
+        if (section) section.style.display = show ? 'block' : 'none';
+    }
+
+    function resetFetchProgress() {
+        const label = document.getElementById('fetchProgressLabel');
+        const fill = document.getElementById('fetchProgressFill');
+        const current = document.getElementById('fetchCurrentPipeline');
+        if (label) label.textContent = 'Fetching results… 0 / 0';
+        if (fill) fill.style.width = '0%';
+        if (current) current.textContent = '';
+    }
+
+    function updateFetchProgress(done, total, opts = {}) {
+        const label = document.getElementById('fetchProgressLabel');
+        const fill = document.getElementById('fetchProgressFill');
+        const current = document.getElementById('fetchCurrentPipeline');
+        const safeTotal = Math.max(0, Number(total) || 0);
+        const safeDone = safeTotal > 0
+            ? Math.min(Math.max(0, Number(done) || 0), safeTotal)
+            : Math.max(0, Number(done) || 0);
+        const pct = safeTotal > 0 ? Math.round((safeDone / safeTotal) * 100) : 0;
+        const remaining = safeTotal > 0 ? Math.max(0, safeTotal - safeDone) : 0;
+        if (label) {
+            const phase = String(opts.phase || '').trim();
+            const phasePrefix = phase ? `${phase} — ` : '';
+            label.textContent = safeTotal > 0
+                ? `${phasePrefix}${safeDone} / ${safeTotal} (${pct}%)${remaining ? ` — ${remaining} remaining` : ''}`
+                : 'Preparing fetch…';
+        }
+        if (fill) fill.style.width = `${pct}%`;
+        if (current && opts.pipelineLabel) {
+            current.textContent = opts.pipelineLabel;
+        }
+    }
+
     async function listWorkflowFilesForRepo(r, pat, ref) {
         const refQ = ref ? `?ref=${encodeURIComponent(ref)}` : '';
         const resp = await fetch(`https://api.github.com/repos/${r.owner}/${r.repo}/contents/.github/workflows${refQ}`, {
@@ -11967,6 +12027,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     const GH_OWNER = 'axos-financial';
     let allRuns = [];
     let resultsPipelines = [];
+    let fetchProgressHideTimer = null;
     let missingWorkflows = [];
     let pieChartInstance = null;
     let lineChartInstance = null;
@@ -12316,7 +12377,119 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         };
     }
 
-    // Test summary parsing/enrichment removed.
+    async function fetchCheckRunsForSuite(owner, repo, suiteId) {
+        const all = [];
+        for (let page = 1; page <= 5; page++) {
+            const data = await ghFetch(`/repos/${owner}/${encodeURIComponent(repo)}/check-suites/${suiteId}/check-runs?per_page=100&page=${page}`);
+            const batch = Array.isArray(data?.check_runs) ? data.check_runs : [];
+            if (!batch.length) break;
+            all.push(...batch);
+            if (batch.length < 100) break;
+        }
+        return all;
+    }
+
+    async function enrichRunTestCounts(run) {
+        const r = run;
+        if (!r || r._testCountsDone) return r?.testCounts ?? null;
+        if (r._testCountsPromise) return r._testCountsPromise;
+
+        const gen = r._testCountsGen || 0;
+        if (r?.status && r.status !== 'completed') {
+            r.testCounts = null;
+            r._testCountsDone = true;
+            return null;
+        }
+        r._testCountsPromise = (async () => {
+            const owner = getGhOwner();
+            const repo = String(r.repo || '').trim();
+            const suiteId = r.checkSuiteId;
+            if (!repo || !suiteId) {
+                if ((r._testCountsGen || 0) === gen) r.testCounts = null;
+                return null;
+            }
+            const checks = await fetchCheckRunsForSuite(owner, repo, suiteId);
+            if ((r._testCountsGen || 0) !== gen) return null;
+            // Prefer dorny/test-reporter summaries; scan Test Results-named checks first.
+            const sorted = checks.slice().sort((a, b) => {
+                const aScore = /test results/i.test(String(a?.name || '')) ? 1 : 0;
+                const bScore = /test results/i.test(String(b?.name || '')) ? 1 : 0;
+                return bScore - aScore;
+            });
+            for (const cr of sorted) {
+                const out = cr?.output || {};
+                const blob = [out.summary, out.title, out.text].filter(Boolean).join('\n');
+                const parsed = parseTestCountsFromText(blob);
+                if (parsed) {
+                    if ((r._testCountsGen || 0) !== gen) return null;
+                    const actionable = Math.max(0, parsed.total - parsed.skipped);
+                    const passPct = actionable > 0 ? (parsed.passed / actionable) * 100 : 0;
+                    r.testCounts = {
+                        passed: parsed.passed,
+                        failed: parsed.failed,
+                        skipped: parsed.skipped,
+                        total: parsed.total,
+                        passPct,
+                        fallback: false
+                    };
+                    return r.testCounts;
+                }
+            }
+            if ((r._testCountsGen || 0) === gen) r.testCounts = null;
+            return null;
+        })();
+
+        try {
+            return await r._testCountsPromise;
+        } catch {
+            if ((r._testCountsGen || 0) === gen) r.testCounts = null;
+            return null;
+        } finally {
+            if ((r._testCountsGen || 0) === gen) {
+                r._testCountsDone = true;
+                r._testCountsPromise = null;
+            }
+        }
+    }
+
+    async function enrichDashboardTestCounts(runs) {
+        const pending = (runs || []).filter(r => r && r.id);
+        const toStart = pending.filter(r => !r._testCountsDone && !r._testCountsPromise);
+        const inFlight = pending.filter(r => r._testCountsPromise).map(r => r._testCountsPromise);
+        if (toStart.length) {
+            await mapLimit(toStart, 6, async (r) => { await enrichRunTestCounts(r); });
+        }
+        if (inFlight.length) {
+            await Promise.allSettled(inFlight);
+        }
+    }
+
+    function getRunTestCounts(r) {
+        if (r?.status && r.status !== 'completed') {
+            return { passed: 0, failed: 0, other: 1, total: 1, passPct: null, fallback: true, active: true };
+        }
+        if (r?.testCounts && typeof r.testCounts === 'object') {
+            const tc = r.testCounts;
+            const passed = tc.passed ?? 0;
+            const failed = tc.failed ?? 0;
+            const skipped = tc.skipped ?? 0;
+            const total = tc.total ?? (passed + failed + skipped);
+            const actionable = Math.max(0, total - skipped);
+            const passPct = tc.passPct ?? (actionable > 0 ? (passed / actionable) * 100 : 100);
+            return { passed, failed, other: skipped, total, passPct, fallback: !!tc.fallback };
+        }
+        const o = getRunOutcome(r);
+        if (o === 'cancelled' || o === 'skipped') {
+            return { passed: 0, failed: 0, other: 1, total: 1, passPct: 0, fallback: true };
+        }
+        if (o === 'success') {
+            return { passed: 1, failed: 0, other: 0, total: 1, passPct: 100, fallback: true };
+        }
+        if (o === 'failure') {
+            return { passed: 0, failed: 1, other: 0, total: 1, passPct: 0, fallback: true };
+        }
+        return { passed: 0, failed: 0, other: 1, total: 1, passPct: 0, fallback: true };
+    }
 
     async function enrichRunArtifacts(run) {
         const r = run;
@@ -12535,6 +12708,8 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         const btn = document.getElementById('fetchBtn');
         btn.disabled = true; btn.innerHTML = '<span style="display:inline-flex; align-items:center; gap:6px;"><span class="fetch-spinner"></span>Fetching...</span>';
         status.textContent = 'Connecting...'; status.className = 'pat-status';
+        showFetchProgress(true);
+        resetFetchProgress();
 
         try {
             const mode = (document.getElementById('resultsFetchMode')?.value || loadResultsFetchModePref() || 'count').toLowerCase();
@@ -12546,6 +12721,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                     showToast('Pick a valid date range (start/end) first.', true);
                     status.textContent = 'Select a valid date range first.';
                     status.className = 'pat-status';
+                    showFetchProgress(false);
                     return;
                 }
             }
@@ -12558,6 +12734,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 status.textContent = 'No pipelines configured yet (go to Pipelines tab and add/import pipelines).';
                 status.className = 'pat-status';
                 showToast('No pipelines configured to fetch.');
+                showFetchProgress(false);
                 return;
             }
 
@@ -12566,11 +12743,17 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             const modeText = (mode === 'range' && range) ? `runs from <b>${escapeHtml(range.label)}</b>` : `last <b>${perPage}</b> runs`;
             status.innerHTML = `<span style="color:var(--axos-orange); font-weight:600;">Fetching</span> ${modeText} from ${repos.join(', ')}...`;
 
+            const totalSteps = resultsPipelines.length + 2;
+            let doneSteps = 0;
+            updateFetchProgress(doneSteps, totalSteps, { phase: 'Fetching results', pipelineLabel: 'Starting…' });
+
             let totalMatched = 0;
 
             for (const repo of repos) {
                 const repoPipes = resultsPipelines.filter(p => p.repo === repo);
                 for (const p of repoPipes) {
+                    const pipeLabel = `${repo} — ${String(p.name || p.filename || '').replace(/-Testim$/, '')}`;
+                    updateFetchProgress(doneSteps, totalSteps, { phase: 'Fetching results', pipelineLabel: pipeLabel });
                     try {
                         const wfIdOrFile = encodeURIComponent(p.filename);
                         const list = (mode === 'range' && range)
@@ -12614,16 +12797,24 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                         const isNotFound = msg.includes('GitHub API 404');
                         missingWorkflows.push({ repo, filename: p.filename, name: p.name, reason: isNotFound ? 'not_found' : 'runs_error' });
                     }
+                    doneSteps++;
+                    updateFetchProgress(doneSteps, totalSteps, { phase: 'Fetching results', pipelineLabel: pipeLabel });
                 }
             }
 
             allRuns.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
             // Classify "gate-skipped" schedule runs so we don't show them as Passed.
             status.innerHTML = `<span style="color:var(--axos-orange); font-weight:600;">Analyzing</span> scheduled runs (skip gate)...`;
+            updateFetchProgress(doneSteps, totalSteps, { phase: 'Analyzing skip gates', pipelineLabel: 'Checking schedule gate skips…' });
             await enrichGateSkippedRuns(owner);
+            doneSteps++;
+            updateFetchProgress(doneSteps, totalSteps, { phase: 'Analyzing skip gates', pipelineLabel: 'Done' });
             // Split long runs into wait vs. execution (queue time inflates run-level duration).
             status.innerHTML = `<span style="color:var(--axos-orange); font-weight:600;">Analyzing</span> run durations (wait vs. execution)...`;
+            updateFetchProgress(doneSteps, totalSteps, { phase: 'Analyzing durations', pipelineLabel: 'Splitting wait vs execution time…' });
             await enrichRunDurations(owner);
+            doneSteps++;
+            updateFetchProgress(doneSteps, totalSteps, { phase: 'Complete', pipelineLabel: `Loaded ${allRuns.length} run(s)` });
             const miss = missingWorkflows.length ? ` &mdash; <a onclick="showMissingWorkflowsModal()" style="color:var(--danger); font-weight:700; cursor:pointer; text-decoration:underline;" title="Click to see which pipelines couldn't be loaded">${missingWorkflows.length} issue(s)</a>` : '';
             status.innerHTML = `<span style="color:var(--success); font-weight:600;">&#10003; Loaded ${allRuns.length} run(s)</span> across ${resultsPipelines.length} pipeline(s) (${totalMatched} matched in GitHub)${miss}.`;
             status.className = 'pat-status ok';
@@ -12641,6 +12832,11 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             showToast('Failed to fetch: ' + e.message);
         } finally {
             btn.disabled = false; btn.textContent = 'Fetch Results'; btn.style.removeProperty('opacity');
+            if (fetchProgressHideTimer) clearTimeout(fetchProgressHideTimer);
+            fetchProgressHideTimer = setTimeout(() => {
+                fetchProgressHideTimer = null;
+                showFetchProgress(false);
+            }, 1200);
         }
     }
 
@@ -13821,7 +14017,51 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     let dashSelectedGroupId = null; // active dashboard's group filter (null = All groups)
     let dashboardsView = 'dashboard'; // 'dashboard' | 'updates'
     let selectedDashboardUpdates = new Set();
-    // Dashboard view mode (graphs) removed — keep dots only.
+    const DASH_VIEW_MODE_KEY = 'pm.dashboards.viewMode';
+    const dashTrendChartInstances = new Map();
+    let dashTrendRenderToken = 0;
+
+    function loadDashViewMode() {
+        try {
+            const v = localStorage.getItem(DASH_VIEW_MODE_KEY);
+            return v === 'graphs' ? 'graphs' : 'dots';
+        } catch {
+            return 'dots';
+        }
+    }
+
+    function saveDashViewMode(mode) {
+        try { localStorage.setItem(DASH_VIEW_MODE_KEY, mode === 'graphs' ? 'graphs' : 'dots'); } catch { /* ignore */ }
+    }
+
+    function setDashViewMode(mode) {
+        saveDashViewMode(mode);
+        if (mode === 'graphs') {
+            for (const r of (allRuns || [])) {
+                r._testCountsGen = (r._testCountsGen || 0) + 1;
+                delete r._testCountsDone;
+                delete r._testCountsPromise;
+                delete r.testCounts;
+            }
+        }
+        renderDashboards();
+    }
+
+    function toggleDashViewMode() {
+        setDashViewMode(loadDashViewMode() === 'graphs' ? 'dots' : 'graphs');
+    }
+
+    function destroyDashboardTrendCharts() {
+        for (const ch of dashTrendChartInstances.values()) {
+            try { ch.destroy(); } catch { /* ignore */ }
+        }
+        dashTrendChartInstances.clear();
+    }
+
+    function invalidateDashboardTrendCharts() {
+        dashTrendRenderToken++;
+        destroyDashboardTrendCharts();
+    }
 
     function loadDashboardsState() {
         try {
@@ -15490,7 +15730,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             const label = escapeHtml(String(p.name || p.filename || p.key).replace(/-Testim$/, ''));
             const sub = escapeHtml(p.filename || '');
             return `<label class="dash-pick-row">
-                <input type="checkbox" class="dash-pick" value="${escapeHtml(p.key)}" ${checked}>
+                <input type="checkbox" class="dash-pick" value="${escapeHtml(p.key)}" ${checked} onchange="updateDashPickSelectAllLabel()">
                 <div class="dash-pick-info">
                     <div class="dash-pick-name">${label}</div>
                     <div class="dash-pick-sub">${sub}</div>
@@ -15504,7 +15744,11 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 <div style="font-size:12px; color:var(--text-secondary); line-height:1.6; margin-bottom:10px;">
                     Choose pipelines to include in this dashboard group. Only configured pipelines can be added.
                 </div>
-                <input type="text" id="dashPickSearch" placeholder="Search pipelines..." style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-tertiary); color:var(--text-primary); font-size:12px; margin-bottom:12px;" oninput="filterDashPickList()">
+                <input type="text" id="dashPickSearch" placeholder="Search pipelines..." style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-tertiary); color:var(--text-primary); font-size:12px; margin-bottom:10px;" oninput="filterDashPickList(); updateDashPickSelectAllLabel();">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+                    <button type="button" class="btn-lite" id="dashPickSelectAllBtn" onclick="toggleDashPickSelectAll()">Select all</button>
+                    <span id="dashPickCount" style="font-size:11px; color:var(--text-muted);"></span>
+                </div>
                 <div id="dashPickList" style="max-height:360px; overflow:auto; padding-right:4px;">${listHtml}</div>
                 <div id="dashPickEmpty" style="display:none; padding:14px 6px; color:var(--text-muted); font-size:12px; text-align:center;">No pipelines match your search.</div>
             `,
@@ -15513,6 +15757,62 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 <button class="btn btn-orange" onclick="confirmPipelinePicker('${escapeHtml(dashId)}','${escapeHtml(groupId)}')">Save</button>
             `
         );
+        updateDashPickSelectAllLabel();
+    }
+
+    function getVisibleDashPickRows() {
+        const list = document.getElementById('dashPickList');
+        if (!list) return [];
+        return Array.from(list.querySelectorAll('label.dash-pick-row')).filter(lbl => lbl.style.getPropertyValue('display') !== 'none');
+    }
+
+    function getVisibleDashPickCheckboxes() {
+        return getVisibleDashPickRows()
+            .map(lbl => lbl.querySelector('.dash-pick'))
+            .filter(Boolean);
+    }
+
+    function updateDashPickSelectAllLabel() {
+        const btn = document.getElementById('dashPickSelectAllBtn');
+        const countEl = document.getElementById('dashPickCount');
+        const visible = getVisibleDashPickCheckboxes();
+        const checked = visible.filter(cb => cb.checked).length;
+        if (btn) {
+            const filtered = isDashPickFiltered();
+            if (visible.length > 0 && checked === visible.length) {
+                btn.textContent = filtered ? 'Unselect visible' : 'Unselect all';
+            } else {
+                btn.textContent = filtered ? 'Select visible' : 'Select all';
+            }
+        }
+        if (countEl) {
+            const total = document.querySelectorAll('#pmDashModal .dash-pick').length;
+            const totalChecked = document.querySelectorAll('#pmDashModal .dash-pick:checked').length;
+            const filtered = isDashPickFiltered();
+            countEl.textContent = filtered
+                ? `${totalChecked} selected total (${checked} of ${visible.length} visible)`
+                : `${totalChecked} of ${total} selected`;
+        }
+    }
+
+    function isDashPickFiltered() {
+        return String(document.getElementById('dashPickSearch')?.value || '').trim().length > 0;
+    }
+
+    function toggleDashPickSelectAll() {
+        const visible = getVisibleDashPickCheckboxes();
+        if (!visible.length) return;
+        const filtered = isDashPickFiltered();
+        const allVisibleChecked = visible.every(cb => cb.checked);
+        if (allVisibleChecked) {
+            visible.forEach(cb => { cb.checked = false; });
+            if (!filtered) {
+                document.querySelectorAll('#pmDashModal .dash-pick').forEach(cb => { cb.checked = false; });
+            }
+        } else {
+            visible.forEach(cb => { cb.checked = true; });
+        }
+        updateDashPickSelectAllLabel();
     }
 
     function filterDashPickList() {
@@ -15530,6 +15830,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         });
         const empty = document.getElementById('dashPickEmpty');
         if (empty) empty.style.display = shown ? 'none' : 'block';
+        updateDashPickSelectAllLabel();
     }
 
     function confirmPipelinePicker(dashId, groupId) {
@@ -15619,11 +15920,13 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         return changed;
     }
 
-    function dashboardRunDots(repo, workflowFile) {
+    function getDashboardPipelineRuns(repo, workflowFile, vizLimit) {
         const mode = (document.getElementById('resultsFetchMode')?.value || loadResultsFetchModePref() || 'count').toLowerCase();
-        const limit = (mode === 'count') ? loadResultsRunCountPref() : 15;
+        const limit = vizLimit != null
+            ? vizLimit
+            : ((mode === 'count') ? loadResultsRunCountPref() : 15);
         let runs = (allRuns || [])
-            .filter(r => r && String(r.repo || '').trim() === repo && String(r.workflowFile || '').trim() === String(workflowFile || '').trim())
+            .filter(r => r && String(r.repo || '').trim() === String(repo || '').trim() && String(r.workflowFile || '').trim() === String(workflowFile || '').trim())
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         if (mode === 'range') {
             const range = getResultsSelectedDateRange();
@@ -15633,7 +15936,11 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             });
         }
         // We fetch newest-first but display oldest→latest (left→right).
-        runs = runs.slice(0, limit).reverse();
+        return runs.slice(0, limit).reverse();
+    }
+
+    function dashboardRunDots(repo, workflowFile) {
+        const runs = getDashboardPipelineRuns(repo, workflowFile);
         if (!runs.length) return `<span style="font-size:11px; color:var(--text-muted);">No runs fetched</span>`;
         return `<div class="run-strip">` + runs.map(r => {
             const o = getRunOutcome(r);
@@ -15642,7 +15949,226 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             return `<span class="run-dot ${cls}" title="${escapeHtml(tip)}" onclick="openRunDetails(${r.id}); event.stopPropagation();" data-runid="${r.id}"></span>`;
         }).join('') + `</div>`;
     }
-    function dashboardRunViz(repo, workflowFile) { return dashboardRunDots(repo, workflowFile); }
+
+    function dashboardRunTrendCanvas(repo, workflowFile, trendId) {
+        const runs = getDashboardPipelineRuns(repo, workflowFile);
+        if (!runs.length) return `<span style="font-size:11px; color:var(--text-muted);">No runs fetched</span>`;
+        const key = String(trendId || `${String(repo || '').trim()}::${String(workflowFile || '').trim()}`).trim();
+        return `<div class="dash-trend-wrap" data-trend-id="${escapeHtml(key)}" data-repo="${escapeHtml(repo)}" data-wf="${escapeHtml(workflowFile)}">
+            <canvas class="dash-trend-canvas"></canvas>
+            <div class="dash-trend-loading">Loading test counts…</div>
+        </div>`;
+    }
+
+    function dashboardRunViz(repo, workflowFile, trendId) {
+        return loadDashViewMode() === 'graphs'
+            ? dashboardRunTrendCanvas(repo, workflowFile, trendId)
+            : dashboardRunDots(repo, workflowFile);
+    }
+
+    function buildDashboardTrendChart(canvas, runs, repo) {
+        const isLight = (document.documentElement.getAttribute('data-theme') || 'light') === 'light';
+        const tickColor = isLight ? 'rgba(30,56,96,0.65)' : '#9ca3af';
+        const gridColor = isLight ? 'rgba(30,56,96,0.10)' : 'rgba(255,255,255,0.06)';
+        const labels = runs.map(r => `#${r.runNumber}`);
+        const passed = runs.map(r => getRunTestCounts(r).passed);
+        const failed = runs.map(r => getRunTestCounts(r).failed);
+        const other = runs.map(r => getRunTestCounts(r).other);
+        const passPct = runs.map(r => {
+            const tc = getRunTestCounts(r);
+            return tc.active || tc.passPct == null ? null : Math.round(tc.passPct * 10) / 10;
+        });
+        const maxTests = Math.max(1, ...runs.map((r, i) => passed[i] + failed[i] + other[i]));
+        const yMax = Math.ceil(maxTests * 1.15);
+
+        return new Chart(canvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Passed tests',
+                        data: passed,
+                        stack: 'tests',
+                        backgroundColor: 'rgba(22,163,74,0.88)',
+                        borderRadius: 2,
+                        yAxisID: 'y',
+                        order: 2
+                    },
+                    {
+                        label: 'Failed tests',
+                        data: failed,
+                        stack: 'tests',
+                        backgroundColor: 'rgba(220,38,38,0.88)',
+                        borderRadius: 2,
+                        yAxisID: 'y',
+                        order: 2
+                    },
+                    {
+                        label: 'Other tests',
+                        data: other,
+                        stack: 'tests',
+                        backgroundColor: 'rgba(107,114,128,0.82)',
+                        borderRadius: 2,
+                        yAxisID: 'y',
+                        order: 2
+                    },
+                    {
+                        type: 'line',
+                        label: 'Pass percentage',
+                        data: passPct,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16,185,129,0.12)',
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#10b981',
+                        pointBorderColor: isLight ? '#fff' : '#0a0e1a',
+                        pointBorderWidth: 2,
+                        tension: 0.25,
+                        yAxisID: 'y1',
+                        order: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            color: tickColor,
+                            boxWidth: 10,
+                            boxHeight: 10,
+                            font: { size: 9, weight: '700' },
+                            usePointStyle: true,
+                            padding: 8
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: isLight ? 'rgba(255,255,255,0.98)' : 'rgba(10,14,26,0.96)',
+                        titleColor: isLight ? '#1E3860' : '#e5e7eb',
+                        bodyColor: isLight ? '#334155' : '#d1d5db',
+                        borderColor: isLight ? 'rgba(30,56,96,0.18)' : 'rgba(255,255,255,0.08)',
+                        borderWidth: 1,
+                        padding: 10,
+                        cornerRadius: 8,
+                        callbacks: {
+                            title(items) {
+                                const idx = items?.[0]?.dataIndex ?? 0;
+                                const run = runs[idx];
+                                if (!run) return '';
+                                const branch = String(run.branch || repo || '').trim();
+                                return branch ? `${branch} — #${run.runNumber}` : `#${run.runNumber}`;
+                            },
+                            label(ctx) {
+                                const idx = ctx.dataIndex;
+                                const tc = getRunTestCounts(runs[idx]);
+                                if (ctx.dataset.label === 'Pass percentage') {
+                                    if (tc.active || tc.passPct == null) return ' Pass percentage: pending';
+                                    return ` Pass percentage: ${tc.passPct.toFixed(1)}%`;
+                                }
+                                if (ctx.dataset.label === 'Passed tests') return ` Passed tests: ${tc.passed}`;
+                                if (ctx.dataset.label === 'Failed tests') return ` Failed tests: ${tc.failed}`;
+                                if (ctx.dataset.label === 'Other tests') return ` Other tests: ${tc.other}`;
+                                return ` ${ctx.dataset.label}: ${ctx.parsed.y}`;
+                            },
+                            afterBody(items) {
+                                const idx = items?.[0]?.dataIndex ?? 0;
+                                const tc = getRunTestCounts(runs[idx]);
+                                if (tc.active || tc.passPct == null) return ['Run in progress — results pending'];
+                                const lines = [`Pass percentage: ${tc.passPct.toFixed(1)}%`];
+                                if (tc.fallback) lines.push('(run-level estimate — no test summary)');
+                                return lines;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        stacked: true,
+                        ticks: { color: tickColor, font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 },
+                        grid: { display: false }
+                    },
+                    y: {
+                        stacked: true,
+                        position: 'left',
+                        min: 0,
+                        max: yMax,
+                        title: { display: true, text: 'Tests', color: tickColor, font: { size: 10, weight: '700' } },
+                        ticks: { color: tickColor, font: { size: 9 }, precision: 0 },
+                        grid: { color: gridColor }
+                    },
+                    y1: {
+                        position: 'right',
+                        min: 0,
+                        max: 100,
+                        title: { display: true, text: 'Pass percentage', color: tickColor, font: { size: 10, weight: '700' } },
+                        ticks: { color: tickColor, font: { size: 9 }, callback: v => v + '%' },
+                        grid: { drawOnChartArea: false }
+                    }
+                },
+                onClick: (evt, elements) => {
+                    if (!elements || !elements.length) return;
+                    const idx = elements[0].index;
+                    const run = runs[idx];
+                    if (run?.id) openRunDetails(run.id);
+                },
+                animation: { duration: 450 }
+            }
+        });
+    }
+
+    async function renderDashboardTrendCharts() {
+        const token = dashTrendRenderToken;
+        if (loadDashViewMode() !== 'graphs') return;
+
+        const wraps = document.querySelectorAll('#dashboardsContent .dash-trend-wrap');
+        if (!wraps.length) return;
+
+        const runsToEnrich = [];
+        const pipelineRuns = [];
+
+        for (const wrap of wraps) {
+            const repo = String(wrap.getAttribute('data-repo') || '').trim();
+            const wf = String(wrap.getAttribute('data-wf') || '').trim();
+            const trendId = String(wrap.getAttribute('data-trend-id') || '').trim();
+            const runs = getDashboardPipelineRuns(repo, wf);
+            pipelineRuns.push({ wrap, repo, wf, trendId, runs });
+            runsToEnrich.push(...runs);
+        }
+
+        const seen = new Set();
+        const uniqueRuns = runsToEnrich.filter(r => {
+            if (!r?.id || seen.has(r.id)) return false;
+            seen.add(r.id);
+            return true;
+        });
+
+        try {
+            await enrichDashboardTestCounts(uniqueRuns);
+        } catch { /* charts still render with run-level fallback */ }
+
+        if (token !== dashTrendRenderToken || loadDashViewMode() !== 'graphs') return;
+
+        for (const meta of pipelineRuns) {
+            const { wrap, repo, runs, trendId } = meta;
+            if (token !== dashTrendRenderToken) return;
+            if (!wrap.isConnected) continue;
+            const canvas = wrap.querySelector('.dash-trend-canvas');
+            const loading = wrap.querySelector('.dash-trend-loading');
+            if (!canvas || !runs.length) continue;
+            try {
+                const chart = buildDashboardTrendChart(canvas, runs, repo);
+                dashTrendChartInstances.set(trendId || wrap, chart);
+                wrap.classList.add('ready');
+            } catch {
+                if (loading) loading.textContent = 'Could not render chart';
+            }
+        }
+    }
 
     function dashboardPipelinePassRate(repo, workflowFile) {
         const mode = (document.getElementById('resultsFetchMode')?.value || loadResultsFetchModePref() || 'count').toLowerCase();
@@ -15822,6 +16348,8 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         const contentEl = document.getElementById('dashboardsContent');
         if (!listEl || !contentEl) return;
 
+        invalidateDashboardTrendCharts();
+
         // Dashboards are usable without fetching — you can build groups and see schedules
         // any time. Pass/fail dots simply stay empty until Results are fetched.
         const repo = getDashboardsRepo();
@@ -15927,7 +16455,8 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             </div>
         `;
 
-        const viewMode = 'dots';
+        const viewMode = loadDashViewMode();
+        const viewToggleLabel = viewMode === 'graphs' ? 'Minimalistic' : 'Graphs';
 
         const computeDashboardStats = (groupsList) => {
             const repoName = String(repo || '').trim();
@@ -16004,7 +16533,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 <span class="dash-pill" style="padding:6px 10px;"><span class="run-dot cancelled" style="width:10px;height:10px;"></span> Cancelled</span>
                 <span class="dash-pill" style="padding:6px 10px;"><span class="run-dot skipped" style="width:10px;height:10px;"></span> Skipped</span>
                 <span class="dash-pill" style="padding:6px 10px;"><span class="run-dot unknown" style="width:10px;height:10px;"></span> Other</span>
-                <span style="margin-left:auto; font-size:11px;">Click a dot to open that run in GitHub.</span>
+                <span style="margin-left:auto; font-size:11px;">${viewMode === 'graphs' ? 'Hover a column for run + test details. Click to open in GitHub.' : 'Click a dot to open that run in GitHub.'}</span>
             </div>
             ${allGroups.length > 1 ? `
             <div class="dash-group-filter">
@@ -16039,11 +16568,12 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 
         const groupsHtml = visibleGroups.map(g => {
             const pipesHtml = (g.pipelines || []).length
-                ? `<div class="dash-pipes">` + (g.pipelines || []).map(pk => {
+                ? `<div class="dash-pipes${viewMode === 'graphs' ? ' graphs' : ''}">` + (g.pipelines || []).map(pk => {
                     const p = findPipeline(pk);
                     const name = (p?.name || p?.filename || pk).replace(/-Testim$/, '');
                     const wfFile = p?.filename || parsePipelineKey(pk).filename || '';
-                    const dots = wfFile ? dashboardRunViz(repo, wfFile) : `<span style="font-size:11px; color:var(--text-muted);">Missing workflow file</span>`;
+                    const trendId = `${escapeHtml(active.id)}::${escapeHtml(g.id)}::${escapeHtml(pk)}`;
+                    const dots = wfFile ? dashboardRunViz(repo, wfFile, trendId) : `<span style="font-size:11px; color:var(--text-muted);">Missing workflow file</span>`;
                     const pr = wfFile ? dashboardPipelinePassRate(repo, wfFile) : { passRate: null, passed: 0, actionable: 0, total: 0 };
                     const prTxt = (pr.passRate == null) ? '—' : pr.passRate.toFixed(1) + '%';
                     const prTip = (pr.passRate == null) ? 'No runs fetched yet.' : `${pr.passed} passed of ${pr.actionable} actionable (last ${loadResultsRunCountPref()})`;
@@ -16084,6 +16614,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 <div class="dash-group-top">
                     <div class="dash-group-title">${escapeHtml(g.title)}</div>
                     <div class="dash-group-actions">
+                        <button class="btn-lite" onclick="toggleDashViewMode(); event.stopPropagation();" title="Switch between run dots and test trend charts">${escapeHtml(viewToggleLabel)}</button>
                         <button class="btn-lite" onclick="openPipelinePicker('${escapeHtml(active.id)}','${escapeHtml(g.id)}'); event.stopPropagation();">+ Pipelines</button>
                         <button class="btn-lite" onclick="renameGroup('${escapeHtml(active.id)}','${escapeHtml(g.id)}'); event.stopPropagation();">Rename</button>
                         <button class="btn-lite" onclick="deleteGroup('${escapeHtml(active.id)}','${escapeHtml(g.id)}'); event.stopPropagation();" style="color:var(--error);">Delete</button>
@@ -16095,6 +16626,9 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 
         contentEl.innerHTML = header + dashMetrics + dupHtml + groupsHtml;
         try { animateCounters(); } catch { /* ignore */ }
+        if (viewMode === 'graphs') {
+            renderDashboardTrendCharts().catch(() => { /* ignore */ });
+        }
     }
 
     function onDashGroupFilterChange(value) {
