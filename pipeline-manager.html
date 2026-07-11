@@ -4302,6 +4302,7 @@ ${os.map(n => `- ${n}`).join('\n')}
 
     let pipelines = [];
     let savedSnapshot = [];
+    let yamlBaselineSnapshot = [];
     let pendingSaveChanges = [];
     let currentView = 'tree';
     // Remembers the All Pipelines list filters so they survive opening a pipeline and going Back.
@@ -4310,8 +4311,55 @@ ${os.map(n => `- ${n}`).join('\n')}
     let editingPipeline = null;
     let viewOnlyMode = false;
     const STORAGE_KEY = 'axos_pipeline_manager_data';
+    const YAML_BASELINE_KEY = 'axos_pipeline_manager_yaml_baseline';
     const TREE_STATE_KEY = 'axos_pipeline_manager_tree_state';
     let treeOpenState = {};
+
+    function loadYamlBaselineFromStorage(fallback) {
+        try {
+            const stored = localStorage.getItem(YAML_BASELINE_KEY);
+            if (stored) return JSON.parse(stored);
+        } catch { /* ignore */ }
+        return fallback ? JSON.parse(JSON.stringify(fallback)) : [];
+    }
+
+    function persistYamlBaseline() {
+        try { localStorage.setItem(YAML_BASELINE_KEY, JSON.stringify(yamlBaselineSnapshot)); } catch { /* ignore */ }
+    }
+
+    function persistPipelinesAfterSync() {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(pipelines));
+            savedSnapshot = JSON.parse(JSON.stringify(pipelines));
+        } catch { /* ignore */ }
+    }
+
+    function applyYamlBaselineFromSync(jsonData, replaceMode) {
+        if (!Array.isArray(jsonData)) return;
+        if (replaceMode) {
+            yamlBaselineSnapshot = JSON.parse(JSON.stringify(pipelines));
+            persistYamlBaseline();
+            return;
+        }
+        const baselineMap = new Map(yamlBaselineSnapshot.map(p => [pipelineKey(p), p]));
+        const incomingRepos = new Set(
+            jsonData.map(j => String(j?.repo || '').trim()).filter(Boolean)
+        );
+        for (const entry of jsonData) {
+            const k = pipelineKeyFrom(entry.repo, entry.filename);
+            const p = pipelines.find(pp => pipelineKey(pp) === k);
+            if (p) baselineMap.set(k, JSON.parse(JSON.stringify(p)));
+        }
+        if (incomingRepos.size > 0) {
+            const syncedKeys = new Set(jsonData.map(j => pipelineKeyFrom(j.repo, j.filename)));
+            for (const [k, p] of baselineMap.entries()) {
+                const r = normRepoForPipeline(p);
+                if (incomingRepos.has(r) && !syncedKeys.has(k)) baselineMap.delete(k);
+            }
+        }
+        yamlBaselineSnapshot = Array.from(baselineMap.values());
+        persistYamlBaseline();
+    }
 
     function initPipelines() {
         const key = STORAGE_KEY;
@@ -4320,6 +4368,8 @@ ${os.map(n => `- ${n}`).join('\n')}
             try {
                 pipelines = JSON.parse(stored);
                 savedSnapshot = JSON.parse(stored);
+                yamlBaselineSnapshot = loadYamlBaselineFromStorage(null);
+                if (!Array.isArray(yamlBaselineSnapshot)) yamlBaselineSnapshot = [];
                 // Backfill repo for older cached entries (multi-repo support).
                 const backfillRepo = (p) => {
                     if (!p || String(p.repo || '').trim()) return;
@@ -4513,6 +4563,10 @@ ${os.map(n => `- ${n}`).join('\n')}
                 };
                 (pipelines || []).forEach(backfillMobileEnvSpecific);
                 (savedSnapshot || []).forEach(backfillMobileEnvSpecific);
+                if (yamlBaselineSnapshot.length === 0) {
+                    yamlBaselineSnapshot = JSON.parse(JSON.stringify(savedSnapshot));
+                    persistYamlBaseline();
+                }
                 // Load persisted tree open/close state (never auto-expand on first load).
                 try {
                     const t = localStorage.getItem(TREE_STATE_KEY);
@@ -4523,6 +4577,7 @@ ${os.map(n => `- ${n}`).join('\n')}
         }
         pipelines = [];
         savedSnapshot = [];
+        yamlBaselineSnapshot = [];
         try {
             const t = localStorage.getItem(TREE_STATE_KEY);
             treeOpenState = t ? (JSON.parse(t) || {}) : {};
@@ -4742,6 +4797,7 @@ ${os.map(n => `- ${n}`).join('\n')}
             'testSuite', 'baseUrl', 'branch', 'grid', 'parallel', 'parallels', 'retries', 'timeoutMin', 'browserTimeout',
             'grep', 'suite', 'spec', 'parallelSplit', 'tunnel', 'appId', 'deviceName', 'deviceOS', 'bsUsername', 'bsAccessKey',
             'runnerLabel', 'customRunnerLabel', 'jobTimeout',
+            'orchestratorSet', 'orchestratorTargets',
             'scheduleEnabled', 'schedule', 'repeatUnit', 'repeatEvery', 'repeatDom',
             'emailEnabled', 'emailRecipients',
             'repo', 'filename', 'name'
@@ -6013,7 +6069,223 @@ ${os.map(n => `- ${n}`).join('\n')}
         `If you cannot resolve a name from either source, omit the "Updated by:" line entirely. Do NOT ask ` +
         `the user and do NOT insert a placeholder.`;
 
-    function buildPromptForPipeline(p) {
+    // Keys whose changes affect workflow YAML schedule blocks only.
+    const SCHEDULE_YAML_KEYS = new Set(['scheduleEnabled', 'schedule', 'repeatUnit', 'repeatEvery', 'repeatDom']);
+    const EMAIL_YAML_KEYS = new Set(['emailEnabled', 'emailRecipients']);
+    const YAML_DIFF_IGNORE_KEYS = new Set(['lastSyncAt', 'lastRun', 'lastRunId']);
+    // Orchestrator save forms clear suite/mobile fields; ignore spurious diffs vs sync baseline.
+    const ORCH_IGNORE_DIFF_KEYS = new Set([
+        'grep', 'suite', 'spec', 'parallel', 'parallelSplit', 'retries', 'tunnel',
+        'appId', 'deviceName', 'deviceOS', 'bsUsername', 'bsAccessKey', 'runnerLabel',
+        'testSuite', 'baseUrl', 'project', 'token', 'branch', 'grid', 'timeoutMin',
+        'browserTimeout', 'parallels', 'customRunnerLabel', 'runnerStrategy', 'runnerGroup',
+        'mobilePlatform', 'envSpecific', 'featureDetail', 'customSuffix', 'platform',
+        'brand', 'env', 'feature', 'testType', 'jobTimeout', 'name', 'filename', 'repo'
+    ]);
+
+    function isEmptyDiffValue(v) {
+        if (v === null || v === undefined) return true;
+        if (typeof v === 'string') return v.trim() === '';
+        if (Array.isArray(v)) return v.length === 0;
+        return false;
+    }
+
+    function normalizeOrchestratorTargetInputs(inputs) {
+        if (!inputs || typeof inputs !== 'object' || Array.isArray(inputs)) return {};
+        const out = {};
+        for (const [key, val] of Object.entries(inputs)) {
+            if (val === null || val === undefined || val === '') continue;
+            out[key] = val;
+        }
+        return out;
+    }
+
+    function normalizeOrchestratorTargetForDiff(t) {
+        return {
+            owner: String(t?.owner || 'axos-financial').trim() || 'axos-financial',
+            repo: String(t?.repo || 'Axos.QE.TestIM').trim() || 'Axos.QE.TestIM',
+            workflow: String(t?.workflow || '').trim().replace(/.*\//, ''),
+            ref: String(t?.ref || 'main').trim() || 'main',
+            enabled: t?.enabled !== false,
+            inputs: normalizeOrchestratorTargetInputs(t?.inputs)
+        };
+    }
+
+    function normalizeOrchestratorTargetsForDiff(targets) {
+        const arr = Array.isArray(targets) ? targets : [];
+        return arr
+            .map(normalizeOrchestratorTargetForDiff)
+            .filter(t => t.workflow)
+            .sort((a, b) => {
+                const ak = `${a.owner}/${a.repo}:${a.workflow}@${a.ref}`;
+                const bk = `${b.owner}/${b.repo}:${b.workflow}@${b.ref}`;
+                return ak.localeCompare(bk);
+            });
+    }
+
+    function orchestratorTargetsYamlEqual(a, b) {
+        const refsA = orchestratorTargetsToRefs(a);
+        const refsB = orchestratorTargetsToRefs(b);
+        if (refsA.trim() === refsB.trim()) return true;
+        const canonA = normalizeOrchestratorTargetsForDiff(orchestratorRefsToTargets(refsA));
+        const canonB = normalizeOrchestratorTargetsForDiff(orchestratorRefsToTargets(refsB));
+        return stableStringify(canonA) === stableStringify(canonB);
+    }
+
+    function yamlDiffValuesEqual(a, b) {
+        if (isEmptyDiffValue(a) && isEmptyDiffValue(b)) return true;
+        if (typeof a === 'boolean' || typeof b === 'boolean') return !!a === !!b;
+        if (Array.isArray(a) || Array.isArray(b)) return stableStringify(a) === stableStringify(b);
+        const na = Number(a);
+        const nb = Number(b);
+        if (Number.isFinite(na) && Number.isFinite(nb) && String(a).trim() !== '' && String(b).trim() !== '') {
+            return na === nb;
+        }
+        return String(a ?? '').trim() === String(b ?? '').trim();
+    }
+
+    function yamlDiffFieldKeys(prev, next, pipeline) {
+        const keys = new Set([
+            ...Object.keys(prev || {}),
+            ...Object.keys(next || {})
+        ]);
+        const isOrch = isOrchestratorPipeline(pipeline || next || prev);
+        const ignoreEmailKeys = !supportsPowerAutomateEmailPrompt(pipeline || next || prev);
+        const changed = [];
+        for (const k of keys) {
+            if (YAML_DIFF_IGNORE_KEYS.has(k)) continue;
+            if (ignoreEmailKeys && EMAIL_YAML_KEYS.has(k)) continue;
+            if (isOrch && ORCH_IGNORE_DIFF_KEYS.has(k)) continue;
+            const a = prev ? prev[k] : undefined;
+            const b = next ? next[k] : undefined;
+            if (k === 'orchestratorTargets') {
+                if (!orchestratorTargetsYamlEqual(a, b)) changed.push(k);
+                continue;
+            }
+            if (!yamlDiffValuesEqual(a, b)) changed.push(k);
+        }
+        return changed;
+    }
+
+    function changedFieldKeys(prev, next) {
+        return buildDiffRows(prev || {}, next || {}).map(r => r.key);
+    }
+
+    function isScheduleOnlyYamlChange(prev, next, pipeline) {
+        if (!prev || !next) return false;
+        const keys = yamlDiffFieldKeys(prev, next, pipeline);
+        if (!keys.length) return true;
+        return keys.every(k => SCHEDULE_YAML_KEYS.has(k));
+    }
+
+    function isEmailOnlyYamlChange(prev, next, pipeline) {
+        if (!prev || !next) return false;
+        const keys = yamlDiffFieldKeys(prev, next, pipeline);
+        if (!keys.length) return false;
+        return keys.every(k => EMAIL_YAML_KEYS.has(k));
+    }
+
+    function isScheduleAndEmailOnlyYamlChange(prev, next, pipeline) {
+        if (!prev || !next) return false;
+        const keys = yamlDiffFieldKeys(prev, next, pipeline);
+        if (!keys.length) return false;
+        return keys.every(k => SCHEDULE_YAML_KEYS.has(k) || EMAIL_YAML_KEYS.has(k));
+    }
+
+    function hasNoYamlAffectingChange(prev, next, pipeline) {
+        if (!prev || !next) return false;
+        return yamlDiffFieldKeys(prev, next, pipeline).length === 0;
+    }
+
+    function pipelinePrevSnapshot(p) {
+        return yamlBaselineSnapshot.find(s => pipelineKey(s) === pipelineKey(p)) || null;
+    }
+
+    function pipelineExistedBeforeEdit(p) {
+        return !!pipelinePrevSnapshot(p) || !!p?.lastSyncAt;
+    }
+
+    function appendSchedulePromptLines(prompt, p) {
+        if (p.scheduleEnabled && p.schedule) {
+            prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
+        } else {
+            prompt += `\n\nKeep the schedule block commented out.`;
+        }
+        if (p.scheduleEnabled && (p.repeatUnit || 'weeks') === 'weeks' && parseInt(p.repeatEvery || '1', 10) > 1) {
+            const n = parseInt(p.repeatEvery || '1', 10);
+            prompt += `\n- Add WEEK_MODULO: ${n} to the workflow if it supports off-week skipping (do NOT add a separate gate job)`;
+        }
+        return prompt;
+    }
+
+    function supportsPowerAutomateEmailPrompt(p) {
+        const repoName = String(p?.repo || 'Axos.QE.TestIM').trim();
+        return repoName === 'Axos.QE.TestIM'
+            && !isOrchestratorPipeline(p)
+            && !isMobilePipeline(p)
+            && !isWebMonorepoPipeline(p)
+            && !isCryptoPipeline(p)
+            && !isPerfPipeline(p);
+    }
+
+    function appendEmailPromptLines(prompt, p) {
+        if (p.emailEnabled) {
+            const rec = String(p.emailRecipients || '').trim();
+            prompt += `\n\nEMAIL RESULTS (Power Automate): In the caller workflow's \`test-results\` job, mirror the "Set up Node (for email)" and "Email results (Power Automate)" steps from Web_AxosBank_UAT_HealthCheck-Testim.yml. The email step runs \`node tools/build-email-from-junit.mjs\`, uses continue-on-error: true, and is gated on \`always() && (steps.detect.outputs.artifact == 'true' || needs.run.result == 'cancelled')\` (artifact optional for cancel — XML optional otherwise). Env: JUNIT_GLOB_DIR=reports, REPORT_TITLE=${p.name}, REPORT_ENV=${p.env || 'UAT'}, POWER_AUTOMATE_EMAIL_WEBHOOK_URL=\${{ secrets.POWER_AUTOMATE_EMAIL_WEBHOOK_URL }}, GITHUB_SERVER_URL/GITHUB_REPOSITORY/GITHUB_RUN_ID, and RUN_CONCLUSION=\${{ needs.run.result }} (required so cancelled runs email/Teams as CANCELLED instead of a false FAIL or "manual review").`;
+            if (rec) {
+                prompt += ` Recipients OVERRIDE for this pipeline: set TESTIM_EMAIL_RECIPIENTS="${rec}" (a literal string) and gate the two steps on \`always() && (steps.detect.outputs.artifact == 'true' || needs.run.result == 'cancelled')\` only (no vars gate).`;
+            } else {
+                prompt += ` Recipients: use the shared repo variable — set TESTIM_EMAIL_RECIPIENTS=\${{ vars.TESTIM_EMAIL_RECIPIENTS }} and add \`&& vars.TESTIM_EMAIL_RECIPIENTS != ''\` to the two steps' if: condition (default behavior).`;
+            }
+        } else {
+            prompt += `\n\nEMAIL RESULTS: Do NOT email — omit the "Set up Node (for email)" and "Email results (Power Automate)" steps (remove them from the test-results job if present).`;
+        }
+        return prompt;
+    }
+
+    function buildEmailOnlyWorkflowPrompt(p, repoName) {
+        const filePath = `.github/workflows/${p.filename || (p.name + '.yml')}`;
+        let prompt = `Update ONLY the email results steps in the existing workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
+            `Change only the test-results job email steps. Preserve everything else exactly as committed.\n`;
+        return appendEmailPromptLines(prompt, p);
+    }
+
+    function buildScheduleAndEmailWorkflowPrompt(p, repoName, kind) {
+        const filePath = `.github/workflows/${p.filename || (p.name + '.yml')}`;
+        const orchNote = kind === 'orchestrator'
+            ? `Do NOT rewrite workflow_dispatch inputs, the dispatch job script, or .github/orchestrator/targets.json.\n`
+            : `Do NOT rewrite unrelated workflow inputs, jobs, or permissions.\n`;
+        let prompt = `Update ONLY the schedule trigger and email results steps on the existing workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
+            orchNote +
+            `Change only the schedule/cron block and test-results email steps. Preserve everything else exactly as committed.\n`;
+        prompt = appendSchedulePromptLines(prompt, p);
+        return appendEmailPromptLines(prompt, p);
+    }
+
+    function buildScheduleOnlyWorkflowPrompt(p, repoName, kind) {
+        const filePath = `.github/workflows/${p.filename || (p.name + '.yml')}`;
+        const orchNote = kind === 'orchestrator'
+            ? `Do NOT rewrite workflow_dispatch inputs, the dispatch job script, or .github/orchestrator/targets.json.\n`
+            : `Do NOT rewrite unrelated workflow inputs, jobs, or permissions.\n`;
+        let prompt = `Update ONLY the schedule trigger on the existing workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
+            orchNote +
+            `Change only the schedule/cron block in this file. Preserve everything else exactly as committed.\n`;
+        return appendSchedulePromptLines(prompt, p);
+    }
+
+    function isScheduleOnlyPromptText(prompt) {
+        return String(prompt || '').startsWith('Update ONLY the schedule trigger');
+    }
+
+    function isNarrowYamlPromptText(prompt) {
+        const s = String(prompt || '');
+        return s.startsWith('Update ONLY the schedule trigger') ||
+            s.startsWith('Update ONLY the email results steps') ||
+            s.startsWith('Update ONLY the schedule trigger and email results steps');
+    }
+
+    function buildPromptForPipeline(p, opts = {}) {
+        const prev = opts.prev !== undefined ? opts.prev : pipelinePrevSnapshot(p);
         const isMobile = isMobilePipeline(p);
         const repoName = String(
             p.repo ||
@@ -6026,6 +6298,26 @@ ${os.map(n => `- ${n}`).join('\n')}
         const RUNNER_CONSOLIDATED_REPOS = ['Axos.QE.TestIM','Axos.QE.API_OLB','Axos.QE.API_CS','Axos.QE.API_UDB','Axos.QE.API_WFO','Axos.QE.Mobile'];
         const runnerStrategy = (!isOrchestratorPipeline(p) && RUNNER_CONSOLIDATED_REPOS.includes(repoName)) ? 'label' : getRunnerStrategy(p);
         const runnerGroup = getRunnerGroup(p);
+
+        if (prev && pipelineExistedBeforeEdit(p)) {
+            if (hasNoYamlAffectingChange(prev, p, p)) return null;
+            if (isScheduleOnlyYamlChange(prev, p, p)) {
+                const kind = isOrchestratorPipeline(p) ? 'orchestrator' : 'pipeline';
+                return buildScheduleOnlyWorkflowPrompt(p, repoName, kind);
+            }
+            if (isEmailOnlyYamlChange(prev, p, p)) {
+                if (supportsPowerAutomateEmailPrompt(p)) {
+                    return buildEmailOnlyWorkflowPrompt(p, repoName);
+                }
+                return null;
+            } else if (isScheduleAndEmailOnlyYamlChange(prev, p, p)) {
+                const kind = isOrchestratorPipeline(p) ? 'orchestrator' : 'pipeline';
+                if (supportsPowerAutomateEmailPrompt(p)) {
+                    return buildScheduleAndEmailWorkflowPrompt(p, repoName, kind);
+                }
+                return buildScheduleOnlyWorkflowPrompt(p, repoName, kind);
+            }
+        }
 
         if (isOrchestratorPipeline(p)) {
             const setName = orchestratorSetForForm(p) || 'WFO';
@@ -6078,6 +6370,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                 `Note: for workflows in this repo, "workflow" should be the workflow filename (e.g. Web_AxosBank_UAT_HealthCheck-Testim.yml).`;
 
             if (p.renamedFrom) prompt += `\n\nAlso delete the old workflow file: .github/workflows/${p.renamedFrom}`;
+            prompt = appendSchedulePromptLines(prompt, p);
             return prompt;
         }
 
@@ -6330,17 +6623,7 @@ ${os.map(n => `- ${n}`).join('\n')}
         if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
         else prompt += `\n\nKeep the schedule block commented out.`;
 
-        if (p.emailEnabled) {
-            const rec = String(p.emailRecipients || '').trim();
-            prompt += `\n\nEMAIL RESULTS (Power Automate): In the caller workflow's \`test-results\` job, mirror the "Set up Node (for email)" and "Email results (Power Automate)" steps from Web_AxosBank_UAT_HealthCheck-Testim.yml. The email step runs \`node tools/build-email-from-junit.mjs\`, uses continue-on-error: true, and is gated on \`always() && (steps.detect.outputs.artifact == 'true' || needs.run.result == 'cancelled')\` (artifact optional for cancel — XML optional otherwise). Env: JUNIT_GLOB_DIR=reports, REPORT_TITLE=${p.name}, REPORT_ENV=${p.env || 'UAT'}, POWER_AUTOMATE_EMAIL_WEBHOOK_URL=\${{ secrets.POWER_AUTOMATE_EMAIL_WEBHOOK_URL }}, GITHUB_SERVER_URL/GITHUB_REPOSITORY/GITHUB_RUN_ID, and RUN_CONCLUSION=\${{ needs.run.result }} (required so cancelled runs email/Teams as CANCELLED instead of a false FAIL or "manual review").`;
-            if (rec) {
-                prompt += ` Recipients OVERRIDE for this pipeline: set TESTIM_EMAIL_RECIPIENTS="${rec}" (a literal string) and gate the two steps on \`always() && (steps.detect.outputs.artifact == 'true' || needs.run.result == 'cancelled')\` only (no vars gate).`;
-            } else {
-                prompt += ` Recipients: use the shared repo variable — set TESTIM_EMAIL_RECIPIENTS=\${{ vars.TESTIM_EMAIL_RECIPIENTS }} and add \`&& vars.TESTIM_EMAIL_RECIPIENTS != ''\` to the two steps' if: condition (default behavior).`;
-            }
-        } else {
-            prompt += `\n\nEMAIL RESULTS: Do NOT email — omit the "Set up Node (for email)" and "Email results (Power Automate)" steps (remove them from the test-results job if present).`;
-        }
+        prompt = appendEmailPromptLines(prompt, p);
 
         prompt += `\n\nUse the existing caller workflow file Web_AxosBank_UAT_HealthCheck-Testim.yml as the exact format reference. Include:\n` +
             `- A header comment showing the folder path (e.g. Web > Axos Bank > UAT > ...)\n` +
@@ -6383,7 +6666,13 @@ ${os.map(n => `- ${n}`).join('\n')}
 
         const prompts = selected
             .sort((a, b) => a.name.localeCompare(b.name))
-            .map(p => buildPromptForPipeline(p));
+            .map(p => buildPromptForPipeline(p, { prev: pipelinePrevSnapshot(p) }))
+            .filter(p => p !== null && p !== undefined);
+
+        if (prompts.length === 0 && !allowCatalogOnly) {
+            showToast('Saved in Pipeline Manager — no YAML changes needed for the selected pipeline(s).');
+            return;
+        }
 
         let combined = prompts.join('\n\n---\n\n');
 
@@ -6426,7 +6715,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             }
         } catch { /* ignore */ }
 
-        combined += AUTHOR_STAMP_INSTRUCTION;
+        const anyFullPrompt = prompts.some(p => !isNarrowYamlPromptText(p));
+        if (anyFullPrompt) combined += AUTHOR_STAMP_INSTRUCTION;
 
         if (includeCommitPush) {
             combined += `\n\nAfter making these changes, commit and push your current branch (e.g. \`git push origin HEAD\`).`;
@@ -9876,6 +10166,12 @@ ${targets}
 
 Each target element supports: enabled, name, owner, repo, workflow, ref, inputs.`;
 
+            if (scheduleEnabled && scheduleCron) {
+                prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron}`;
+            } else {
+                prompt += `\n\nKeep the schedule block commented out.`;
+            }
+
         } else if (el('fRepo') === 'Axos.QE.API_OLB' || el('fRepo') === 'Axos.QE.API_CS' || el('fRepo') === 'Axos.QE.API_UDB' || el('fRepo') === 'Axos.QE.API_WFO') {
             const apiRepo = el('fRepo') || 'Axos.QE.API_OLB';
             prompt = `Create or update a Newman pipeline workflow file in the repo ${apiRepo} at:
@@ -11170,6 +11466,10 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         if (updated > 0) parts.push(`${updated} updated`);
         if (removed > 0) parts.push(`${removed} removed`);
         if (parts.length === 0) parts.push('already up to date');
+        if (Array.isArray(jsonData)) {
+            applyYamlBaselineFromSync(jsonData, replaceMode);
+            persistPipelinesAfterSync();
+        }
         const statusEl = document.getElementById('syncStatus');
         const statusText = document.getElementById('syncStatusText');
         if (statusEl && statusText) {
@@ -11252,9 +11552,11 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     function clearCache() {
         if (!confirm('Clear all cached pipeline data? You will need to re-sync after this.')) return;
         localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(YAML_BASELINE_KEY);
         localStorage.removeItem(TREE_STATE_KEY);
         pipelines.length = 0;
         savedSnapshot = [];
+        yamlBaselineSnapshot = [];
         treeOpenState = {};
         selectedPipelines.clear();
         emailSelectedPipelines.clear();
@@ -17515,6 +17817,7 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
             // Sync merge: make sure repeatEvery from WEEK_MODULO is not dropped.
             pipelines = [];
             savedSnapshot = [];
+            yamlBaselineSnapshot = [];
             syncFileContent = JSON.stringify([{
                 filename: 'Web_Outsystems_UAT_EWM_Creation_Regression-Testim.yml',
                 repo: 'Axos.QE.TestIM',
