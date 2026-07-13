@@ -474,6 +474,25 @@
         .sync-progress-track { height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden; }
         .sync-progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--axos-orange), var(--axos-orange-dark)); border-radius: 4px; transition: width 0.15s ease-out; }
         .sync-progress-repo { font-size: 11px; color: var(--text-muted); margin-top: 6px; min-height: 16px; font-family: 'JetBrains Mono', monospace; }
+        .results-sync-banner {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin: 0 0 16px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .results-sync-banner .results-sync-text strong { color: var(--text-primary); font-weight: 700; }
+        .results-sync-banner .results-sync-body { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+        .results-sync-banner .results-sync-filters { font-size: 11px; color: var(--text-muted); line-height: 1.45; }
+        .results-sync-banner .results-sync-filters strong { color: var(--text-secondary); font-weight: 700; }
+        .results-sync-banner .results-sync-stale { font-size: 11px; color: var(--warning); font-weight: 700; line-height: 1.45; }
 
         /* Toast */
         .toast { position: fixed; bottom: 80px; right: 20px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 14px 18px; display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); transform: translateX(120%); transition: transform 0.3s; z-index: 100000; }
@@ -1098,9 +1117,13 @@
         [data-theme="light"] .dash-trend-wrap{background:rgba(30,56,96,0.04);border-color:rgba(30,56,96,0.10);}
         .dash-trend-wrap canvas{width:100%!important;height:100%!important;cursor:pointer;}
         .dash-trend-loading{
-            position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-            font-size:11px;font-weight:700;color:var(--text-muted);pointer-events:none;
+            position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+            gap:6px;font-size:11px;font-weight:700;color:var(--text-muted);pointer-events:none;
         }
+        .dash-trend-progress{display:flex;flex-direction:column;align-items:center;gap:4px;}
+        .dash-trend-progress svg{display:block;}
+        .dash-trend-progress-label{font-size:10px;font-weight:800;color:var(--text-muted);text-align:center;line-height:1.3;}
+        .dash-trend-progress-elapsed{font-size:9px;font-weight:600;color:var(--text-muted);opacity:0.85;}
         .dash-trend-wrap.ready .dash-trend-loading{display:none;}
         .dash-pipe-foot{display:flex;justify-content:space-between;gap:10px;margin-top:10px;font-size:11px;color:var(--text-muted);}
         .dash-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);font-weight:800;}
@@ -1885,6 +1908,8 @@
                 </div>
                 <div id="fetchCurrentPipeline" class="sync-progress-repo"></div>
             </div>
+
+            <div id="resultsSyncBanner" class="results-sync-banner" style="display:none;"></div>
 
             <!-- Metrics -->
             <div id="metricsArea" style="display:none;">
@@ -4245,6 +4270,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                     populateEmailPipePicker();
                 } catch { /* ignore */ }
             }
+            try { refreshSyncBanners(); } catch { /* ignore */ }
         }
 
         // If Dashboards is visible, re-render immediately (fixes "Continue" doing nothing).
@@ -4302,7 +4328,6 @@ ${os.map(n => `- ${n}`).join('\n')}
 
     let pipelines = [];
     let savedSnapshot = [];
-    let yamlBaselineSnapshot = [];
     let pendingSaveChanges = [];
     let currentView = 'tree';
     // Remembers the All Pipelines list filters so they survive opening a pipeline and going Back.
@@ -4311,55 +4336,8 @@ ${os.map(n => `- ${n}`).join('\n')}
     let editingPipeline = null;
     let viewOnlyMode = false;
     const STORAGE_KEY = 'axos_pipeline_manager_data';
-    const YAML_BASELINE_KEY = 'axos_pipeline_manager_yaml_baseline';
     const TREE_STATE_KEY = 'axos_pipeline_manager_tree_state';
     let treeOpenState = {};
-
-    function loadYamlBaselineFromStorage(fallback) {
-        try {
-            const stored = localStorage.getItem(YAML_BASELINE_KEY);
-            if (stored) return JSON.parse(stored);
-        } catch { /* ignore */ }
-        return fallback ? JSON.parse(JSON.stringify(fallback)) : [];
-    }
-
-    function persistYamlBaseline() {
-        try { localStorage.setItem(YAML_BASELINE_KEY, JSON.stringify(yamlBaselineSnapshot)); } catch { /* ignore */ }
-    }
-
-    function persistPipelinesAfterSync() {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(pipelines));
-            savedSnapshot = JSON.parse(JSON.stringify(pipelines));
-        } catch { /* ignore */ }
-    }
-
-    function applyYamlBaselineFromSync(jsonData, replaceMode) {
-        if (!Array.isArray(jsonData)) return;
-        if (replaceMode) {
-            yamlBaselineSnapshot = JSON.parse(JSON.stringify(pipelines));
-            persistYamlBaseline();
-            return;
-        }
-        const baselineMap = new Map(yamlBaselineSnapshot.map(p => [pipelineKey(p), p]));
-        const incomingRepos = new Set(
-            jsonData.map(j => String(j?.repo || '').trim()).filter(Boolean)
-        );
-        for (const entry of jsonData) {
-            const k = pipelineKeyFrom(entry.repo, entry.filename);
-            const p = pipelines.find(pp => pipelineKey(pp) === k);
-            if (p) baselineMap.set(k, JSON.parse(JSON.stringify(p)));
-        }
-        if (incomingRepos.size > 0) {
-            const syncedKeys = new Set(jsonData.map(j => pipelineKeyFrom(j.repo, j.filename)));
-            for (const [k, p] of baselineMap.entries()) {
-                const r = normRepoForPipeline(p);
-                if (incomingRepos.has(r) && !syncedKeys.has(k)) baselineMap.delete(k);
-            }
-        }
-        yamlBaselineSnapshot = Array.from(baselineMap.values());
-        persistYamlBaseline();
-    }
 
     function initPipelines() {
         const key = STORAGE_KEY;
@@ -4368,8 +4346,6 @@ ${os.map(n => `- ${n}`).join('\n')}
             try {
                 pipelines = JSON.parse(stored);
                 savedSnapshot = JSON.parse(stored);
-                yamlBaselineSnapshot = loadYamlBaselineFromStorage(null);
-                if (!Array.isArray(yamlBaselineSnapshot)) yamlBaselineSnapshot = [];
                 // Backfill repo for older cached entries (multi-repo support).
                 const backfillRepo = (p) => {
                     if (!p || String(p.repo || '').trim()) return;
@@ -4563,10 +4539,6 @@ ${os.map(n => `- ${n}`).join('\n')}
                 };
                 (pipelines || []).forEach(backfillMobileEnvSpecific);
                 (savedSnapshot || []).forEach(backfillMobileEnvSpecific);
-                if (yamlBaselineSnapshot.length === 0) {
-                    yamlBaselineSnapshot = JSON.parse(JSON.stringify(savedSnapshot));
-                    persistYamlBaseline();
-                }
                 // Load persisted tree open/close state (never auto-expand on first load).
                 try {
                     const t = localStorage.getItem(TREE_STATE_KEY);
@@ -4577,7 +4549,6 @@ ${os.map(n => `- ${n}`).join('\n')}
         }
         pipelines = [];
         savedSnapshot = [];
-        yamlBaselineSnapshot = [];
         try {
             const t = localStorage.getItem(TREE_STATE_KEY);
             treeOpenState = t ? (JSON.parse(t) || {}) : {};
@@ -4797,7 +4768,6 @@ ${os.map(n => `- ${n}`).join('\n')}
             'testSuite', 'baseUrl', 'branch', 'grid', 'parallel', 'parallels', 'retries', 'timeoutMin', 'browserTimeout',
             'grep', 'suite', 'spec', 'parallelSplit', 'tunnel', 'appId', 'deviceName', 'deviceOS', 'bsUsername', 'bsAccessKey',
             'runnerLabel', 'customRunnerLabel', 'jobTimeout',
-            'orchestratorSet', 'orchestratorTargets',
             'scheduleEnabled', 'schedule', 'repeatUnit', 'repeatEvery', 'repeatDom',
             'emailEnabled', 'emailRecipients',
             'repo', 'filename', 'name'
@@ -6069,223 +6039,7 @@ ${os.map(n => `- ${n}`).join('\n')}
         `If you cannot resolve a name from either source, omit the "Updated by:" line entirely. Do NOT ask ` +
         `the user and do NOT insert a placeholder.`;
 
-    // Keys whose changes affect workflow YAML schedule blocks only.
-    const SCHEDULE_YAML_KEYS = new Set(['scheduleEnabled', 'schedule', 'repeatUnit', 'repeatEvery', 'repeatDom']);
-    const EMAIL_YAML_KEYS = new Set(['emailEnabled', 'emailRecipients']);
-    const YAML_DIFF_IGNORE_KEYS = new Set(['lastSyncAt', 'lastRun', 'lastRunId']);
-    // Orchestrator save forms clear suite/mobile fields; ignore spurious diffs vs sync baseline.
-    const ORCH_IGNORE_DIFF_KEYS = new Set([
-        'grep', 'suite', 'spec', 'parallel', 'parallelSplit', 'retries', 'tunnel',
-        'appId', 'deviceName', 'deviceOS', 'bsUsername', 'bsAccessKey', 'runnerLabel',
-        'testSuite', 'baseUrl', 'project', 'token', 'branch', 'grid', 'timeoutMin',
-        'browserTimeout', 'parallels', 'customRunnerLabel', 'runnerStrategy', 'runnerGroup',
-        'mobilePlatform', 'envSpecific', 'featureDetail', 'customSuffix', 'platform',
-        'brand', 'env', 'feature', 'testType', 'jobTimeout', 'name', 'filename', 'repo'
-    ]);
-
-    function isEmptyDiffValue(v) {
-        if (v === null || v === undefined) return true;
-        if (typeof v === 'string') return v.trim() === '';
-        if (Array.isArray(v)) return v.length === 0;
-        return false;
-    }
-
-    function normalizeOrchestratorTargetInputs(inputs) {
-        if (!inputs || typeof inputs !== 'object' || Array.isArray(inputs)) return {};
-        const out = {};
-        for (const [key, val] of Object.entries(inputs)) {
-            if (val === null || val === undefined || val === '') continue;
-            out[key] = val;
-        }
-        return out;
-    }
-
-    function normalizeOrchestratorTargetForDiff(t) {
-        return {
-            owner: String(t?.owner || 'axos-financial').trim() || 'axos-financial',
-            repo: String(t?.repo || 'Axos.QE.TestIM').trim() || 'Axos.QE.TestIM',
-            workflow: String(t?.workflow || '').trim().replace(/.*\//, ''),
-            ref: String(t?.ref || 'main').trim() || 'main',
-            enabled: t?.enabled !== false,
-            inputs: normalizeOrchestratorTargetInputs(t?.inputs)
-        };
-    }
-
-    function normalizeOrchestratorTargetsForDiff(targets) {
-        const arr = Array.isArray(targets) ? targets : [];
-        return arr
-            .map(normalizeOrchestratorTargetForDiff)
-            .filter(t => t.workflow)
-            .sort((a, b) => {
-                const ak = `${a.owner}/${a.repo}:${a.workflow}@${a.ref}`;
-                const bk = `${b.owner}/${b.repo}:${b.workflow}@${b.ref}`;
-                return ak.localeCompare(bk);
-            });
-    }
-
-    function orchestratorTargetsYamlEqual(a, b) {
-        const refsA = orchestratorTargetsToRefs(a);
-        const refsB = orchestratorTargetsToRefs(b);
-        if (refsA.trim() === refsB.trim()) return true;
-        const canonA = normalizeOrchestratorTargetsForDiff(orchestratorRefsToTargets(refsA));
-        const canonB = normalizeOrchestratorTargetsForDiff(orchestratorRefsToTargets(refsB));
-        return stableStringify(canonA) === stableStringify(canonB);
-    }
-
-    function yamlDiffValuesEqual(a, b) {
-        if (isEmptyDiffValue(a) && isEmptyDiffValue(b)) return true;
-        if (typeof a === 'boolean' || typeof b === 'boolean') return !!a === !!b;
-        if (Array.isArray(a) || Array.isArray(b)) return stableStringify(a) === stableStringify(b);
-        const na = Number(a);
-        const nb = Number(b);
-        if (Number.isFinite(na) && Number.isFinite(nb) && String(a).trim() !== '' && String(b).trim() !== '') {
-            return na === nb;
-        }
-        return String(a ?? '').trim() === String(b ?? '').trim();
-    }
-
-    function yamlDiffFieldKeys(prev, next, pipeline) {
-        const keys = new Set([
-            ...Object.keys(prev || {}),
-            ...Object.keys(next || {})
-        ]);
-        const isOrch = isOrchestratorPipeline(pipeline || next || prev);
-        const ignoreEmailKeys = !supportsPowerAutomateEmailPrompt(pipeline || next || prev);
-        const changed = [];
-        for (const k of keys) {
-            if (YAML_DIFF_IGNORE_KEYS.has(k)) continue;
-            if (ignoreEmailKeys && EMAIL_YAML_KEYS.has(k)) continue;
-            if (isOrch && ORCH_IGNORE_DIFF_KEYS.has(k)) continue;
-            const a = prev ? prev[k] : undefined;
-            const b = next ? next[k] : undefined;
-            if (k === 'orchestratorTargets') {
-                if (!orchestratorTargetsYamlEqual(a, b)) changed.push(k);
-                continue;
-            }
-            if (!yamlDiffValuesEqual(a, b)) changed.push(k);
-        }
-        return changed;
-    }
-
-    function changedFieldKeys(prev, next) {
-        return buildDiffRows(prev || {}, next || {}).map(r => r.key);
-    }
-
-    function isScheduleOnlyYamlChange(prev, next, pipeline) {
-        if (!prev || !next) return false;
-        const keys = yamlDiffFieldKeys(prev, next, pipeline);
-        if (!keys.length) return true;
-        return keys.every(k => SCHEDULE_YAML_KEYS.has(k));
-    }
-
-    function isEmailOnlyYamlChange(prev, next, pipeline) {
-        if (!prev || !next) return false;
-        const keys = yamlDiffFieldKeys(prev, next, pipeline);
-        if (!keys.length) return false;
-        return keys.every(k => EMAIL_YAML_KEYS.has(k));
-    }
-
-    function isScheduleAndEmailOnlyYamlChange(prev, next, pipeline) {
-        if (!prev || !next) return false;
-        const keys = yamlDiffFieldKeys(prev, next, pipeline);
-        if (!keys.length) return false;
-        return keys.every(k => SCHEDULE_YAML_KEYS.has(k) || EMAIL_YAML_KEYS.has(k));
-    }
-
-    function hasNoYamlAffectingChange(prev, next, pipeline) {
-        if (!prev || !next) return false;
-        return yamlDiffFieldKeys(prev, next, pipeline).length === 0;
-    }
-
-    function pipelinePrevSnapshot(p) {
-        return yamlBaselineSnapshot.find(s => pipelineKey(s) === pipelineKey(p)) || null;
-    }
-
-    function pipelineExistedBeforeEdit(p) {
-        return !!pipelinePrevSnapshot(p) || !!p?.lastSyncAt;
-    }
-
-    function appendSchedulePromptLines(prompt, p) {
-        if (p.scheduleEnabled && p.schedule) {
-            prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
-        } else {
-            prompt += `\n\nKeep the schedule block commented out.`;
-        }
-        if (p.scheduleEnabled && (p.repeatUnit || 'weeks') === 'weeks' && parseInt(p.repeatEvery || '1', 10) > 1) {
-            const n = parseInt(p.repeatEvery || '1', 10);
-            prompt += `\n- Add WEEK_MODULO: ${n} to the workflow if it supports off-week skipping (do NOT add a separate gate job)`;
-        }
-        return prompt;
-    }
-
-    function supportsPowerAutomateEmailPrompt(p) {
-        const repoName = String(p?.repo || 'Axos.QE.TestIM').trim();
-        return repoName === 'Axos.QE.TestIM'
-            && !isOrchestratorPipeline(p)
-            && !isMobilePipeline(p)
-            && !isWebMonorepoPipeline(p)
-            && !isCryptoPipeline(p)
-            && !isPerfPipeline(p);
-    }
-
-    function appendEmailPromptLines(prompt, p) {
-        if (p.emailEnabled) {
-            const rec = String(p.emailRecipients || '').trim();
-            prompt += `\n\nEMAIL RESULTS (Power Automate): In the caller workflow's \`test-results\` job, mirror the "Set up Node (for email)" and "Email results (Power Automate)" steps from Web_AxosBank_UAT_HealthCheck-Testim.yml. The email step runs \`node tools/build-email-from-junit.mjs\`, uses continue-on-error: true, and is gated on \`always() && (steps.detect.outputs.artifact == 'true' || needs.run.result == 'cancelled')\` (artifact optional for cancel — XML optional otherwise). Env: JUNIT_GLOB_DIR=reports, REPORT_TITLE=${p.name}, REPORT_ENV=${p.env || 'UAT'}, POWER_AUTOMATE_EMAIL_WEBHOOK_URL=\${{ secrets.POWER_AUTOMATE_EMAIL_WEBHOOK_URL }}, GITHUB_SERVER_URL/GITHUB_REPOSITORY/GITHUB_RUN_ID, and RUN_CONCLUSION=\${{ needs.run.result }} (required so cancelled runs email/Teams as CANCELLED instead of a false FAIL or "manual review").`;
-            if (rec) {
-                prompt += ` Recipients OVERRIDE for this pipeline: set TESTIM_EMAIL_RECIPIENTS="${rec}" (a literal string) and gate the two steps on \`always() && (steps.detect.outputs.artifact == 'true' || needs.run.result == 'cancelled')\` only (no vars gate).`;
-            } else {
-                prompt += ` Recipients: use the shared repo variable — set TESTIM_EMAIL_RECIPIENTS=\${{ vars.TESTIM_EMAIL_RECIPIENTS }} and add \`&& vars.TESTIM_EMAIL_RECIPIENTS != ''\` to the two steps' if: condition (default behavior).`;
-            }
-        } else {
-            prompt += `\n\nEMAIL RESULTS: Do NOT email — omit the "Set up Node (for email)" and "Email results (Power Automate)" steps (remove them from the test-results job if present).`;
-        }
-        return prompt;
-    }
-
-    function buildEmailOnlyWorkflowPrompt(p, repoName) {
-        const filePath = `.github/workflows/${p.filename || (p.name + '.yml')}`;
-        let prompt = `Update ONLY the email results steps in the existing workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
-            `Change only the test-results job email steps. Preserve everything else exactly as committed.\n`;
-        return appendEmailPromptLines(prompt, p);
-    }
-
-    function buildScheduleAndEmailWorkflowPrompt(p, repoName, kind) {
-        const filePath = `.github/workflows/${p.filename || (p.name + '.yml')}`;
-        const orchNote = kind === 'orchestrator'
-            ? `Do NOT rewrite workflow_dispatch inputs, the dispatch job script, or .github/orchestrator/targets.json.\n`
-            : `Do NOT rewrite unrelated workflow inputs, jobs, or permissions.\n`;
-        let prompt = `Update ONLY the schedule trigger and email results steps on the existing workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
-            orchNote +
-            `Change only the schedule/cron block and test-results email steps. Preserve everything else exactly as committed.\n`;
-        prompt = appendSchedulePromptLines(prompt, p);
-        return appendEmailPromptLines(prompt, p);
-    }
-
-    function buildScheduleOnlyWorkflowPrompt(p, repoName, kind) {
-        const filePath = `.github/workflows/${p.filename || (p.name + '.yml')}`;
-        const orchNote = kind === 'orchestrator'
-            ? `Do NOT rewrite workflow_dispatch inputs, the dispatch job script, or .github/orchestrator/targets.json.\n`
-            : `Do NOT rewrite unrelated workflow inputs, jobs, or permissions.\n`;
-        let prompt = `Update ONLY the schedule trigger on the existing workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
-            orchNote +
-            `Change only the schedule/cron block in this file. Preserve everything else exactly as committed.\n`;
-        return appendSchedulePromptLines(prompt, p);
-    }
-
-    function isScheduleOnlyPromptText(prompt) {
-        return String(prompt || '').startsWith('Update ONLY the schedule trigger');
-    }
-
-    function isNarrowYamlPromptText(prompt) {
-        const s = String(prompt || '');
-        return s.startsWith('Update ONLY the schedule trigger') ||
-            s.startsWith('Update ONLY the email results steps') ||
-            s.startsWith('Update ONLY the schedule trigger and email results steps');
-    }
-
-    function buildPromptForPipeline(p, opts = {}) {
-        const prev = opts.prev !== undefined ? opts.prev : pipelinePrevSnapshot(p);
+    function buildPromptForPipeline(p) {
         const isMobile = isMobilePipeline(p);
         const repoName = String(
             p.repo ||
@@ -6298,26 +6052,6 @@ ${os.map(n => `- ${n}`).join('\n')}
         const RUNNER_CONSOLIDATED_REPOS = ['Axos.QE.TestIM','Axos.QE.API_OLB','Axos.QE.API_CS','Axos.QE.API_UDB','Axos.QE.API_WFO','Axos.QE.Mobile'];
         const runnerStrategy = (!isOrchestratorPipeline(p) && RUNNER_CONSOLIDATED_REPOS.includes(repoName)) ? 'label' : getRunnerStrategy(p);
         const runnerGroup = getRunnerGroup(p);
-
-        if (prev && pipelineExistedBeforeEdit(p)) {
-            if (hasNoYamlAffectingChange(prev, p, p)) return null;
-            if (isScheduleOnlyYamlChange(prev, p, p)) {
-                const kind = isOrchestratorPipeline(p) ? 'orchestrator' : 'pipeline';
-                return buildScheduleOnlyWorkflowPrompt(p, repoName, kind);
-            }
-            if (isEmailOnlyYamlChange(prev, p, p)) {
-                if (supportsPowerAutomateEmailPrompt(p)) {
-                    return buildEmailOnlyWorkflowPrompt(p, repoName);
-                }
-                return null;
-            } else if (isScheduleAndEmailOnlyYamlChange(prev, p, p)) {
-                const kind = isOrchestratorPipeline(p) ? 'orchestrator' : 'pipeline';
-                if (supportsPowerAutomateEmailPrompt(p)) {
-                    return buildScheduleAndEmailWorkflowPrompt(p, repoName, kind);
-                }
-                return buildScheduleOnlyWorkflowPrompt(p, repoName, kind);
-            }
-        }
 
         if (isOrchestratorPipeline(p)) {
             const setName = orchestratorSetForForm(p) || 'WFO';
@@ -6370,7 +6104,6 @@ ${os.map(n => `- ${n}`).join('\n')}
                 `Note: for workflows in this repo, "workflow" should be the workflow filename (e.g. Web_AxosBank_UAT_HealthCheck-Testim.yml).`;
 
             if (p.renamedFrom) prompt += `\n\nAlso delete the old workflow file: .github/workflows/${p.renamedFrom}`;
-            prompt = appendSchedulePromptLines(prompt, p);
             return prompt;
         }
 
@@ -6623,7 +6356,17 @@ ${os.map(n => `- ${n}`).join('\n')}
         if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
         else prompt += `\n\nKeep the schedule block commented out.`;
 
-        prompt = appendEmailPromptLines(prompt, p);
+        if (p.emailEnabled) {
+            const rec = String(p.emailRecipients || '').trim();
+            prompt += `\n\nEMAIL RESULTS (Power Automate): In the caller workflow's \`test-results\` job, mirror the "Set up Node (for email)" and "Email results (Power Automate)" steps from Web_AxosBank_UAT_HealthCheck-Testim.yml. The email step runs \`node tools/build-email-from-junit.mjs\`, uses continue-on-error: true, and is gated on \`always() && (steps.detect.outputs.artifact == 'true' || needs.run.result == 'cancelled')\` (artifact optional for cancel — XML optional otherwise). Env: JUNIT_GLOB_DIR=reports, REPORT_TITLE=${p.name}, REPORT_ENV=${p.env || 'UAT'}, POWER_AUTOMATE_EMAIL_WEBHOOK_URL=\${{ secrets.POWER_AUTOMATE_EMAIL_WEBHOOK_URL }}, GITHUB_SERVER_URL/GITHUB_REPOSITORY/GITHUB_RUN_ID, and RUN_CONCLUSION=\${{ needs.run.result }} (required so cancelled runs email/Teams as CANCELLED instead of a false FAIL or "manual review").`;
+            if (rec) {
+                prompt += ` Recipients OVERRIDE for this pipeline: set TESTIM_EMAIL_RECIPIENTS="${rec}" (a literal string) and gate the two steps on \`always() && (steps.detect.outputs.artifact == 'true' || needs.run.result == 'cancelled')\` only (no vars gate).`;
+            } else {
+                prompt += ` Recipients: use the shared repo variable — set TESTIM_EMAIL_RECIPIENTS=\${{ vars.TESTIM_EMAIL_RECIPIENTS }} and add \`&& vars.TESTIM_EMAIL_RECIPIENTS != ''\` to the two steps' if: condition (default behavior).`;
+            }
+        } else {
+            prompt += `\n\nEMAIL RESULTS: Do NOT email — omit the "Set up Node (for email)" and "Email results (Power Automate)" steps (remove them from the test-results job if present).`;
+        }
 
         prompt += `\n\nUse the existing caller workflow file Web_AxosBank_UAT_HealthCheck-Testim.yml as the exact format reference. Include:\n` +
             `- A header comment showing the folder path (e.g. Web > Axos Bank > UAT > ...)\n` +
@@ -6666,13 +6409,7 @@ ${os.map(n => `- ${n}`).join('\n')}
 
         const prompts = selected
             .sort((a, b) => a.name.localeCompare(b.name))
-            .map(p => buildPromptForPipeline(p, { prev: pipelinePrevSnapshot(p) }))
-            .filter(p => p !== null && p !== undefined);
-
-        if (prompts.length === 0 && !allowCatalogOnly) {
-            showToast('Saved in Pipeline Manager — no YAML changes needed for the selected pipeline(s).');
-            return;
-        }
+            .map(p => buildPromptForPipeline(p));
 
         let combined = prompts.join('\n\n---\n\n');
 
@@ -6715,8 +6452,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             }
         } catch { /* ignore */ }
 
-        const anyFullPrompt = prompts.some(p => !isNarrowYamlPromptText(p));
-        if (anyFullPrompt) combined += AUTHOR_STAMP_INSTRUCTION;
+        combined += AUTHOR_STAMP_INSTRUCTION;
 
         if (includeCommitPush) {
             combined += `\n\nAfter making these changes, commit and push your current branch (e.g. \`git push origin HEAD\`).`;
@@ -10166,12 +9902,6 @@ ${targets}
 
 Each target element supports: enabled, name, owner, repo, workflow, ref, inputs.`;
 
-            if (scheduleEnabled && scheduleCron) {
-                prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron}`;
-            } else {
-                prompt += `\n\nKeep the schedule block commented out.`;
-            }
-
         } else if (el('fRepo') === 'Axos.QE.API_OLB' || el('fRepo') === 'Axos.QE.API_CS' || el('fRepo') === 'Axos.QE.API_UDB' || el('fRepo') === 'Axos.QE.API_WFO') {
             const apiRepo = el('fRepo') || 'Axos.QE.API_OLB';
             prompt = `Create or update a Newman pipeline workflow file in the repo ${apiRepo} at:
@@ -11466,10 +11196,6 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         if (updated > 0) parts.push(`${updated} updated`);
         if (removed > 0) parts.push(`${removed} removed`);
         if (parts.length === 0) parts.push('already up to date');
-        if (Array.isArray(jsonData)) {
-            applyYamlBaselineFromSync(jsonData, replaceMode);
-            persistPipelinesAfterSync();
-        }
         const statusEl = document.getElementById('syncStatus');
         const statusText = document.getElementById('syncStatusText');
         if (statusEl && statusText) {
@@ -11552,11 +11278,9 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     function clearCache() {
         if (!confirm('Clear all cached pipeline data? You will need to re-sync after this.')) return;
         localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(YAML_BASELINE_KEY);
         localStorage.removeItem(TREE_STATE_KEY);
         pipelines.length = 0;
         savedSnapshot = [];
-        yamlBaselineSnapshot = [];
         treeOpenState = {};
         selectedPipelines.clear();
         emailSelectedPipelines.clear();
@@ -12316,7 +12040,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             renderQueue();
             if (!queueLastFetchMs && getGitHubToken()) fetchQueue();
         }
-        if (tab === 'dashboards') renderDashboards();
+        if (tab === 'dashboards') renderDashboardsIfNeeded();
         try { manageQueueAutoRefresh(); } catch { /* ignore */ }
         if (tab === 'email') {
             document.getElementById(allRuns.length ? 'emailReady' : 'emailNoData').style.display = 'block';
@@ -12346,6 +12070,414 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     const RESULTS_DATE_PRESET_KEY = 'pm.results.datePreset.v1'; // today|week|month|custom
     const RESULTS_DATE_START_KEY = 'pm.results.dateStart.v1'; // YYYY-MM-DD
     const RESULTS_DATE_END_KEY = 'pm.results.dateEnd.v1'; // YYYY-MM-DD
+    const RESULTS_CACHE_KEY = 'pm.results.cache.v1';
+    const RESULTS_SYNCED_AT_KEY = 'pm.results.syncedAt.v1';
+    let resultsLastSyncedAt = null;
+    let resultsLastFetchFilters = null;
+    let dashboardsRenderedRunCount = -1;
+    let dashboardsRenderedSyncAt = 0;
+    let dashboardsRenderedFetchKey = '';
+
+    function hasEnrichedTestCounts(tc) {
+        return tc && !tc.fallback && !tc.noTests && (tc.total ?? 0) > 0;
+    }
+
+    function trimRunForResultsCache(r) {
+        if (!r || typeof r !== 'object') return null;
+        const tc = r.testCounts;
+        const out = { ...r };
+        delete out.artifacts;
+        delete out.testCounts;
+        delete out._testCountsPromise;
+        delete out._testCountsDone;
+        delete out._testCountsAttemptedAt;
+        delete out._testCountsHadError;
+        delete out._testCountsGen;
+        if (hasEnrichedTestCounts(tc)) out.testCounts = { ...tc };
+        return out;
+    }
+
+    function hydrateAllRunsTestCountsFromCache() {
+        const cache = loadTestCountsCacheMerged();
+        for (const r of (allRuns || [])) {
+            if (hasEnrichedTestCounts(r?.testCounts)) continue;
+            const key = dashTestCountsCacheKey(r);
+            if (!key) continue;
+            const tc = cache[key]?.tc;
+            if (!hasEnrichedTestCounts(tc)) continue;
+            r.testCounts = tc;
+            r._testCountsDone = true;
+        }
+    }
+
+    function buildResultsFetchFiltersSnapshot(meta) {
+        const mode = String(meta?.mode || loadResultsFetchModePref() || 'count').toLowerCase();
+        const perPage = meta?.perPage || loadResultsRunCountPref();
+        const range = meta?.range ? { ...meta.range } : null;
+        if (range?.preset === 'custom') {
+            range.dateStart = loadResultsDateStartPref();
+            range.dateEnd = loadResultsDateEndPref();
+        }
+        return {
+            mode,
+            perPage,
+            range,
+            repoFilter: globalRepoFilter,
+            repoFilterLabel: repoFilterLabel(globalRepoFilter),
+            pipelineCount: meta?.pipelineCount ?? (resultsPipelines?.length || 0),
+            runCount: meta?.runCount ?? (allRuns || []).length
+        };
+    }
+
+    function normalizeResultsFetchFilters(source) {
+        if (!source) return null;
+        if (source.filters && typeof source.filters === 'object') return source.filters;
+        const mode = String(source.mode || 'count').toLowerCase();
+        const perPage = source.perPage || 7;
+        const range = source.range || null;
+        const repos = Array.isArray(source.repos) ? source.repos : [];
+        let repoFilterLabel = 'All Repos';
+        if (repos.length === 1) repoFilterLabel = repos[0];
+        else if (repos.length > 1) repoFilterLabel = repos.length <= 3 ? repos.join(', ') : `${repos.length} repos`;
+        return {
+            mode,
+            perPage,
+            range,
+            repoFilter: repos.length === 1 ? repos[0] : (repos.length ? '__multi__' : 'all'),
+            repoFilterLabel,
+            pipelineCount: null,
+            runCount: source.runs?.length ?? source.runCount ?? null
+        };
+    }
+
+    function describeResultsFetchFilters(filters) {
+        if (!filters) return '';
+        const parts = [];
+        if (filters.mode === 'range') {
+            parts.push(formatStoredRangeLabel(filters.range) || 'Date range');
+        } else {
+            parts.push(`Last ${filters.perPage || 7} runs`);
+        }
+        const repoLabel = filters.repoFilterLabel || repoFilterLabel(filters.repoFilter);
+        const isAllRepos = String(filters.repoFilter ?? 'all') === 'all' || repoLabel === 'All Repos';
+        if (!isAllRepos && repoLabel) parts.push(repoLabel);
+        if (filters.pipelineCount) parts.push(`${filters.pipelineCount} pipeline(s)`);
+        if (filters.runCount != null) parts.push(`${filters.runCount} run(s) loaded`);
+        return parts.join(' · ');
+    }
+
+    function getCurrentResultsFetchSettings() {
+        const mode = (document.getElementById('resultsFetchMode')?.value || loadResultsFetchModePref() || 'count').toLowerCase();
+        const perPage = Math.max(1, Math.min(100, parseInt(document.getElementById('ghRunCount')?.value, 10) || loadResultsRunCountPref() || 7));
+        let range = null;
+        if (mode === 'range') {
+            range = getResultsSelectedDateRange();
+            if (range?.preset === 'custom') {
+                range = {
+                    ...range,
+                    dateStart: loadResultsDateStartPref(),
+                    dateEnd: loadResultsDateEndPref()
+                };
+            }
+        }
+        return { mode, perPage, range, repoFilter: globalRepoFilter };
+    }
+
+    function resultsFetchSettingsDifferFromLast() {
+        const last = resultsLastFetchFilters;
+        if (!last || !allRuns.length) return false;
+        const cur = getCurrentResultsFetchSettings();
+        if (cur.mode !== last.mode) return true;
+        const lastRepo = String(last.repoFilter ?? (last.repoFilterLabel === 'All Repos' ? 'all' : last.repoFilterLabel) ?? 'all');
+        if (String(cur.repoFilter || 'all') !== lastRepo) return true;
+        if (cur.mode === 'count') return cur.perPage !== last.perPage;
+        const lr = last.range || {};
+        const cr = cur.range || {};
+        if (String(lr.preset || '') !== String(cr.preset || '')) return true;
+        if (lr.preset === 'custom' || cr.preset === 'custom') {
+            const lDs = String(lr.dateStart || '');
+            const lDe = String(lr.dateEnd || '');
+            const cDs = String(cr.dateStart || loadResultsDateStartPref() || '');
+            const cDe = String(cr.dateEnd || loadResultsDateEndPref() || '');
+            if (lDs !== cDs || lDe !== cDe) return true;
+            const lStart = Number(lr.startMs ?? NaN);
+            const lEnd = Number(lr.endMs ?? NaN);
+            const cStart = Number(cr.startMs ?? NaN);
+            const cEnd = Number(cr.endMs ?? NaN);
+            if (Number.isFinite(lStart) && Number.isFinite(cStart) && lStart !== cStart) return true;
+            if (Number.isFinite(lEnd) && Number.isFinite(cEnd) && lEnd !== cEnd) return true;
+            return false;
+        }
+        // Rolling presets (today/week/month): endMs is always "now" — compare bucket start only.
+        const lStart = Number(lr.startMs ?? NaN);
+        const cStart = Number(cr.startMs ?? NaN);
+        if (Number.isFinite(lStart) && Number.isFinite(cStart) && lStart !== cStart) return true;
+        return false;
+    }
+
+    function getDashboardFetchFilters() {
+        if ((allRuns || []).length && resultsLastFetchFilters) return resultsLastFetchFilters;
+        const cur = getCurrentResultsFetchSettings();
+        return {
+            mode: cur.mode,
+            perPage: cur.perPage,
+            range: cur.range,
+            repoFilter: cur.repoFilter,
+            repoFilterLabel: repoFilterLabel(cur.repoFilter)
+        };
+    }
+
+    function getDashboardDateRange(filters) {
+        const f = filters || getDashboardFetchFilters();
+        if (String(f.mode || '').toLowerCase() !== 'range') return null;
+        const r = f.range;
+        if (!r) return null;
+        const startMs = Number(r.startMs);
+        const endMs = Number(r.endMs);
+        if (Number.isFinite(startMs) && Number.isFinite(endMs) && startMs <= endMs) {
+            return {
+                preset: r.preset,
+                startMs,
+                endMs,
+                label: formatStoredRangeLabel(r),
+                dateStart: r.dateStart,
+                dateEnd: r.dateEnd
+            };
+        }
+        const preset = String(r.preset || '').trim().toLowerCase();
+        if (preset && preset !== 'custom') {
+            const computed = computePresetRange(preset);
+            const label = preset === 'today' ? 'Today' : preset === 'month' ? 'This month' : 'This week';
+            return { preset, ...computed, label };
+        }
+        return null;
+    }
+
+    function getDashboardRunCountLimit(rangeDefault) {
+        const f = getDashboardFetchFilters();
+        const mode = String(f.mode || 'count').toLowerCase();
+        if (mode === 'count') return Math.max(1, Number(f.perPage) || loadResultsRunCountPref() || 7);
+        return rangeDefault ?? 15;
+    }
+
+    function getDashboardFetchWindowLabel() {
+        const f = getDashboardFetchFilters();
+        const mode = String(f.mode || 'count').toLowerCase();
+        if (mode === 'range') {
+            const r = getDashboardDateRange(f);
+            return r ? `runs in ${r.label}` : 'runs in range';
+        }
+        return `last ${Math.max(1, Number(f.perPage) || 7)} runs`;
+    }
+
+    function getDashboardRenderFetchKey() {
+        const f = getDashboardFetchFilters();
+        const r = f.range || {};
+        const preset = String(r.preset || '');
+        const key = {
+            mode: f.mode,
+            perPage: f.perPage,
+            preset,
+            dateStart: String(r.dateStart || ''),
+            dateEnd: String(r.dateEnd || '')
+        };
+        if (preset === 'custom') {
+            key.startMs = r.startMs ?? null;
+            key.endMs = r.endMs ?? null;
+        } else if (preset) {
+            key.startMs = r.startMs ?? null;
+        }
+        return JSON.stringify(key);
+    }
+
+    function onResultsFetchSettingsChanged() {
+        refreshDashboardFilterChrome();
+    }
+
+    function refreshDashboardFilterChrome() {
+        try { refreshSyncBanners(); } catch { /* ignore */ }
+        const dashContent = document.getElementById('dashboardsContent');
+        if (!dashContent) return;
+        const windowMeta = dashContent.querySelector('.dash-meta .dash-window-label');
+        if (windowMeta) {
+            windowMeta.innerHTML = `Showing <b>${escapeHtml(getDashboardFetchWindowLabel())}</b>${resultsFetchSettingsDifferFromLast() ? ' (from last fetch)' : ' (from Results settings)'}.`;
+        }
+        const blueSub = dashContent.querySelector('.metric-card.m-blue .metric-sub');
+        if (blueSub) {
+            const n = blueSub.textContent?.replace(/^\d+\s*/, '') || getDashboardFetchWindowLabel();
+            const runCount = blueSub.textContent?.match(/^(\d+)/)?.[1];
+            if (runCount) blueSub.textContent = `${runCount} ${getDashboardFetchWindowLabel()}`;
+        }
+    }
+
+    function saveResultsCache(meta) {
+        const prevFilters = resultsLastFetchFilters;
+        const prevSyncedAt = resultsLastSyncedAt;
+        try {
+            const syncedAt = meta?.syncedAt || Date.now();
+            const filters = meta?.filters || buildResultsFetchFiltersSnapshot(meta);
+            let runs = (allRuns || []).map(trimRunForResultsCache).filter(Boolean);
+            const buildPayload = (runList) => ({
+                version: 1,
+                syncedAt,
+                mode: meta?.mode || loadResultsFetchModePref(),
+                perPage: meta?.perPage || loadResultsRunCountPref(),
+                range: meta?.range || null,
+                repos: meta?.repos || [],
+                filters,
+                runs: runList
+            });
+            let payload = buildPayload(runs);
+            let json = JSON.stringify(payload);
+            if (json.length > 4 * 1024 * 1024) {
+                runs = runs.map(r => {
+                    const o = { ...r };
+                    delete o.testCounts;
+                    return o;
+                });
+                payload = buildPayload(runs);
+                json = JSON.stringify(payload);
+            }
+            while (json.length > 4 * 1024 * 1024 && payload.runs.length > 100) {
+                payload.runs = payload.runs.slice(0, Math.max(100, Math.floor(payload.runs.length * 0.85)));
+                json = JSON.stringify(payload);
+            }
+            if (json.length > 4 * 1024 * 1024) {
+                resultsLastFetchFilters = filters;
+                return false;
+            }
+            resultsLastFetchFilters = filters;
+            localStorage.setItem(RESULTS_CACHE_KEY, json);
+            localStorage.setItem(RESULTS_SYNCED_AT_KEY, String(syncedAt));
+            resultsLastSyncedAt = syncedAt;
+            return true;
+        } catch {
+            try { resultsLastFetchFilters = filters; } catch { resultsLastFetchFilters = prevFilters; }
+            resultsLastSyncedAt = prevSyncedAt;
+            return false;
+        }
+    }
+
+    function resolveRepoFilterFromFetchFilters(filters) {
+        if (!filters) return 'all';
+        const rf = filters.repoFilter;
+        if (rf && rf !== '__multi__' && rf !== 'all') return String(rf);
+        const label = String(filters.repoFilterLabel || '').trim();
+        if (label && label !== 'All Repos' && !/\brepos\b/i.test(label) && !label.includes(',')) return label;
+        return 'all';
+    }
+
+    function applyCachedRepoFilterFromLastFetch() {
+        const target = resolveRepoFilterFromFetchFilters(resultsLastFetchFilters);
+        setGlobalRepoFilter(target, { persist: false, skipEmail: true });
+    }
+
+    function restoreResultsCache() {
+        try {
+            const raw = localStorage.getItem(RESULTS_CACHE_KEY);
+            if (!raw) return false;
+            const payload = JSON.parse(raw);
+            if (!payload || !Array.isArray(payload.runs) || !payload.runs.length) return false;
+            allRuns = payload.runs;
+            for (const r of allRuns) {
+                if (hasEnrichedTestCounts(r?.testCounts)) r._testCountsDone = true;
+            }
+            const syncedRaw = payload.syncedAt
+                ?? parseInt(String(localStorage.getItem(RESULTS_SYNCED_AT_KEY) || ''), 10);
+            const syncedNum = Number(syncedRaw);
+            resultsLastSyncedAt = Number.isFinite(syncedNum) && syncedNum > 0 ? syncedNum : null;
+            if (payload.mode) saveResultsFetchModePref(payload.mode);
+            if (payload.perPage) {
+                try { localStorage.setItem(RESULTS_RUN_COUNT_KEY, String(payload.perPage)); } catch { /* ignore */ }
+            }
+            if (payload.range?.preset) {
+                try { localStorage.setItem(RESULTS_DATE_PRESET_KEY, payload.range.preset); } catch { /* ignore */ }
+            }
+            if (payload.range?.dateStart) saveResultsDateStartPref(payload.range.dateStart);
+            if (payload.range?.dateEnd) saveResultsDateEndPref(payload.range.dateEnd);
+            resultsLastFetchFilters = normalizeResultsFetchFilters(payload);
+            resultsPipelines = getResultsPipelineConfigs();
+            missingWorkflows = [];
+            markDashboardsDirty();
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    function formatResultsSyncedAt(ts) {
+        const n = Number(ts);
+        if (!Number.isFinite(n) || n <= 0) return '';
+        try {
+            const d = new Date(n);
+            if (Number.isNaN(d.getTime())) return '';
+            // dateStyle/timeStyle cannot be combined with timeZoneName — label already says Pacific Time.
+            return d.toLocaleString('en-US', {
+                timeZone: 'America/Los_Angeles',
+                dateStyle: 'medium',
+                timeStyle: 'short'
+            });
+        } catch {
+            return '';
+        }
+    }
+
+    function buildSyncBannerHtml() {
+        if (!allRuns.length || !resultsLastSyncedAt) return '';
+        const filtersDesc = describeResultsFetchFilters(resultsLastFetchFilters);
+        const filtersHtml = filtersDesc
+            ? `<div class="results-sync-filters">Fetched with: <strong>${escapeHtml(filtersDesc)}</strong></div>`
+            : '';
+        const staleHtml = buildResultsStaleFilterHtml(true);
+        return `<div class="results-sync-banner" style="display:flex;">
+            <div class="results-sync-body">
+                <span class="results-sync-text">Last synced: <strong>${escapeHtml(formatResultsSyncedAt(resultsLastSyncedAt))}</strong> (Pacific Time)</span>
+                ${filtersHtml}
+                ${staleHtml}
+            </div>
+            <button type="button" class="btn-lite" onclick="fetchAllResults()" title="Fetch fresh results from GitHub">Refresh</button>
+        </div>`;
+    }
+
+    function refreshSyncBanners() {
+        renderResultsSyncBanner();
+        const dashContent = document.getElementById('dashboardsContent');
+        if (!dashContent) return;
+        const existing = dashContent.querySelector('.results-sync-banner');
+        const fresh = buildSyncBannerHtml();
+        if (existing && fresh) {
+            const temp = document.createElement('div');
+            temp.innerHTML = fresh;
+            const next = temp.firstElementChild;
+            if (next) existing.replaceWith(next);
+        } else if (!existing && fresh) {
+            dashContent.insertAdjacentHTML('afterbegin', fresh);
+        } else if (existing && !fresh) {
+            existing.remove();
+        }
+    }
+
+    function renderResultsSyncBanner() {
+        const el = document.getElementById('resultsSyncBanner');
+        if (!el) return;
+        if (!allRuns.length || !resultsLastSyncedAt) {
+            el.style.display = 'none';
+            el.innerHTML = '';
+            return;
+        }
+        el.style.display = 'flex';
+        const filtersDesc = describeResultsFetchFilters(resultsLastFetchFilters);
+        const filtersHtml = filtersDesc
+            ? `<div class="results-sync-filters">Fetched with: <strong>${escapeHtml(filtersDesc)}</strong></div>`
+            : '';
+        const staleHtml = buildResultsStaleFilterHtml(false);
+        el.innerHTML = `<div class="results-sync-body">
+                <span class="results-sync-text">Last synced: <strong>${escapeHtml(formatResultsSyncedAt(resultsLastSyncedAt))}</strong> (Pacific Time)</span>
+                ${filtersHtml}
+                ${staleHtml}
+            </div>
+            <button type="button" class="btn-lite" onclick="fetchAllResults()" title="Fetch fresh results from GitHub">Refresh</button>`;
+    }
 
     function loadResultsRunCountPref() {
         try {
@@ -12396,6 +12528,28 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 
     function fmtShortDate(d) {
         try { return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch { return ''; }
+    }
+
+    function formatStoredRangeLabel(range) {
+        if (!range) return '';
+        const preset = String(range.preset || '').trim().toLowerCase();
+        const startMs = Number(range.startMs);
+        const endMs = Number(range.endMs);
+        if (Number.isFinite(startMs) && Number.isFinite(endMs) && startMs <= endMs) {
+            const span = `${fmtShortDate(startMs)} \u2192 ${fmtShortDate(endMs)}`;
+            if (preset === 'custom') return range.label || span;
+            if (preset === 'today' || preset === 'week' || preset === 'month') return span;
+            return range.label || span;
+        }
+        return range.label || '';
+    }
+
+    function buildResultsStaleFilterHtml(forDashboard) {
+        if (!resultsFetchSettingsDifferFromLast()) return '';
+        if (forDashboard) {
+            return `<div class="results-sync-stale">Current filters differ from last fetch — dashboard shows cached data below. Click <strong>Refresh</strong> to fetch with current filters.</div>`;
+        }
+        return `<div class="results-sync-stale">Current filters differ from last fetch — results below are from the last fetch. Click <strong>Refresh</strong> to fetch with current filters.</div>`;
     }
 
     function computePresetRange(preset) {
@@ -12473,6 +12627,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             status.innerHTML = `<span style="color:var(--warning); font-weight:800;">Mode changed</span> — click <b>Fetch Results</b> to apply.`;
             status.className = 'pat-status';
         }
+        onResultsFetchSettingsChanged();
     }
 
     function onResultsDatePresetChange(skipMark) {
@@ -12494,6 +12649,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 status.innerHTML = `<span style="color:var(--warning); font-weight:800;">Range changed</span> — click <b>Fetch Results</b> to apply.`;
                 status.className = 'pat-status';
             }
+            onResultsFetchSettingsChanged();
         }
     }
 
@@ -12508,11 +12664,17 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         const eEl = document.getElementById('resultsDateEnd');
         if (sEl) {
             sEl.value = sEl.value || loadResultsDateStartPref();
-            sEl.addEventListener('change', () => saveResultsDateStartPref(sEl.value));
+            sEl.addEventListener('change', () => {
+                saveResultsDateStartPref(sEl.value);
+                onResultsFetchSettingsChanged();
+            });
         }
         if (eEl) {
             eEl.value = eEl.value || loadResultsDateEndPref();
-            eEl.addEventListener('change', () => saveResultsDateEndPref(eEl.value));
+            eEl.addEventListener('change', () => {
+                saveResultsDateEndPref(eEl.value);
+                onResultsFetchSettingsChanged();
+            });
         }
     }
 
@@ -12533,6 +12695,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             const v = Math.max(1, Math.min(100, parseInt(String(el.value || ''), 10) || 7));
             el.value = String(v);
             saveResultsRunCountPref(v);
+            onResultsFetchSettingsChanged();
         };
         el.addEventListener('change', persist);
         el.addEventListener('blur', persist);
@@ -12820,7 +12983,11 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         if (!pat || !url || typeof fflate === 'undefined') return null;
         try {
             const resp = await fetch(url, {
-                headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/octet-stream' }
+                headers: {
+                    Authorization: getGhAuthHeader(pat),
+                    Accept: 'application/vnd.github+json',
+                    'X-GitHub-Api-Version': '2022-11-28'
+                }
             });
             if (!resp.ok) throw new Error(`Artifact download failed (${resp.status})`);
             const buf = new Uint8Array(await resp.arrayBuffer());
@@ -12828,16 +12995,56 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 fflate.unzip(buf, (err, out) => resolve(err ? null : out));
             });
             if (!files) return null;
-            for (const [name, data] of Object.entries(files)) {
-                if (/\.xml$/i.test(name)) {
-                    return new TextDecoder().decode(data);
-                }
-            }
-            return null;
+            const xmlEntries = Object.entries(files).filter(([name]) => /\.xml$/i.test(name));
+            if (!xmlEntries.length) return null;
+            const xmlScore = (name) => {
+                const n = String(name || '').toLowerCase();
+                if (/junit|test-result|testsuite|results\.xml$/i.test(n)) return 3;
+                if (/report|output/i.test(n)) return 1;
+                return 2;
+            };
+            xmlEntries.sort((a, b) => xmlScore(b[0]) - xmlScore(a[0]) || a[0].localeCompare(b[0]));
+            return new TextDecoder().decode(xmlEntries[0][1]);
         } catch (err) {
             if (String(err?.message || '').includes('download failed')) throw err;
             return null;
         }
+    }
+
+    function artifactNameMatchesRunId(name, runIdStr) {
+        if (!runIdStr) return false;
+        const n = String(name || '');
+        return new RegExp(`(?:^|[-_/])${runIdStr}(?:[-_.]|$)`).test(n);
+    }
+
+    function pickJunitArtifactForRun(arts, runId) {
+        const runIdStr = String(runId || '').trim();
+        const valid = (Array.isArray(arts) ? arts : []).filter(a => {
+            if (!a || a.expired || !a.url || !a.name) return false;
+            const n = String(a.name || '').toLowerCase();
+            if (/allure|\.html$/i.test(n)) return false;
+            return true;
+        });
+        if (!valid.length) return null;
+        const testResultsArts = valid.filter(a => /^test-results-/i.test(String(a.name || '')));
+        const score = (a) => {
+            const n = String(a.name || '').toLowerCase();
+            if (/-xml-/i.test(n)) {
+                if (artifactNameMatchesRunId(n, runIdStr)) return 100;
+                return 95;
+            }
+            if (/test-results/i.test(n) && artifactNameMatchesRunId(n, runIdStr)) return 90;
+            if (/^test-results-/i.test(n)) {
+                if (artifactNameMatchesRunId(n, runIdStr)) return 85;
+                return testResultsArts.length === 1 ? 80 : 0;
+            }
+            if (/junit|test.results|test_results/i.test(n) && artifactNameMatchesRunId(n, runIdStr)) return 70;
+            return 0;
+        };
+        const ranked = valid.map(a => ({ a, s: score(a), n: String(a.name || '').toLowerCase() }))
+            .filter(x => x.s > 0)
+            .sort((x, y) => y.s - x.s || x.n.localeCompare(y.n));
+        return ranked[0]?.a || null;
     }
 
     async function fetchRunTestCountsFromArtifact(owner, repo, run) {
@@ -12848,11 +13055,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             if (arts === null) throw new Error('Failed to list run artifacts');
         }
         if (!Array.isArray(arts) || !arts.length) return null;
-        const runId = String(run.id);
-        const xmlArt = arts.find(a =>
-            a && !a.expired && a.url &&
-            (/-xml-/i.test(a.name) || a.name.endsWith('-xml-' + runId))
-        );
+        const xmlArt = pickJunitArtifactForRun(arts, run.id);
         if (!xmlArt?.url) return null;
         const xml = await unzipFirstXmlFromArtifact(xmlArt.url);
         return xml ? parseTestCountsFromJUnitXml(xml) : null;
@@ -12867,11 +13070,19 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 
     function shouldEnrichRunTestCounts(r) {
         if (!r || r._testCountsPromise) return false;
+        if (r?.status && r.status !== 'completed') return false;
         if (r.testCounts) {
             if (isLegacyRunLevelEstimate(r.testCounts)) {
                 delete r.testCounts;
                 delete r._testCountsDone;
-            } else if (r.testCounts.noTests || (r.testCounts.total ?? 0) > 0) {
+            } else if (r.testCounts.noTests) {
+                if (r.testCounts.fallback !== false) {
+                    delete r.testCounts;
+                    delete r._testCountsDone;
+                } else {
+                    return false;
+                }
+            } else if ((r.testCounts.total ?? 0) > 0) {
                 return false;
             } else {
                 delete r.testCounts;
@@ -12924,6 +13135,16 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             }
 
             const suiteId = r.checkSuiteId;
+            const mobileFirst = isMobileBrowserStackRun(r);
+
+            if (mobileFirst) {
+                try {
+                    const fromArtifact = await fetchRunTestCountsFromArtifact(owner, repo, r);
+                    if (fromArtifact) return applyParsedTestCounts(r, fromArtifact, gen);
+                } catch { hadError = true; }
+                if ((r._testCountsGen || 0) !== gen) return null;
+            }
+
             if (suiteId) {
                 try {
                     const checks = await fetchCheckRunsForSuite(owner, repo, suiteId);
@@ -12944,10 +13165,12 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 
             if ((r._testCountsGen || 0) !== gen) return null;
 
-            try {
-                const fromArtifact = await fetchRunTestCountsFromArtifact(owner, repo, r);
-                if (fromArtifact) return applyParsedTestCounts(r, fromArtifact, gen);
-            } catch { hadError = true; }
+            if (!mobileFirst) {
+                try {
+                    const fromArtifact = await fetchRunTestCountsFromArtifact(owner, repo, r);
+                    if (fromArtifact) return applyParsedTestCounts(r, fromArtifact, gen);
+                } catch { hadError = true; }
+            }
 
             if ((r._testCountsGen || 0) !== gen) return null;
 
@@ -12977,28 +13200,213 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                     r._testCountsDone = true;
                     delete r._testCountsHadError;
                     delete r._testCountsAttemptedAt;
-                } else if (!r._testCountsHadError) {
-                    r._testCountsDone = true;
-                    if (!r.testCounts) {
-                        r.testCounts = { passed: 0, failed: 0, skipped: 0, total: 0, passPct: 0, fallback: true, noTests: true };
-                    }
-                } else {
+                    saveDashTestCountsCacheEntry(r);
+                } else if (r._testCountsHadError) {
                     r._testCountsAttemptedAt = Date.now();
+                } else {
+                    r.testCounts = { passed: 0, failed: 0, skipped: 0, total: 0, passPct: 0, fallback: false, noTests: true };
+                    r._testCountsDone = true;
                 }
                 r._testCountsPromise = null;
             }
         }
     }
 
-    async function enrichDashboardTestCounts(runs) {
-        const pending = (runs || []).filter(r => r && r.id);
-        const toStart = pending.filter(r => shouldEnrichRunTestCounts(r));
-        const inFlight = pending.filter(r => r._testCountsPromise).map(r => r._testCountsPromise);
-        if (toStart.length) {
-            await mapLimit(toStart, 6, async (r) => { await enrichRunTestCounts(r); });
+    function isRunEnrichmentSettled(r) {
+        if (!r || r._testCountsPromise) return false;
+        if (r?.status && r.status !== 'completed') return false;
+        if (shouldEnrichRunTestCounts(r)) return false;
+        if (r.testCounts) {
+            if (isLegacyRunLevelEstimate(r.testCounts)) return false;
+            if (r.testCounts.noTests && r.testCounts.fallback !== false) return false;
+            return true;
         }
-        if (inFlight.length) {
-            await Promise.allSettled(inFlight);
+        return !!r._testCountsDone;
+    }
+
+    function isDashboardActionableRun(r) {
+        const outcome = getRunOutcome(r);
+        return ['success', 'failure'].includes(outcome);
+    }
+
+    function isDashboardRunStatsSettled(r) {
+        if (!isDashboardActionableRun(r)) return true;
+        if (hasEnrichedTestCounts(r?.testCounts)) return true;
+        return !!r?._testCountsDone;
+    }
+
+    function aggregateDashboardPassRateFromRuns(runs) {
+        const list = Array.isArray(runs) ? runs : [];
+        const actionableRuns = list.filter(isDashboardActionableRun);
+        const anyEnriched = list.some(r => hasEnrichedTestCounts(r?.testCounts));
+        const allSettled = actionableRuns.every(isDashboardRunStatsSettled);
+        const useTestLevel = anyEnriched && allSettled;
+        let passed = 0;
+        let failed = 0;
+        let actionable = 0;
+
+        if (useTestLevel) {
+            for (const r of list) {
+                const tc = r?.testCounts;
+                if (hasEnrichedTestCounts(tc)) {
+                    const skipped = tc.skipped ?? 0;
+                    const actionableRunTests = Math.max(0, (tc.total ?? 0) - skipped);
+                    const workflowFailed = getRunOutcome(r) === 'failure';
+                    const testFailed = tc.failed ?? 0;
+                    if (workflowFailed && testFailed === 0) {
+                        actionable += 1;
+                        failed += 1;
+                        continue;
+                    }
+                    actionable += actionableRunTests;
+                    passed += tc.passed ?? 0;
+                    failed += testFailed;
+                } else if (isDashboardActionableRun(r)) {
+                    actionable += 1;
+                    if (getRunOutcome(r) === 'success') passed += 1;
+                    else failed += 1;
+                }
+            }
+        } else {
+            for (const r of actionableRuns) {
+                actionable += 1;
+                if (getRunOutcome(r) === 'success') passed += 1;
+                else failed += 1;
+            }
+        }
+
+        const passRate = actionable > 0 ? (passed / actionable) * 100 : 0;
+        return {
+            passRate,
+            passed,
+            failed,
+            actionable,
+            total: list.length,
+            fromTestCounts: useTestLevel
+        };
+    }
+
+    async function enrichDashboardTestCounts(runs, onRunDone) {
+        const pending = (runs || []).filter(r => r && r.id);
+        const toStart = [];
+        const inFlight = [];
+        const settled = [];
+        for (const r of pending) {
+            if (r._testCountsPromise) inFlight.push(r);
+            else if (r?.status && r.status !== 'completed') continue;
+            else if (shouldEnrichRunTestCounts(r)) toStart.push(r);
+            else if (isRunEnrichmentSettled(r)) settled.push(r);
+            else if (r._testCountsAttemptedAt) settled.push(r);
+            else settled.push(r);
+        }
+        for (const r of settled) {
+            if (onRunDone) onRunDone(r);
+        }
+        const inFlightWait = inFlight.map(async (r) => {
+            try { await r._testCountsPromise; } catch { /* ignore */ }
+            if (onRunDone) onRunDone(r);
+        });
+        if (toStart.length) {
+            await mapLimit(toStart, DASH_ENRICH_CONCURRENCY, async (r) => {
+                await enrichRunTestCounts(r);
+                if (onRunDone) onRunDone(r);
+            });
+        }
+        if (inFlightWait.length) {
+            await Promise.allSettled(inFlightWait);
+        }
+    }
+
+    function dashTrendProgressRingHtml(pct, label, elapsedSec) {
+        const p = Math.max(0, Math.min(100, pct));
+        const r = 18;
+        const c = 2 * Math.PI * r;
+        const offset = c * (1 - p / 100);
+        const elapsed = Number.isFinite(elapsedSec) && elapsedSec > 0
+            ? `<div class="dash-trend-progress-elapsed">${Math.round(elapsedSec)}s</div>`
+            : '';
+        return `<div class="dash-trend-progress">
+            <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true">
+                <circle cx="22" cy="22" r="${r}" fill="none" stroke="rgba(128,128,128,0.22)" stroke-width="4"/>
+                <circle cx="22" cy="22" r="${r}" fill="none" stroke="var(--axos-orange)" stroke-width="4"
+                    stroke-dasharray="${c.toFixed(2)}" stroke-dashoffset="${offset.toFixed(2)}"
+                    stroke-linecap="round" transform="rotate(-90 22 22)"/>
+            </svg>
+            <div class="dash-trend-progress-label">${escapeHtml(label)}</div>
+            ${elapsed}
+        </div>`;
+    }
+
+    function updateDashTrendLoadingProgress(wrap, done, total, startedMs) {
+        if (!wrap || wrap.classList.contains('ready')) return;
+        const loading = wrap.querySelector('.dash-trend-loading');
+        if (!loading) return;
+        const elapsed = startedMs ? (Date.now() - startedMs) / 1000 : 0;
+        if (!total) {
+            loading.innerHTML = dashTrendProgressRingHtml(0, 'No runs', elapsed);
+            return;
+        }
+        const pct = total > 0 ? (done / total) * 100 : 0;
+        loading.innerHTML = dashTrendProgressRingHtml(pct, `${done}/${total} runs`, elapsed);
+    }
+
+    function dashboardRunDotClass(r) {
+        const tc = r?.testCounts;
+        if (tc && tc.noTests) {
+            const o = getRunOutcome(r);
+            if (o === 'failure') return 'failure';
+            if (o === 'success') return 'success';
+            return 'skipped';
+        }
+        if (tc && !tc.fallback && (tc.total ?? 0) > 0) {
+            const skipped = tc.skipped ?? 0;
+            const actionable = Math.max(0, (tc.total ?? 0) - skipped);
+            if (actionable === 0) {
+                if (getRunOutcome(r) === 'failure') return 'failure';
+                return 'skipped';
+            }
+            if ((tc.failed ?? 0) > 0) return 'failure';
+            if (getRunOutcome(r) === 'failure' && (tc.failed ?? 0) === 0) return 'failure';
+            if ((tc.passed ?? 0) > 0) return 'success';
+        }
+        const o = getRunOutcome(r);
+        if (o === 'success') return 'success';
+        if (o === 'failure') return 'failure';
+        if (o === 'cancelled') return 'cancelled';
+        if (o === 'skipped') return 'skipped';
+        return 'unknown';
+    }
+
+    function updateDashboardCardMetrics(card) {
+        if (!card) return;
+        const repo = String(card.getAttribute('data-repo') || '').trim();
+        const wf = String(card.getAttribute('data-wf') || '').trim();
+        if (!repo || !wf) return;
+        const pr = dashboardPipelinePassRate(repo, wf);
+        const prTxt = (pr.passRate == null) ? '—' : pr.passRate.toFixed(1) + '%';
+        const prTip = (pr.passRate == null)
+            ? 'No runs fetched yet.'
+            : pr.fromTestCounts
+                ? `${pr.passed} passed of ${pr.actionable} tests (JUnit-enriched runs)`
+                : `${pr.passed} passed of ${pr.actionable} actionable (last ${getDashboardRunCountLimit()})`;
+        const prCls = (pr.passRate == null) ? '' : (pr.passRate >= 90 ? 'v-green' : pr.passRate >= 70 ? 'v-orange' : 'v-red');
+        const prVal = card.querySelector('.dash-pipe-pr-val');
+        const prPill = card.querySelector('.dash-pipe-pr-pill');
+        const prSub = card.querySelector('.dash-pipe-pr-sub');
+        if (prVal) {
+            prVal.textContent = prTxt;
+            prVal.className = 'dash-pipe-pr-val ' + prCls;
+        }
+        if (prPill) prPill.title = prTip;
+        if (prSub) prSub.textContent = `(${prTip})`;
+        const strip = card.querySelector('.run-strip');
+        if (strip) {
+            const runs = getDashboardPipelineRuns(repo, wf);
+            strip.innerHTML = runs.map(r => {
+                const cls = dashboardRunDotClass(r);
+                const tip = `${String(r.workflowName || '').replace(/-Testim$/, '')} #${r.runNumber} — ${cls}`;
+                return `<span class="run-dot ${cls}" title="${escapeHtml(tip)}" onclick="openRunDetails(${r.id}); event.stopPropagation();" data-runid="${r.id}"></span>`;
+            }).join('');
         }
     }
 
@@ -13037,7 +13445,21 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         if (o === 'cancelled' || o === 'skipped') {
             return zeroRunTestCounts();
         }
-        if (r?._testCountsDone) {
+        // Run-level estimate so charts stay visible while JUnit enrichment runs (or if it misses).
+        if (o === 'success') {
+            return { passed: 1, failed: 0, other: 0, total: 1, passPct: 100, fallback: true, noTests: false };
+        }
+        if (o === 'failure') {
+            return { passed: 0, failed: 1, other: 0, total: 1, passPct: 0, fallback: true, noTests: false };
+        }
+        if (r?._testCountsDone && !r?.testCounts) {
+            const o = getRunOutcome(r);
+            if (o === 'success') {
+                return { passed: 1, failed: 0, other: 0, total: 1, passPct: 100, fallback: true, noTests: false };
+            }
+            if (o === 'failure') {
+                return { passed: 0, failed: 1, other: 0, total: 1, passPct: 0, fallback: true, noTests: false };
+            }
             return zeroRunTestCounts();
         }
         return { passed: 0, failed: 0, other: 0, total: 0, passPct: null, fallback: true, noTests: false, pending: true };
@@ -13362,10 +13784,34 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             const miss = missingWorkflows.length ? ` &mdash; <a onclick="showMissingWorkflowsModal()" style="color:var(--danger); font-weight:700; cursor:pointer; text-decoration:underline;" title="Click to see which pipelines couldn't be loaded">${missingWorkflows.length} issue(s)</a>` : '';
             status.innerHTML = `<span style="color:var(--success); font-weight:600;">&#10003; Loaded ${allRuns.length} run(s)</span> across ${resultsPipelines.length} pipeline(s) (${totalMatched} matched in GitHub)${miss}.`;
             status.className = 'pat-status ok';
+            hydrateAllRunsTestCountsFromCache();
+            const syncedAt = Date.now();
+            const cacheSaved = saveResultsCache({
+                syncedAt,
+                mode,
+                perPage,
+                range: range ? {
+                    preset: range.preset,
+                    label: range.label,
+                    startMs: range.startMs,
+                    endMs: range.endMs,
+                    dateStart: range.preset === 'custom' ? loadResultsDateStartPref() : null,
+                    dateEnd: range.preset === 'custom' ? loadResultsDateEndPref() : null
+                } : null,
+                repos,
+                pipelineCount: resultsPipelines.length,
+                runCount: allRuns.length
+            });
+            if (!cacheSaved) {
+                resultsLastSyncedAt = syncedAt;
+                try { showToast('Results loaded but cache trimmed or too large — some data may refetch on reload.', true); } catch { /* ignore */ }
+            }
+            markDashboardsDirty();
             renderResults();
             playDashboardCinematic(document.getElementById('metricsArea'));
             revealQueueTab();
             revealDashboardsTab();
+            if (document.getElementById('panelDashboards')?.classList.contains('active')) renderDashboardsIfNeeded();
             if (document.getElementById('panelCalendar')?.classList.contains('active')) renderCalendar();
             document.getElementById('emailNoData').style.display = 'none';
             document.getElementById('emailReady').style.display = 'block';
@@ -13386,6 +13832,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 
     function renderResults() {
         if (!resultsPipelines.length && !allRuns.length) return;
+        renderResultsSyncBanner();
         const metricsArea = document.getElementById('metricsArea');
         metricsArea.style.display = 'block';
         metricsArea.style.animation = '';
@@ -14564,6 +15011,132 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     const DASH_VIEW_MODE_KEY = 'pm.dashboards.viewMode';
     const dashTrendChartInstances = new Map();
     let dashTrendRenderToken = 0;
+    const DASH_TEST_COUNTS_CACHE_KEY = 'pm.dashboards.testCounts.v1';
+    const DASH_TEST_COUNTS_LS_CACHE_KEY = 'pm.dashboards.testCounts.ls.v1';
+    const DASH_ENRICH_CONCURRENCY = 12;
+    let dashboardsContentDirty = true;
+
+    function getResultsFetchSettingsKey() {
+        const s = getCurrentResultsFetchSettings();
+        const r = s.range || {};
+        const preset = String(r.preset || '');
+        const key = {
+            mode: s.mode,
+            perPage: s.perPage,
+            repoFilter: String(s.repoFilter || 'all'),
+            preset,
+            dateStart: String(r.dateStart || ''),
+            dateEnd: String(r.dateEnd || '')
+        };
+        if (preset === 'custom') {
+            key.startMs = r.startMs ?? null;
+            key.endMs = r.endMs ?? null;
+        } else if (preset) {
+            key.startMs = r.startMs ?? null;
+        }
+        return JSON.stringify(key);
+    }
+
+    function markDashboardsDirty() {
+        dashboardsContentDirty = true;
+    }
+
+    function dashboardsNeedsRender() {
+        if (dashboardsContentDirty) return true;
+        const contentEl = document.getElementById('dashboardsContent');
+        if (!contentEl || !contentEl.innerHTML.trim()) return true;
+        const runCount = (allRuns || []).length;
+        const syncAt = resultsLastSyncedAt || 0;
+        const fetchKey = getDashboardRenderFetchKey();
+        return runCount !== dashboardsRenderedRunCount
+            || syncAt > dashboardsRenderedSyncAt
+            || fetchKey !== dashboardsRenderedFetchKey;
+    }
+
+    function renderDashboardsIfNeeded() {
+        if (document.getElementById('panelDashboards')?.classList.contains('active')) {
+            try { refreshDashboardFilterChrome(); } catch { /* ignore */ }
+        }
+        if (!dashboardsNeedsRender()) return;
+        renderDashboards();
+    }
+
+    function loadTestCountsCacheMerged() {
+        const merged = {};
+        try {
+            const ls = localStorage.getItem(DASH_TEST_COUNTS_LS_CACHE_KEY);
+            if (ls) Object.assign(merged, JSON.parse(ls));
+        } catch { /* ignore */ }
+        try {
+            const ss = sessionStorage.getItem(DASH_TEST_COUNTS_CACHE_KEY);
+            if (ss) Object.assign(merged, JSON.parse(ss));
+        } catch { /* ignore */ }
+        return merged;
+    }
+
+    function writeTestCountsCache(cache) {
+        const payload = JSON.stringify(cache);
+        try { sessionStorage.setItem(DASH_TEST_COUNTS_CACHE_KEY, payload); } catch { /* ignore */ }
+        try { localStorage.setItem(DASH_TEST_COUNTS_LS_CACHE_KEY, payload); } catch { /* ignore */ }
+    }
+
+    function isMobileBrowserStackRun(r) {
+        const wf = String(r?.workflowFile || r?.workflowName || '').toLowerCase();
+        return /mobile|browserstack|android|ios/.test(wf);
+    }
+
+    function dashTestCountsCacheKey(r) {
+        const repo = String(r?.repo || '').trim();
+        const id = String(r?.id || '').trim();
+        return repo && id ? `${repo}::${id}` : '';
+    }
+
+    function loadDashTestCountsCache() {
+        return loadTestCountsCacheMerged();
+    }
+
+    function saveDashTestCountsCacheEntry(r) {
+        const key = dashTestCountsCacheKey(r);
+        const tc = r?.testCounts;
+        if (!key || !r._testCountsDone || !hasEnrichedTestCounts(tc)) return;
+        if (isLegacyRunLevelEstimate(tc)) return;
+        try {
+            const cache = loadTestCountsCacheMerged();
+            cache[key] = { tc, at: Date.now() };
+            writeTestCountsCache(cache);
+        } catch { /* ignore */ }
+    }
+
+    function restoreDashTestCountsFromCache(r) {
+        if (!r || r.testCounts || r._testCountsDone) return;
+        const key = dashTestCountsCacheKey(r);
+        if (!key) return;
+        try {
+            const hit = loadDashTestCountsCache()[key];
+            const tc = hit?.tc;
+            if (!hasEnrichedTestCounts(tc)) return;
+            r.testCounts = tc;
+            r._testCountsDone = true;
+        } catch { /* ignore */ }
+    }
+
+    function purgeBadDashTestCountsCache() {
+        try {
+            const cache = loadDashTestCountsCache();
+            let changed = false;
+            for (const [k, v] of Object.entries(cache)) {
+                if (!hasEnrichedTestCounts(v?.tc)) {
+                    delete cache[k];
+                    changed = true;
+                }
+            }
+            if (changed) writeTestCountsCache(cache);
+        } catch { /* ignore */ }
+    }
+
+    function restoreDashTestCountsForRuns(runs) {
+        for (const r of (runs || [])) restoreDashTestCountsFromCache(r);
+    }
 
     function loadDashViewMode() {
         try {
@@ -14580,16 +15153,6 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 
     function setDashViewMode(mode) {
         saveDashViewMode(mode);
-        if (mode === 'graphs') {
-            for (const r of (allRuns || [])) {
-                r._testCountsGen = (r._testCountsGen || 0) + 1;
-                delete r._testCountsDone;
-                delete r._testCountsPromise;
-                delete r._testCountsAttemptedAt;
-                delete r._testCountsHadError;
-                delete r.testCounts;
-            }
-        }
         renderDashboards();
     }
 
@@ -16466,21 +17029,33 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         return changed;
     }
 
+    function getDashboardResultsFetchMode() {
+        return String(getDashboardFetchFilters().mode || 'count').toLowerCase();
+    }
+
+    function filterRunsForResultsWindow(runs) {
+        let out = Array.isArray(runs) ? runs.slice() : [];
+        if (getDashboardResultsFetchMode() === 'range') {
+            const range = getDashboardDateRange();
+            if (range) {
+                out = out.filter(r => {
+                    const t = new Date(r.createdAt).getTime();
+                    return Number.isFinite(t) && t >= range.startMs && t <= range.endMs;
+                });
+            }
+        }
+        return out;
+    }
+
     function getDashboardPipelineRuns(repo, workflowFile, vizLimit) {
-        const mode = (document.getElementById('resultsFetchMode')?.value || loadResultsFetchModePref() || 'count').toLowerCase();
+        const mode = getDashboardResultsFetchMode();
         const limit = vizLimit != null
             ? vizLimit
-            : ((mode === 'count') ? loadResultsRunCountPref() : 15);
+            : getDashboardRunCountLimit(15);
         let runs = (allRuns || [])
             .filter(r => r && String(r.repo || '').trim() === String(repo || '').trim() && String(r.workflowFile || '').trim() === String(workflowFile || '').trim())
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        if (mode === 'range') {
-            const range = getResultsSelectedDateRange();
-            if (range) runs = runs.filter(r => {
-                const t = new Date(r.createdAt).getTime();
-                return Number.isFinite(t) && t >= range.startMs && t <= range.endMs;
-            });
-        }
+        runs = filterRunsForResultsWindow(runs);
         // We fetch newest-first but display oldest→latest (left→right).
         return runs.slice(0, limit).reverse();
     }
@@ -16489,8 +17064,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         const runs = getDashboardPipelineRuns(repo, workflowFile);
         if (!runs.length) return `<span style="font-size:11px; color:var(--text-muted);">No runs fetched</span>`;
         return `<div class="run-strip">` + runs.map(r => {
-            const o = getRunOutcome(r);
-            const cls = (o === 'success' ? 'success' : o === 'failure' ? 'failure' : o === 'cancelled' ? 'cancelled' : o === 'skipped' ? 'skipped' : 'unknown');
+            const cls = dashboardRunDotClass(r);
             const tip = `${String(r.workflowName || '').replace(/-Testim$/, '')} #${r.runNumber} — ${cls}`;
             return `<span class="run-dot ${cls}" title="${escapeHtml(tip)}" onclick="openRunDetails(${r.id}); event.stopPropagation();" data-runid="${r.id}"></span>`;
         }).join('') + `</div>`;
@@ -16502,7 +17076,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         const key = String(trendId || `${String(repo || '').trim()}::${String(workflowFile || '').trim()}`).trim();
         return `<div class="dash-trend-wrap" data-trend-id="${escapeHtml(key)}" data-repo="${escapeHtml(repo)}" data-wf="${escapeHtml(workflowFile)}">
             <canvas class="dash-trend-canvas"></canvas>
-            <div class="dash-trend-loading">Loading test counts…</div>
+            <div class="dash-trend-loading">${dashTrendProgressRingHtml(0, 'Starting…', 0)}</div>
         </div>`;
     }
 
@@ -16581,13 +17155,15 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                         pointBorderWidth: 2,
                         tension: 0.25,
                         yAxisID: 'y1',
-                        order: 1
+                        order: 1,
+                        clip: false
                     }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: { padding: { top: 10, bottom: 2 } },
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
                     legend: {
@@ -16657,9 +17233,14 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                     y1: {
                         position: 'right',
                         min: 0,
-                        max: 100,
+                        max: 110,
                         title: { display: true, text: 'Pass percentage', color: tickColor, font: { size: 10, weight: '700' } },
-                        ticks: { color: tickColor, font: { size: 9 }, callback: v => v + '%' },
+                        ticks: {
+                            color: tickColor,
+                            font: { size: 9 },
+                            stepSize: 20,
+                            callback: v => (v <= 100 ? v + '%' : '')
+                        },
                         grid: { drawOnChartArea: false }
                     }
                 },
@@ -16681,89 +17262,228 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         const wraps = document.querySelectorAll('#dashboardsContent .dash-trend-wrap');
         if (!wraps.length) return;
 
-        const runsToEnrich = [];
         const pipelineRuns = [];
+        const runToWraps = new Map();
+        const wrapProgress = new Map();
+        const startedMs = Date.now();
 
         for (const wrap of wraps) {
             const repo = String(wrap.getAttribute('data-repo') || '').trim();
             const wf = String(wrap.getAttribute('data-wf') || '').trim();
             const trendId = String(wrap.getAttribute('data-trend-id') || '').trim();
             const runs = getDashboardPipelineRuns(repo, wf);
-            pipelineRuns.push({ wrap, repo, wf, trendId, runs });
-            runsToEnrich.push(...runs);
+            const progressRuns = runs.filter(r => !r?.status || r.status === 'completed');
+            const runIds = new Set(progressRuns.map(r => r.id).filter(Boolean));
+            pipelineRuns.push({ wrap, repo, wf, trendId, runs, runIds });
+            wrapProgress.set(wrap, { done: 0, total: runIds.size });
+            updateDashTrendLoadingProgress(wrap, 0, runIds.size, startedMs);
+            for (const id of runIds) {
+                if (!runToWraps.has(id)) runToWraps.set(id, new Set());
+                runToWraps.get(id).add(wrap);
+            }
         }
 
         const seen = new Set();
-        const uniqueRuns = runsToEnrich.filter(r => {
-            if (!r?.id || seen.has(r.id)) return false;
-            seen.add(r.id);
-            return true;
-        });
+        const uniqueRuns = [];
+        for (const meta of pipelineRuns) {
+            for (const r of meta.runs) {
+                if (!r?.id || seen.has(r.id)) continue;
+                seen.add(r.id);
+                uniqueRuns.push(r);
+            }
+        }
+        restoreDashTestCountsForRuns(uniqueRuns);
+
+        const renderWrapChart = (meta, opts) => {
+            const force = opts === true || opts?.force === true;
+            const { wrap, repo, runs, trendId } = meta;
+            if (token !== dashTrendRenderToken || !wrap.isConnected) return;
+            const canvas = wrap.querySelector('.dash-trend-canvas');
+            const loading = wrap.querySelector('.dash-trend-loading');
+            if (!canvas || !runs.length) {
+                if (loading) loading.innerHTML = dashTrendProgressRingHtml(100, 'No runs', (Date.now() - startedMs) / 1000);
+                wrap.classList.add('ready');
+                return;
+            }
+            const hasAnyData = runs.some(r => {
+                if (hasEnrichedTestCounts(r?.testCounts)) return true;
+                const tc = getRunTestCounts(r);
+                return (tc.total ?? 0) > 0 && tc.passPct != null && !tc.pending;
+            });
+            const prog = wrapProgress.get(wrap);
+            const allDone = prog && prog.done >= prog.total;
+            if (!force && !hasAnyData && !allDone) return;
+            try {
+                const existing = dashTrendChartInstances.get(trendId || wrap);
+                if (existing) { try { existing.destroy(); } catch { /* ignore */ } }
+                const chart = buildDashboardTrendChart(canvas, runs, repo);
+                dashTrendChartInstances.set(trendId || wrap, chart);
+                if (allDone || hasAnyData) wrap.classList.add('ready');
+                const card = wrap.closest('.dash-pipe-card');
+                if (card) updateDashboardCardMetrics(card);
+            } catch {
+                if (loading) loading.textContent = 'Could not render chart';
+            }
+        };
+
+        // Paint immediately from cache / in-memory counts / run-level fallback before network enrichment.
+        for (const meta of pipelineRuns) {
+            const canPaint = meta.runs.some(r => {
+                if (hasEnrichedTestCounts(r?.testCounts)) return true;
+                const tc = getRunTestCounts(r);
+                return (tc.total ?? 0) > 0 && tc.passPct != null && !tc.pending;
+            });
+            if (canPaint) renderWrapChart(meta, { force: true });
+        }
+
+        const onRunDone = (run) => {
+            if (token !== dashTrendRenderToken) return;
+            const affected = runToWraps.get(run?.id);
+            if (!affected) return;
+            for (const wrap of affected) {
+                const prog = wrapProgress.get(wrap);
+                if (!prog) continue;
+                prog.done = Math.min(prog.total, prog.done + 1);
+                updateDashTrendLoadingProgress(wrap, prog.done, prog.total, startedMs);
+                const meta = pipelineRuns.find(m => m.wrap === wrap);
+                if (meta) renderWrapChart(meta, { force: true });
+            }
+        };
 
         try {
-            await enrichDashboardTestCounts(uniqueRuns);
-        } catch { /* charts still render with run-level fallback */ }
+            await enrichDashboardTestCounts(uniqueRuns, onRunDone);
+        } catch { /* charts still render with available data */ }
 
         if (token !== dashTrendRenderToken || loadDashViewMode() !== 'graphs') return;
 
         for (const meta of pipelineRuns) {
-            const { wrap, repo, runs, trendId } = meta;
             if (token !== dashTrendRenderToken) return;
-            if (!wrap.isConnected) continue;
-            const canvas = wrap.querySelector('.dash-trend-canvas');
-            const loading = wrap.querySelector('.dash-trend-loading');
-            if (!canvas || !runs.length) continue;
-            try {
-                const chart = buildDashboardTrendChart(canvas, runs, repo);
-                dashTrendChartInstances.set(trendId || wrap, chart);
-                wrap.classList.add('ready');
-            } catch {
-                if (loading) loading.textContent = 'Could not render chart';
+            const prog = wrapProgress.get(meta.wrap);
+            if (prog && prog.done < prog.total) {
+                prog.done = prog.total;
+                updateDashTrendLoadingProgress(meta.wrap, prog.done, prog.total, startedMs);
+            }
+            if (!meta.wrap.classList.contains('ready')) renderWrapChart(meta, { force: true });
+        }
+        updateDashboardHeaderPassRate();
+    }
+
+    async function enrichVisibleDashboardPipelines() {
+        const cards = document.querySelectorAll('#dashboardsContent .dash-pipe-card[data-repo][data-wf]');
+        if (!cards.length) return;
+        const seen = new Set();
+        const runs = [];
+        for (const card of cards) {
+            const repo = String(card.getAttribute('data-repo') || '').trim();
+            const wf = String(card.getAttribute('data-wf') || '').trim();
+            if (!repo || !wf) continue;
+            for (const r of getDashboardPipelineRuns(repo, wf)) {
+                if (r?.id && !seen.has(r.id)) { seen.add(r.id); runs.push(r); }
             }
         }
+        if (!runs.length) return;
+        restoreDashTestCountsForRuns(runs);
+        await enrichDashboardTestCounts(runs);
+        for (const card of cards) updateDashboardCardMetrics(card);
+        updateDashboardHeaderPassRate();
     }
 
     function dashboardPipelinePassRate(repo, workflowFile) {
-        const mode = (document.getElementById('resultsFetchMode')?.value || loadResultsFetchModePref() || 'count').toLowerCase();
-        const limit = (mode === 'count') ? loadResultsRunCountPref() : 200;
+        const mode = getDashboardResultsFetchMode();
+        const limit = (mode === 'count') ? getDashboardRunCountLimit(200) : 200;
         let runs = (allRuns || [])
             .filter(r => r && String(r.repo || '').trim() === String(repo || '').trim() && String(r.workflowFile || '').trim() === String(workflowFile || '').trim())
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        if (mode === 'range') {
-            const range = getResultsSelectedDateRange();
-            if (range) runs = runs.filter(r => {
-                const t = new Date(r.createdAt).getTime();
-                return Number.isFinite(t) && t >= range.startMs && t <= range.endMs;
-            });
-        }
+        runs = filterRunsForResultsWindow(runs);
         runs = runs.slice(0, limit);
         if (!runs.length) return { passRate: null, passed: 0, actionable: 0, total: 0 };
-        const actionable = runs.filter(r => ['success','failure'].includes(getRunOutcome(r))).length;
-        const passed = runs.filter(r => getRunOutcome(r) === 'success').length;
-        const pr = actionable ? (passed / actionable) * 100 : 0;
-        return { passRate: pr, passed, actionable, total: runs.length };
+        return aggregateDashboardPassRateFromRuns(runs);
+    }
+
+    function computeDashboardStats(repoName, groupsList) {
+        const mode = getDashboardResultsFetchMode();
+        const limit = (mode === 'count') ? getDashboardRunCountLimit(200) : 200;
+        const pipelineKeys = [...new Set((groupsList || []).flatMap(g => (g?.pipelines || [])))].map(x => String(x || '').trim()).filter(Boolean);
+        const wfFiles = pipelineKeys.map(pk => {
+            const pp = findPipeline(pk);
+            return String(pp?.filename || parsePipelineKey(pk).filename || '').trim();
+        }).filter(Boolean);
+        const uniqueFiles = [...new Set(wfFiles)];
+
+        const consideredRuns = [];
+        for (const wf of uniqueFiles) {
+            let rs = (allRuns || [])
+                .filter(r => r && String(r.repo || '').trim() === String(repoName || '').trim() && String(r.workflowFile || '').trim() === wf)
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            rs = filterRunsForResultsWindow(rs);
+            consideredRuns.push(...rs.slice(0, limit));
+        }
+
+        const outcomes = consideredRuns.map(getRunOutcome);
+        const cancelled = outcomes.filter(o => o === 'cancelled').length;
+        const skipped = outcomes.filter(o => o === 'skipped').length;
+        const agg = aggregateDashboardPassRateFromRuns(consideredRuns);
+
+        return {
+            pipelines: pipelineKeys.length,
+            workflows: uniqueFiles.length,
+            runs: consideredRuns.length,
+            passed: agg.passed,
+            failed: agg.failed,
+            cancelled,
+            skipped,
+            actionable: agg.actionable,
+            passRate: agg.passRate
+        };
+    }
+
+    function updateDashboardHeaderPassRate() {
+        const repo = getDashboardsRepo();
+        if (!repo) return;
+        const list = dashboardsForRepo(repo);
+        const activeId = getActiveDashboardId(repo);
+        const active = list.find(d => d.id === activeId) || list[0] || null;
+        if (!active) return;
+        const allGroups = active.groups || [];
+        const visibleGroups = dashSelectedGroupId && allGroups.some(g => g.id === dashSelectedGroupId)
+            ? allGroups.filter(g => g.id === dashSelectedGroupId)
+            : allGroups;
+        const stats = computeDashboardStats(repo, visibleGroups);
+        const prClass = stats.passRate >= 90 ? 'v-green' : stats.passRate >= 70 ? 'v-orange' : 'v-red';
+        const val = document.querySelector('#dashboardsContent .metric-card.m-green .metric-value');
+        const sub = document.querySelector('#dashboardsContent .metric-card.m-green .metric-sub');
+        const bar = document.querySelector('#dashboardsContent .metric-card.m-green .metric-bar-fill');
+        if (val) {
+            val.textContent = stats.passRate.toFixed(1) + '%';
+            val.className = 'metric-value ' + prClass;
+            val.setAttribute('data-count', stats.passRate.toFixed(1));
+        }
+        if (sub) sub.textContent = `${stats.passed} passed of ${stats.actionable} actionable`;
+        if (bar) bar.style.width = `${Math.max(0, Math.min(100, stats.passRate))}%`;
+        const failVal = document.querySelector('#dashboardsContent .metric-card.m-red .metric-value');
+        const failSub = document.querySelector('#dashboardsContent .metric-card.m-red .metric-sub');
+        const failBar = document.querySelector('#dashboardsContent .metric-card.m-red .metric-bar-fill');
+        if (failVal) {
+            failVal.textContent = String(stats.failed);
+            failVal.setAttribute('data-count', String(stats.failed));
+        }
+        if (failSub) failSub.textContent = `${stats.cancelled} cancelled${stats.skipped ? `, ${stats.skipped} skipped` : ''}`;
+        if (failBar) failBar.style.width = `${stats.actionable ? (stats.failed / stats.actionable * 100) : 0}%`;
     }
 
     function dashboardSchedulerExecCount(repo, workflowFile) {
-        const mode = (document.getElementById('resultsFetchMode')?.value || loadResultsFetchModePref() || 'count').toLowerCase();
-        const limit = (mode === 'count') ? loadResultsRunCountPref() : 500;
+        const limit = getDashboardRunCountLimit(500);
         let runs = (allRuns || [])
             .filter(r => r && String(r.repo || '').trim() === String(repo || '').trim() && String(r.workflowFile || '').trim() === String(workflowFile || '').trim())
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        if (mode === 'range') {
-            const range = getResultsSelectedDateRange();
-            if (range) runs = runs.filter(r => {
-                const t = new Date(r.createdAt).getTime();
-                return Number.isFinite(t) && t >= range.startMs && t <= range.endMs;
-            });
-        }
+        runs = filterRunsForResultsWindow(runs);
         runs = runs.slice(0, limit);
         if (!runs.length) return 0;
         return runs.filter(r => r && r.event === 'schedule' && !r.gateSkipped).length;
     }
 
     function dashboardNeedsAttention(repo, workflowFile) {
-        const limit = loadResultsRunCountPref();
+        const limit = getDashboardRunCountLimit();
         const runs = (allRuns || [])
             .filter(r => r && String(r.repo || '').trim() === String(repo || '').trim() && String(r.workflowFile || '').trim() === String(workflowFile || '').trim())
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
@@ -17011,49 +17731,12 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         const viewMode = loadDashViewMode();
         const viewToggleLabel = viewMode === 'graphs' ? 'Minimalistic' : 'Graphs';
 
-        const computeDashboardStats = (groupsList) => {
-            const repoName = String(repo || '').trim();
-            const limit = loadResultsRunCountPref();
-            const pipelineKeys = [...new Set((groupsList || []).flatMap(g => (g?.pipelines || [])))].map(x => String(x || '').trim()).filter(Boolean);
-            const wfFiles = pipelineKeys.map(pk => {
-                const pp = findPipeline(pk);
-                return String(pp?.filename || parsePipelineKey(pk).filename || '').trim();
-            }).filter(Boolean);
-            const uniqueFiles = [...new Set(wfFiles)];
-
-            const consideredRuns = [];
-            for (const wf of uniqueFiles) {
-                const rs = (allRuns || [])
-                    .filter(r => r && String(r.repo || '').trim() === repoName && String(r.workflowFile || '').trim() === wf)
-                    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-                    .slice(0, limit);
-                consideredRuns.push(...rs);
-            }
-
-            const outcomes = consideredRuns.map(getRunOutcome);
-            const passed = outcomes.filter(o => o === 'success').length;
-            const failed = outcomes.filter(o => o === 'failure').length;
-            const cancelled = outcomes.filter(o => o === 'cancelled').length;
-            const skipped = outcomes.filter(o => o === 'skipped').length;
-            const actionable = passed + failed;
-            const passRate = actionable ? ((passed / actionable) * 100) : 0;
-
-            return {
-                pipelines: pipelineKeys.length,
-                workflows: uniqueFiles.length,
-                runs: consideredRuns.length,
-                passed, failed, cancelled, skipped,
-                actionable,
-                passRate
-            };
-        };
-
         const allGroups = active.groups || [];
         // Validate/resolve the group filter against the active dashboard.
         if (dashSelectedGroupId && !allGroups.some(g => g.id === dashSelectedGroupId)) dashSelectedGroupId = null;
         const visibleGroups = dashSelectedGroupId ? allGroups.filter(g => g.id === dashSelectedGroupId) : allGroups;
 
-        const stats = computeDashboardStats(visibleGroups);
+        const stats = computeDashboardStats(repo, visibleGroups);
         const prClass = stats.passRate >= 90 ? 'v-green' : stats.passRate >= 70 ? 'v-orange' : 'v-red';
         const dashMetrics = `
             <div class="metrics-grid" style="margin:0 0 18px 0; animation:fadeSlideUp 0.45s ease-out both; animation-delay:0.08s;">
@@ -17061,7 +17744,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                     <div class="metric-icon">&#128736;</div>
                     <div class="metric-label">Pipelines</div>
                     <div class="metric-value" data-count="${stats.pipelines}">${stats.pipelines}</div>
-                    <div class="metric-sub">${stats.runs} ${escapeHtml(getResultsFetchWindowLabel())}</div>
+                    <div class="metric-sub">${stats.runs} ${escapeHtml(getDashboardFetchWindowLabel())}</div>
                     <div class="metric-bar"><div class="metric-bar-fill" style="width:100%; background:linear-gradient(90deg,#3b82f6,#60a5fa);"></div></div>
                 </div>
                 <div class="metric-card m-green">
@@ -17076,7 +17759,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                     <div class="metric-label">Failures</div>
                     <div class="metric-value v-red" data-count="${stats.failed}">${stats.failed}</div>
                     <div class="metric-sub">${stats.cancelled} cancelled${stats.skipped ? `, ${stats.skipped} skipped` : ''}</div>
-                    <div class="metric-bar"><div class="metric-bar-fill" style="width:${stats.runs ? (stats.failed/stats.runs*100) : 0}%; background:linear-gradient(90deg,#ef4444,#f87171);"></div></div>
+                    <div class="metric-bar"><div class="metric-bar-fill" style="width:${stats.actionable ? (stats.failed/stats.actionable*100) : 0}%; background:linear-gradient(90deg,#ef4444,#f87171);"></div></div>
                 </div>
             </div>
             <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin:-6px 0 18px; color:var(--text-muted); font-size:11px;">
@@ -17104,7 +17787,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                     <h1>${escapeHtml(active.name)}</h1>
                     <div class="dash-meta">
                         <span class="dash-pill">&#128193; ${escapeHtml(repo)}</span>
-                        <span style="margin-left:8px;">Showing <b>${escapeHtml(getResultsFetchWindowLabel())}</b> (from Results settings).</span>
+                        <span style="margin-left:8px;" class="dash-window-label">Showing <b>${escapeHtml(getDashboardFetchWindowLabel())}</b>${resultsFetchSettingsDifferFromLast() ? ' (from last fetch)' : ' (from Results settings)'}.</span>
                     </div>
                     ${repoSwitch}
                 </div>
@@ -17129,28 +17812,30 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                     const dots = wfFile ? dashboardRunViz(repo, wfFile, trendId) : `<span style="font-size:11px; color:var(--text-muted);">Missing workflow file</span>`;
                     const pr = wfFile ? dashboardPipelinePassRate(repo, wfFile) : { passRate: null, passed: 0, actionable: 0, total: 0 };
                     const prTxt = (pr.passRate == null) ? '—' : pr.passRate.toFixed(1) + '%';
-                    const prTip = (pr.passRate == null) ? 'No runs fetched yet.' : `${pr.passed} passed of ${pr.actionable} actionable (last ${loadResultsRunCountPref()})`;
+                    const prTip = (pr.passRate == null) ? 'No runs fetched yet.' : (pr.fromTestCounts
+                        ? `${pr.passed} passed of ${pr.actionable} tests (JUnit-enriched runs)`
+                        : `${pr.passed} passed of ${pr.actionable} actionable (last ${getDashboardRunCountLimit()})`);
                     const prCls = (pr.passRate == null) ? '' : (pr.passRate >= 90 ? 'v-green' : pr.passRate >= 70 ? 'v-orange' : 'v-red');
                     const schedEnabled = !!p?.scheduleEnabled;
                     const schedExec = (schedEnabled && wfFile) ? dashboardSchedulerExecCount(repo, wfFile) : 0;
                     const schedTip = schedEnabled
-                        ? `${schedExec} scheduler run(s) executed in this window (${getResultsFetchWindowLabel()}).`
+                        ? `${schedExec} scheduler run(s) executed in this window (${getDashboardFetchWindowLabel()}).`
                         : '';
                     const attn = wfFile ? dashboardNeedsAttention(repo, wfFile) : { needs: false, reason: '' };
-                    return `<div class="dash-pipe-card">
+                    return `<div class="dash-pipe-card" data-repo="${escapeHtml(repo)}" data-wf="${escapeHtml(wfFile)}">
                         <div class="dash-pipe-name" title="${escapeHtml(name)}">${escapeHtml(name)}</div>
                         ${dots}
                         ${attn.needs ? `<div style="margin-top:8px; font-size:11px; color:var(--warning); font-weight:800;">&#9888; ${escapeHtml(attn.reason)}</div>` : ''}
                         <div style="margin-top:8px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                            <span class="dash-pill" title="${escapeHtml(prTip)}" style="padding:6px 10px;">
+                            <span class="dash-pill dash-pipe-pr-pill" title="${escapeHtml(prTip)}" style="padding:6px 10px;">
                                 <span style="font-weight:900;">Pass rate</span>
-                                <span class="${prCls}" style="margin-left:6px; font-family:'JetBrains Mono',monospace;">${escapeHtml(prTxt)}</span>
+                                <span class="dash-pipe-pr-val ${prCls}" style="margin-left:6px; font-family:'JetBrains Mono',monospace;">${escapeHtml(prTxt)}</span>
                             </span>
                             ${schedEnabled ? `<span class="dash-pill" title="${escapeHtml(schedTip)}" style="padding:6px 10px;">
                                 <span style="font-weight:900;">&#128337; Scheduler</span>
                                 <span style="margin-left:6px; font-family:'JetBrains Mono',monospace; color:var(--success);">${schedExec}</span>
                             </span>` : ''}
-                            <span style="font-size:11px; color:var(--text-muted);">(${escapeHtml(prTip)})</span>
+                            <span class="dash-pipe-pr-sub" style="font-size:11px; color:var(--text-muted);">(${escapeHtml(prTip)})</span>
                         </div>
                         <div class="dash-pipe-foot">
                             <span style="white-space:normal; overflow:visible; word-break:break-word; line-height:1.25;">${escapeHtml(wfFile)}</span>
@@ -17177,10 +17862,16 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             </div>`;
         }).join('');
 
-        contentEl.innerHTML = header + dashMetrics + dupHtml + groupsHtml;
+        contentEl.innerHTML = buildSyncBannerHtml() + header + dashMetrics + dupHtml + groupsHtml;
         try { animateCounters(); } catch { /* ignore */ }
+        dashboardsContentDirty = false;
+        dashboardsRenderedRunCount = (allRuns || []).length;
+        dashboardsRenderedSyncAt = resultsLastSyncedAt || 0;
+        dashboardsRenderedFetchKey = getDashboardRenderFetchKey();
         if (viewMode === 'graphs') {
             renderDashboardTrendCharts().catch(() => { /* ignore */ });
+        } else {
+            enrichVisibleDashboardPipelines().catch(() => { /* ignore */ });
         }
     }
 
@@ -17817,7 +18508,6 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
             // Sync merge: make sure repeatEvery from WEEK_MODULO is not dropped.
             pipelines = [];
             savedSnapshot = [];
-            yamlBaselineSnapshot = [];
             syncFileContent = JSON.stringify([{
                 filename: 'Web_Outsystems_UAT_EWM_Creation_Regression-Testim.yml',
                 repo: 'Axos.QE.TestIM',
@@ -18023,11 +18713,29 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
     initPipelines();
     populateGlobalRepoFilter();
     setGlobalRepoFilter(globalRepoFilter, { persist: false });
+    purgeBadDashTestCountsCache();
+    const hadResultsCache = restoreResultsCache();
+    if (hadResultsCache) {
+        try { applyCachedRepoFilterFromLastFetch(); } catch { /* ignore */ }
+    }
+    initResultsRunCountPref();
+    initResultsFetchControls();
+    if (hadResultsCache) {
+        hydrateAllRunsTestCountsFromCache();
+        try { revealDashboardsTab(); } catch { /* ignore */ }
+        try { revealQueueTab(); } catch { /* ignore */ }
+        try {
+            document.getElementById('emailNoData').style.display = 'none';
+            document.getElementById('emailReady').style.display = 'block';
+            populateEmailPipePicker();
+        } catch { /* ignore */ }
+        renderResults();
+        if (document.getElementById('panelDashboards')?.classList.contains('active')) renderDashboardsIfNeeded();
+    }
     updateSaveStatus();
     updatePatDot();
     updateResultsTokenStatus();
-    initResultsRunCountPref();
-    initResultsFetchControls();
+    try { refreshSyncBanners(); } catch { /* ignore */ }
     initResultsSidebarResize();
 
     function initResultsSidebarResize() {
