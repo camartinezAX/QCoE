@@ -366,6 +366,17 @@
         input:focus, select:focus, textarea:focus { outline: none; border-color: var(--axos-orange); box-shadow: 0 0 0 3px rgba(250,167,74,0.15); background: var(--bg-secondary); }
         input::placeholder, textarea::placeholder { color: var(--text-muted); }
         .field-help { font-size: 11px; color: var(--text-muted); }
+        .web-mono-parallel-hint {
+            display: block;
+            margin-top: 6px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            line-height: 1.45;
+            color: var(--text-secondary);
+            background: var(--info-bg);
+            border: 1px solid rgba(37, 99, 235, 0.18);
+        }
 
         /* Pipeline name preview */
         .name-preview {
@@ -3594,7 +3605,7 @@ ${os.map(n => `- ${n}`).join('\n')}
 
     const TEST_TYPES = ['Regression', 'Sanity', 'Smoke', 'Health Check', 'Orchestrator'];
 
-    const WEB_MONOREPO_TEAMS = ['Enrollment', 'OutSystems', 'Crypto', 'OLB 3.0'];
+    const WEB_MONOREPO_TEAMS = ['Enrollment', 'OutSystems', 'OLB 3.0'];
 
     function computeWebMonorepoProjectDir(team, feature) {
         const t = String(team || '').trim();
@@ -3619,6 +3630,88 @@ ${os.map(n => `- ${n}`).join('\n')}
         // Fallback to conventional location when team is unknown/custom.
         const tKey = t.replace(/\s+/g, '');
         return tKey ? `projects/Axos.${tKey}.Web` : 'projects';
+    }
+
+    function webMonoProjectLabelFromDir(projectDir) {
+        const dir = String(projectDir || '').toLowerCase();
+        if (dir.includes('axos.olb_3.0.web')) return 'OLB 3.0';
+        if (dir.includes('axos.enr.web')) return 'Enrollment';
+        if (dir.includes('axos.outsys.web')) return 'OutSystems';
+        return '';
+    }
+
+    function isValidWebMonorepoProjectDir(projectDir) {
+        return !!webMonoProjectLabelFromDir(projectDir);
+    }
+
+    function getWebMonorepoFormParallelMax() {
+        if (String(document.getElementById('fRepo')?.value || '').trim() !== 'Axos.QE.Web') return 25;
+        return webMonoParallelMax(getWebMonorepoFormBsCtx());
+    }
+
+    function clampWebMonorepoParallelField() {
+        if (String(document.getElementById('fRepo')?.value || '').trim() !== 'Axos.QE.Web') return;
+        const parEl = document.getElementById('fParallel');
+        if (!parEl) return;
+        const maxPar = getWebMonorepoFormParallelMax();
+        parEl.max = String(maxPar);
+        const cur = parseInt(String(parEl.value || ''), 10);
+        if (!Number.isFinite(cur)) return;
+        if (cur < 1) parEl.value = '1';
+        else if (cur > maxPar) parEl.value = String(maxPar);
+    }
+
+    function isWebMonorepoParallelValid() {
+        if (String(document.getElementById('fRepo')?.value || '').trim() !== 'Axos.QE.Web') return true;
+        const parEl = document.getElementById('fParallel');
+        if (!parEl) return true;
+        const ctx = getWebMonorepoFormBsCtx();
+        if (!resolveWebMonorepoBsTeam(ctx)) return true;
+        const maxPar = webMonoParallelMax(ctx);
+        const cur = parseInt(String(parEl.value || ''), 10);
+        return Number.isFinite(cur) && cur >= 1 && cur <= maxPar;
+    }
+
+    function getWebMonorepoTeamFromFilename(filename) {
+        const m = String(filename || '').match(/^Web_(Enrollment|OutSystems|Crypto|OLB3)_/i);
+        if (!m) return '';
+        const raw = m[1].toLowerCase();
+        if (raw === 'enrollment') return 'Enrollment';
+        if (raw === 'outsystems') return 'OutSystems';
+        if (raw === 'crypto') return 'Crypto';
+        if (raw === 'olb3') return 'OLB 3.0';
+        return '';
+    }
+
+    function resolveWebMonorepoProjectDirForForm(p) {
+        const stored = String(p?.projectDir || '').trim();
+        if (stored) return stored;
+        const fn = String(p?.filename || p?.name || '');
+        const teamFromFn = getWebMonorepoTeamFromFilename(fn.endsWith('.yml') ? fn : `${fn}.yml`);
+        if (teamFromFn) return computeWebMonorepoProjectDir(teamFromFn, p?.feature || 'Login');
+        const brand = String(p?.brand || '').trim();
+        if (brand) return computeWebMonorepoProjectDir(brand, p?.feature || 'Login');
+        return '';
+    }
+
+    function resolveWebMonorepoBsTeam(p) {
+        if (!p) return '';
+        const fnTeam = getWebMonorepoTeamFromFilename(String(p?.filename || ''));
+        const dirTeam = webMonoProjectLabelFromDir(String(p?.projectDir || ''));
+        if (fnTeam && dirTeam) return fnTeam === dirTeam ? fnTeam : '';
+        if (fnTeam) return fnTeam;
+        if (dirTeam) return dirTeam;
+        return getWebMonorepoTeam(p) || '';
+    }
+
+    function getWebMonorepoProjectDirTeamMismatch() {
+        if (String(document.getElementById('fRepo')?.value || '').trim() !== 'Axos.QE.Web') return '';
+        const projectDir = String(document.getElementById('fProjectDir')?.value || '').trim();
+        const dirTeam = webMonoProjectLabelFromDir(projectDir);
+        const ctx = getWebMonorepoFormBsCtx();
+        const fnTeam = getWebMonorepoTeamFromFilename(ctx.filename || '');
+        if (!dirTeam || !fnTeam || dirTeam === fnTeam) return '';
+        return `Project Directory (${dirTeam}) does not match workflow name (${fnTeam})`;
     }
 
     const BRAND_KEY_MAP = {
@@ -3861,6 +3954,10 @@ ${os.map(n => `- ${n}`).join('\n')}
     }
     function getWebMonorepoTeam(p) {
         if (!p) return null;
+        const dir = String(p?.projectDir || '').toLowerCase();
+        if (dir.includes('axos.olb_3.0.web')) return 'OLB 3.0';
+        if (dir.includes('axos.enr.web')) return 'Enrollment';
+        if (dir.includes('axos.outsys.web')) return 'OutSystems';
         const fn = String(p.filename || '');
         const m = fn.match(/^Web_(Enrollment|OutSystems|Crypto|OLB3)_/i);
         if (m) {
@@ -3878,6 +3975,35 @@ ${os.map(n => `- ${n}`).join('\n')}
             if (b.replace(/[^a-z0-9]/g, '').includes('olb3')) return 'OLB 3.0';
         }
         return null;
+    }
+    // Maps Axos.QE.Web product team to BrowserStack credential set (team parallel pools).
+    function getWebMonorepoCredentialSet(p) {
+        const team = resolveWebMonorepoBsTeam(p);
+        if (team === 'OLB 3.0') return 'olb3';
+        if (team === 'Enrollment') return 'enr';
+        if (team === 'OutSystems') return 'outsys';
+        const stored = String(p?.bsCredentialSet || '').trim().toLowerCase();
+        if (stored === 'olb3' || stored === 'enr' || stored === 'outsys') return stored;
+        return '';
+    }
+    // BrowserStack team parallel pool caps (dedicated Automate allocation).
+    function webMonoParallelMax(p) {
+        if (typeof p !== 'string') {
+            const cred = getWebMonorepoCredentialSet(p);
+            if (cred === 'olb3') return 20;
+            if (cred === 'enr') return 10;
+            if (cred === 'outsys') return 10;
+        }
+        const team = typeof p === 'string' ? p : resolveWebMonorepoBsTeam(p);
+        if (team === 'OLB 3.0') return 20;
+        if (team === 'Enrollment') return 10;
+        if (team === 'OutSystems') return 10;
+        return 25;
+    }
+    function clampWebMonoParallel(p, rawParallel) {
+        const max = webMonoParallelMax(p);
+        const val = parseInt(String(rawParallel ?? '3'), 10) || 3;
+        return String(Math.min(Math.max(1, val), max));
     }
     function isCryptoPipeline(p) {
         if (!p) return false;
@@ -4328,6 +4454,7 @@ ${os.map(n => `- ${n}`).join('\n')}
 
     let pipelines = [];
     let savedSnapshot = [];
+    let yamlBaselineSnapshot = [];
     let pendingSaveChanges = [];
     let currentView = 'tree';
     // Remembers the All Pipelines list filters so they survive opening a pipeline and going Back.
@@ -4336,8 +4463,115 @@ ${os.map(n => `- ${n}`).join('\n')}
     let editingPipeline = null;
     let viewOnlyMode = false;
     const STORAGE_KEY = 'axos_pipeline_manager_data';
+    const YAML_BASELINE_KEY = 'axos_pipeline_manager_yaml_baseline';
     const TREE_STATE_KEY = 'axos_pipeline_manager_tree_state';
     let treeOpenState = {};
+
+    function loadYamlBaselineFromStorage(fallback) {
+        try {
+            const stored = localStorage.getItem(YAML_BASELINE_KEY);
+            if (stored) return JSON.parse(stored);
+        } catch { /* ignore */ }
+        return fallback ? JSON.parse(JSON.stringify(fallback)) : [];
+    }
+
+    function persistYamlBaseline() {
+        try { localStorage.setItem(YAML_BASELINE_KEY, JSON.stringify(yamlBaselineSnapshot)); } catch { /* ignore */ }
+    }
+
+    function persistPipelinesAfterSync(syncedEntries, replaceMode, dirtyBeforeSync) {
+        try {
+            const skipKeys = dirtyBeforeSync instanceof Set ? dirtyBeforeSync : new Set();
+            if (replaceMode) {
+                const snapMap = new Map((savedSnapshot || []).map(p => [pipelineKey(p), p]));
+                const liveKeys = new Set((pipelines || []).map(pipelineKey));
+                for (const k of [...snapMap.keys()]) {
+                    if (!liveKeys.has(k)) snapMap.delete(k);
+                }
+                for (const p of pipelines) {
+                    const k = pipelineKey(p);
+                    if (!skipKeys.has(k)) snapMap.set(k, JSON.parse(JSON.stringify(p)));
+                }
+                savedSnapshot = Array.from(snapMap.values());
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(pipelines));
+                return;
+            }
+
+            const syncedKeys = new Set(
+                (Array.isArray(syncedEntries) ? syncedEntries : [])
+                    .map(syncEntryPipelineKey)
+                    .filter(Boolean)
+            );
+            if (!syncedKeys.size) return;
+
+            const incomingRepos = new Set(
+                (Array.isArray(syncedEntries) ? syncedEntries : [])
+                    .map(syncEntryRepo)
+                    .filter(Boolean)
+            );
+
+            const mergeSyncedOnly = (list) => {
+                const map = new Map((Array.isArray(list) ? list : []).map(p => [pipelineKey(p), p]));
+                for (const p of pipelines) {
+                    const k = pipelineKey(p);
+                    if (syncedKeys.has(k) && !skipKeys.has(k)) map.set(k, JSON.parse(JSON.stringify(p)));
+                }
+                if (incomingRepos.size > 0) {
+                    for (const [k, p] of map.entries()) {
+                        const r = normRepoForPipeline(p);
+                        if (incomingRepos.has(r) && !syncedKeys.has(k)) map.delete(k);
+                    }
+                }
+                return Array.from(map.values());
+            };
+
+            savedSnapshot = mergeSyncedOnly(savedSnapshot);
+            let stored = [];
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) stored = JSON.parse(raw);
+            } catch { /* ignore */ }
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(mergeSyncedOnly(stored)));
+        } catch { /* ignore */ }
+    }
+
+    function applyYamlBaselineFromSync(jsonData, replaceMode, dirtyBeforeSync) {
+        if (!Array.isArray(jsonData)) return;
+        const skipKeys = dirtyBeforeSync instanceof Set ? dirtyBeforeSync : new Set();
+        if (replaceMode) {
+            const baselineMap = new Map((yamlBaselineSnapshot || []).map(p => [pipelineKey(p), p]));
+            const liveKeys = new Set((pipelines || []).map(pipelineKey));
+            for (const k of [...baselineMap.keys()]) {
+                if (!liveKeys.has(k)) baselineMap.delete(k);
+            }
+            for (const p of pipelines) {
+                const k = pipelineKey(p);
+                if (!skipKeys.has(k)) baselineMap.set(k, JSON.parse(JSON.stringify(p)));
+            }
+            yamlBaselineSnapshot = Array.from(baselineMap.values());
+            persistYamlBaseline();
+            return;
+        }
+        const baselineMap = new Map(yamlBaselineSnapshot.map(p => [pipelineKey(p), p]));
+        const incomingRepos = new Set(
+            jsonData.map(syncEntryRepo).filter(Boolean)
+        );
+        for (const entry of jsonData) {
+            const k = syncEntryPipelineKey(entry);
+            if (skipKeys.has(k)) continue;
+            const p = pipelines.find(pp => pipelineKey(pp) === k);
+            if (p) baselineMap.set(k, JSON.parse(JSON.stringify(p)));
+        }
+        if (incomingRepos.size > 0) {
+            const syncedKeys = new Set(jsonData.map(syncEntryPipelineKey).filter(Boolean));
+            for (const [k, p] of baselineMap.entries()) {
+                const r = normRepoForPipeline(p);
+                if (incomingRepos.has(r) && !syncedKeys.has(k)) baselineMap.delete(k);
+            }
+        }
+        yamlBaselineSnapshot = Array.from(baselineMap.values());
+        persistYamlBaseline();
+    }
 
     function initPipelines() {
         const key = STORAGE_KEY;
@@ -4346,6 +4580,8 @@ ${os.map(n => `- ${n}`).join('\n')}
             try {
                 pipelines = JSON.parse(stored);
                 savedSnapshot = JSON.parse(stored);
+                yamlBaselineSnapshot = loadYamlBaselineFromStorage(null);
+                if (!Array.isArray(yamlBaselineSnapshot)) yamlBaselineSnapshot = [];
                 // Backfill repo for older cached entries (multi-repo support).
                 const backfillRepo = (p) => {
                     if (!p || String(p.repo || '').trim()) return;
@@ -4492,18 +4728,25 @@ ${os.map(n => `- ${n}`).join('\n')}
                 };
                 (pipelines || []).forEach(backfillRepo);
                 (savedSnapshot || []).forEach(backfillRepo);
+                (yamlBaselineSnapshot || []).forEach(backfillRepo);
                 (pipelines || []).forEach(backfillPerfPlatform);
                 (savedSnapshot || []).forEach(backfillPerfPlatform);
+                (yamlBaselineSnapshot || []).forEach(backfillPerfPlatform);
                 (pipelines || []).forEach(backfillWebMonorepoTeams);
                 (savedSnapshot || []).forEach(backfillWebMonorepoTeams);
+                (yamlBaselineSnapshot || []).forEach(backfillWebMonorepoTeams);
                 (pipelines || []).forEach(backfillWebMonorepoWorkflowRenames);
                 (savedSnapshot || []).forEach(backfillWebMonorepoWorkflowRenames);
+                (yamlBaselineSnapshot || []).forEach(backfillWebMonorepoWorkflowRenames);
                 (pipelines || []).forEach(backfillWebMonorepoDefaults);
                 (savedSnapshot || []).forEach(backfillWebMonorepoDefaults);
+                (yamlBaselineSnapshot || []).forEach(backfillWebMonorepoDefaults);
                 (pipelines || []).forEach(backfillCryptoFeature);
                 (savedSnapshot || []).forEach(backfillCryptoFeature);
+                (yamlBaselineSnapshot || []).forEach(backfillCryptoFeature);
                 (pipelines || []).forEach(backfillCryptoDefaults);
                 (savedSnapshot || []).forEach(backfillCryptoDefaults);
+                (yamlBaselineSnapshot || []).forEach(backfillCryptoDefaults);
 
                 // Auto-heal: if a workflow filename contains a feature not in the hardcoded lists,
                 // older parses may have left p.feature blank. Recover it from featureDetail.
@@ -4518,12 +4761,14 @@ ${os.map(n => `- ${n}`).join('\n')}
                 };
                 (pipelines || []).forEach(backfillMissingFeatureFromDetail);
                 (savedSnapshot || []).forEach(backfillMissingFeatureFromDetail);
+                (yamlBaselineSnapshot || []).forEach(backfillMissingFeatureFromDetail);
                 const backfillMobileFeatureSplit = (p) => {
                     if (!isMobilePipeline(p) || p.feature === 'Orchestrators') return;
                     normalizeParsedPipeline(p);
                 };
                 (pipelines || []).forEach(backfillMobileFeatureSplit);
                 (savedSnapshot || []).forEach(backfillMobileFeatureSplit);
+                (yamlBaselineSnapshot || []).forEach(backfillMobileFeatureSplit);
                 const backfillMobileEnvSpecific = (p) => {
                     if (!isMobilePipeline(p) || p.feature === 'Orchestrators') return;
                     if (p.envSpecific !== undefined && p.envSpecific !== null) {
@@ -4539,6 +4784,13 @@ ${os.map(n => `- ${n}`).join('\n')}
                 };
                 (pipelines || []).forEach(backfillMobileEnvSpecific);
                 (savedSnapshot || []).forEach(backfillMobileEnvSpecific);
+                (yamlBaselineSnapshot || []).forEach(backfillMobileEnvSpecific);
+                if (yamlBaselineSnapshot.length === 0 && (savedSnapshot || []).some(p => p?.lastSyncAt)) {
+                    yamlBaselineSnapshot = (savedSnapshot || [])
+                        .filter(p => p?.lastSyncAt)
+                        .map(p => JSON.parse(JSON.stringify(p)));
+                    persistYamlBaseline();
+                }
                 // Load persisted tree open/close state (never auto-expand on first load).
                 try {
                     const t = localStorage.getItem(TREE_STATE_KEY);
@@ -4549,6 +4801,7 @@ ${os.map(n => `- ${n}`).join('\n')}
         }
         pipelines = [];
         savedSnapshot = [];
+        yamlBaselineSnapshot = [];
         try {
             const t = localStorage.getItem(TREE_STATE_KEY);
             treeOpenState = t ? (JSON.parse(t) || {}) : {};
@@ -4571,6 +4824,24 @@ ${os.map(n => `- ${n}`).join('\n')}
         const r = String(repo || '').trim() || 'Axos.QE.TestIM';
         const fn = String(filename || '').trim();
         return `${r}::${fn}`;
+    }
+
+    function syncEntryPipelineKey(entry) {
+        const filename = String(entry?.filename || '').trim();
+        if (!filename) return '';
+        const parsed = parseFilename(filename);
+        if (!parsed) return pipelineKeyFrom(String(entry?.repo || '').trim(), filename);
+        if (entry?.repo) parsed.repo = entry.repo;
+        return pipelineKey(parsed);
+    }
+
+    function syncEntryRepo(entry) {
+        const filename = String(entry?.filename || '').trim();
+        if (!filename) return String(entry?.repo || '').trim();
+        const parsed = parseFilename(filename);
+        if (!parsed) return String(entry?.repo || '').trim();
+        if (entry?.repo) parsed.repo = entry.repo;
+        return normRepoForPipeline(parsed);
     }
 
     function pipelineKey(p) {
@@ -4768,6 +5039,7 @@ ${os.map(n => `- ${n}`).join('\n')}
             'testSuite', 'baseUrl', 'branch', 'grid', 'parallel', 'parallels', 'retries', 'timeoutMin', 'browserTimeout',
             'grep', 'suite', 'spec', 'parallelSplit', 'tunnel', 'appId', 'deviceName', 'deviceOS', 'bsUsername', 'bsAccessKey',
             'runnerLabel', 'customRunnerLabel', 'jobTimeout',
+            'orchestratorSet', 'orchestratorTargets',
             'scheduleEnabled', 'schedule', 'repeatUnit', 'repeatEvery', 'repeatDom',
             'emailEnabled', 'emailRecipients',
             'repo', 'filename', 'name'
@@ -6039,7 +6311,245 @@ ${os.map(n => `- ${n}`).join('\n')}
         `If you cannot resolve a name from either source, omit the "Updated by:" line entirely. Do NOT ask ` +
         `the user and do NOT insert a placeholder.`;
 
-    function buildPromptForPipeline(p) {
+    // Keys whose changes affect workflow YAML schedule blocks only.
+    const SCHEDULE_YAML_KEYS = new Set(['scheduleEnabled', 'schedule', 'repeatUnit', 'repeatEvery', 'repeatDom']);
+    const EMAIL_YAML_KEYS = new Set(['emailEnabled', 'emailRecipients']);
+    const YAML_DIFF_IGNORE_KEYS = new Set(['lastSyncAt', 'lastRun', 'lastRunId']);
+    // Orchestrator save forms clear suite/mobile fields; ignore spurious diffs vs sync baseline.
+    const ORCH_IGNORE_DIFF_KEYS = new Set([
+        'grep', 'suite', 'spec', 'parallel', 'parallelSplit', 'retries', 'tunnel',
+        'appId', 'deviceName', 'deviceOS', 'bsUsername', 'bsAccessKey',
+        'testSuite', 'baseUrl', 'project', 'token', 'branch', 'grid', 'timeoutMin',
+        'browserTimeout', 'parallels',
+        'mobilePlatform', 'envSpecific', 'featureDetail', 'customSuffix', 'platform',
+        'brand', 'env', 'feature', 'testType', 'name', 'filename', 'repo'
+    ]);
+    const ORCH_JOB_TIMEOUT_FORM_DEFAULT = 30;
+
+    function isSpuriousOrchestratorJobTimeoutChange(prev, next, pipeline) {
+        if (!isOrchestratorPipeline(pipeline || next || prev)) return false;
+        const a = prev?.jobTimeout;
+        const b = next?.jobTimeout;
+        if (yamlDiffValuesEqual(a, b)) return false;
+        if (!isEmptyDiffValue(a)) return false;
+        const nb = Number(b);
+        return Number.isFinite(nb) && nb === ORCH_JOB_TIMEOUT_FORM_DEFAULT;
+    }
+
+    function isSpuriousOrchestratorRunnerLabelChange(prev, next, key, pipeline) {
+        if (!isOrchestratorPipeline(pipeline || next || prev)) return false;
+        if (key !== 'runnerLabel' && key !== 'customRunnerLabel') return false;
+        const a = prev ? prev[key] : undefined;
+        const b = next ? next[key] : undefined;
+        if (yamlDiffValuesEqual(a, b)) return false;
+        // Orchestrator save clears runner fields; ignore sync baseline values vs empty form state.
+        return !isEmptyDiffValue(a) && isEmptyDiffValue(b);
+    }
+
+    function isEmptyDiffValue(v) {
+        if (v === null || v === undefined) return true;
+        if (typeof v === 'string') return v.trim() === '';
+        if (Array.isArray(v)) return v.length === 0;
+        return false;
+    }
+
+    function normalizeOrchestratorTargetInputs(inputs) {
+        if (!inputs || typeof inputs !== 'object' || Array.isArray(inputs)) return {};
+        const out = {};
+        for (const [key, val] of Object.entries(inputs)) {
+            if (val === null || val === undefined || val === '') continue;
+            out[key] = val;
+        }
+        return out;
+    }
+
+    function normalizeOrchestratorTargetForDiff(t) {
+        return {
+            name: String(t?.name || '').trim(),
+            owner: String(t?.owner || 'axos-financial').trim() || 'axos-financial',
+            repo: String(t?.repo || 'Axos.QE.TestIM').trim() || 'Axos.QE.TestIM',
+            workflow: String(t?.workflow || '').trim().replace(/.*\//, ''),
+            ref: String(t?.ref || 'main').trim() || 'main',
+            enabled: t?.enabled !== false,
+            inputs: normalizeOrchestratorTargetInputs(t?.inputs)
+        };
+    }
+
+    function normalizeOrchestratorTargetsForDiff(targets) {
+        const arr = Array.isArray(targets) ? targets : [];
+        return arr
+            .map(normalizeOrchestratorTargetForDiff)
+            .filter(t => t.workflow)
+            .sort((a, b) => {
+                const ak = `${a.owner}/${a.repo}:${a.workflow}@${a.ref}`;
+                const bk = `${b.owner}/${b.repo}:${b.workflow}@${b.ref}`;
+                return ak.localeCompare(bk);
+            });
+    }
+
+    function orchestratorTargetsYamlEqual(a, b) {
+        const toCanon = (v) => normalizeOrchestratorTargetsForDiff(
+            Array.isArray(v) ? v : orchestratorRefsToTargets(orchestratorTargetsToRefs(v))
+        );
+        return stableStringify(toCanon(a)) === stableStringify(toCanon(b));
+    }
+
+    function yamlDiffValuesEqual(a, b) {
+        if (isEmptyDiffValue(a) && isEmptyDiffValue(b)) return true;
+        if (typeof a === 'boolean' || typeof b === 'boolean') return !!a === !!b;
+        if (Array.isArray(a) || Array.isArray(b)) return stableStringify(a) === stableStringify(b);
+        const na = Number(a);
+        const nb = Number(b);
+        if (Number.isFinite(na) && Number.isFinite(nb) && String(a).trim() !== '' && String(b).trim() !== '') {
+            return na === nb;
+        }
+        return String(a ?? '').trim() === String(b ?? '').trim();
+    }
+
+    function yamlDiffFieldKeys(prev, next, pipeline) {
+        const keys = new Set([
+            ...Object.keys(prev || {}),
+            ...Object.keys(next || {})
+        ]);
+        const isOrch = isOrchestratorPipeline(pipeline || next || prev);
+        const ignoreEmailKeys = !supportsPowerAutomateEmailPrompt(pipeline || next || prev);
+        const changed = [];
+        for (const k of keys) {
+            if (YAML_DIFF_IGNORE_KEYS.has(k)) continue;
+            if (ignoreEmailKeys && EMAIL_YAML_KEYS.has(k)) continue;
+            if (isOrch && ORCH_IGNORE_DIFF_KEYS.has(k)) continue;
+            const a = prev ? prev[k] : undefined;
+            const b = next ? next[k] : undefined;
+            if (k === 'jobTimeout' && isOrch && isSpuriousOrchestratorJobTimeoutChange(prev, next, pipeline || next || prev)) continue;
+            if ((k === 'runnerLabel' || k === 'customRunnerLabel') && isOrch && isSpuriousOrchestratorRunnerLabelChange(prev, next, k, pipeline || next || prev)) continue;
+            if (k === 'orchestratorTargets') {
+                if (!orchestratorTargetsYamlEqual(a, b)) changed.push(k);
+                continue;
+            }
+            if (!yamlDiffValuesEqual(a, b)) changed.push(k);
+        }
+        return changed;
+    }
+
+    function changedFieldKeys(prev, next) {
+        return buildDiffRows(prev || {}, next || {}).map(r => r.key);
+    }
+
+    function isScheduleOnlyYamlChange(prev, next, pipeline) {
+        if (!prev || !next) return false;
+        const keys = yamlDiffFieldKeys(prev, next, pipeline);
+        if (!keys.length) return true;
+        return keys.every(k => SCHEDULE_YAML_KEYS.has(k));
+    }
+
+    function isEmailOnlyYamlChange(prev, next, pipeline) {
+        if (!prev || !next) return false;
+        const keys = yamlDiffFieldKeys(prev, next, pipeline);
+        if (!keys.length) return false;
+        return keys.every(k => EMAIL_YAML_KEYS.has(k));
+    }
+
+    function isScheduleAndEmailOnlyYamlChange(prev, next, pipeline) {
+        if (!prev || !next) return false;
+        const keys = yamlDiffFieldKeys(prev, next, pipeline);
+        if (!keys.length) return false;
+        return keys.every(k => SCHEDULE_YAML_KEYS.has(k) || EMAIL_YAML_KEYS.has(k));
+    }
+
+    function hasNoYamlAffectingChange(prev, next, pipeline) {
+        if (!prev || !next) return false;
+        return yamlDiffFieldKeys(prev, next, pipeline).length === 0;
+    }
+
+    function pipelinePrevSnapshot(p) {
+        return yamlBaselineSnapshot.find(s => pipelineKey(s) === pipelineKey(p)) || null;
+    }
+
+    function pipelineExistedBeforeEdit(p) {
+        return !!pipelinePrevSnapshot(p) || !!p?.lastSyncAt;
+    }
+
+    function appendSchedulePromptLines(prompt, p) {
+        if (p.scheduleEnabled && p.schedule) {
+            prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
+        } else {
+            prompt += `\n\nKeep the schedule block commented out.`;
+        }
+        if (p.scheduleEnabled && (p.repeatUnit || 'weeks') === 'weeks' && parseInt(p.repeatEvery || '1', 10) > 1) {
+            const n = parseInt(p.repeatEvery || '1', 10);
+            prompt += `\n- Add WEEK_MODULO: ${n} to the workflow if it supports off-week skipping (do NOT add a separate gate job)`;
+        }
+        return prompt;
+    }
+
+    function supportsPowerAutomateEmailPrompt(p) {
+        const repoName = String(p?.repo || 'Axos.QE.TestIM').trim();
+        return repoName === 'Axos.QE.TestIM'
+            && !isOrchestratorPipeline(p)
+            && !isMobilePipeline(p)
+            && !isWebMonorepoPipeline(p)
+            && !isCryptoPipeline(p)
+            && !isPerfPipeline(p);
+    }
+
+    function appendEmailPromptLines(prompt, p) {
+        if (p.emailEnabled) {
+            const rec = String(p.emailRecipients || '').trim();
+            prompt += `\n\nEMAIL RESULTS (Power Automate): In the caller workflow's \`test-results\` job, mirror the "Set up Node (for email)" and "Email results (Power Automate)" steps from Web_AxosBank_UAT_HealthCheck-Testim.yml. The email step runs \`node tools/build-email-from-junit.mjs\`, uses continue-on-error: true, and is gated on \`always() && (steps.detect.outputs.artifact == 'true' || needs.run.result == 'cancelled')\` (artifact optional for cancel — XML optional otherwise). Env: JUNIT_GLOB_DIR=reports, REPORT_TITLE=${p.name}, REPORT_ENV=${p.env || 'UAT'}, POWER_AUTOMATE_EMAIL_WEBHOOK_URL=\${{ secrets.POWER_AUTOMATE_EMAIL_WEBHOOK_URL }}, GITHUB_SERVER_URL/GITHUB_REPOSITORY/GITHUB_RUN_ID, and RUN_CONCLUSION=\${{ needs.run.result }} (required so cancelled runs email/Teams as CANCELLED instead of a false FAIL or "manual review").`;
+            if (rec) {
+                prompt += ` Recipients OVERRIDE for this pipeline: set TESTIM_EMAIL_RECIPIENTS="${rec}" (a literal string) and gate the two steps on \`always() && (steps.detect.outputs.artifact == 'true' || needs.run.result == 'cancelled')\` only (no vars gate).`;
+            } else {
+                prompt += ` Recipients: use the shared repo variable — set TESTIM_EMAIL_RECIPIENTS=\${{ vars.TESTIM_EMAIL_RECIPIENTS }} and add \`&& vars.TESTIM_EMAIL_RECIPIENTS != ''\` to the two steps' if: condition (default behavior).`;
+            }
+        } else {
+            prompt += `\n\nEMAIL RESULTS: Do NOT email — omit the "Set up Node (for email)" and "Email results (Power Automate)" steps (remove them from the test-results job if present).`;
+        }
+        return prompt;
+    }
+
+    function buildEmailOnlyWorkflowPrompt(p, repoName) {
+        const filePath = `.github/workflows/${p.filename || (p.name + '.yml')}`;
+        let prompt = `Update ONLY the email results steps in the existing workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
+            `Change only the test-results job email steps. Preserve everything else exactly as committed.\n`;
+        return appendEmailPromptLines(prompt, p);
+    }
+
+    function buildScheduleAndEmailWorkflowPrompt(p, repoName, kind) {
+        const filePath = `.github/workflows/${p.filename || (p.name + '.yml')}`;
+        const orchNote = kind === 'orchestrator'
+            ? `Do NOT rewrite workflow_dispatch inputs, the dispatch job script, or .github/orchestrator/targets.json.\n`
+            : `Do NOT rewrite unrelated workflow inputs, jobs, or permissions.\n`;
+        let prompt = `Update ONLY the schedule trigger and email results steps on the existing workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
+            orchNote +
+            `Change only the schedule/cron block and test-results email steps. Preserve everything else exactly as committed.\n`;
+        prompt = appendSchedulePromptLines(prompt, p);
+        return appendEmailPromptLines(prompt, p);
+    }
+
+    function buildScheduleOnlyWorkflowPrompt(p, repoName, kind) {
+        const filePath = `.github/workflows/${p.filename || (p.name + '.yml')}`;
+        const orchNote = kind === 'orchestrator'
+            ? `Do NOT rewrite workflow_dispatch inputs, the dispatch job script, or .github/orchestrator/targets.json.\n`
+            : `Do NOT rewrite unrelated workflow inputs, jobs, or permissions.\n`;
+        let prompt = `Update ONLY the schedule trigger on the existing workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
+            orchNote +
+            `Change only the schedule/cron block in this file. Preserve everything else exactly as committed.\n`;
+        return appendSchedulePromptLines(prompt, p);
+    }
+
+    function isScheduleOnlyPromptText(prompt) {
+        return String(prompt || '').startsWith('Update ONLY the schedule trigger');
+    }
+
+    function isNarrowYamlPromptText(prompt) {
+        const s = String(prompt || '');
+        return s.startsWith('Update ONLY the schedule trigger') ||
+            s.startsWith('Update ONLY the email results steps') ||
+            s.startsWith('Update ONLY the schedule trigger and email results steps');
+    }
+
+    function buildPromptForPipeline(p, opts = {}) {
+        const prev = opts.prev !== undefined ? opts.prev : pipelinePrevSnapshot(p);
         const isMobile = isMobilePipeline(p);
         const repoName = String(
             p.repo ||
@@ -6052,6 +6562,26 @@ ${os.map(n => `- ${n}`).join('\n')}
         const RUNNER_CONSOLIDATED_REPOS = ['Axos.QE.TestIM','Axos.QE.API_OLB','Axos.QE.API_CS','Axos.QE.API_UDB','Axos.QE.API_WFO','Axos.QE.Mobile'];
         const runnerStrategy = (!isOrchestratorPipeline(p) && RUNNER_CONSOLIDATED_REPOS.includes(repoName)) ? 'label' : getRunnerStrategy(p);
         const runnerGroup = getRunnerGroup(p);
+
+        if (prev && pipelineExistedBeforeEdit(p)) {
+            if (hasNoYamlAffectingChange(prev, p, p)) return null;
+            if (isScheduleOnlyYamlChange(prev, p, p)) {
+                const kind = isOrchestratorPipeline(p) ? 'orchestrator' : 'pipeline';
+                return buildScheduleOnlyWorkflowPrompt(p, repoName, kind);
+            }
+            if (isEmailOnlyYamlChange(prev, p, p)) {
+                if (supportsPowerAutomateEmailPrompt(p)) {
+                    return buildEmailOnlyWorkflowPrompt(p, repoName);
+                }
+                return null;
+            } else if (isScheduleAndEmailOnlyYamlChange(prev, p, p)) {
+                const kind = isOrchestratorPipeline(p) ? 'orchestrator' : 'pipeline';
+                if (supportsPowerAutomateEmailPrompt(p)) {
+                    return buildScheduleAndEmailWorkflowPrompt(p, repoName, kind);
+                }
+                return buildScheduleOnlyWorkflowPrompt(p, repoName, kind);
+            }
+        }
 
         if (isOrchestratorPipeline(p)) {
             const setName = orchestratorSetForForm(p) || 'WFO';
@@ -6104,6 +6634,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                 `Note: for workflows in this repo, "workflow" should be the workflow filename (e.g. Web_AxosBank_UAT_HealthCheck-Testim.yml).`;
 
             if (p.renamedFrom) prompt += `\n\nAlso delete the old workflow file: .github/workflows/${p.renamedFrom}`;
+            prompt = appendSchedulePromptLines(prompt, p);
             return prompt;
         }
 
@@ -6206,8 +6737,12 @@ ${os.map(n => `- ${n}`).join('\n')}
         }
 
         if (repoName === 'Axos.QE.Web' || isWebMonorepoPipeline(p)) {
-            const team = getWebMonorepoTeam(p) || 'Unknown';
-            const projectDir = String(p.projectDir || '').trim() || computeWebMonorepoProjectDir(team, p.feature || '');
+            const fn = String(p.filename || filePath || '').trim();
+            const filename = fn.endsWith('.yml') ? fn : (fn ? `${fn}.yml` : '');
+            const projectDir = String(p.projectDir || '').trim() || computeWebMonorepoProjectDir(p.brand || '', p.feature || '');
+            const promptCtx = { projectDir, filename, brand: p.brand };
+            const team = getWebMonorepoTeamFromFilename(filename) || resolveWebMonorepoBsTeam(promptCtx) || p.brand || 'Unknown';
+            const bsCredentialSet = getWebMonorepoCredentialSet(promptCtx);
             const linuxRunners = LINUX_QE_RUNNERS;
             const winRunners = ['QSDW-TFSBA01','QSDW-TFSBA02','QSDW-TFSBA03','QSDW-TFSBA04','QSDW-TFSBA05'];
             const rawLinux = String(p.runnerLabelLinux || p.runnerLabel || '').trim();
@@ -6225,15 +6760,16 @@ ${os.map(n => `- ${n}`).join('\n')}
                 `LOCAL_BROWSER: ${p.localBrowser || 'chromium'}\n` +
                 `TEST_ENV: ${p.env || 'UAT'}\n` +
                 `GREP: ${p.grep || ''}\n` +
-                `PARALLELS: ${p.parallel || '3'}\n` +
+                `PARALLELS: ${clampWebMonoParallel(p, p.parallel)}\n` +
                 `RETRIES: ${p.retries || '1'}\n` +
                 `BS_RANDOM_BROWSER: ${p.bsRandomBrowser || 'true'}\n` +
                 `BS_BROWSER_NAME: ${p.bsBrowserName || ''}\n` +
                 `BS_BROWSER_VERSION: ${p.bsBrowserVersion || ''}\n` +
                 `BS_OS_NAME: ${p.bsOsName || ''}\n` +
                 `BS_OS_VERSION: ${p.bsOsVersion || ''}\n` +
-                `BROWSERSTACK_USERNAME: ''  # leave blank to use repo secret BROWSERSTACK_USERNAME\n` +
-                `BROWSERSTACK_ACCESS_KEY: ''  # leave blank to use repo secret BROWSERSTACK_ACCESS_KEY\n` +
+                `BROWSERSTACK_CREDENTIAL_SET: ${bsCredentialSet}  # with: browserstack_credential_set — product team parallel pool (olb3=20, enr=10, outsys=10)\n` +
+                `BROWSERSTACK_USERNAME: ''  # auto-selected by project (not editable in pipeline-manager; override in workflow dispatch if needed)\n` +
+                `BROWSERSTACK_ACCESS_KEY: ''  # auto-selected by project (not editable in pipeline-manager; override in workflow dispatch if needed)\n` +
                 `PW_VIDEO: ${p.pwVideo || '1'}\n` +
                 `PW_HEADLESS: ${p.pwHeadless || 'inherit'}\n` +
                 `JOB_TIMEOUT: ${p.jobTimeout || 120}\n` +
@@ -6246,7 +6782,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                 `- name: and run-name fields matching the pipeline name\n` +
                 `- workflow_dispatch inputs for run_target, local_browser, test_env, grep, parallels, retries, runner_label_linux (dsdl-timab*), custom_runner_label_linux (string), runner_label_windows (QSDW-TFSBA*), custom_runner_label_windows (string), pw_video, pw_headless (choice: inherit, 0, 1), browserstack_username, browserstack_access_key, bs_random_browser, bs_browser_name, bs_browser_version, bs_os_name, and bs_os_version with correct defaults\n` +
                 `- permissions block (contents: read, checks: write, actions: write)\n` +
-                `- jobs.smoke calling ./.github/workflows/_reusable-playwright.yml with secrets: inherit and with: passing the settings above with fallback defaults`;
+                `- jobs.smoke calling ./.github/workflows/_reusable-playwright.yml with secrets: inherit and with: passing the settings above with fallback defaults, including browserstack_credential_set: ${bsCredentialSet} (reusable input only — not a workflow_dispatch input)`;
             if (runnerStrategy === 'group') {
                 prompt += `\n\nRunner targeting (runner group mode):\n` +
                     `- Use runner group: ${runnerGroup}\n` +
@@ -6356,17 +6892,7 @@ ${os.map(n => `- ${n}`).join('\n')}
         if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
         else prompt += `\n\nKeep the schedule block commented out.`;
 
-        if (p.emailEnabled) {
-            const rec = String(p.emailRecipients || '').trim();
-            prompt += `\n\nEMAIL RESULTS (Power Automate): In the caller workflow's \`test-results\` job, mirror the "Set up Node (for email)" and "Email results (Power Automate)" steps from Web_AxosBank_UAT_HealthCheck-Testim.yml. The email step runs \`node tools/build-email-from-junit.mjs\`, uses continue-on-error: true, and is gated on \`always() && (steps.detect.outputs.artifact == 'true' || needs.run.result == 'cancelled')\` (artifact optional for cancel — XML optional otherwise). Env: JUNIT_GLOB_DIR=reports, REPORT_TITLE=${p.name}, REPORT_ENV=${p.env || 'UAT'}, POWER_AUTOMATE_EMAIL_WEBHOOK_URL=\${{ secrets.POWER_AUTOMATE_EMAIL_WEBHOOK_URL }}, GITHUB_SERVER_URL/GITHUB_REPOSITORY/GITHUB_RUN_ID, and RUN_CONCLUSION=\${{ needs.run.result }} (required so cancelled runs email/Teams as CANCELLED instead of a false FAIL or "manual review").`;
-            if (rec) {
-                prompt += ` Recipients OVERRIDE for this pipeline: set TESTIM_EMAIL_RECIPIENTS="${rec}" (a literal string) and gate the two steps on \`always() && (steps.detect.outputs.artifact == 'true' || needs.run.result == 'cancelled')\` only (no vars gate).`;
-            } else {
-                prompt += ` Recipients: use the shared repo variable — set TESTIM_EMAIL_RECIPIENTS=\${{ vars.TESTIM_EMAIL_RECIPIENTS }} and add \`&& vars.TESTIM_EMAIL_RECIPIENTS != ''\` to the two steps' if: condition (default behavior).`;
-            }
-        } else {
-            prompt += `\n\nEMAIL RESULTS: Do NOT email — omit the "Set up Node (for email)" and "Email results (Power Automate)" steps (remove them from the test-results job if present).`;
-        }
+        prompt = appendEmailPromptLines(prompt, p);
 
         prompt += `\n\nUse the existing caller workflow file Web_AxosBank_UAT_HealthCheck-Testim.yml as the exact format reference. Include:\n` +
             `- A header comment showing the folder path (e.g. Web > Axos Bank > UAT > ...)\n` +
@@ -6409,7 +6935,13 @@ ${os.map(n => `- ${n}`).join('\n')}
 
         const prompts = selected
             .sort((a, b) => a.name.localeCompare(b.name))
-            .map(p => buildPromptForPipeline(p));
+            .map(p => buildPromptForPipeline(p, { prev: pipelinePrevSnapshot(p) }))
+            .filter(p => p !== null && p !== undefined);
+
+        if (prompts.length === 0 && !allowCatalogOnly) {
+            showToast('No workflow YAML changes needed for the selected pipeline(s).');
+            return;
+        }
 
         let combined = prompts.join('\n\n---\n\n');
 
@@ -6452,7 +6984,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             }
         } catch { /* ignore */ }
 
-        combined += AUTHOR_STAMP_INSTRUCTION;
+        const anyFullPrompt = prompts.some(p => !isNarrowYamlPromptText(p));
+        if (anyFullPrompt) combined += AUTHOR_STAMP_INSTRUCTION;
 
         if (includeCommitPush) {
             combined += `\n\nAfter making these changes, commit and push your current branch (e.g. \`git push origin HEAD\`).`;
@@ -7345,6 +7878,10 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         // Web Monorepo (Playwright) form
         const webMonoTeamBrand = p.brand || 'Enrollment';
         const webMonoDefaultRunTarget = isOutsystemsBrand(webMonoTeamBrand) ? 'browserstack' : 'local';
+        const webMonoInitialDir = resolveWebMonorepoProjectDirForForm(p);
+        const webMonoBsCtx = { projectDir: webMonoInitialDir, filename: p.filename, bsCredentialSet: p.bsCredentialSet };
+        const webMonoParallelCap = webMonoParallelMax(webMonoBsCtx);
+        const webMonoInitialParallel = parseInt(clampWebMonoParallel(webMonoBsCtx, p.parallel || '3'), 10);
         html += `<div class="section">
             <div class="section-header" onclick="toggleSection(this)">
                 <div class="section-title"><span class="section-icon">&#128193;</span> Location & Category <span class="section-badge" style="background:rgba(59,130,246,0.1);color:#60a5fa;">Required</span></div>
@@ -7403,8 +7940,9 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             <div class="section-content">
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">Project Directory</label>
-                        <input type="text" id="fProjectDir" placeholder="projects/Axos.OutSys.Web/wfo/aml  (or projects/Axos.OutSys.Web/wfo/axos-aml, projects/Axos.OLB_3.0.Web)" value="${escapeHtml(p.projectDir || computeWebMonorepoProjectDir(webMonoTeamBrand, p.feature || 'Login'))}" oninput="this.dataset.userEdited='1'" ${isView ? 'disabled' : ''}>
+                        <label class="form-label">Project Directory <span class="req">*</span></label>
+                        <input type="text" id="fProjectDir" placeholder="projects/Axos.OLB_3.0.Web" value="${escapeHtml(webMonoInitialDir)}" oninput="this.dataset.userEdited='1'; updateWebMonorepoBsInfo(); updateFormStatus();" onchange="updateWebMonorepoBsInfo(); updateFormStatus();" ${isView ? 'disabled' : ''}>
+                        <span class="field-help">Monorepo path — include <code>Axos.OLB_3.0.Web</code>, <code>Axos.Enr.Web</code>, or <code>Axos.OutSys.Web</code> (subpaths like <code>wfo/aml</code> are fine)</span>
                     </div>
                 </div>
                 <div class="form-row-3">
@@ -7445,7 +7983,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Parallels (tests at the same time)</label>
-                        <input type="number" id="fParallel" min="1" max="25" value="${p.parallel || '3'}" ${isView ? 'disabled' : ''}>
+                        <input type="number" id="fParallel" min="1" max="${webMonoParallelCap}" value="${webMonoInitialParallel}" oninput="clampWebMonorepoParallelField(); updateFormStatus();" onchange="clampWebMonorepoParallelField(); updateFormStatus();" ${isView ? 'disabled' : ''}>
+                        <span class="web-mono-parallel-hint" id="webMonoParallelHelp">Available parallels depend on the monorepo project selected.</span>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Retries</label>
@@ -7461,14 +8000,6 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                             <option value="false" ${String(p.tunnel || 'false') === 'false' ? 'selected' : ''}>Disabled</option>
                         </select>
                         <span class="field-help">Used for BrowserStack runs (and safe to leave set for local runs)</span>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">BrowserStack Username</label>
-                        <input type="text" id="fBsUsername" value="${p.bsUsername || ''}" ${isView ? 'disabled' : ''}>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">BrowserStack Access Key</label>
-                        <input type="password" id="fBsAccessKey" value="${p.bsAccessKey || ''}" ${isView ? 'disabled' : ''}>
                     </div>
                 </div>
 
@@ -8061,15 +8592,19 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         if (suffixEl && suffixEl.dataset) delete suffixEl.dataset.userEdited;
         const projectDirEl = document.getElementById('fProjectDir');
         if (projectDirEl && repoName === 'Axos.QE.Web') {
-            const savedDir = String(p.projectDir || '').trim();
-            const team = String(p.brand || 'Enrollment');
-            const feature = String(p.feature || 'Login');
-            const computedDir = computeWebMonorepoProjectDir(team, feature);
-            if (savedDir && savedDir !== computedDir) {
-                projectDirEl.dataset.userEdited = '1';
-            } else {
-                projectDirEl.dataset.autoComputed = '1';
-                projectDirEl.dataset.lastComputed = computedDir;
+            const dirVal = String(projectDirEl.value || '').trim();
+            const brand = String(p.brand || '').trim();
+            const feature = String(p.feature || 'Login').trim();
+            const computedDir = computeWebMonorepoProjectDir(brand, feature);
+            if (dirVal) {
+                if (dirVal === computedDir) {
+                    projectDirEl.dataset.autoComputed = '1';
+                    projectDirEl.dataset.lastComputed = dirVal;
+                } else {
+                    // Preserve synced/custom subpaths (e.g. OutSystems wfo/aml) from auto-overwrite.
+                    projectDirEl.dataset.userEdited = '1';
+                    projectDirEl.dataset.lastComputed = dirVal;
+                }
             }
         }
         const runTargetEl = document.getElementById('fRunTarget');
@@ -8098,6 +8633,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         updateOrchestratorTargetsPreview();
         toggleCryptoRunTargetSections();
         updateNamePreview();
+        if (repoName === 'Axos.QE.Web') updateWebMonorepoBsInfo();
         updateFormStatus();
         toggleRunnerStrategyUI();
         // For Performance, re-apply the JMeter/BlazeMeter visibility AFTER the generic
@@ -8679,6 +9215,42 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         updateNamePreview();
     }
 
+    function getWebMonorepoFormBsCtx() {
+        const projectDir = String(document.getElementById('fProjectDir')?.value || '').trim();
+        const ctx = { projectDir };
+        const previewEl = document.getElementById('namePreview');
+        const previewRaw = String(previewEl?.textContent || '').trim();
+        if (previewRaw && !previewEl?.querySelector('.dim') && !/select all required/i.test(previewRaw)) {
+            const base = previewRaw.split('\n')[0].trim();
+            if (base) ctx.filename = base.endsWith('.yml') ? base : `${base}.yml`;
+        } else if (editingPipeline) {
+            const ep = findPipeline(editingPipeline);
+            if (ep?.filename) ctx.filename = ep.filename;
+        }
+        return ctx;
+    }
+
+    function updateWebMonorepoBsInfo() {
+        if (String(document.getElementById('fRepo')?.value || '').trim() !== 'Axos.QE.Web') return;
+        const projectDir = String(document.getElementById('fProjectDir')?.value || '').trim();
+        const ctx = getWebMonorepoFormBsCtx();
+        const maxPar = webMonoParallelMax(ctx);
+        const label = webMonoProjectLabelFromDir(projectDir);
+        const fnTeam = getWebMonorepoTeamFromFilename(ctx.filename);
+        const parHelp = document.getElementById('webMonoParallelHelp');
+        if (parHelp) {
+            let hint = label
+                ? `Available parallels depend on the monorepo project selected (${label}: up to ${maxPar}).`
+                : 'Available parallels depend on the monorepo project selected (OLB 3.0: 20, Enrollment: 10, OutSystems: 10).';
+            const mismatch = getWebMonorepoProjectDirTeamMismatch();
+            if (mismatch) {
+                hint += ` ${mismatch} — update Project Directory or Team.`;
+            }
+            parHelp.textContent = hint;
+        }
+        clampWebMonorepoParallelField();
+    }
+
     function toggleCryptoRunTargetSections() {
         const repo = String(document.getElementById('fRepo')?.value || '').trim();
         // Only toggle sections for the Axos.QE.Web monorepo Playwright form.
@@ -8940,19 +9512,6 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             const isOrch = feature === 'Orchestrators';
             const effSuffix = isOrch ? String(suffix || '').trim() : suffix;
 
-            const projectDirEl = document.getElementById('fProjectDir');
-            if (!isOrch && projectDirEl && !projectDirEl.dataset.userEdited) {
-                const computedDir = computeWebMonorepoProjectDir(brand, feature);
-                const current = String(projectDirEl.value || '').trim();
-                const last = String(projectDirEl.dataset.lastComputed || '').trim();
-                const shouldUpdate = !current || projectDirEl.dataset.autoComputed === '1' || (!!last && current === last);
-                if (shouldUpdate) {
-                    projectDirEl.value = computedDir;
-                    projectDirEl.dataset.autoComputed = '1';
-                    projectDirEl.dataset.lastComputed = computedDir;
-                }
-            }
-
             const runTargetEl = document.getElementById('fRunTarget');
             if (!isOrch && runTargetEl && !runTargetEl.dataset.userEdited) {
                 const computedRt = isOutsystemsBrand(brand) ? 'browserstack' : 'local';
@@ -8996,6 +9555,19 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 grepInput.value = `@${teamShort}_${tKey}_${fKey}`;
             }
 
+            const projectDirEl = document.getElementById('fProjectDir');
+            if (!isOrch && projectDirEl && !projectDirEl.dataset.userEdited) {
+                const computedDir = computeWebMonorepoProjectDir(brand, feature);
+                const current = String(projectDirEl.value || '').trim();
+                const last = String(projectDirEl.dataset.lastComputed || '').trim();
+                const shouldUpdate = !current || projectDirEl.dataset.autoComputed === '1' || (!!last && current === last);
+                if (shouldUpdate && computedDir && current !== computedDir) {
+                    projectDirEl.value = computedDir;
+                    projectDirEl.dataset.autoComputed = '1';
+                    projectDirEl.dataset.lastComputed = computedDir;
+                }
+            }
+
             const previewEl = document.getElementById('namePreview');
             const duplicate = !viewOnlyMode && pipelines.some(p => pipeNamesEqual(p.name, name) && normRepoForPipeline(p) === 'Axos.QE.Web' && pipelineKey(p) !== editingPipeline);
             if (duplicate) {
@@ -9005,6 +9577,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 previewEl.textContent = name;
                 previewEl.style.borderColor = '';
             }
+            updateWebMonorepoBsInfo();
             updateFormStatus();
             return;
         }
@@ -9284,6 +9857,20 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 if (!val('fOrchTargetRefs')) missing.push('Orchestrator Targets');
             } else {
                 need('fFeature', 'Feature');
+                if (repo === 'Axos.QE.Web') {
+                    if (!val('fProjectDir')) missing.push('Project Directory');
+                    else if (!isValidWebMonorepoProjectDir(val('fProjectDir'))) {
+                        missing.push('Project Directory (must include OLB 3.0, Enrollment, or OutSystems path)');
+                    } else if (!isWebMonorepoParallelValid()) {
+                        const ctx = getWebMonorepoFormBsCtx();
+                        const label = resolveWebMonorepoBsTeam(ctx) || webMonoProjectLabelFromDir(val('fProjectDir'));
+                        const maxPar = webMonoParallelMax(ctx);
+                        missing.push(`Parallels (max ${maxPar}${label ? ` for ${label}` : ''})`);
+                    } else {
+                        const mismatch = getWebMonorepoProjectDirTeamMismatch();
+                        if (mismatch) missing.push(mismatch);
+                    }
+                }
             }
             return missing;
         }
@@ -9354,9 +9941,12 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                         el('fBrand')?.value && el('fEnv')?.value && el('fTestType')?.value &&
                         team && (el('fOrchTargetRefs')?.value || '').trim();
                 } else {
+                    const projectDir = (el('fProjectDir')?.value || '').trim();
+                    const needsProjectDir = repo === 'Axos.QE.Web';
                     fieldsOk =
                         el('fBrand')?.value && el('fEnv')?.value &&
-                        el('fFeature')?.value && el('fTestType')?.value;
+                        el('fFeature')?.value && el('fTestType')?.value &&
+                        (!needsProjectDir || (projectDir && isValidWebMonorepoProjectDir(projectDir) && isWebMonorepoParallelValid() && !getWebMonorepoProjectDirTeamMismatch()));
                 }
                 return fieldsOk && !isNameDuplicate() && !isOrchSetNameDuplicate();
             }
@@ -9607,7 +10197,6 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 base.grep = v('fGrep');
                 base.suite = v('fSuite');
                 base.spec = v('fSpec');
-                base.parallel = v('fParallel') || '3';
                 base.retries = v('fRetries') || '1';
                 base.tunnel = v('fTunnel') || 'false';
                 base.bsRandomBrowser = v('fBsRandomBrowser') || 'true';
@@ -9617,14 +10206,19 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 base.bsOsVersion = v('fBsOsVersion');
                 base.pwVideo = v('fPwVideo') || '1';
                 base.pwHeadless = v('fPwHeadless') || 'inherit';
-                base.bsUsername = v('fBsUsername');
-                base.bsAccessKey = v('fBsAccessKey');
+                base.bsUsername = '';
+                base.bsAccessKey = '';
                 {
-                    const rawDir = (v('fProjectDir') || '').trim();
-                    const computedDir = computeWebMonorepoProjectDir(base.brand, base.feature);
-                    // Persist projectDir only when it's a true override.
-                    // If the user leaves it at the computed default, store empty so future mapping updates apply.
-                    base.projectDir = (rawDir && rawDir !== computedDir) ? rawDir : '';
+                    base.projectDir = (v('fProjectDir') || '').trim();
+                }
+                {
+                    const bsCtx = { projectDir: base.projectDir, filename: base.filename };
+                    if (!resolveWebMonorepoBsTeam(bsCtx)) {
+                        showToast(getWebMonorepoProjectDirTeamMismatch() || 'Project Directory does not match workflow team');
+                        return;
+                    }
+                    base.parallel = clampWebMonoParallel(bsCtx, v('fParallel') || '3');
+                    base.bsCredentialSet = getWebMonorepoCredentialSet(bsCtx);
                 }
                 base.runnerLabelLinux = v('fRunnerLabelLinux') || 'dsdl-timab28';
                 base.customRunnerLabelLinux = v('fCustomRunnerLabelLinux') || '';
@@ -9902,6 +10496,12 @@ ${targets}
 
 Each target element supports: enabled, name, owner, repo, workflow, ref, inputs.`;
 
+            if (scheduleEnabled && scheduleCron) {
+                prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron}`;
+            } else {
+                prompt += `\n\nKeep the schedule block commented out.`;
+            }
+
         } else if (el('fRepo') === 'Axos.QE.API_OLB' || el('fRepo') === 'Axos.QE.API_CS' || el('fRepo') === 'Axos.QE.API_UDB' || el('fRepo') === 'Axos.QE.API_WFO') {
             const apiRepo = el('fRepo') || 'Axos.QE.API_OLB';
             prompt = `Create or update a Newman pipeline workflow file in the repo ${apiRepo} at:
@@ -9965,26 +10565,31 @@ JOB_TIMEOUT: ${el('fJobTimeout') || '120'}`;
             const feature = el('fFeature') || '';
             const projectDirRaw = String(el('fProjectDir') || '').trim();
             const projectDir = projectDirRaw || computeWebMonorepoProjectDir(brand, feature);
+            const webPromptCtx = { brand, projectDir, filename: name + '.yml' };
+            const promptTeam = getWebMonorepoTeamFromFilename(name + '.yml') || brand;
+            const bsCredentialSet = getWebMonorepoCredentialSet(webPromptCtx);
+            const parallelsForPrompt = clampWebMonoParallel(webPromptCtx, el('fParallel') || '3');
             prompt = `Create or update a Playwright pipeline workflow file in the Axos.QE.Web monorepo at:
 .github/workflows/${name}.yml
 
 This repo is a monorepo using npm workspaces. It uses a reusable workflow (_reusable-playwright.yml) called by thin project-specific caller workflows.
 
-Team: ${brand}
+Team: ${promptTeam}
 PROJECT_DIR: ${projectDir}
 RUN_TARGET: ${el('fRunTarget') || 'local'}
 LOCAL_BROWSER: ${el('fLocalBrowser') || 'chromium'}
 TEST_ENV: ${el('fEnv') || 'UAT'}
 GREP: ${el('fGrep') || ''}
-PARALLELS: ${el('fParallel') || '3'}
+PARALLELS: ${parallelsForPrompt}
 RETRIES: ${el('fRetries') || '1'}
 BS_RANDOM_BROWSER: ${el('fBsRandomBrowser') || 'true'}
 BS_BROWSER_NAME: ${el('fBsBrowserName') || ''}
 BS_BROWSER_VERSION: ${el('fBsBrowserVersion') || ''}
 BS_OS_NAME: ${el('fBsOsName') || ''}
 BS_OS_VERSION: ${el('fBsOsVersion') || ''}
-BROWSERSTACK_USERNAME: ''  # leave blank to use repo secret BROWSERSTACK_USERNAME
-BROWSERSTACK_ACCESS_KEY: ''  # leave blank to use repo secret BROWSERSTACK_ACCESS_KEY
+BROWSERSTACK_CREDENTIAL_SET: ${bsCredentialSet}  # with: browserstack_credential_set — product team parallel pool (olb3=20, enr=10, outsys=10)
+BROWSERSTACK_USERNAME: ''  # auto-selected by project (not editable in pipeline-manager; override in workflow dispatch if needed)
+BROWSERSTACK_ACCESS_KEY: ''  # auto-selected by project (not editable in pipeline-manager; override in workflow dispatch if needed)
 PW_VIDEO: ${el('fPwVideo') || '1'}
 PW_HEADLESS: ${el('fPwHeadless') || 'inherit'}
 JOB_TIMEOUT: ${el('fJobTimeout') || '120'}
@@ -10001,7 +10606,7 @@ ${runnerStrategy === 'group'
                 `- name: and run-name fields matching the pipeline name\n` +
                 `- workflow_dispatch inputs for run_target, local_browser, test_env, grep, parallels, retries, runner_label_linux (dsdl-timab*), custom_runner_label_linux (string), runner_label_windows (QSDW-TFSBA*), custom_runner_label_windows (string), pw_video, pw_headless (choice: inherit, 0, 1), browserstack_username, browserstack_access_key, bs_random_browser, bs_browser_name, bs_browser_version, bs_os_name, and bs_os_version with correct defaults\n` +
                 `- permissions block (contents: read, checks: write, actions: write)\n` +
-                `- jobs.smoke calling ./.github/workflows/_reusable-playwright.yml with secrets: inherit and with: passing the settings above with fallback defaults`;
+                `- jobs.smoke calling ./.github/workflows/_reusable-playwright.yml with secrets: inherit and with: passing the settings above with fallback defaults, including browserstack_credential_set: ${bsCredentialSet} (reusable input only — not a workflow_dispatch input)`;
             if (runnerStrategy === 'group') {
                 prompt += `\n\nRunner targeting (runner group mode):\n` +
                     `- Use runner group: ${runnerGroup}\n` +
@@ -10600,12 +11205,12 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             }
 
             if (inWith) {
-                const mWith = line.match(/^\s*([A-Z0-9_]+)\s*:\s*(.+)\s*$/);
+                const mWith = line.match(/^\s*([A-Za-z0-9_]+)\s*:\s*(.+)\s*$/);
                 if (mWith) {
                     let val = stripYamlScalarQuotes(mWith[2]);
                     const exprMatch = val.match(/\$\{\{\s*inputs\.(\w+)\s*\|\|\s*(.+?)\s*\}\}/);
                     if (exprMatch) val = stripYamlScalarQuotes(exprMatch[2]);
-                    if (val && !val.startsWith('${{')) withValues[mWith[1]] = val;
+                    if (val && !val.startsWith('${{')) withValues[mWith[1].toUpperCase()] = val;
                 }
             }
         }
@@ -10677,6 +11282,10 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         for (const [k, outKey] of Object.entries(mobileMap)) {
             if (merged[k]) entry[outKey] = merged[k];
         }
+
+        if (merged.BROWSERSTACK_CREDENTIAL_SET) entry.bsCredentialSet = String(merged.BROWSERSTACK_CREDENTIAL_SET).trim().toLowerCase();
+        const projectDirFromYaml = merged.PROJECT_DIR || merged.project_dir;
+        if (projectDirFromYaml) entry.projectDir = String(projectDirFromYaml).trim();
 
         entry.appId = merged.IOS_APP || merged.ANDROID_APP || '';
         entry.deviceName = merged.IOS_DEVICE_NAME || merged.ANDROID_DEVICE_NAME || '';
@@ -11033,8 +11642,18 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             return;
         }
 
+        let dirtyBeforeSync = new Set();
         if (Array.isArray(jsonData)) {
-            const repoKeys = new Set(jsonData.map(j => pipelineKeyFrom(j.repo, j.filename)));
+            try {
+                dirtyBeforeSync = new Set(
+                    getChanges()
+                        .filter(c => c?.pipeline)
+                        .map(c => pipelineKey(c.pipeline))
+                        .filter(Boolean)
+                );
+            } catch { dirtyBeforeSync = new Set(); }
+
+            const repoKeys = new Set(jsonData.map(syncEntryPipelineKey).filter(Boolean));
 
             if (replaceMode) {
                 // Replace mode: make the local list match the sync payload (destructive by design).
@@ -11046,11 +11665,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                     }
                 }
             } else {
-                const incomingRepos = new Set(
-                    jsonData
-                        .map(j => String(j?.repo || '').trim())
-                        .filter(Boolean)
-                );
+                const incomingRepos = new Set(jsonData.map(syncEntryRepo).filter(Boolean));
                 // Merge mode: only prune pipelines for repos that were actually synced.
                 const shouldPrune = (p) => {
                     const r = normRepoForPipeline(p);
@@ -11112,6 +11727,8 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 if (entry.deviceOS !== undefined) parsed.deviceOS = entry.deviceOS;
                 if (entry.bsUsername !== undefined) parsed.bsUsername = entry.bsUsername;
                 if (entry.bsAccessKey !== undefined) parsed.bsAccessKey = entry.bsAccessKey;
+                if (entry.bsCredentialSet !== undefined) parsed.bsCredentialSet = entry.bsCredentialSet;
+                if (entry.projectDir !== undefined) parsed.projectDir = entry.projectDir;
                 // API (Newman) fields
                 if (entry.collectionId !== undefined) parsed.collectionId = entry.collectionId;
                 if (entry.environmentId !== undefined) parsed.environmentId = entry.environmentId;
@@ -11154,7 +11771,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                     else parsed.envSpecific = true;
                 }
 
-                const k = pipelineKeyFrom(parsed.repo || entry.repo, entry.filename);
+                const k = pipelineKey(parsed);
                 const idx = pipelines.findIndex(p => pipelineKey(p) === k);
                 if (idx >= 0) { pipelines[idx] = parsed; updated++; }
                 else { pipelines.push(parsed); added++; }
@@ -11196,6 +11813,10 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         if (updated > 0) parts.push(`${updated} updated`);
         if (removed > 0) parts.push(`${removed} removed`);
         if (parts.length === 0) parts.push('already up to date');
+        if (Array.isArray(jsonData)) {
+            applyYamlBaselineFromSync(jsonData, replaceMode, dirtyBeforeSync);
+            persistPipelinesAfterSync(jsonData, replaceMode, dirtyBeforeSync);
+        }
         const statusEl = document.getElementById('syncStatus');
         const statusText = document.getElementById('syncStatusText');
         if (statusEl && statusText) {
@@ -11278,9 +11899,11 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     function clearCache() {
         if (!confirm('Clear all cached pipeline data? You will need to re-sync after this.')) return;
         localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(YAML_BASELINE_KEY);
         localStorage.removeItem(TREE_STATE_KEY);
         pipelines.length = 0;
         savedSnapshot = [];
+        yamlBaselineSnapshot = [];
         treeOpenState = {};
         selectedPipelines.clear();
         emailSelectedPipelines.clear();
@@ -12124,6 +12747,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             range,
             repoFilter: globalRepoFilter,
             repoFilterLabel: repoFilterLabel(globalRepoFilter),
+            repos: repoFilterList(globalRepoFilter) || [],
             pipelineCount: meta?.pipelineCount ?? (resultsPipelines?.length || 0),
             runCount: meta?.runCount ?? (allRuns || []).length
         };
@@ -12131,7 +12755,15 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 
     function normalizeResultsFetchFilters(source) {
         if (!source) return null;
-        if (source.filters && typeof source.filters === 'object') return source.filters;
+        if (source.filters && typeof source.filters === 'object') {
+            const f = { ...source.filters };
+            if (!Array.isArray(f.repos) && Array.isArray(source.repos)) f.repos = source.repos;
+            if (!Array.isArray(f.repos) && f.repoFilter) {
+                const rf = String(f.repoFilter).trim();
+                f.repos = (rf && rf !== 'all' && rf !== '__multi__') ? (repoFilterList(rf) || []) : [];
+            }
+            return f;
+        }
         const mode = String(source.mode || 'count').toLowerCase();
         const perPage = source.perPage || 7;
         const range = source.range || null;
@@ -12145,6 +12777,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             range,
             repoFilter: repos.length === 1 ? repos[0] : (repos.length ? '__multi__' : 'all'),
             repoFilterLabel,
+            repos,
             pipelineCount: null,
             runCount: source.runs?.length ?? source.runCount ?? null
         };
@@ -12360,16 +12993,40 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 
     function resolveRepoFilterFromFetchFilters(filters) {
         if (!filters) return 'all';
-        const rf = filters.repoFilter;
-        if (rf && rf !== '__multi__' && rf !== 'all') return String(rf);
+        const rf = String(filters.repoFilter ?? '').trim();
+        if (rf && rf !== '__multi__' && rf !== 'all') return rf;
+        const repos = Array.isArray(filters.repos) ? filters.repos.map(r => String(r || '').trim()).filter(Boolean) : [];
+        if (repos.length === 1) return repos[0];
+        if (repos.length > 1) return repos.join('|');
         const label = String(filters.repoFilterLabel || '').trim();
-        if (label && label !== 'All Repos' && !/\brepos\b/i.test(label) && !label.includes(',')) return label;
+        if ((rf === '__multi__' || /\brepos\b/i.test(label)) && allRuns && allRuns.length) {
+            const fromRuns = [...new Set(allRuns.map(r => String(r?.repo || '').trim()).filter(Boolean))];
+            if (fromRuns.length === 1) return fromRuns[0];
+            if (fromRuns.length > 1) return fromRuns.join('|');
+        }
+        if (label && label !== 'All Repos' && !/\brepos\b/i.test(label)) {
+            if (label.includes(',')) {
+                const parsed = label.split(',').map(s => s.trim()).filter(Boolean);
+                if (parsed.length === 1) return parsed[0];
+                if (parsed.length > 1) return parsed.join('|');
+            } else {
+                return label;
+            }
+        }
         return 'all';
     }
 
     function applyCachedRepoFilterFromLastFetch() {
         const target = resolveRepoFilterFromFetchFilters(resultsLastFetchFilters);
-        setGlobalRepoFilter(target, { persist: false, skipEmail: true });
+        resultsPipelines = getResultsPipelineConfigs(target);
+        try { populateResultsRepoFilter(); } catch { /* ignore */ }
+        try { repoMsSetValue('resultsRepoFilter', target, { silent: true }); } catch { /* ignore */ }
+        resultsSelectedPipelines.clear();
+        resultsActiveOutcome = null; resultsActiveDay = null;
+        resultsTopPipelinesShowAll = false;
+        clearResultsDashboardSelect();
+        try { renderResultsTree(); } catch { /* ignore */ }
+        try { filterResults(); } catch { /* ignore */ }
     }
 
     function restoreResultsCache() {
@@ -12396,7 +13053,9 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             if (payload.range?.dateStart) saveResultsDateStartPref(payload.range.dateStart);
             if (payload.range?.dateEnd) saveResultsDateEndPref(payload.range.dateEnd);
             resultsLastFetchFilters = normalizeResultsFetchFilters(payload);
-            resultsPipelines = getResultsPipelineConfigs();
+            if (Array.isArray(payload.repos) && payload.repos.length && resultsLastFetchFilters) {
+                resultsLastFetchFilters.repos = payload.repos;
+            }
             missingWorkflows = [];
             markDashboardsDirty();
             return true;
@@ -12720,7 +13379,8 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         return 'Axos.QE.TestIM';
     }
 
-    function getResultsPipelineConfigs() {
+    function getResultsPipelineConfigs(repoFilterOverride) {
+        const rf = repoFilterOverride !== undefined ? repoFilterOverride : globalRepoFilter;
         const out = [];
         const seen = new Set();
         for (const p of (pipelines || [])) {
@@ -12729,7 +13389,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             if (!filename.endsWith('.yml')) continue;
             if (filename.startsWith('_')) continue;
             const repo = getPipelineRepo(p);
-            if (!repoFilterMatches(globalRepoFilter, repo)) continue;
+            if (!repoFilterMatches(rf, repo)) continue;
             const key = `${repo}::${filename}`;
             if (seen.has(key)) continue;
             seen.add(key);
@@ -18508,6 +19168,7 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
             // Sync merge: make sure repeatEvery from WEEK_MODULO is not dropped.
             pipelines = [];
             savedSnapshot = [];
+            yamlBaselineSnapshot = [];
             syncFileContent = JSON.stringify([{
                 filename: 'Web_Outsystems_UAT_EWM_Creation_Regression-Testim.yml',
                 repo: 'Axos.QE.TestIM',
@@ -18717,6 +19378,11 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
     const hadResultsCache = restoreResultsCache();
     if (hadResultsCache) {
         try { applyCachedRepoFilterFromLastFetch(); } catch { /* ignore */ }
+        if (!resultsPipelines?.length && resultsLastFetchFilters) {
+            try {
+                resultsPipelines = getResultsPipelineConfigs(resolveRepoFilterFromFetchFilters(resultsLastFetchFilters));
+            } catch { /* ignore */ }
+        }
     }
     initResultsRunCountPref();
     initResultsFetchControls();
