@@ -1306,6 +1306,7 @@
         .health-seg.fail { background:linear-gradient(90deg, #ef4444, #f87171); }
         .health-seg.other { background:linear-gradient(90deg, #6b7280, #9ca3af); }
         .health-seg.skip { background:linear-gradient(90deg, #3b82f6, #60a5fa); }
+        .health-seg.notests { background:linear-gradient(90deg, #94a3b8, #64748b); }
         .health-pct { font-size:11px; font-weight:700; color:var(--text-primary); min-width:44px; text-align:right; }
 
         .results-controls { display:flex; gap:10px; align-items:center; margin-bottom:18px; flex-wrap:wrap; }
@@ -1431,6 +1432,7 @@
         .run-table a:hover { text-decoration:underline; color:#60a5fa; }
 
         .badge-pass { background:linear-gradient(135deg, rgba(16,185,129,0.15), rgba(52,211,153,0.1)); color:#34d399; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:700; border:1px solid rgba(16,185,129,0.2); }
+        .badge-notests { background:linear-gradient(135deg, rgba(148,163,184,0.15), rgba(100,116,139,0.1)); color:#94a3b8; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:700; border:1px solid rgba(148,163,184,0.25); }
         .badge-fail { background:linear-gradient(135deg, rgba(239,68,68,0.15), rgba(248,113,113,0.1)); color:#f87171; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:700; border:1px solid rgba(239,68,68,0.2); }
         .badge-cancel { background:rgba(107,114,128,0.12); color:#9ca3af; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:700; border:1px solid rgba(107,114,128,0.15); }
         .badge-running { background:linear-gradient(135deg, rgba(245,158,11,0.15), rgba(251,191,36,0.1)); color:#fbbf24; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:700; border:1px solid rgba(245,158,11,0.2); animation:glowPulse 2s infinite; }
@@ -1833,11 +1835,12 @@
         <div class="sidebar" id="resultsSidebar" style="padding-top:18px;">
             <div style="padding:0 16px 14px; border-bottom:1px solid rgba(255,255,255,0.06);">
                 <div style="font-size:13px; font-weight:700; color:var(--text-primary); margin-bottom:10px; display:flex; align-items:center; gap:6px;"><span style="font-size:16px;">&#128270;</span> Filter Pipelines</div>
-                <input type="text" id="resultsSearch" placeholder="Search by name..." oninput="filterResults()" style="width:100%; padding:9px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); color:var(--text-primary); font-size:12px; margin-bottom:8px; transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--axos-orange)'" onblur="this.style.borderColor='rgba(255,255,255,0.08)'">
-                <select id="resultsStatusFilter" onchange="filterResults()" style="width:100%; padding:9px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); color:var(--text-primary); font-size:12px;">
+                <input type="text" id="resultsSearch" placeholder="Search by name..." oninput="onResultsSearchOrStatusFilterChange()" style="width:100%; padding:9px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); color:var(--text-primary); font-size:12px; margin-bottom:8px; transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--axos-orange)'" onblur="this.style.borderColor='rgba(255,255,255,0.08)'">
+                <select id="resultsStatusFilter" onchange="onResultsStatusFilterChange()" style="width:100%; padding:9px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); color:var(--text-primary); font-size:12px;">
                     <option value="all">All Statuses</option>
                     <option value="success">Passed Only</option>
                     <option value="failure">Failed Only</option>
+                    <option value="no_tests">No Tests Only</option>
                     <option value="cancelled">Cancelled Only</option>
                     <option value="skipped">Skipped Only</option>
                 </select>
@@ -2546,6 +2549,13 @@
     //  RUNNERS (label vs runner group)
     // ══════════════════════════════════════════
     const DEFAULT_RUNNER_GROUP = 'axos-qe-gh-runners';
+    const PERF_JMETER_RUNNERS = ['LOADRUN03'];
+    const DEFAULT_PERF_JMETER_RUNNER = 'LOADRUN03';
+
+    function coercePerfJmeterRunnerLabel(label) {
+        const raw = String(label || '').trim() || DEFAULT_PERF_JMETER_RUNNER;
+        return PERF_JMETER_RUNNERS.includes(raw) ? raw : DEFAULT_PERF_JMETER_RUNNER;
+    }
 
     function normalizeRunnerStrategy(v) {
         const s = String(v || '').trim().toLowerCase();
@@ -4400,10 +4410,74 @@ ${os.map(n => `- ${n}`).join('\n')}
         }
 
         // If Dashboards is visible, re-render immediately (fixes "Continue" doing nothing).
+        try { syncDashSelectedRepoWithScope(); } catch { /* ignore */ }
         try {
             const dashPanel = document.getElementById('panelDashboards');
             if (dashPanel && dashPanel.classList.contains('active')) renderDashboards();
         } catch { /* ignore */ }
+    }
+
+    function syncDashSelectedRepoWithScope() {
+        const known = new Set((loadSyncRepos?.() || []).map(r => String(r?.repo || '').trim()).filter(Boolean));
+        // Only consider filter entries that are still synced (removed repos must not stick).
+        const list = (repoFilterList(globalRepoFilter) || []).filter(r => known.has(r));
+        const pickOne = () => (list.length === 1 ? list[0] : null);
+        if (dashSelectedRepo && !known.has(dashSelectedRepo)) {
+            dashSelectedRepo = pickOne();
+            return;
+        }
+        if (dashSelectedRepo && list.length && !list.includes(dashSelectedRepo)) {
+            dashSelectedRepo = pickOne();
+            return;
+        }
+        if (!dashSelectedRepo && list.length === 1) {
+            dashSelectedRepo = list[0];
+        }
+    }
+
+    function refreshUiAfterSyncRepoChange() {
+        try {
+            // Re-normalize global filter against synced repos without clearing Results selection.
+            setGlobalRepoFilter(globalRepoFilter, { persist: true, skipResults: true });
+        } catch { /* ignore */ }
+        if (allRuns && allRuns.length) {
+            try {
+                populateResultsRepoFilter();
+                repoMsSetValue('resultsRepoFilter', globalRepoFilter, { silent: true });
+                pruneResultsSelectionToVisible();
+                renderResultsTree();
+                filterResults();
+                enrichVisibleResultsRuns().catch(() => {});
+            } catch { /* ignore */ }
+        }
+        try { renderDashboardsIfNeeded(); } catch { /* ignore */ }
+    }
+
+    function pruneDashboardsForRepos(repoNames) {
+        const drop = new Set((repoNames || []).map(r => String(r || '').trim()).filter(Boolean));
+        if (!drop.size) return 0;
+        let removedCount = 0;
+        let changed = false;
+        const next = (dashboardsState?.dashboards || []).filter(d => {
+            const keep = !drop.has(String(d?.repo || '').trim());
+            if (!keep) { changed = true; removedCount += 1; }
+            return keep;
+        });
+        if (changed) {
+            dashboardsState.dashboards = next;
+            saveDashboardsState();
+        }
+        const snapNext = (savedDashboardsSnapshot || []).filter(d => !drop.has(String(d?.repo || '').trim()));
+        if (snapNext.length !== (savedDashboardsSnapshot || []).length) {
+            savedDashboardsSnapshot = snapNext;
+            saveDashboardsSnapshot();
+        }
+        for (const r of drop) {
+            try { localStorage.removeItem(DASH_SELECTED_KEY_PREFIX + r); } catch { /* ignore */ }
+        }
+        markDashboardsDirty();
+        try { renderDashboardsIfNeeded(); } catch { /* ignore */ }
+        return removedCount;
     }
 
     function onGlobalRepoFilterChange() {
@@ -6221,6 +6295,19 @@ ${os.map(n => `- ${n}`).join('\n')}
         return `https://github.com/${owner}/${repo}/actions?query=${encodeURIComponent(q)}`;
     }
 
+    function ghWorkflowLinkHtml(workflowName, repoName, className) {
+        const name = String(workflowName || '').trim();
+        const repo = String(repoName || '').trim();
+        if (!name || !repo) return '';
+        const cls = String(className || 'card-btn').trim() || 'card-btn';
+        const url = getGhWorkflowUrl(name, repo);
+        return `<a class="${cls}" href="${escapeHtml(url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Open workflow in GitHub">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:middle; display:block;">
+                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+            </svg>
+        </a>`;
+    }
+
     function showDeleteConfirm() {
         if (selectedPipelines.size === 0) return;
         const list = Array.from(selectedPipelines).map(k => {
@@ -6717,7 +6804,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                     `DURATION: ${p.jmxDuration || ''}\n` +
                     `GRANULARITY: ${p.jmxGranularity || '1000'}\n` +
                     `JOB_TIMEOUT: ${p.jobTimeout || 120}\n` +
-                    `RUNNER_LABEL: ${p.runnerLabel || 'AUTO'}\nCUSTOM_RUNNER_LABEL: ${p.customRunnerLabel || ''}\n\n` +
+                    `RUNNER_LABEL: ${coercePerfJmeterRunnerLabel(p.runnerLabel)}\nCUSTOM_RUNNER_LABEL: ${p.customRunnerLabel || ''}\n\n` +
                     `No repo secrets are required. It runs on a self-hosted Windows runner via runner group ${runnerGroup} (labels [self-hosted, windows, x64]); JMeter is expected at C:\\JMeter\\apache-jmeter-5.6.3 with a self-heal install fallback. Use the existing caller workflow Perf_OLB_UAT_Regression-JMeter.yml as the exact format reference.`;
             }
             // Spell out the feature/suffix split so the breadcrumb <Feature> segment is
@@ -6767,6 +6854,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                 `BS_BROWSER_VERSION: ${p.bsBrowserVersion || ''}\n` +
                 `BS_OS_NAME: ${p.bsOsName || ''}\n` +
                 `BS_OS_VERSION: ${p.bsOsVersion || ''}\n` +
+                `USE_BS_LOCAL_TUNNEL: ${p.tunnel || 'false'}\n` +
                 `BROWSERSTACK_CREDENTIAL_SET: ${bsCredentialSet}  # with: browserstack_credential_set — product team parallel pool (olb3=15, enr=5, outsys=5)\n` +
                 `BROWSERSTACK_USERNAME: ''  # auto-selected by project (not editable in pipeline-manager; override in workflow dispatch if needed)\n` +
                 `BROWSERSTACK_ACCESS_KEY: ''  # auto-selected by project (not editable in pipeline-manager; override in workflow dispatch if needed)\n` +
@@ -6780,9 +6868,9 @@ ${os.map(n => `- ${n}`).join('\n')}
             else prompt += `\n\nKeep the schedule block commented out.`;
             prompt += `\n\nUse the existing workflow file Web_Enrollment_UAT-OLB_Smoke-Playwright.yml as the exact format reference. Include:\n` +
                 `- name: and run-name fields matching the pipeline name\n` +
-                `- workflow_dispatch inputs for run_target, local_browser, test_env, grep, parallels, retries, runner_label_linux (dsdl-timab*), custom_runner_label_linux (string), runner_label_windows (QSDW-TFSBA*), custom_runner_label_windows (string), pw_video, pw_headless (choice: inherit, 0, 1), browserstack_username, browserstack_access_key, bs_random_browser, bs_browser_name, bs_browser_version, bs_os_name, and bs_os_version with correct defaults\n` +
+                `- workflow_dispatch inputs for run_target, local_browser, test_env, grep, parallels, retries, runner_label_linux (dsdl-timab*), custom_runner_label_linux (string), runner_label_windows (QSDW-TFSBA*), custom_runner_label_windows (string), pw_video, pw_headless (choice: inherit, 0, 1), browserstack_username, browserstack_access_key, bs_random_browser, bs_browser_name, bs_browser_version, bs_os_name, bs_os_version, and use_bs_local_tunnel (choice: false, true; default from USE_BS_LOCAL_TUNNEL) with correct defaults\n` +
                 `- permissions block (contents: read, checks: write, actions: write)\n` +
-                `- jobs.smoke calling ./.github/workflows/_reusable-playwright.yml with secrets: inherit and with: passing the settings above with fallback defaults, including browserstack_credential_set: ${bsCredentialSet} (reusable input only — not a workflow_dispatch input)`;
+                `- jobs.smoke calling ./.github/workflows/_reusable-playwright.yml with secrets: inherit and with: passing the settings above with fallback defaults, including use_bs_local_tunnel and browserstack_credential_set: ${bsCredentialSet} (reusable input only — not a workflow_dispatch input)`;
             if (runnerStrategy === 'group') {
                 prompt += `\n\nRunner targeting (runner group mode):\n` +
                     `- Use runner group: ${runnerGroup}\n` +
@@ -7847,24 +7935,25 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             // ── Runner ── (Pipeline Timeout is rendered by the shared Execution Settings
             // section below; do NOT add another fJobTimeout here — a duplicate id would
             // shadow it and break getElementById/save.)
+            const perfJmeterRunnerSelected = coercePerfJmeterRunnerLabel(p.runnerLabel);
             html += `<div class="section">
                 <div class="section-header" onclick="toggleSection(this)">
                     <div class="section-title"><span class="section-icon">&#128421;</span> Runner</div>
                     <div class="section-toggle">&#9660;</div>
                 </div>
                 <div class="section-content">
-                    <!-- JMeter: consolidated single Runner Label dropdown (AUTO = group), same as the other repos. -->
+                    <!-- JMeter: Performance load runner (LOADRUN03 / axos-gh-qe-runner-SDDEV-LOADRUN03). -->
                     <div id="perfJmeterRunner" style="display:${perfBrand === 'JMeter' ? 'block' : 'none'};">
                         <div class="form-group">
                             <label class="form-label">Runner Label</label>
                             <select id="fRunnerLabel" ${isView ? 'disabled' : ''}>
-                                ${['AUTO','QSDW-TFSBA01','QSDW-TFSBA02','QSDW-TFSBA03','QSDW-TFSBA04'].map(r => `<option value="${r}" ${(p.runnerLabel || 'AUTO') === r ? 'selected' : ''}>${r}</option>`).join('')}
+                                ${PERF_JMETER_RUNNERS.map(r => `<option value="${r}" ${perfJmeterRunnerSelected === r ? 'selected' : ''}>${r}</option>`).join('')}
                             </select>
-                            <span class="field-help">AUTO = the axos-qe-gh-runners group assigns a free runner; or pin a specific host (QSDW-TFSBA*).</span>
+                            <span class="field-help">Pins JMeter runs to the dedicated Performance load runner (<code>LOADRUN03</code> / <code>axos-gh-qe-runner-SDDEV-LOADRUN03</code>).</span>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Custom Runner Label <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional)</span></label>
-                            <input type="text" id="fCustomRunnerLabel" placeholder="e.g. QSDW-TFSBA05" value="${p.customRunnerLabel || ''}" ${isView ? 'disabled' : ''}>
+                            <input type="text" id="fCustomRunnerLabel" placeholder="e.g. axos-gh-qe-runner-SDDEV-LOADRUN03" value="${p.customRunnerLabel || ''}" ${isView ? 'disabled' : ''}>
                             <span class="field-help">Overrides the dropdown when you need a host not listed.</span>
                         </div>
                     </div>
@@ -10153,7 +10242,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     base.jmxGranularity = v('fJmxGranularity') || '1000';
                     base.bzAccount = ''; base.bzWorkspace = ''; base.bzProject = ''; base.bzTestId = ''; base.bzTestName = '';
                 }
-                base.runnerLabel = v('fRunnerLabel') || 'AUTO';
+                base.runnerLabel = coercePerfJmeterRunnerLabel(v('fRunnerLabel'));
                 base.customRunnerLabel = v('fCustomRunnerLabel');
                 // Single timeout: the BlazeMeter poll window is derived from this at runtime
                 // (JOB_TIMEOUT - 10), so no separate poll field. BlazeMeter defaults higher
@@ -10554,7 +10643,7 @@ JOB_TIMEOUT: ${el('fJobTimeout') || '120'}`;
             } else {
                 prompt = `Create or update a JMeter performance pipeline workflow file in the repo Axos.QE.Performance.Automation at:\n.github/workflows/${name}.yml\n\n` +
                     `This file should call the reusable template _jmeter-template.yml with these settings:\n\n` +
-                    `PIPELINE_NAME: ${name}\nTEST: ${el('fJmxName')}   # .jmx base name in src/scripts (no extension)\nTHREADS: ${el('fJmxThreads')}\nRAMPUP: ${el('fJmxRampup')}\nDURATION: ${el('fJmxDuration')}\nGRANULARITY: ${el('fJmxGranularity') || '1000'}\nJOB_TIMEOUT: ${el('fJobTimeout') || '120'}\nRUNNER_LABEL: ${el('fRunnerLabel') || 'AUTO'}\nCUSTOM_RUNNER_LABEL: ${el('fCustomRunnerLabel') || ''}\n\n` +
+                    `PIPELINE_NAME: ${name}\nTEST: ${el('fJmxName')}   # .jmx base name in src/scripts (no extension)\nTHREADS: ${el('fJmxThreads')}\nRAMPUP: ${el('fJmxRampup')}\nDURATION: ${el('fJmxDuration')}\nGRANULARITY: ${el('fJmxGranularity') || '1000'}\nJOB_TIMEOUT: ${el('fJobTimeout') || '120'}\nRUNNER_LABEL: ${coercePerfJmeterRunnerLabel(el('fRunnerLabel'))}\nCUSTOM_RUNNER_LABEL: ${el('fCustomRunnerLabel') || ''}\n\n` +
                     `No repo secrets required. Runs on a self-hosted Windows runner via group ${runnerGroup} (labels [self-hosted, windows, x64]); JMeter expected at C:\\JMeter\\apache-jmeter-5.6.3 (self-heal install fallback). Use Perf_OLB_UAT_Regression-JMeter.yml as the exact format reference.`;
             }
             if (scheduleEnabled && scheduleCron) prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron}`;
@@ -10587,6 +10676,7 @@ BS_BROWSER_NAME: ${el('fBsBrowserName') || ''}
 BS_BROWSER_VERSION: ${el('fBsBrowserVersion') || ''}
 BS_OS_NAME: ${el('fBsOsName') || ''}
 BS_OS_VERSION: ${el('fBsOsVersion') || ''}
+USE_BS_LOCAL_TUNNEL: ${el('fTunnel') || 'false'}
 BROWSERSTACK_CREDENTIAL_SET: ${bsCredentialSet}  # with: browserstack_credential_set — product team parallel pool (olb3=15, enr=5, outsys=5)
 BROWSERSTACK_USERNAME: ''  # auto-selected by project (not editable in pipeline-manager; override in workflow dispatch if needed)
 BROWSERSTACK_ACCESS_KEY: ''  # auto-selected by project (not editable in pipeline-manager; override in workflow dispatch if needed)
@@ -10604,9 +10694,9 @@ ${runnerStrategy === 'group'
             }
             prompt += `\n\nUse the existing workflow file Web_Enrollment_UAT-OLB_Smoke-Playwright.yml as the exact format reference. Include:\n` +
                 `- name: and run-name fields matching the pipeline name\n` +
-                `- workflow_dispatch inputs for run_target, local_browser, test_env, grep, parallels, retries, runner_label_linux (dsdl-timab*), custom_runner_label_linux (string), runner_label_windows (QSDW-TFSBA*), custom_runner_label_windows (string), pw_video, pw_headless (choice: inherit, 0, 1), browserstack_username, browserstack_access_key, bs_random_browser, bs_browser_name, bs_browser_version, bs_os_name, and bs_os_version with correct defaults\n` +
+                `- workflow_dispatch inputs for run_target, local_browser, test_env, grep, parallels, retries, runner_label_linux (dsdl-timab*), custom_runner_label_linux (string), runner_label_windows (QSDW-TFSBA*), custom_runner_label_windows (string), pw_video, pw_headless (choice: inherit, 0, 1), browserstack_username, browserstack_access_key, bs_random_browser, bs_browser_name, bs_browser_version, bs_os_name, bs_os_version, and use_bs_local_tunnel (choice: false, true; default from USE_BS_LOCAL_TUNNEL) with correct defaults\n` +
                 `- permissions block (contents: read, checks: write, actions: write)\n` +
-                `- jobs.smoke calling ./.github/workflows/_reusable-playwright.yml with secrets: inherit and with: passing the settings above with fallback defaults, including browserstack_credential_set: ${bsCredentialSet} (reusable input only — not a workflow_dispatch input)`;
+                `- jobs.smoke calling ./.github/workflows/_reusable-playwright.yml with secrets: inherit and with: passing the settings above with fallback defaults, including use_bs_local_tunnel and browserstack_credential_set: ${bsCredentialSet} (reusable input only — not a workflow_dispatch input)`;
             if (runnerStrategy === 'group') {
                 prompt += `\n\nRunner targeting (runner group mode):\n` +
                     `- Use runner group: ${runnerGroup}\n` +
@@ -10790,10 +10880,20 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     }
 
     function resetReposToDefault() {
+        const prevRepos = new Set(loadSyncRepos().map(r => String(r?.repo || '').trim()).filter(Boolean));
         saveSyncRepos(DEFAULT_SYNC_REPOS);
+        const nextRepos = new Set(cloneRepos(DEFAULT_SYNC_REPOS).map(r => String(r?.repo || '').trim()).filter(Boolean));
+        const removed = [...prevRepos].filter(r => !nextRepos.has(r));
+        let prunedDashboards = 0;
+        if (removed.length) {
+            try { prunedDashboards = pruneDashboardsForRepos(removed) || 0; } catch { /* ignore */ }
+        }
+        try { refreshUiAfterSyncRepoChange(); } catch { /* ignore */ }
         const ta = document.getElementById('reposInput');
         if (ta) ta.value = cloneRepos(DEFAULT_SYNC_REPOS).map(r => `${r.owner}/${r.repo}`).join('\n');
-        showToast('Repo list reset to default.');
+        showToast(prunedDashboards > 0
+            ? `Repo list reset to default. Removed ${prunedDashboards} dashboard${prunedDashboards === 1 ? '' : 's'} for dropped repo${removed.length === 1 ? '' : 's'}.`
+            : 'Repo list reset to default.');
     }
 
     function saveReposFromModal() {
@@ -10817,9 +10917,19 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             return;
         }
 
+        const prevRepos = new Set(loadSyncRepos().map(r => String(r?.repo || '').trim()).filter(Boolean));
         saveSyncRepos(repos);
+        const nextRepos = new Set(repos.map(r => String(r?.repo || '').trim()).filter(Boolean));
+        const removed = [...prevRepos].filter(r => !nextRepos.has(r));
+        let prunedDashboards = 0;
+        if (removed.length) {
+            try { prunedDashboards = pruneDashboardsForRepos(removed) || 0; } catch { /* ignore */ }
+        }
+        try { refreshUiAfterSyncRepoChange(); } catch { /* ignore */ }
         closeModal('reposModal');
-        showToast('Repo list saved.');
+        showToast(prunedDashboards > 0
+            ? `Repo list saved. Removed ${prunedDashboards} dashboard${prunedDashboards === 1 ? '' : 's'} for dropped repo${removed.length === 1 ? '' : 's'}.`
+            : 'Repo list saved.');
     }
 
     let pendingRepoPrefill = null;
@@ -11009,7 +11119,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 bzPollTimeout: '240',
                 runnerStrategy: 'group',
                 runnerGroup: DEFAULT_RUNNER_GROUP,
-                runnerLabel: 'AUTO',
+                runnerLabel: DEFAULT_PERF_JMETER_RUNNER,
                 customRunnerLabel: '',
                 jobTimeout: 120,
             };
@@ -11321,6 +11431,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             if (merged.RAMPUP) entry.jmxRampup = merged.RAMPUP;
             if (merged.DURATION) entry.jmxDuration = merged.DURATION;
             if (merged.GRANULARITY) entry.jmxGranularity = merged.GRANULARITY;
+            entry.runnerLabel = coercePerfJmeterRunnerLabel(entry.runnerLabel || merged.RUNNER_LABEL);
         }
 
         entry.schedule = scheduleCron;
@@ -12107,7 +12218,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 bzAccount: '', bzWorkspace: '', bzProject: '', bzTestId: '', bzTestName: '', bzPollTimeout: '240',
                 runnerStrategy: 'group',
                 runnerGroup: DEFAULT_RUNNER_GROUP,
-                runnerLabel: 'AUTO',
+                runnerLabel: DEFAULT_PERF_JMETER_RUNNER,
                 customRunnerLabel: '',
                 jobTimeout: 120,
                 schedule: '', scheduleEnabled: false
@@ -12705,6 +12816,11 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         return tc && !tc.fallback && !tc.noTests && (tc.total ?? 0) > 0;
     }
 
+    function hasCachedTestCounts(tc) {
+        if (tc && tc.inferred) return false; // inferred clean-miss results are never persisted
+        return hasEnrichedTestCounts(tc) || !!(tc && tc.noTests && !tc.fallback);
+    }
+
     function trimRunForResultsCache(r) {
         if (!r || typeof r !== 'object') return null;
         const tc = r.testCounts;
@@ -12716,18 +12832,18 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         delete out._testCountsAttemptedAt;
         delete out._testCountsHadError;
         delete out._testCountsGen;
-        if (hasEnrichedTestCounts(tc)) out.testCounts = { ...tc };
+        if (hasCachedTestCounts(tc)) out.testCounts = { ...tc };
         return out;
     }
 
     function hydrateAllRunsTestCountsFromCache() {
         const cache = loadTestCountsCacheMerged();
         for (const r of (allRuns || [])) {
-            if (hasEnrichedTestCounts(r?.testCounts)) continue;
+            if (hasCachedTestCounts(r?.testCounts)) continue;
             const key = dashTestCountsCacheKey(r);
             if (!key) continue;
             const tc = cache[key]?.tc;
-            if (!hasEnrichedTestCounts(tc)) continue;
+            if (!hasCachedTestCounts(tc)) continue;
             r.testCounts = tc;
             r._testCountsDone = true;
         }
@@ -13535,35 +13651,87 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     function parseTestCountsFromJUnitXml(xml) {
         const raw = String(xml || '');
         if (!raw.trim()) return null;
-        let tests = 0, failures = 0, errors = 0, skipped = 0;
         const numAttr = (tag, a) => {
             const r = new RegExp(a + '="([0-9.]+)"').exec(tag);
             return r ? parseFloat(r[1]) : 0;
         };
-        const suiteRe = /<testsuite\b[^>]*>/g;
-        let m;
-        while ((m = suiteRe.exec(raw))) {
-            const t = m[0];
-            tests += numAttr(t, 'tests');
-            failures += numAttr(t, 'failures');
-            errors += numAttr(t, 'errors');
-            skipped += numAttr(t, 'skipped');
-        }
-        if (tests === 0) {
-            tests = (raw.match(/<testcase\b/g) || []).length;
-            skipped = (raw.match(/<skipped\b/g) || []).length;
-            const caseRe = /<testcase\b([^>]*[^/])>([\s\S]*?)<\/testcase>/g;
-            let failedCases = 0;
+
+        // Primary source of truth: count individual <testcase> elements. Each test
+        // is counted exactly once, so this is immune to nested-<testsuite> double
+        // counting and to stale/rolled-up summary attributes on parent elements.
+        const countFromTestCases = () => {
+            const caseRe = /<testcase\b([^>]*?)(\/>|>([\s\S]*?)<\/testcase>)/gi;
+            let tests = 0, failed = 0, skipped = 0;
+            let m;
             while ((m = caseRe.exec(raw))) {
-                if (/<(?:failure|error)\b/.test(m[2])) failedCases++;
+                tests += 1;
+                const body = m[3] || '';
+                if (/<(?:failure|error)\b/i.test(body)) failed += 1;
+                else if (/<skipped\b/i.test(body)) skipped += 1;
             }
-            failures = failedCases;
-            errors = 0;
-        }
-        const failed = failures + errors;
+            return { tests, failed, skipped };
+        };
+
+        // Fallback for summary-only XML (no <testcase> elements). Prefer the root
+        // <testsuites> aggregate; otherwise sum leaf <testsuite> tags only (never
+        // parent+child together — that double-counts nested suite attributes).
+        const countFromSummaryAttrs = () => {
+            const rootSuites = /<testsuites\b[^>]*>/i.exec(raw);
+            if (rootSuites && numAttr(rootSuites[0], 'tests') > 0) {
+                const tag = rootSuites[0];
+                return {
+                    tests: numAttr(tag, 'tests'),
+                    failed: numAttr(tag, 'failures') + numAttr(tag, 'errors'),
+                    skipped: numAttr(tag, 'skipped')
+                };
+            }
+            let tests = 0, failed = 0, skipped = 0;
+            // Leaf suites: open tag whose body contains no nested <testsuite.
+            const leafRe = /<testsuite\b([^>]*)>(?:(?!<testsuite\b)[\s\S])*?<\/testsuite>|<testsuite\b([^>]*)\/>/gi;
+            let m;
+            while ((m = leafRe.exec(raw))) {
+                const attrs = m[1] != null ? m[1] : (m[2] || '');
+                const tag = `<testsuite ${attrs}>`;
+                tests += numAttr(tag, 'tests');
+                failed += numAttr(tag, 'failures') + numAttr(tag, 'errors');
+                skipped += numAttr(tag, 'skipped');
+            }
+            return { tests, failed, skipped };
+        };
+
+        let counts = countFromTestCases();
+        if (counts.tests === 0) counts = countFromSummaryAttrs();
+
+        const tests = counts.tests;
+        const failed = counts.failed;
+        const skipped = counts.skipped;
         const passed = Math.max(0, tests - failed - skipped);
         if (tests <= 0) return null;
+        // Empty-run markers used by Mobile (and similar) when GREP matches nothing:
+        // a single placeholder case and/or a "<skipped message=No tests matched…>" body.
+        // These are "No tests", not workflow Skipped.
+        if (failed === 0 && (junitXmlHasNoTestsPlaceholderCase(raw) || junitXmlHasNoTestsSkipMessage(raw))) {
+            if (tests === 1 || (passed === 0 && skipped > 0)) {
+                return { passed: 0, failed: 0, skipped: 0, total: Math.max(1, tests), noTests: true };
+            }
+        }
         return { passed, failed, skipped, total: tests };
+    }
+
+    function junitXmlHasNoTestsPlaceholderCase(xml) {
+        const raw = String(xml || '');
+        if (!raw.trim()) return false;
+        // Anchor to the start of the test case name so only synthetic placeholders
+        // (e.g. name="No tests executed") match, not a real test whose title merely
+        // mentions the phrase (e.g. name="verify no tests found in empty state").
+        return /<testcase\b[^>]*name="\s*no tests (?:executed|matched|found)/i.test(raw);
+    }
+
+    function junitXmlHasNoTestsSkipMessage(xml) {
+        const raw = String(xml || '');
+        if (!raw.trim()) return false;
+        return /<skipped\b[^>]*message="[^"]*no tests matched/i.test(raw)
+            || /<skipped\b[^>]*>[^<]*no tests matched/i.test(raw);
     }
 
     function applyParsedTestCounts(r, parsed, gen) {
@@ -13577,6 +13745,12 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         const skipped = parsed.skipped ?? 0;
         const total = parsed.total ?? (passed + failed + skipped);
         const actionable = Math.max(0, total - skipped);
+        // Nothing executed (only skips / empty): treat as no tests. Reserve "Skipped"
+        // for GitHub workflow/job skipped — not JUnit all-skipped empty GREP runs.
+        if (actionable === 0 && failed === 0) {
+            r.testCounts = { passed: 0, failed: 0, skipped, total, passPct: 0, fallback: false, noTests: true };
+            return r.testCounts;
+        }
         const passPct = actionable > 0 ? (passed / actionable) * 100 : 0;
         r.testCounts = { passed, failed, skipped, total, passPct, fallback: false };
         return r.testCounts;
@@ -13659,6 +13833,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             if (!xmlEntries.length) return null;
             const xmlScore = (name) => {
                 const n = String(name || '').toLowerCase();
+                if (/testim-tests-report|junit-results\.xml$|\/junit\.xml$/i.test(n)) return 5;
                 if (/junit|test-result|testsuite|results\.xml$/i.test(n)) return 3;
                 if (/report|output/i.test(n)) return 1;
                 return 2;
@@ -13677,16 +13852,20 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         return new RegExp(`(?:^|[-_/])${runIdStr}(?:[-_.]|$)`).test(n);
     }
 
+    function isJunitArtifactNoiseName(name) {
+        const n = String(name || '').toLowerCase();
+        return /allure|playwright-report|jmeter-report|jmeter-log|\.html$/i.test(n)
+            || /-html-/i.test(n);
+    }
+
     function pickJunitArtifactForRun(arts, runId) {
         const runIdStr = String(runId || '').trim();
         const valid = (Array.isArray(arts) ? arts : []).filter(a => {
             if (!a || a.expired || !a.url || !a.name) return false;
-            const n = String(a.name || '').toLowerCase();
-            if (/allure|\.html$/i.test(n)) return false;
-            return true;
+            return !isJunitArtifactNoiseName(a.name);
         });
         if (!valid.length) return null;
-        const testResultsArts = valid.filter(a => /^test-results-/i.test(String(a.name || '')));
+        const testResultsArts = valid.filter(a => /^test-results/i.test(String(a.name || '')));
         const score = (a) => {
             const n = String(a.name || '').toLowerCase();
             if (/-xml-/i.test(n)) {
@@ -13694,16 +13873,23 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 return 95;
             }
             if (/test-results/i.test(n) && artifactNameMatchesRunId(n, runIdStr)) return 90;
-            if (/^test-results-/i.test(n)) {
+            if (/^test-results/i.test(n)) {
                 if (artifactNameMatchesRunId(n, runIdStr)) return 85;
                 return testResultsArts.length === 1 ? 80 : 0;
             }
-            if (/junit|test.results|test_results/i.test(n) && artifactNameMatchesRunId(n, runIdStr)) return 70;
+            if (/newman-reports/i.test(n) && artifactNameMatchesRunId(n, runIdStr)) return 88;
+            if (/junit|test.results|test_results|reports/i.test(n) && artifactNameMatchesRunId(n, runIdStr)) return 70;
+            if (runIdStr && artifactNameMatchesRunId(n, runIdStr)) return 40;
             return 0;
         };
-        const ranked = valid.map(a => ({ a, s: score(a), n: String(a.name || '').toLowerCase() }))
+        const ranked = valid.map(a => ({
+            a,
+            s: score(a),
+            size: a.sizeInBytes || a.size_in_bytes || 0,
+            n: String(a.name || '').toLowerCase()
+        }))
             .filter(x => x.s > 0)
-            .sort((x, y) => y.s - x.s || x.n.localeCompare(y.n));
+            .sort((x, y) => y.s - x.s || x.size - y.size || x.n.localeCompare(y.n));
         return ranked[0]?.a || null;
     }
 
@@ -13743,7 +13929,18 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                     return false;
                 }
             } else if ((r.testCounts.total ?? 0) > 0) {
-                return false;
+                // Upgrade legacy all-skipped counts (no noTests flag) so Mobile GREP
+                // empties stop showing as "Skipped" from stale cache.
+                const skipped = r.testCounts.skipped ?? 0;
+                const failed = r.testCounts.failed ?? 0;
+                const passed = r.testCounts.passed ?? 0;
+                const actionable = Math.max(0, (r.testCounts.total ?? 0) - skipped);
+                if (actionable === 0 && failed === 0 && (skipped > 0 || passed === 0)) {
+                    delete r.testCounts;
+                    delete r._testCountsDone;
+                } else {
+                    return false;
+                }
             } else {
                 delete r.testCounts;
                 delete r._testCountsDone;
@@ -13795,15 +13992,17 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             }
 
             const suiteId = r.checkSuiteId;
-            const mobileFirst = isMobileBrowserStackRun(r);
+            let artifactParsed = null;
 
-            if (mobileFirst) {
-                try {
-                    const fromArtifact = await fetchRunTestCountsFromArtifact(owner, repo, r);
-                    if (fromArtifact) return applyParsedTestCounts(r, fromArtifact, gen);
-                } catch { hadError = true; }
-                if ((r._testCountsGen || 0) !== gen) return null;
-            }
+            try {
+                // The JUnit artifact is the authoritative test-count source. Apply its
+                // result immediately whether it reports real counts or a confirmed empty
+                // (noTests) run; check-runs and job logs below are only fallbacks used
+                // when no parseable artifact exists, so they can never override it.
+                artifactParsed = await fetchRunTestCountsFromArtifact(owner, repo, r);
+                if (artifactParsed) return applyParsedTestCounts(r, artifactParsed, gen);
+            } catch { hadError = true; }
+            if ((r._testCountsGen || 0) !== gen) return null;
 
             if (suiteId) {
                 try {
@@ -13825,19 +14024,12 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
 
             if ((r._testCountsGen || 0) !== gen) return null;
 
-            if (!mobileFirst) {
-                try {
-                    const fromArtifact = await fetchRunTestCountsFromArtifact(owner, repo, r);
-                    if (fromArtifact) return applyParsedTestCounts(r, fromArtifact, gen);
-                } catch { hadError = true; }
-            }
-
-            if ((r._testCountsGen || 0) !== gen) return null;
-
             try {
                 const fromLogs = await fetchRunTestCountsFromJobLogs(owner, repo, r);
                 if (fromLogs) return applyParsedTestCounts(r, fromLogs, gen);
             } catch { hadError = true; }
+
+            if ((r._testCountsGen || 0) !== gen) return null;
 
             if ((r._testCountsGen || 0) === gen) {
                 r.testCounts = null;
@@ -13862,9 +14054,14 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                     delete r._testCountsAttemptedAt;
                     saveDashTestCountsCacheEntry(r);
                 } else if (r._testCountsHadError) {
+                    // Transient fetch error: leave unsettled so it retries later.
                     r._testCountsAttemptedAt = Date.now();
                 } else {
-                    r.testCounts = { passed: 0, failed: 0, skipped: 0, total: 0, passPct: 0, fallback: false, noTests: true };
+                    // Clean miss: the run completed but exposed no JUnit/check/log
+                    // data. Mark an inferred "no tests" result so the UI does not show
+                    // an unverified pass. It settles for this session but is never
+                    // cached, so a future session re-attempts enrichment from scratch.
+                    r.testCounts = zeroRunTestCounts({ fallback: false, inferred: true });
                     r._testCountsDone = true;
                 }
                 r._testCountsPromise = null;
@@ -13921,28 +14118,56 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                     actionable += actionableRunTests;
                     passed += tc.passed ?? 0;
                     failed += testFailed;
-                } else if (isDashboardActionableRun(r)) {
+                } else if (tc?.noTests && r._testCountsDone) {
+                    // Defer to the shared outcome: a no-tests run whose workflow failed
+                    // still counts as a failure, matching the Results view.
+                    const outcome = getDisplayOutcome(r);
+                    if (outcome === 'no_tests' || outcome === 'skipped') continue;
                     actionable += 1;
-                    if (getRunOutcome(r) === 'success') passed += 1;
+                    if (outcome === 'success') passed += 1;
+                    else failed += 1;
+                } else if (isDashboardActionableRun(r)) {
+                    const outcome = getDisplayOutcome(r);
+                    if (outcome === 'no_tests') continue;
+                    actionable += 1;
+                    if (outcome === 'success') passed += 1;
                     else failed += 1;
                 }
             }
         } else {
             for (const r of actionableRuns) {
+                const outcome = getDisplayOutcome(r);
+                if (outcome === 'no_tests') continue;
                 actionable += 1;
-                if (getRunOutcome(r) === 'success') passed += 1;
+                if (outcome === 'success') passed += 1;
                 else failed += 1;
             }
         }
 
-        const passRate = actionable > 0 ? (passed / actionable) * 100 : 0;
+        let passRate = actionable > 0 ? (passed / actionable) * 100 : 0;
+        let fromTestCounts = useTestLevel;
+        if (useTestLevel && actionable === 0 && actionableRuns.length) {
+            passed = 0;
+            failed = 0;
+            actionable = 0;
+            for (const r of actionableRuns) {
+                const outcome = getDisplayOutcome(r);
+                if (outcome === 'no_tests') continue;
+                actionable += 1;
+                if (outcome === 'success') passed += 1;
+                else failed += 1;
+            }
+            passRate = actionable > 0 ? (passed / actionable) * 100 : 0;
+            fromTestCounts = false;
+        }
+
         return {
             passRate,
             passed,
             failed,
             actionable,
             total: list.length,
-            fromTestCounts: useTestLevel
+            fromTestCounts
         };
     }
 
@@ -14011,29 +14236,11 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     }
 
     function dashboardRunDotClass(r) {
-        const tc = r?.testCounts;
-        if (tc && tc.noTests) {
-            const o = getRunOutcome(r);
-            if (o === 'failure') return 'failure';
-            if (o === 'success') return 'success';
-            return 'skipped';
-        }
-        if (tc && !tc.fallback && (tc.total ?? 0) > 0) {
-            const skipped = tc.skipped ?? 0;
-            const actionable = Math.max(0, (tc.total ?? 0) - skipped);
-            if (actionable === 0) {
-                if (getRunOutcome(r) === 'failure') return 'failure';
-                return 'skipped';
-            }
-            if ((tc.failed ?? 0) > 0) return 'failure';
-            if (getRunOutcome(r) === 'failure' && (tc.failed ?? 0) === 0) return 'failure';
-            if ((tc.passed ?? 0) > 0) return 'success';
-        }
-        const o = getRunOutcome(r);
-        if (o === 'success') return 'success';
-        if (o === 'failure') return 'failure';
-        if (o === 'cancelled') return 'cancelled';
-        if (o === 'skipped') return 'skipped';
+        const disp = getDisplayOutcome(r);
+        if (disp === 'success') return 'success';
+        if (disp === 'failure') return 'failure';
+        if (disp === 'cancelled') return 'cancelled';
+        if (disp === 'skipped' || disp === 'no_tests') return 'skipped';
         return 'unknown';
     }
 
@@ -14087,7 +14294,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             const skipped = tc.skipped ?? 0;
             const total = tc.total ?? (passed + failed + skipped);
             if (tc.noTests || total <= 0) {
-                return zeroRunTestCounts({ fallback: !!tc.fallback && !tc.noTests });
+                return zeroRunTestCounts({ fallback: false, noTests: true });
             }
             const actionable = Math.max(0, total - skipped);
             const passPct = tc.passPct ?? (actionable > 0 ? (passed / actionable) * 100 : 0);
@@ -14150,6 +14357,113 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     function getRunOutcome(r) {
         if (r?.gateSkipped) return 'skipped';
         return r?.conclusion || 'unknown';
+    }
+
+    function getDisplayOutcome(r) {
+        const workflow = getRunOutcome(r);
+        if (workflow === 'skipped' || workflow === 'cancelled') return workflow;
+        if (r?.status && r.status !== 'completed') return workflow;
+
+        const tc = r?.testCounts;
+        // Settled noTests (parsed placeholder or inferred clean miss) — never treat as pass.
+        // Workflow failure still wins so failed empty runs stay in failure metrics.
+        if (tc?.noTests && r._testCountsDone) {
+            return workflow === 'failure' ? 'failure' : 'no_tests';
+        }
+        if (hasEnrichedTestCounts(tc)) {
+            if ((tc.failed ?? 0) > 0) return 'failure';
+            const actionable = Math.max(0, (tc.total ?? 0) - (tc.skipped ?? 0));
+            // JUnit all-skipped / zero actionable = no tests executed. Do not use
+            // "Skipped" here — that label is reserved for workflow/job skipped above.
+            if (actionable === 0 && (tc.skipped ?? 0) > 0) {
+                return workflow === 'failure' ? 'failure' : 'no_tests';
+            }
+            if (workflow === 'failure') return 'failure';
+            if ((tc.passed ?? 0) > 0 && (tc.failed ?? 0) === 0) return 'success';
+            return 'failure';
+        }
+        return workflow;
+    }
+
+    function getDisplayOutcomeTip(r) {
+        const gh = getRunOutcome(r);
+        const tc = r?.testCounts;
+        if (hasEnrichedTestCounts(tc) || (tc?.noTests && r._testCountsDone)) {
+            const passed = tc.passed ?? 0;
+            const failed = tc.failed ?? 0;
+            const skipped = tc.skipped ?? 0;
+            const total = tc.total ?? (passed + failed + skipped);
+            return `GitHub: ${gh} · tests: ${passed} passed, ${failed} failed, ${skipped} skipped (${total} total)`;
+        }
+        return `GitHub: ${gh}`;
+    }
+
+    function getDisplayOutcomeLabel(outcome) {
+        switch (outcome) {
+            case 'success': return 'Passed';
+            case 'failure': return 'Failed';
+            case 'skipped': return 'Skipped';
+            case 'cancelled': return 'Cancelled';
+            case 'no_tests': return 'No tests';
+            default: return outcome ? (outcome.charAt(0).toUpperCase() + outcome.slice(1).replace(/_/g, ' ')) : 'Unknown';
+        }
+    }
+
+    function getDisplayOutcomeBadgeClass(outcome, isActive) {
+        if (isActive) return 'badge-running';
+        switch (outcome) {
+            case 'success': return 'badge-pass';
+            case 'failure': return 'badge-fail';
+            case 'cancelled': return 'badge-cancel';
+            case 'skipped': return 'badge-skip';
+            case 'no_tests': return 'badge-notests';
+            default: return 'badge-running';
+        }
+    }
+
+    let resultsEnrichToken = 0;
+    let resultsEnrichRenderTimer = null;
+
+    function scheduleResultsEnrichmentRefresh(token) {
+        if (token !== resultsEnrichToken) return;
+        if (!document.getElementById('panelResults')?.classList.contains('active')) return;
+        if (resultsEnrichRenderTimer != null) clearTimeout(resultsEnrichRenderTimer);
+        resultsEnrichRenderTimer = setTimeout(() => {
+            resultsEnrichRenderTimer = null;
+            if (token !== resultsEnrichToken) return;
+            try {
+                pruneResultsSelectionToVisible();
+                renderResultsTree();
+                filterResults();
+            } catch { /* ignore */ }
+        }, 50);
+    }
+
+    function getResultsEnrichmentRuns() {
+        let runs = [...(allRuns || [])];
+        const repoFilter = getResultsRepoFilterValue();
+        if (repoFilterList(repoFilter)) runs = runs.filter(r => repoFilterMatches(repoFilter, String(r.repo || '').trim()));
+        const schedFilter = getResultsScheduleFilterValue();
+        if (schedFilter !== 'all') {
+            runs = runs.filter(r => {
+                const key = resultsPipelineKey(r.repo, r.workflowName);
+                const isSched = !!(resultsPipelineIndex.get(key)?.scheduleEnabled);
+                return schedFilter === 'scheduled' ? isSched : !isSched;
+            });
+        }
+        if (resultsSelectedPipelines.size) {
+            runs = runs.filter(r => resultsSelectedPipelines.has(resultsPipelineKey(r.repo, r.workflowName)));
+        }
+        return runs;
+    }
+
+    async function enrichVisibleResultsRuns() {
+        const runs = getResultsEnrichmentRuns().filter(r => r && r.id);
+        if (!runs.length) return;
+        restoreDashTestCountsForRuns(runs);
+        const token = ++resultsEnrichToken;
+        await enrichDashboardTestCounts(runs, () => scheduleResultsEnrichmentRefresh(token));
+        scheduleResultsEnrichmentRefresh(token);
     }
 
     function getPipelineRepeatWeeks(repo, workflowName) {
@@ -14505,6 +14819,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         loadResultsExcludeCancelledPref();
         renderResultsTree();
         filterResults();
+        enrichVisibleResultsRuns().catch(() => {});
     }
 
     function resultsPipelineKey(repo, workflowName) {
@@ -14561,12 +14876,61 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         clearResultsDashboardSelect();
         renderResultsTree();
         filterResults();
+        enrichVisibleResultsRuns().catch(() => {});
+    }
+
+    function getResultsSearchText() {
+        return document.getElementById('resultsSearch')?.value?.toLowerCase() || '';
+    }
+
+    function pipelineMatchesResultsSearch(p, search) {
+        if (!search) return true;
+        const hay = `${p?.name || ''} ${p?.filename || ''}`.toLowerCase();
+        return hay.includes(search);
+    }
+
+    function runMatchesResultsSearch(r, search) {
+        if (!search) return true;
+        const key = resultsPipelineKey(r.repo, r.workflowName);
+        const p = resultsPipelineIndex.get(key);
+        const hay = `${r.workflowName || ''} ${r.workflowFile || ''} ${p?.filename || ''}`.toLowerCase();
+        return hay.includes(search);
+    }
+
+    function pruneResultsSelectionToVisible() {
+        if (!resultsSelectedPipelines.size) return;
+        const visible = new Set(
+            getResultsVisiblePipelines().map(p => resultsPipelineKey(p.repo, p.name))
+        );
+        let changed = false;
+        for (const key of [...resultsSelectedPipelines]) {
+            if (!visible.has(key)) {
+                resultsSelectedPipelines.delete(key);
+                changed = true;
+            }
+        }
+        if (changed) clearResultsDashboardSelect();
+    }
+
+    function onResultsSearchOrStatusFilterChange() {
+        pruneResultsSelectionToVisible();
+        renderResultsTree();
+        filterResults();
+    }
+
+    function onResultsStatusFilterChange() {
+        onResultsSearchOrStatusFilterChange();
+        // Status outcomes (esp. "No Tests Only") depend on JUnit enrichment, so make
+        // sure the scoped runs are enriched. Search keystrokes deliberately skip this.
+        enrichVisibleResultsRuns().catch(() => {});
     }
 
     function getResultsVisiblePipelines() {
         const repoFilter = getResultsRepoFilterValue();
         const schedFilter = getResultsScheduleFilterValue();
-        return (resultsPipelines || []).slice().filter(p => {
+        const search = getResultsSearchText();
+        const statusFilter = document.getElementById('resultsStatusFilter')?.value || 'all';
+        let list = (resultsPipelines || []).slice().filter(p => {
             if (!p || !p.name) return false;
             if (!repoFilterMatches(repoFilter, String(p.repo || '').trim())) return false;
             if (schedFilter !== 'all') {
@@ -14576,6 +14940,28 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             }
             return true;
         });
+        if (search) {
+            list = list.filter(p => pipelineMatchesResultsSearch(p, search));
+        }
+        if (statusFilter !== 'all') {
+            const scopedRuns = getResultsScopedRuns({ ignoreSelection: true });
+            // A status filter with no runs in scope means nothing can match it,
+            // so the sidebar must be empty rather than showing every pipeline.
+            if (!scopedRuns.length) return [];
+            const keysWithStatus = new Set();
+            // "No Tests Only" cannot be approximated by the raw GitHub conclusion, so
+            // while enrichment is in flight keep pipelines with unsettled runs visible
+            // to avoid transiently hiding real matches. Other statuses (Passed/Failed)
+            // track the raw conclusion closely enough to filter immediately.
+            const keepUnsettled = statusFilter === 'no_tests';
+            for (const r of scopedRuns) {
+                if (getDisplayOutcome(r) === statusFilter || (keepUnsettled && !isRunEnrichmentSettled(r))) {
+                    keysWithStatus.add(resultsPipelineKey(r.repo, r.workflowName));
+                }
+            }
+            list = list.filter(p => keysWithStatus.has(resultsPipelineKey(p.repo, p.name)));
+        }
+        return list;
     }
 
     function resetResultsFilters() {
@@ -14632,6 +15018,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         clearResultsDashboardSelect();
         renderResultsTree();
         filterResults();
+        enrichVisibleResultsRuns().catch(() => {});
     }
 
     // Reset the "Dashboard" dropdown back to its placeholder. Called whenever the
@@ -14669,6 +15056,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             resultsTopPipelinesShowAll = false;
             renderResultsTree();
             filterResults();
+            enrichVisibleResultsRuns().catch(() => {});
             return;
         }
         applyDashboardSelectionToResults(dashId);
@@ -14728,6 +15116,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         resultsTopPipelinesShowAll = false;
         renderResultsTree();
         filterResults();
+        enrichVisibleResultsRuns().catch(() => {});
         showToast(`Showing ${resultsSelectedPipelines.size} pipeline(s) from "${dash.name}".`);
     }
 
@@ -14759,25 +15148,26 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     function getMetricsRuns() {
         let runs = getFilteredRuns();
         const exclude = !!document.getElementById('excludeCancelledMetrics')?.checked;
-        if (exclude) runs = runs.filter(r => getRunOutcome(r) !== 'cancelled');
+        if (exclude) runs = runs.filter(r => getDisplayOutcome(r) !== 'cancelled');
         return runs;
     }
 
     function renderMetrics() {
         const excludeCancelled = !!document.getElementById('excludeCancelledMetrics')?.checked;
         const runs = getMetricsRuns();
-        const outcomes = runs.map(getRunOutcome);
+        const outcomes = runs.map(getDisplayOutcome);
         const passed = outcomes.filter(o => o === 'success').length;
         const failed = outcomes.filter(o => o === 'failure').length;
         const cancelled = outcomes.filter(o => o === 'cancelled').length;
         const skipped = outcomes.filter(o => o === 'skipped').length;
+        const noTests = outcomes.filter(o => o === 'no_tests').length;
         const total = runs.length;
         const actionable = outcomes.filter(o => o === 'success' || o === 'failure').length;
         const passRate = actionable ? ((passed / actionable) * 100).toFixed(1) : '0.0';
         // Use the same wall-clock total the run table shows (totalSec, queue-inclusive), falling
         // back to the run-level duration when total isn't available — keeps metrics and table in sync.
         const runDur = r => (r.totalSec != null ? r.totalSec : r.duration) || 0;
-        const timedRuns = runs.filter(r => runDur(r) > 0 && getRunOutcome(r) !== 'skipped');
+        const timedRuns = runs.filter(r => runDur(r) > 0 && getDisplayOutcome(r) !== 'skipped');
         const durations = timedRuns.map(runDur);
         const avgDur = durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0;
         // Longest / shortest individual runs (+ which pipeline they belong to, for click-to-focus).
@@ -14807,14 +15197,14 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 <div class="metric-icon">&#127919;</div>
                 <div class="metric-label">Pass Rate</div>
                 <div class="metric-value ${prClass}" data-count="${passRate}">${passRate}%</div>
-                <div class="metric-sub">${passed} passed of ${actionable || 0} actionable${skipped ? ` (${skipped} skipped)` : ''}</div>
+                <div class="metric-sub">${passed} passed of ${actionable || 0} actionable${noTests ? ` (${noTests} no tests)` : ''}${skipped ? ` (${skipped} skipped)` : ''}</div>
                 <div class="metric-bar"><div class="metric-bar-fill" style="width:${passRate}%; background:linear-gradient(90deg,#10b981,#34d399);"></div></div>
             </div>
             <div class="metric-card m-red">
                 <div class="metric-icon">&#9888;&#65039;</div>
                 <div class="metric-label">Failures</div>
                 <div class="metric-value v-red" data-count="${failed}">${failed}</div>
-                <div class="metric-sub">${cancelled} cancelled${skipped ? `, ${skipped} skipped` : ''}</div>
+                <div class="metric-sub">${cancelled} cancelled${noTests ? `, ${noTests} no tests` : ''}${skipped ? `, ${skipped} skipped` : ''}</div>
                 <div class="metric-bar"><div class="metric-bar-fill" style="width:${total ? (failed/total*100) : 0}%; background:linear-gradient(90deg,#ef4444,#f87171);"></div></div>
             </div>
             <div class="metric-card m-orange">
@@ -14978,41 +15368,46 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     }
 
     function renderCharts() {
-        const runs = getChartRuns(); // full in-scope set so a click doesn't collapse the charts
+        const runs = getChartRuns();
         const selKeys = resultsSelectedPipelines;
-        const outcomes = runs.map(getRunOutcome);
+        const outcomes = runs.map(getDisplayOutcome);
         const passed = outcomes.filter(o => o === 'success').length;
         const failed = outcomes.filter(o => o === 'failure').length;
         const cancelled = outcomes.filter(o => o === 'cancelled').length;
         const skipped = outcomes.filter(o => o === 'skipped').length;
+        const noTests = outcomes.filter(o => o === 'no_tests').length;
         const total = runs.length;
         const actionable = outcomes.filter(o => o === 'success' || o === 'failure').length;
         const passRate = actionable ? ((passed / actionable) * 100).toFixed(1) : '0.0';
 
         buildSpeedometer(passRate);
+        // Funnel "other" = everything that is not pass/fail (cancelled, skipped, no_tests, unknown).
         buildFunnel(total, passed, failed, runs.length - passed - failed);
 
-        // Status doughnut
+        // Status doughnut — no_tests is its own slice so totals reconcile (same as Top Pipelines).
         if (pieChartInstance) pieChartInstance.destroy();
         const dCtx = document.getElementById('pieChart').getContext('2d');
+        const other = Math.max(0, runs.length - passed - failed - skipped - cancelled - noTests);
         pieChartInstance = new Chart(dCtx, {
             type: 'doughnut',
             data: {
-                labels: ['Passed', 'Failed', 'Skipped', 'Cancelled', 'Other'],
+                labels: ['Passed', 'Failed', 'Skipped', 'Cancelled', 'No tests', 'Other'],
                 datasets: [{
-                    data: [passed, failed, skipped, cancelled, runs.length - passed - failed - skipped - cancelled],
-                    backgroundColor: ['#10b981', '#ef4444', '#60a5fa', '#6b7280', '#f59e0b'],
+                    data: [passed, failed, skipped, cancelled, noTests, other],
+                    backgroundColor: ['#10b981', '#ef4444', '#60a5fa', '#6b7280', '#94a3b8', '#f59e0b'],
                     borderWidth: 0, hoverOffset: 10, borderRadius: 4,
                     // Pop the slice you clicked (highlight the active outcome) without changing the data.
-                    offset: (() => { const ai = {success:0,failure:1,skipped:2,cancelled:3,unknown:4,other:4}[resultsActiveOutcome]; return [0,1,2,3,4].map(ix => ix === ai ? 18 : 0); })()
+                    offset: (() => {
+                        const ai = { success: 0, failure: 1, skipped: 2, cancelled: 3, no_tests: 4, unknown: 5, other: 5 }[resultsActiveOutcome];
+                        return [0, 1, 2, 3, 4, 5].map(ix => ix === ai ? 18 : 0);
+                    })()
                 }]
             },
             options: {
                 responsive: true, maintainAspectRatio: false, cutout: '68%',
                 onClick: (evt, els) => {
                     if (!els || !els.length) return;
-                    // Matches the doughnut's own labels: Passed/Failed/Skipped/Cancelled/Other.
-                    const map = ['success', 'failure', 'skipped', 'cancelled', 'unknown'];
+                    const map = ['success', 'failure', 'skipped', 'cancelled', 'no_tests', 'unknown'];
                     selectResultsByOutcome(map[els[0].index]);
                 },
                 plugins: {
@@ -15042,7 +15437,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         for (const r of runs) {
             const day = r.createdAt.slice(0, 10);
             if (!dayMap[day]) dayMap[day] = { pass: 0, total: 0 };
-            const o = getRunOutcome(r);
+            const o = getDisplayOutcome(r);
             if (o === 'success' || o === 'failure') {
                 dayMap[day].total++;
                 if (o === 'success') dayMap[day].pass++;
@@ -15112,14 +15507,16 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 const wfRuns = runs.filter(r => resultsPipelineKey(r.repo, r.workflowName) === hKey);
                 const name = wfRuns[0].workflowName;
                 const repo = wfRuns[0].repo;
-                const p = wfRuns.filter(r => getRunOutcome(r) === 'success').length;
-                const f = wfRuns.filter(r => getRunOutcome(r) === 'failure').length;
-                const s = wfRuns.filter(r => getRunOutcome(r) === 'skipped').length;
-                const o = wfRuns.length - p - f - s;
+                const p = wfRuns.filter(r => getDisplayOutcome(r) === 'success').length;
+                const f = wfRuns.filter(r => getDisplayOutcome(r) === 'failure').length;
+                const s = wfRuns.filter(r => getDisplayOutcome(r) === 'skipped').length;
+                const nt = wfRuns.filter(r => getDisplayOutcome(r) === 'no_tests').length;
+                const o = wfRuns.length - p - f - s - nt;
                 const t = wfRuns.length;
                 const pW = (t ? (p / t * 100) : 0).toFixed(0);
                 const fW = (t ? (f / t * 100) : 0).toFixed(0);
                 const sW = (t ? (s / t * 100) : 0).toFixed(0);
+                const ntW = (t ? (nt / t * 100) : 0).toFixed(0);
                 const oW = (t ? (o / t * 100) : 0).toFixed(0);
                 const actionable = p + f;
                 const passPct = (actionable ? (p / actionable * 100) : 0).toFixed(0);
@@ -15131,6 +15528,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                         <div class="health-seg pass" style="width:${pW}%;" title="${p} passed"></div>
                         <div class="health-seg fail" style="width:${fW}%;" title="${f} failed"></div>
                         ${s ? `<div class="health-seg skip" style="width:${sW}%;" title="${s} skipped"></div>` : ''}
+                        ${nt ? `<div class="health-seg notests" style="width:${ntW}%;" title="${nt} no tests"></div>` : ''}
                         <div class="health-seg other" style="width:${oW}%;" title="${o} other"></div>
                     </div>
                     <div class="health-pct">${passPct}%</div>
@@ -15174,6 +15572,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         clearResultsDashboardSelect(); // manual focus isn't a saved-dashboard selection
         renderResultsTree();
         filterResults();
+        enrichVisibleResultsRuns().catch(() => {});
 
         setTimeout(() => {
             try {
@@ -15197,6 +15596,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         clearResultsDashboardSelect(); // this is a manual selection, not a saved dashboard
         renderResultsTree();
         filterResults();
+        enrichVisibleResultsRuns().catch(() => {});
         showToast(`Selected ${list.length} pipeline(s)${label ? ' — ' + label : ''}.`);
     }
 
@@ -15236,7 +15636,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     function resultsPipelineKeysWhere(pred) {
         const set = new Set();
         for (const r of getChartRuns()) { // full in-scope set, not the current selection
-            if (pred(getRunOutcome(r), r)) set.add(resultsPipelineKey(r.repo, r.workflowName));
+            if (pred(getDisplayOutcome(r), r)) set.add(resultsPipelineKey(r.repo, r.workflowName));
         }
         return [...set];
     }
@@ -15251,9 +15651,10 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             case 'failure': keys = resultsPipelineKeysWhere(o => o === 'failure'); label = 'failed'; break;
             case 'skipped': keys = resultsPipelineKeysWhere(o => o === 'skipped'); label = 'skipped'; break;
             case 'cancelled': keys = resultsPipelineKeysWhere(o => o === 'cancelled'); label = 'cancelled'; break;
-            case 'other': keys = resultsPipelineKeysWhere(o => o !== 'success' && o !== 'failure'); label = 'other'; break;
-            // Pie "Other" = anything that isn't its own slice (success/failure/skipped/cancelled).
-            case 'unknown': keys = resultsPipelineKeysWhere(o => o !== 'success' && o !== 'failure' && o !== 'skipped' && o !== 'cancelled'); label = 'other'; break;
+            case 'no_tests': keys = resultsPipelineKeysWhere(o => o === 'no_tests'); label = 'no tests'; break;
+            case 'other': keys = resultsPipelineKeysWhere(o => !['success', 'failure', 'skipped', 'cancelled', 'no_tests'].includes(o)); label = 'other'; break;
+            // Pie "Other" = anything that isn't its own labeled slice.
+            case 'unknown': keys = resultsPipelineKeysWhere(o => !['success', 'failure', 'skipped', 'cancelled', 'no_tests'].includes(o)); label = 'other'; break;
             default: keys = []; label = '';
         }
         selectResultsPipelineKeys(keys, label);
@@ -15285,14 +15686,18 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         const el = document.getElementById('topPipelinesList');
         if (!el) return;
 
-        const runs = getChartRuns(); // full in-scope set so a selection doesn't collapse the list
+        const runs = getChartRuns();
         if (!runs.length) {
             el.innerHTML = `<div style="padding:10px 2px; color:var(--text-muted); font-size:12px;">No runs match the current filters.</div>`;
             return;
         }
 
-        // Always list all in-scope pipelines; the selected ones get highlighted (not isolated).
-        const inScopeKeys = (getResultsVisiblePipelines() || []).map(p => resultsPipelineKey(p.repo, p.name));
+        let inScopeKeys;
+        if (resultsSelectedPipelines.size) {
+            inScopeKeys = [...resultsSelectedPipelines];
+        } else {
+            inScopeKeys = [...new Set(runs.map(r => resultsPipelineKey(r.repo, r.workflowName)))];
+        }
 
         const agg = new Map();
         for (const k of inScopeKeys) {
@@ -15308,6 +15713,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 failed: 0,
                 cancelled: 0,
                 skipped: 0,
+                noTests: 0,
                 other: 0,
                 latestAt: ''
             });
@@ -15318,11 +15724,12 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             const row = agg.get(k);
             if (!row) continue;
             row.total++;
-            const o = getRunOutcome(r);
+            const o = getDisplayOutcome(r);
             if (o === 'success') row.passed++;
             else if (o === 'failure') row.failed++;
             else if (o === 'cancelled') row.cancelled++;
             else if (o === 'skipped') row.skipped++;
+            else if (o === 'no_tests') row.noTests++;
             else row.other++;
             if (!row.latestAt || new Date(r.createdAt) > new Date(row.latestAt)) row.latestAt = r.createdAt;
         }
@@ -15347,7 +15754,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 <div style="font-size:11px; color:var(--text-muted);">Click a pipeline to focus it</div>
             </div>
             <div style="border:1px solid var(--border-color); border-radius:12px; overflow:hidden;">
-                <div style="display:grid; grid-template-columns: 44px 1fr 90px 64px 64px 64px 64px; gap:0; padding:10px 12px; background:var(--bg-tertiary); color:var(--text-muted); font-size:11px; font-weight:900; letter-spacing:0.5px; text-transform:uppercase;">
+                <div style="display:grid; grid-template-columns: 44px 1fr 90px 64px 64px 64px 64px 72px; gap:0; padding:10px 12px; background:var(--bg-tertiary); color:var(--text-muted); font-size:11px; font-weight:900; letter-spacing:0.5px; text-transform:uppercase;">
                     <div>#</div>
                     <div>Pipeline</div>
                     <div style="text-align:right;">Runs</div>
@@ -15355,6 +15762,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                     <div style="text-align:right;">Fail</div>
                     <div style="text-align:right;">Cancel</div>
                     <div style="text-align:right;">Skip</div>
+                    <div style="text-align:right;">No tests</div>
                 </div>
                 <div style="max-height:280px; overflow:auto; background:rgba(255,255,255,0.02);">
                     ${shown.map((r, i) => {
@@ -15367,7 +15775,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                         const selBorder = isSel ? 'box-shadow: inset 3px 0 0 var(--axos-orange);' : '';
                         return `
                             <div data-focus-key="${keyEsc}" title="${escapeHtml(tip)}"
-                                 style="display:grid; grid-template-columns: 44px 1fr 90px 64px 64px 64px 64px; padding:10px 12px; gap:0; cursor:pointer; border-top:1px solid rgba(255,255,255,0.05); background:${rowBg}; ${selBorder} align-items:center;">
+                                 style="display:grid; grid-template-columns: 44px 1fr 90px 64px 64px 64px 64px 72px; padding:10px 12px; gap:0; cursor:pointer; border-top:1px solid rgba(255,255,255,0.05); background:${rowBg}; ${selBorder} align-items:center;">
                                 <div style="font-family:'JetBrains Mono',monospace; color:var(--text-muted); font-size:11px;">${i + 1}</div>
                                 <div style="min-width:0;">
                                     <div style="font-weight:800; color:var(--text-primary); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${nameEsc}</div>
@@ -15378,6 +15786,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                                 <div style="text-align:right; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--error);">${r.failed}</div>
                                 <div style="text-align:right; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-muted);">${r.cancelled}</div>
                                 <div style="text-align:right; font-family:'JetBrains Mono',monospace; font-size:12px; color:#60a5fa;">${r.skipped}</div>
+                                <div style="text-align:right; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-muted);">${r.noTests}</div>
                             </div>
                         `;
                     }).join('')}
@@ -15410,9 +15819,11 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         list.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
         const missingMap = new Map((missingWorkflows || []).map(m => [`${m.repo}::${m.filename}`, m.reason || 'missing']));
 
+        // Badge counts use the same search/status/repo/schedule filters as the runs table
+        // (ignoreSelection so each visible row shows its own filtered total).
         const totalRunCountByPipe = new Map();
         const schedExecCountByPipe = new Map();
-        for (const r of (allRuns || [])) {
+        for (const r of getFilteredRuns({ ignoreSelection: true })) {
             if (!r) continue;
             const k = resultsPipelineKey(r.repo, r.workflowName);
             totalRunCountByPipe.set(k, (totalRunCountByPipe.get(k) || 0) + 1);
@@ -15458,7 +15869,10 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 html += `<label class="rf-node rf-indent ${checked ? 'active' : ''}" data-pipeline="${escapeHtml(keyVal)}" style="${isMissing ? 'color:var(--danger);' : ''}">
                     <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleResultsPipeline('${jsRepo}', '${jsName}', this.checked)">
                     <span class="rf-label" title="${escapeHtml(p.repo)}: ${escapeHtml(p.name)}">${escapeHtml(short)}${isMissing ? ` <span style="font-size:10px; font-weight:800;">&#9888; ${missReason === 'repo_error' ? 'repo error' : missReason === 'runs_error' ? 'runs error' : 'issue'}</span>` : ''}</span>
-                    <span class="rf-count" title="Total runs fetched">${runCount}</span>
+                    <span style="display:inline-flex; align-items:center; gap:6px; margin-left:auto;">
+                        ${ghWorkflowLinkHtml(p.name, p.repo, 'card-btn rf-gh-btn')}
+                        <span class="rf-count" title="Runs matching current filters">${runCount}</span>
+                    </span>
                     ${p.scheduleEnabled ? `<span class="rf-count" style="margin-left:6px; background:rgba(16,185,129,0.10); color:rgba(16,185,129,0.95);" title="Scheduler-triggered runs (executed) in fetch window">&#128337; ${schedExec}</span>` : ''}
                 </label>`;
             }
@@ -15476,6 +15890,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             document.querySelectorAll('#resultsTree [data-pipeline] input[type=checkbox]').forEach(cb => { cb.checked = false; });
         }
         filterResults();
+        enrichVisibleResultsRuns().catch(() => {});
     }
 
     function toggleResultsPipeline(repo, pipeline, checked) {
@@ -15498,11 +15913,12 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             }
         }
         filterResults();
+        enrichVisibleResultsRuns().catch(() => {});
     }
 
-    function getFilteredRuns(opts) {
+    function getResultsScopedRuns(opts) {
         const ignoreSelection = !!(opts && opts.ignoreSelection);
-        let runs = [...allRuns];
+        let runs = [...(allRuns || [])];
         const repoFilter = getResultsRepoFilterValue();
         if (repoFilterList(repoFilter)) runs = runs.filter(r => repoFilterMatches(repoFilter, String(r.repo || '').trim()));
         const schedFilter = getResultsScheduleFilterValue();
@@ -15513,26 +15929,31 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 return schedFilter === 'scheduled' ? isSched : !isSched;
             });
         }
-        // Charts pass ignoreSelection so a click-to-select doesn't collapse them — they keep
-        // showing the full in-scope picture and highlight the selection instead.
-        if (!ignoreSelection && resultsSelectedPipelines.size) runs = runs.filter(r => resultsSelectedPipelines.has(resultsPipelineKey(r.repo, r.workflowName)));
-        const search = document.getElementById('resultsSearch')?.value?.toLowerCase() || '';
-        if (search) runs = runs.filter(r => r.workflowName.toLowerCase().includes(search));
-        const statusFilter = document.getElementById('resultsStatusFilter')?.value || 'all';
-        if (statusFilter !== 'all') runs = runs.filter(r => getRunOutcome(r) === statusFilter);
+        if (!ignoreSelection && resultsSelectedPipelines.size) {
+            runs = runs.filter(r => resultsSelectedPipelines.has(resultsPipelineKey(r.repo, r.workflowName)));
+        }
+        const search = getResultsSearchText();
+        if (search) runs = runs.filter(r => runMatchesResultsSearch(r, search));
         return runs;
     }
 
-    // Runs for the charts/lists: full in-scope set, NOT narrowed by the click-selection.
+    function getFilteredRuns(opts) {
+        let runs = getResultsScopedRuns(opts);
+        const statusFilter = document.getElementById('resultsStatusFilter')?.value || 'all';
+        if (statusFilter !== 'all') runs = runs.filter(r => getDisplayOutcome(r) === statusFilter);
+        return runs;
+    }
+
+    // Charts and top-pipeline lists use the same filtered + selected run scope as metrics/table.
     function getChartRuns() {
-        let runs = getFilteredRuns({ ignoreSelection: true });
+        let runs = getFilteredRuns();
         const exclude = !!document.getElementById('excludeCancelledMetrics')?.checked;
-        if (exclude) runs = runs.filter(r => getRunOutcome(r) !== 'cancelled');
+        if (exclude) runs = runs.filter(r => getDisplayOutcome(r) !== 'cancelled');
         return runs;
     }
 
     // Selection highlight state (so charts can show what you clicked without collapsing).
-    let resultsActiveOutcome = null; // 'success'|'failure'|'skipped'|'cancelled'|'unknown'|'other'|'total'|null
+    let resultsActiveOutcome = null; // 'success'|'failure'|'skipped'|'cancelled'|'no_tests'|'unknown'|'other'|'total'|null
     let resultsActiveDay = null;     // 'YYYY-MM-DD' | null
     function resultsSelectionActive() {
         return !!(resultsSelectedPipelines.size || resultsActiveOutcome || resultsActiveDay);
@@ -15575,23 +15996,18 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 r.status ? r.status.charAt(0).toUpperCase() + r.status.slice(1).replace(/_/g, ' ') :
                 'Unknown';
 
-            const outcome = getRunOutcome(r);
+            const outcome = getDisplayOutcome(r);
             const badge = isActive
                 ? 'badge-running'
-                : (outcome === 'success' ? 'badge-pass' :
-                   outcome === 'failure' ? 'badge-fail' :
-                   outcome === 'cancelled' ? 'badge-cancel' :
-                   outcome === 'skipped' ? 'badge-skip' : 'badge-running');
+                : getDisplayOutcomeBadgeClass(outcome, false);
 
             const label = isActive
                 ? statusLabel
-                : (outcome === 'success' ? 'Passed' :
-                   outcome === 'failure' ? 'Failed' :
-                   outcome === 'skipped' ? 'Skipped' :
-                   outcome ? (outcome.charAt(0).toUpperCase() + outcome.slice(1)) : 'Unknown');
+                : getDisplayOutcomeLabel(outcome);
             const date = new Date(r.createdAt);
             const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
             const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            const outcomeTip = escapeHtml(getDisplayOutcomeTip(r));
             const skipInfo = outcome === 'skipped'
                 ? (() => {
                     const tipText = String(r.skipReason || 'Skipped by schedule gate.').trim() || 'Skipped by schedule gate.';
@@ -15599,10 +16015,13 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                     return ` <span class="info-tip" data-tip="${esc}" title="${esc}" aria-label="${esc}">&#9432;</span>`;
                 })()
                 : '';
+            const noTestsInfo = outcome === 'no_tests'
+                ? ` <span class="info-tip" data-tip="No tests found to run" title="No tests found to run" aria-label="No tests found to run">&#9432;</span>`
+                : '';
             return `<tr>
                 <td class="run-name" title="${r.workflowName}">${r.workflowName.replace(/-Testim$/, '')}</td>
                 <td style="font-family:'JetBrains Mono',monospace; font-size:12px;">#${r.runNumber}</td>
-                <td><span class="${badge}">${label}</span>${skipInfo}</td>
+                <td><span class="${badge}" title="${outcomeTip}">${label}</span>${skipInfo}${noTestsInfo}</td>
                 <td style="font-family:'JetBrains Mono',monospace; font-size:12px;">${runDurationCell(r)}</td>
                 <td style="font-size:12px;">${r.event === 'schedule' ? '&#128337; Schedule' : r.event === 'workflow_dispatch' ? '&#9654; Manual' : r.event}</td>
                 <td style="font-size:12px; color:var(--text-secondary);">${dateStr}<br><span style="color:var(--text-muted);">${timeStr}</span></td>
@@ -15671,8 +16090,8 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     const DASH_VIEW_MODE_KEY = 'pm.dashboards.viewMode';
     const dashTrendChartInstances = new Map();
     let dashTrendRenderToken = 0;
-    const DASH_TEST_COUNTS_CACHE_KEY = 'pm.dashboards.testCounts.v1';
-    const DASH_TEST_COUNTS_LS_CACHE_KEY = 'pm.dashboards.testCounts.ls.v1';
+    const DASH_TEST_COUNTS_CACHE_KEY = 'pm.dashboards.testCounts.v2';
+    const DASH_TEST_COUNTS_LS_CACHE_KEY = 'pm.dashboards.testCounts.ls.v2';
     const DASH_ENRICH_CONCURRENCY = 12;
     let dashboardsContentDirty = true;
 
@@ -15758,7 +16177,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     function saveDashTestCountsCacheEntry(r) {
         const key = dashTestCountsCacheKey(r);
         const tc = r?.testCounts;
-        if (!key || !r._testCountsDone || !hasEnrichedTestCounts(tc)) return;
+        if (!key || !r._testCountsDone || !hasCachedTestCounts(tc)) return;
         if (isLegacyRunLevelEstimate(tc)) return;
         try {
             const cache = loadTestCountsCacheMerged();
@@ -15774,7 +16193,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         try {
             const hit = loadDashTestCountsCache()[key];
             const tc = hit?.tc;
-            if (!hasEnrichedTestCounts(tc)) return;
+            if (!hasCachedTestCounts(tc)) return;
             r.testCounts = tc;
             r._testCountsDone = true;
         } catch { /* ignore */ }
@@ -15785,7 +16204,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             const cache = loadDashTestCountsCache();
             let changed = false;
             for (const [k, v] of Object.entries(cache)) {
-                if (!hasEnrichedTestCounts(v?.tc)) {
+                if (!hasCachedTestCounts(v?.tc)) {
                     delete cache[k];
                     changed = true;
                 }
@@ -17319,22 +17738,26 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         body.innerHTML = runningHtml + queuedHtml;
     }
 
-    let dashSelectedRepo = null; // Dashboards-tab-local repo (does NOT touch the global filter)
+    let dashSelectedRepo = null; // Dashboards-tab repo; switching syncs the global repo filter.
 
     function getDashboardsRepo() {
-        // Dashboards repo is LOCAL to this tab so picking it here doesn't change Pipelines,
-        // Results, Email or Calendar. Default to the global repo on first open, then stay local.
         if (dashSelectedRepo) return dashSelectedRepo;
         const list = repoFilterList(globalRepoFilter);
         return list && list.length ? list[0] : '';
     }
 
-    function setDashboardsRepo(repo) {
-        dashSelectedRepo = String(repo || '').trim() || null;
-        dashSelectedGroupId = null; // reset group filter when repo changes
+    function setDashboardsRepo(repo, opts) {
+        const o = opts && typeof opts === 'object' ? opts : {};
+        const next = String(repo || '').trim() || null;
+        dashSelectedRepo = next;
+        dashSelectedGroupId = null;
         dashboardsView = 'dashboard';
         selectedDashboardUpdates.clear();
-        renderDashboards();
+        if (!o.skipGlobalFilter && next && String(globalRepoFilter || 'all') !== next) {
+            setGlobalRepoFilter(next, { persist: true });
+        } else {
+            renderDashboards();
+        }
     }
 
     function ensureDashModal() {
@@ -18197,6 +18620,10 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         try { repoMsSetValue('resultsRepoFilter', r || 'all', { silent: true }); } catch { /* ignore */ }
         try { renderResultsTree(); } catch { /* ignore */ }
         try { filterResults(); } catch { /* ignore */ }
+        // Enrich against the newly selected pipeline: switchTopTab('results') above
+        // kicked off enrichment for the previous scope, so re-run it now that the
+        // target pipeline is selected or its JUnit-derived outcomes stay stale.
+        try { enrichVisibleResultsRuns().catch(() => {}); } catch { /* ignore */ }
 
         // Scroll selected node into view (after render).
         setTimeout(() => {
@@ -18500,6 +18927,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                         <div class="dash-pipe-foot">
                             <span style="white-space:normal; overflow:visible; word-break:break-word; line-height:1.25;">${escapeHtml(wfFile)}</span>
                             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+                                ${p?.name ? ghWorkflowLinkHtml(p.name, repo, 'btn-lite') : ''}
                                 <button class="btn-lite" onclick="openResultsForDashboardPipeline('${escapeHtml(repo)}','${escapeHtml(pk)}');" title="Open in Results & Metrics">Results</button>
                                 <button class="btn-lite" onclick="removePipelineFromGroup('${escapeHtml(active.id)}','${escapeHtml(g.id)}','${escapeHtml(pk)}');" title="Remove from group">Remove</button>
                             </div>
