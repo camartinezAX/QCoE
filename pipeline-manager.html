@@ -1136,6 +1136,12 @@
         .dash-trend-progress-label{font-size:10px;font-weight:800;color:var(--text-muted);text-align:center;line-height:1.3;}
         .dash-trend-progress-elapsed{font-size:9px;font-weight:600;color:var(--text-muted);opacity:0.85;}
         .dash-trend-wrap.ready .dash-trend-loading{display:none;}
+        .results-enrich-status{
+            align-items:center;gap:10px;width:fit-content;margin:0 0 14px;padding:8px 16px 6px;
+            border-radius:10px;background:rgba(0,0,0,0.12);border:1px solid rgba(255,255,255,0.05);
+        }
+        [data-theme="light"] .results-enrich-status{background:rgba(30,56,96,0.04);border-color:rgba(30,56,96,0.10);}
+        .results-enrich-status .dash-trend-progress{gap:2px;}
         .dash-pipe-foot{display:flex;justify-content:space-between;gap:10px;margin-top:10px;font-size:11px;color:var(--text-muted);}
         .dash-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);font-weight:800;}
         [data-theme="light"] .dash-pill{background:#fff;border-color:rgba(30,56,96,0.16);color:var(--navy);}
@@ -1924,6 +1930,7 @@
             </div>
 
             <div id="resultsSyncBanner" class="results-sync-banner" style="display:none;"></div>
+            <div id="resultsEnrichStatus" class="results-enrich-status" style="display:none;"></div>
 
             <!-- Metrics -->
             <div id="metricsArea" style="display:none;">
@@ -2548,7 +2555,30 @@
     // ══════════════════════════════════════════
     //  RUNNERS (label vs runner group)
     // ══════════════════════════════════════════
+    // GitHub split the old shared "axos-qe-gh-runners" org runner group into
+    // per-team groups. Axos.QE.Performance.Automation has not been migrated
+    // yet (out of scope — tracked separately), so it still uses the legacy
+    // group name until that repo gets its own "axos-gh-qe-performance" group.
     const DEFAULT_RUNNER_GROUP = 'axos-qe-gh-runners';
+
+    // Returns the correct runner group for a given repo. Axos.QE.Web and
+    // Axos.QE.Crypto.Web run on BOTH pools depending on run target: local
+    // (Windows) shares the Mobile group, browserstack (Linux) shares the
+    // Testim group — pass the pipeline's runTarget to resolve the right one.
+    function getDefaultRunnerGroupForRepo(repoName, runTarget) {
+        const repo = String(repoName || '').trim();
+        if (['Axos.QE.API_OLB', 'Axos.QE.API_CS', 'Axos.QE.API_UDB', 'Axos.QE.API_WFO'].includes(repo)) {
+            return 'axos-gh-qe-api';
+        }
+        if (repo === 'Axos.QE.Mobile') return 'axos-gh-qe-mobile';
+        if (repo === 'Axos.QE.Web' || repo === 'Axos.QE.Crypto.Web') {
+            return runTarget === 'browserstack' ? 'axos-gh-qe-testim' : 'axos-gh-qe-mobile';
+        }
+        if (repo === 'Axos.QE.Performance.Automation') return DEFAULT_RUNNER_GROUP;
+        // Axos.QE.TestIM and anything unrecognized default to the Testim group
+        // (this tool's home repo).
+        return 'axos-gh-qe-testim';
+    }
     const PERF_JMETER_RUNNERS = ['LOADRUN03'];
     const DEFAULT_PERF_JMETER_RUNNER = 'LOADRUN03';
 
@@ -2573,7 +2603,7 @@
     }
 
     function getRunnerGroup(p) {
-        return String(p?.runnerGroup || '').trim() || DEFAULT_RUNNER_GROUP;
+        return String(p?.runnerGroup || '').trim() || getDefaultRunnerGroupForRepo(p?.repo, p?.runTarget);
     }
 
     function runnerLabelsForOs(os) {
@@ -2583,7 +2613,7 @@
             : '[self-hosted, linux, x64]';
     }
 
-    // Linux QE hosts with GitHub runners in axos-qe-gh-runners (QAAutomationTestIM).
+    // Linux QE hosts with GitHub runners in axos-gh-qe-testim (QAAutomationTestIM).
     // dsdl-timab32 excluded — ADO agent exists but no GH runner.
     const LINUX_QE_RUNNERS = [
         'dsdl-timab21', 'dsdl-timab22', 'dsdl-timab23', 'dsdl-timab24', 'dsdl-timab25',
@@ -6684,7 +6714,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                   `- PARALLELS (default inherit)\n` +
                   `- RETRIES (default inherit)\n` +
                   `- RUNNER_STRATEGY (choice inherit/group/label, default inherit)\n` +
-                  `- RUNNER_GROUP (default axos-qe-gh-runners)\n` +
+                  `- RUNNER_GROUP (default axos-gh-qe-mobile for local, axos-gh-qe-testim for browserstack)\n` +
                   `- RUNNER_LABEL_LINUX / CUSTOM_RUNNER_LABEL_LINUX, RUNNER_LABEL_WINDOWS / CUSTOM_RUNNER_LABEL_WINDOWS\n` +
                   `- PW_VIDEO (choice 0/1, default 1), PW_HEADLESS (choice inherit/0/1, default inherit)\n` +
                   `- VERBOSE_OUTPUT, DRY_RUN, FAIL_FAST (choice true/false, default false)\n\n`
@@ -7388,7 +7418,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                         <select id="fRunnerLabel" ${isView ? 'disabled' : ''}>
                             ${['AUTO','QSDW-TFSBA01','QSDW-TFSBA02','QSDW-TFSBA03','QSDW-TFSBA04','QSDW-TFSBA05'].map(r => `<option value="${r}" ${(p.runnerLabel || 'AUTO') === r ? 'selected' : ''}>${r}</option>`).join('')}
                         </select>
-                        <span class="field-help">AUTO = the axos-qe-gh-runners group assigns a free runner; or pin a specific host (QSDW-TFSBA*).</span>
+                        <span class="field-help">AUTO = the axos-gh-qe-mobile group assigns a free runner; or pin a specific host (QSDW-TFSBA*).</span>
                     </div>
                 </div>
             </div>`;
@@ -7767,7 +7797,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 <div class="form-group" id="runnerGroupBlock" style="display:${runnerStrategyUi === 'group' ? 'block' : 'none'};">
                     <label class="form-label">Runner Group</label>
                     <input type="text" id="fRunnerGroup" value="${escapeHtml(runnerGroupUi)}" ${isView ? 'disabled' : ''}>
-                    <span class="field-help">Default: <code>${escapeHtml(DEFAULT_RUNNER_GROUP)}</code></span>
+                    <span class="field-help">Default: <code>axos-gh-qe-mobile</code></span>
                 </div>
                 <div id="runnerLabelFields" style="display:${runnerStrategyUi === 'label' ? 'block' : 'none'};">
                     <div class="form-group">
@@ -8125,7 +8155,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     <div class="form-group" id="runnerGroupBlock" style="display:${runnerStrategyUi === 'group' ? 'block' : 'none'};">
                         <label class="form-label">Runner Group</label>
                         <input type="text" id="fRunnerGroup" value="${escapeHtml(runnerGroupUi)}" ${isView ? 'disabled' : ''}>
-                        <span class="field-help">Default: <code>${escapeHtml(DEFAULT_RUNNER_GROUP)}</code></span>
+                        <span class="field-help">Default: <code>axos-gh-qe-mobile</code> (local/Windows) or <code>axos-gh-qe-testim</code> (browserstack/Linux)</span>
                     </div>
                 </div>
 
@@ -8356,7 +8386,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     <select id="fRunnerLabel" ${isView ? 'disabled' : ''}>
                         ${LINUX_QE_RUNNER_CHOICES.map(r => `<option value="${r}" ${(p.runnerLabel || 'AUTO') === r ? 'selected' : ''}>${r}</option>`).join('')}
                     </select>
-                    <span class="field-help">AUTO = the axos-qe-gh-runners group assigns a free runner; or pin a specific host (dsdl-timab*).</span>
+                    <span class="field-help">AUTO = the axos-gh-qe-testim group assigns a free runner; or pin a specific host (dsdl-timab*).</span>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Custom Runner Label <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional)</span></label>
@@ -8851,7 +8881,9 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
 
         const groupEl = document.getElementById('fRunnerGroup');
         if (showGroup && groupEl && !String(groupEl.value || '').trim()) {
-            groupEl.value = DEFAULT_RUNNER_GROUP;
+            const repoForGroup = document.getElementById('fRepo')?.value || '';
+            const runTargetForGroup = document.getElementById('fRunTarget')?.value || '';
+            groupEl.value = getDefaultRunnerGroupForRepo(repoForGroup, runTargetForGroup);
         }
     }
 
@@ -10092,7 +10124,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 const strategy = normalizeRunnerStrategy(v('fRunnerStrategy'));
                 base.runnerStrategy = strategy;
                 if (strategy === 'group') {
-                    base.runnerGroup = v('fRunnerGroup') || DEFAULT_RUNNER_GROUP;
+                    base.runnerGroup = v('fRunnerGroup') || getDefaultRunnerGroupForRepo(base.repo, base.runTarget);
                 } else {
                     base.runnerGroup = '';
                 }
@@ -10486,7 +10518,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         const scheduleEnabled = document.getElementById('fScheduleEnabled').checked;
         const scheduleCron = el('fScheduleCron');
         const runnerStrategy = normalizeRunnerStrategy(el('fRunnerStrategy') || 'label');
-        const runnerGroup = String(el('fRunnerGroup') || DEFAULT_RUNNER_GROUP).trim() || DEFAULT_RUNNER_GROUP;
+        const runnerGroupDefault = getDefaultRunnerGroupForRepo(el('fRepo'), el('fRunTarget'));
+        const runnerGroup = String(el('fRunnerGroup') || runnerGroupDefault).trim() || runnerGroupDefault;
         let prompt;
 
         if (isMobileForm() && (document.getElementById('fFeature')?.value || '') !== 'Orchestrators') {
@@ -10549,7 +10582,7 @@ ${mobileEnvDispatchPromptText(el('fEnv'), envSpecific).trimEnd()}
 - PARALLELS (default: inherit)
 - RETRIES (default: inherit)
 - RUNNER_STRATEGY (choice: inherit/group/label, default: inherit)
-- RUNNER_GROUP (default: axos-qe-gh-runners)
+- RUNNER_GROUP (default: axos-gh-qe-mobile for local, axos-gh-qe-testim for browserstack)
 - RUNNER_LABEL_LINUX / CUSTOM_RUNNER_LABEL_LINUX, RUNNER_LABEL_WINDOWS / CUSTOM_RUNNER_LABEL_WINDOWS
 - PW_VIDEO (choice: 0/1, default: 1), PW_HEADLESS (choice: inherit/0/1, default: inherit)
 - VERBOSE_OUTPUT, DRY_RUN, FAIL_FAST (choice: true/false, default: false)`
@@ -10775,7 +10808,7 @@ JOB_TIMEOUT: ${el('fJobTimeout')}
 RUNNER_LABEL: ${el('fRunnerLabel') || 'AUTO'}
 CUSTOM_RUNNER_LABEL: ${el('fCustomRunnerLabel') || ''}
 
-Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific host pins it; CUSTOM_RUNNER_LABEL overrides.`;
+Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific host pins it; CUSTOM_RUNNER_LABEL overrides.`;
 
             if (scheduleEnabled && scheduleCron) {
                 prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron}`;
@@ -10953,7 +10986,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 hostsUatEnv: 'na',
                 maxRetries: '0',
                 runnerStrategy: 'group',
-                runnerGroup: DEFAULT_RUNNER_GROUP,
+                runnerGroup: getDefaultRunnerGroupForRepo(repo),
                 runnerLabel: 'QSDW-TFSBA06',
                 customRunnerLabel: '',
                 jobTimeout: 120,
@@ -10973,7 +11006,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 hostsUatEnv: 'na',
                 maxRetries: '0',
                 runnerStrategy: 'group',
-                runnerGroup: DEFAULT_RUNNER_GROUP,
+                runnerGroup: getDefaultRunnerGroupForRepo(repo),
                 runnerLabel: 'QSDW-TFSBA06',
                 customRunnerLabel: '',
                 jobTimeout: 120,
@@ -10993,7 +11026,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 hostsUatEnv: 'na',
                 maxRetries: '0',
                 runnerStrategy: 'group',
-                runnerGroup: DEFAULT_RUNNER_GROUP,
+                runnerGroup: getDefaultRunnerGroupForRepo(repo),
                 runnerLabel: 'QSDW-TFSBA06',
                 customRunnerLabel: '',
                 jobTimeout: 120,
@@ -11013,7 +11046,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 hostsUatEnv: 'na',
                 maxRetries: '0',
                 runnerStrategy: 'group',
-                runnerGroup: DEFAULT_RUNNER_GROUP,
+                runnerGroup: getDefaultRunnerGroupForRepo(repo),
                 runnerLabel: 'QSDW-TFSBA06',
                 customRunnerLabel: '',
                 jobTimeout: 120,
@@ -11035,7 +11068,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 parallelSplit: 'true',
                 jobTimeout: 120,
                 runnerStrategy: 'group',
-                runnerGroup: DEFAULT_RUNNER_GROUP,
+                runnerGroup: getDefaultRunnerGroupForRepo(repo),
                 runnerLabel: 'QSDW-TFSBA01',
             };
         }
@@ -11057,7 +11090,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 jobTimeout: 120,
                 projectDir: '',
                 runnerStrategy: 'group',
-                runnerGroup: DEFAULT_RUNNER_GROUP,
+                runnerGroup: getDefaultRunnerGroupForRepo(repo, 'local'),
                 runnerLabelLinux: 'dsdl-timab28',
                 customRunnerLabelLinux: '',
                 runnerLabelWindows: 'QSDW-TFSBA01',
@@ -11094,7 +11127,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 bsAccessKey: '',
                 jobTimeout: 120,
                 runnerStrategy: 'group',
-                runnerGroup: DEFAULT_RUNNER_GROUP,
+                runnerGroup: getDefaultRunnerGroupForRepo(repo, 'local'),
                 runnerLabel: 'QSDW-TFSBA01',
             };
         }
@@ -11144,7 +11177,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             retries: '1',
             browserTimeout: '30',
             runnerStrategy: 'group',
-            runnerGroup: DEFAULT_RUNNER_GROUP,
+            runnerGroup: getDefaultRunnerGroupForRepo(repo),
             runnerLabel: 'dsdl-timab31',
             customRunnerLabel: '',
             jobTimeout: 120,
@@ -11531,8 +11564,10 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         const safeDone = safeTotal > 0
             ? Math.min(Math.max(0, Number(done) || 0), safeTotal)
             : Math.max(0, Number(done) || 0);
-        const pct = safeTotal > 0 ? Math.round((safeDone / safeTotal) * 100) : 0;
         const remaining = safeTotal > 0 ? Math.max(0, safeTotal - safeDone) : 0;
+        // Round down while anything remains — rounding to 100% while the label also says
+        // "N remaining" reads as a contradiction (e.g. 1229/1231 rounding up to "100%").
+        const pct = safeTotal > 0 ? (remaining ? Math.min(99, Math.floor((safeDone / safeTotal) * 100)) : 100) : 0;
         if (label) {
             const phase = String(opts.phase || '').trim();
             const phasePrefix = phase ? `${phase} — ` : '';
@@ -12178,7 +12213,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 hostsUatEnv: 'na',
                 maxRetries: '0',
                 runnerStrategy: 'group',
-                runnerGroup: DEFAULT_RUNNER_GROUP,
+                runnerGroup: getDefaultRunnerGroupForRepo(apiRepo),
                 runnerLabel: 'QSDW-TFSBA06',
                 customRunnerLabel: '',
                 jobTimeout: 120,
@@ -14180,28 +14215,102 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         const settled = [];
         for (const r of pending) {
             if (r._testCountsPromise) inFlight.push(r);
-            else if (r?.status && r.status !== 'completed') continue;
+            // Runs still in progress on GitHub have no logs/artifacts to enrich yet — treat them
+            // as settled-for-now rather than skipping outright, so onRunDone still fires for them
+            // (otherwise done/total progress counters can never reach 100%).
+            else if (r?.status && r.status !== 'completed') settled.push(r);
             else if (shouldEnrichRunTestCounts(r)) toStart.push(r);
             else if (isRunEnrichmentSettled(r)) settled.push(r);
             else if (r._testCountsAttemptedAt) settled.push(r);
             else settled.push(r);
         }
         for (const r of settled) {
-            if (onRunDone) onRunDone(r);
+            try { if (onRunDone) onRunDone(r); } catch { /* ignore */ }
         }
         const inFlightWait = inFlight.map(async (r) => {
             try { await r._testCountsPromise; } catch { /* ignore */ }
-            if (onRunDone) onRunDone(r);
+            try { if (onRunDone) onRunDone(r); } catch { /* ignore */ }
         });
         if (toStart.length) {
+            // A single run's enrichment failing (network hiccup, deleted artifact, GitHub
+            // hiccup) must never skip its onRunDone call or take down the whole batch —
+            // otherwise done/total progress permanently plateaus a few runs short of 100%.
             await mapLimit(toStart, DASH_ENRICH_CONCURRENCY, async (r) => {
-                await enrichRunTestCounts(r);
-                if (onRunDone) onRunDone(r);
+                try { await enrichRunTestCounts(r); } catch { /* enrichRunTestCounts already self-heals; belt & suspenders */ }
+                try { if (onRunDone) onRunDone(r); } catch { /* ignore */ }
             });
         }
         if (inFlightWait.length) {
             await Promise.allSettled(inFlightWait);
         }
+    }
+
+    // Streaming counterpart to enrichDashboardTestCounts: instead of taking a fixed batch of
+    // runs upfront, this exposes submit(run) so callers can feed it runs AS they're fetched
+    // (e.g. pipeline-by-pipeline while the run-list fetch is still going), so test-count
+    // enrichment starts long before the whole fetch finishes instead of only afterward.
+    function createStreamingTestCountEnricher(onRunDone) {
+        const queue = [];
+        const inFlightWaits = [];
+        // Up to DASH_ENRICH_CONCURRENCY workers can all be waiting at once — a single shared
+        // "wake" slot would only ever resolve the most recent waiter and starve the rest, so
+        // every waiting worker registers its own resolver and notify() wakes all of them.
+        const waiters = [];
+        let closed = false;
+
+        function notify() {
+            while (waiters.length) {
+                const w = waiters.shift();
+                w();
+            }
+        }
+
+        async function nextItem() {
+            while (!queue.length) {
+                if (closed) return null;
+                await new Promise(res => { waiters.push(res); });
+            }
+            return queue.shift();
+        }
+
+        async function worker() {
+            while (true) {
+                const r = await nextItem();
+                if (!r) return;
+                try { await enrichRunTestCounts(r); } catch { /* enrichRunTestCounts already self-heals */ }
+                try { if (onRunDone) onRunDone(r); } catch { /* ignore */ }
+            }
+        }
+
+        const workers = Array.from({ length: DASH_ENRICH_CONCURRENCY }, worker);
+
+        return {
+            submit(r) {
+                if (!r || !r.id) return;
+                if (r._testCountsPromise) {
+                    inFlightWaits.push((async () => {
+                        try { await r._testCountsPromise; } catch { /* ignore */ }
+                        try { if (onRunDone) onRunDone(r); } catch { /* ignore */ }
+                    })());
+                    return;
+                }
+                if (r.status && r.status !== 'completed') {
+                    try { if (onRunDone) onRunDone(r); } catch { /* ignore */ }
+                    return;
+                }
+                if (!shouldEnrichRunTestCounts(r)) {
+                    try { if (onRunDone) onRunDone(r); } catch { /* ignore */ }
+                    return;
+                }
+                queue.push(r);
+                notify();
+            },
+            async finish() {
+                closed = true;
+                notify();
+                await Promise.all([...workers, ...inFlightWaits]);
+            }
+        };
     }
 
     function dashTrendProgressRingHtml(pct, label, elapsedSec) {
@@ -14424,21 +14533,79 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     }
 
     let resultsEnrichToken = 0;
-    let resultsEnrichRenderTimer = null;
+    // Test-count enrichment must only ever run as part of an explicit "Fetch Results" click —
+    // never as a side effect of just viewing a tab, switching filters, or opening Dashboards.
+    // fetchAllResults() is the only thing that sets this true.
+    let resultsFetchActive = false;
 
-    function scheduleResultsEnrichmentRefresh(token) {
+    // Every run's enrichment completion used to trigger a full KPI-card/chart teardown and
+    // rebuild — with up to DASH_ENRICH_CONCURRENCY runs finishing near-simultaneously (and
+    // this firing regardless of *why* enrichment started: a fetch, a tab switch, a filter
+    // change), that read as constant flicker no matter the trigger. There is no partial
+    // repaint here at all anymore — the ring/bar shows live progress cheaply, and this does
+    // exactly one clean repaint once enrichment is fully settled.
+    function runResultsEnrichmentRefresh(token) {
         if (token !== resultsEnrichToken) return;
         if (!document.getElementById('panelResults')?.classList.contains('active')) return;
-        if (resultsEnrichRenderTimer != null) clearTimeout(resultsEnrichRenderTimer);
-        resultsEnrichRenderTimer = setTimeout(() => {
-            resultsEnrichRenderTimer = null;
-            if (token !== resultsEnrichToken) return;
-            try {
-                pruneResultsSelectionToVisible();
-                renderResultsTree();
-                filterResults();
-            } catch { /* ignore */ }
-        }, 50);
+        try {
+            pruneResultsSelectionToVisible();
+            renderResultsTree();
+            filterResults();
+        } catch { /* ignore */ }
+    }
+
+    let resultsEnrichProgressTimer = null;
+    let resultsEnrichProgressPending = null;
+    let resultsEnrichProgressLastPaintAt = 0;
+    // A full SVG innerHTML replace on every single run's completion is what actually flickers —
+    // measured in a real repro (200+ paints/sec during a concurrent burst). Even throttling to
+    // once per animation frame (60/sec) still reads as vibration for a discrete element replace
+    // like this one, so this is a calmer, human-paced interval instead of a frame-rate one.
+    const RESULTS_ENRICH_PROGRESS_MIN_INTERVAL_MS = 150;
+
+    function paintResultsEnrichProgress() {
+        resultsEnrichProgressTimer = null;
+        resultsEnrichProgressLastPaintAt = Date.now();
+        const snap = resultsEnrichProgressPending;
+        resultsEnrichProgressPending = null;
+        if (!snap || snap.token !== resultsEnrichToken) return;
+        const { done, total, holdRepaint } = snap;
+        if (holdRepaint) {
+            // Driven by an active Fetch Results run — reuse its progress bar instead of a
+            // separate badge, so the button/bar stay "busy" until refinement is fully done.
+            updateFetchProgress(done, total, {
+                phase: 'Refining metrics',
+                pipelineLabel: total ? `${done} of ${total} runs enriched` : ''
+            });
+            return;
+        }
+        const wrap = document.getElementById('resultsEnrichStatus');
+        if (!wrap) return;
+        if (!total || done >= total) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+        wrap.style.display = 'flex';
+        wrap.innerHTML = dashTrendProgressRingHtml((done / total) * 100, `Refining metrics — ${done}/${total} runs`);
+    }
+
+    function updateResultsEnrichProgress(token, done, total, opts = {}) {
+        if (token !== resultsEnrichToken) return;
+        resultsEnrichProgressPending = { token, done, total, holdRepaint: !!opts.holdRepaint };
+        const isFinal = !total || done >= total;
+        if (isFinal) {
+            // Always show the true final state immediately — don't let a queued paint delay it.
+            if (resultsEnrichProgressTimer != null) { clearTimeout(resultsEnrichProgressTimer); resultsEnrichProgressTimer = null; }
+            paintResultsEnrichProgress();
+            return;
+        }
+        if (resultsEnrichProgressTimer != null) return; // a paint is already queued; it'll pick up this snapshot
+        const wait = Math.max(0, RESULTS_ENRICH_PROGRESS_MIN_INTERVAL_MS - (Date.now() - resultsEnrichProgressLastPaintAt));
+        resultsEnrichProgressTimer = setTimeout(paintResultsEnrichProgress, wait);
+    }
+
+    function hideResultsEnrichProgress() {
+        if (resultsEnrichProgressTimer != null) { clearTimeout(resultsEnrichProgressTimer); resultsEnrichProgressTimer = null; }
+        resultsEnrichProgressPending = null;
+        const wrap = document.getElementById('resultsEnrichStatus');
+        if (wrap) { wrap.style.display = 'none'; wrap.innerHTML = ''; }
     }
 
     function getResultsEnrichmentRuns() {
@@ -14459,13 +14626,34 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         return runs;
     }
 
-    async function enrichVisibleResultsRuns() {
+    async function enrichVisibleResultsRuns(opts = {}) {
+        const holdRepaint = !!opts.holdRepaint;
+        // Only the fetch flow (holdRepaint) or an in-progress fetch may trigger real enrichment.
+        // Every other caller (tab switches, filter changes, dashboard views) just displays
+        // whatever's already cached — it must never kick off its own background pass/ring.
+        if (!holdRepaint && !resultsFetchActive) return;
         const runs = getResultsEnrichmentRuns().filter(r => r && r.id);
         if (!runs.length) return;
         restoreDashTestCountsForRuns(runs);
         const token = ++resultsEnrichToken;
-        await enrichDashboardTestCounts(runs, () => scheduleResultsEnrichmentRefresh(token));
-        scheduleResultsEnrichmentRefresh(token);
+        const total = runs.length;
+        let done = 0;
+        updateResultsEnrichProgress(token, done, total, { holdRepaint });
+        try {
+            await enrichDashboardTestCounts(runs, () => {
+                done++;
+                // Progress-ring update only — no KPI/chart rebuild here, ever, regardless of
+                // what triggered this (a fetch, a tab switch, a filter change). Rebuilding on
+                // every completion is what caused the flicker in the first place.
+                updateResultsEnrichProgress(token, done, total, { holdRepaint });
+            });
+        } finally {
+            // No matter what happened above (including anything unexpectedly throwing),
+            // always clear the progress UI and do exactly one final repaint — never leave
+            // the ring/bar frozen mid-count, and never repaint more than once.
+            hideResultsEnrichProgress();
+            runResultsEnrichmentRefresh(token);
+        }
     }
 
     function getPipelineRepeatWeeks(repo, workflowName) {
@@ -14527,10 +14715,25 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         return !!(checkout && (checkout.conclusion || checkout.status) === 'skipped');
     }
 
+    // Resolves with whichever comes first: the given promise, or a plain timeout. Used to cap
+    // how long we'll wait on a handful of slow/stuck stragglers (still-queued GitHub runs, a
+    // slow artifact download) without holding up the rest of the UI. The original promise keeps
+    // running in the background either way — this only stops *waiting* on it, it doesn't cancel it.
+    function withTimeout(promise, ms) {
+        return Promise.race([
+            promise,
+            new Promise((resolve) => setTimeout(resolve, ms))
+        ]);
+    }
+
     async function mapLimit(items, limit, fn) {
         const arr = items || [];
         const n = Math.max(1, limit || 4);
         let idx = 0;
+        // Errors from `fn` propagate, same as before — some callers (fetchQueue) have no
+        // try/catch of their own and rely on this to fail loudly (e.g. to show an error
+        // toast). Per-item resilience belongs at the specific call site that needs it, not
+        // here globally — see enrichDashboardTestCounts's own try/catch around each item.
         const workers = Array.from({ length: Math.min(n, arr.length) }, async () => {
             while (true) {
                 const cur = idx++;
@@ -14646,6 +14849,12 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
     async function fetchAllResults() {
         const pat = getGitHubToken();
         if (!pat) { showToast('No GitHub token — set one via Settings in the Pipelines sidebar.', true); return; }
+        // Any enrichment left running from a previous fetch (or a filter change) is now
+        // stale — invalidate it immediately so its progress indicator can't keep showing
+        // next to this new fetch's own progress bar.
+        resultsEnrichToken++;
+        hideResultsEnrichProgress();
+        resultsFetchActive = true;
         const status = document.getElementById('patStatus');
         const btn = document.getElementById('fetchBtn');
         btn.disabled = true; btn.innerHTML = '<span style="display:inline-flex; align-items:center; gap:6px;"><span class="fetch-spinner"></span>Fetching...</span>';
@@ -14685,17 +14894,26 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             const modeText = (mode === 'range' && range) ? `runs from <b>${escapeHtml(range.label)}</b>` : `last <b>${perPage}</b> runs`;
             status.innerHTML = `<span style="color:var(--axos-orange); font-weight:600;">Fetching</span> ${modeText} from ${repos.join(', ')}...`;
 
-            const totalSteps = resultsPipelines.length + 2;
+            const totalSteps = resultsPipelines.length;
             let doneSteps = 0;
             updateFetchProgress(doneSteps, totalSteps, { phase: 'Fetching results', pipelineLabel: 'Starting…' });
 
             let totalMatched = 0;
 
+            // Test-count enrichment (the expensive, per-run JUnit/artifact fetch) no longer
+            // waits for every pipeline to finish listing first — each run is submitted the
+            // moment its pipeline's list comes back, so enrichment runs concurrently with the
+            // remaining pipeline listings instead of as a separate phase afterward.
+            let enrichQueued = 0;
+            let enrichCompleted = 0;
+            const enricher = createStreamingTestCountEnricher(() => { enrichCompleted++; });
+            const enrichHint = () => enrichQueued ? ` · refining metrics in background: ${enrichCompleted}/${enrichQueued}` : '';
+
             for (const repo of repos) {
                 const repoPipes = resultsPipelines.filter(p => p.repo === repo);
                 for (const p of repoPipes) {
                     const pipeLabel = `${repo} — ${String(p.name || p.filename || '').replace(/-Testim$/, '')}`;
-                    updateFetchProgress(doneSteps, totalSteps, { phase: 'Fetching results', pipelineLabel: pipeLabel });
+                    updateFetchProgress(doneSteps, totalSteps, { phase: 'Fetching results', pipelineLabel: pipeLabel + enrichHint() });
                     try {
                         const wfIdOrFile = encodeURIComponent(p.filename);
                         const list = (mode === 'range' && range)
@@ -14710,7 +14928,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                             const totalSec = r.updated_at && r.created_at
                                 ? Math.max(0, Math.round((new Date(r.updated_at) - new Date(r.created_at)) / 1000))
                                 : duration;
-                            allRuns.push({
+                            const built = {
                                 id: r.id,
                                 repo,
                                 workflowName: p.name,
@@ -14731,7 +14949,10 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                                 branch: r.head_branch,
                                 headSha: r.head_sha,
                                 checkSuiteId: r.check_suite_id
-                            });
+                            };
+                            allRuns.push(built);
+                            enrichQueued++;
+                            enricher.submit(built);
                         }
                     } catch (e) {
                         // If runs can't be fetched for this workflow, keep going, but surface it in the UI.
@@ -14740,26 +14961,42 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                         missingWorkflows.push({ repo, filename: p.filename, name: p.name, reason: isNotFound ? 'not_found' : 'runs_error' });
                     }
                     doneSteps++;
-                    updateFetchProgress(doneSteps, totalSteps, { phase: 'Fetching results', pipelineLabel: pipeLabel });
+                    updateFetchProgress(doneSteps, totalSteps, { phase: 'Fetching results', pipelineLabel: pipeLabel + enrichHint() });
                 }
             }
 
             allRuns.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-            // Classify "gate-skipped" schedule runs so we don't show them as Passed.
-            status.innerHTML = `<span style="color:var(--axos-orange); font-weight:600;">Analyzing</span> scheduled runs (skip gate)...`;
-            updateFetchProgress(doneSteps, totalSteps, { phase: 'Analyzing skip gates', pipelineLabel: 'Checking schedule gate skips…' });
-            await enrichGateSkippedRuns(owner);
-            doneSteps++;
-            updateFetchProgress(doneSteps, totalSteps, { phase: 'Analyzing skip gates', pipelineLabel: 'Done' });
-            // Split long runs into wait vs. execution (queue time inflates run-level duration).
-            status.innerHTML = `<span style="color:var(--axos-orange); font-weight:600;">Analyzing</span> run durations (wait vs. execution)...`;
-            updateFetchProgress(doneSteps, totalSteps, { phase: 'Analyzing durations', pipelineLabel: 'Splitting wait vs execution time…' });
-            await enrichRunDurations(owner);
-            doneSteps++;
-            updateFetchProgress(doneSteps, totalSteps, { phase: 'Complete', pipelineLabel: `Loaded ${allRuns.length} run(s)` });
             const miss = missingWorkflows.length ? ` &mdash; <a onclick="showMissingWorkflowsModal()" style="color:var(--danger); font-weight:700; cursor:pointer; text-decoration:underline;" title="Click to see which pipelines couldn't be loaded">${missingWorkflows.length} issue(s)</a>` : '';
-            status.innerHTML = `<span style="color:var(--success); font-weight:600;">&#10003; Loaded ${allRuns.length} run(s)</span> across ${resultsPipelines.length} pipeline(s) (${totalMatched} matched in GitHub)${miss}.`;
-            status.className = 'pat-status ok';
+            status.innerHTML = `<span style="color:var(--axos-orange); font-weight:600;">Loaded</span> ${allRuns.length} run(s) across ${resultsPipelines.length} pipeline(s) (${totalMatched} matched in GitHub)${miss} — finishing background analysis…`;
+            status.className = 'pat-status';
+            btn.innerHTML = '<span style="display:inline-flex; align-items:center; gap:6px;"><span class="fetch-spinner"></span>Refining metrics...</span>';
+
+            // Gate-skip classification and wait/exec duration splitting both need the FULL run
+            // list (they pick the most-recent/longest N), so they can't start until listing is
+            // done — but they run concurrently with whatever test-count enrichment is still
+            // draining from the queue above, instead of as two more sequential phases.
+            const classifyPromise = (async () => {
+                await enrichGateSkippedRuns(owner);
+                await enrichRunDurations(owner);
+            })();
+            const progressTicker = setInterval(() => {
+                updateFetchProgress(enrichCompleted, Math.max(enrichQueued, 1), {
+                    phase: 'Refining metrics',
+                    pipelineLabel: `${enrichCompleted} of ${enrichQueued} runs enriched`
+                });
+            }, 400);
+            try {
+                // A handful of runs can be genuinely slow to enrich (still queued/in-progress
+                // on GitHub, a slow artifact download) — don't hold the whole fetch hostage on
+                // the last couple of stragglers. Give it a generous window, then move on;
+                // whatever's left keeps enriching silently in the background and just shows
+                // with best-available data for now.
+                await Promise.all([classifyPromise, withTimeout(enricher.finish(), 6000)]);
+            } finally {
+                clearInterval(progressTicker);
+            }
+            updateFetchProgress(Math.max(enrichQueued, 1), Math.max(enrichQueued, 1), { phase: 'Complete', pipelineLabel: `Loaded ${allRuns.length} run(s)` });
+
             hydrateAllRunsTestCountsFromCache();
             const syncedAt = Date.now();
             const cacheSaved = saveResultsCache({
@@ -14783,7 +15020,11 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 try { showToast('Results loaded but cache trimmed or too large — some data may refetch on reload.', true); } catch { /* ignore */ }
             }
             markDashboardsDirty();
-            renderResults();
+            // Reveal the dashboard immediately with best-available data (fast path), but hold
+            // the fetch spinner/progress bar open until background test-count enrichment also
+            // settles — a single continuous "busy" state instead of "done" then a second,
+            // separately-flickering load.
+            const enrichDone = renderResults({ holdRepaint: true });
             playDashboardCinematic(document.getElementById('metricsArea'));
             revealQueueTab();
             revealDashboardsTab();
@@ -14792,11 +15033,18 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
             document.getElementById('emailNoData').style.display = 'none';
             document.getElementById('emailReady').style.display = 'block';
             populateEmailPipePicker();
+            // By now test-count enrichment already finished above (interleaved with fetching),
+            // so this is just a cheap safety net for anything outside that pass's scope — same
+            // straggler cap applies, so a couple of slow/stuck runs still can't hold this open.
+            await withTimeout(enrichDone, 4000);
+            status.innerHTML = `<span style="color:var(--success); font-weight:600;">&#10003; Loaded ${allRuns.length} run(s)</span> across ${resultsPipelines.length} pipeline(s) (${totalMatched} matched in GitHub)${miss}.`;
+            status.className = 'pat-status ok';
         } catch (e) {
             status.textContent = 'Error: ' + e.message;
             status.className = 'pat-status';
             showToast('Failed to fetch: ' + e.message);
         } finally {
+            resultsFetchActive = false;
             btn.disabled = false; btn.textContent = 'Fetch Results'; btn.style.removeProperty('opacity');
             if (fetchProgressHideTimer) clearTimeout(fetchProgressHideTimer);
             fetchProgressHideTimer = setTimeout(() => {
@@ -14806,7 +15054,7 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         }
     }
 
-    function renderResults() {
+    function renderResults(opts = {}) {
         if (!resultsPipelines.length && !allRuns.length) return;
         renderResultsSyncBanner();
         const metricsArea = document.getElementById('metricsArea');
@@ -14821,7 +15069,10 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         loadResultsExcludeCancelledPref();
         renderResultsTree();
         filterResults();
-        enrichVisibleResultsRuns().catch(() => {});
+        // Callers that don't care about the background enrichment (tab switches, filter
+        // changes) fire-and-forget this; fetchAllResults awaits it to hold its progress UI
+        // open until refinement is done instead of declaring victory early.
+        return enrichVisibleResultsRuns({ holdRepaint: !!opts.holdRepaint }).catch(() => {});
     }
 
     function resultsPipelineKey(repo, workflowName) {
@@ -18430,14 +18681,27 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
                 if (!prog) continue;
                 prog.done = Math.min(prog.total, prog.done + 1);
                 updateDashTrendLoadingProgress(wrap, prog.done, prog.total, startedMs);
-                const meta = pipelineRuns.find(m => m.wrap === wrap);
-                if (meta) renderWrapChart(meta, { force: true });
+                // Only repaint once THIS card's own runs are all settled — rebuilding
+                // (destroy + recreate) the chart on every single run's completion is exactly
+                // the per-tick flicker bug fixed on the Results tab; a pipeline with 200 runs
+                // would otherwise tear down and rebuild its chart up to 200 times.
+                if (prog.done >= prog.total) {
+                    const meta = pipelineRuns.find(m => m.wrap === wrap);
+                    if (meta) renderWrapChart(meta, { force: true });
+                }
             }
         };
 
-        try {
-            await enrichDashboardTestCounts(uniqueRuns, onRunDone);
-        } catch { /* charts still render with available data */ }
+        // Only an active Fetch Results run may trigger real enrichment — opening/viewing
+        // Dashboards must never kick off its own background pass. Whatever's already cached
+        // gets painted below regardless.
+        if (resultsFetchActive) {
+            try {
+                // Same straggler cap as the main fetch flow — a couple of stuck/slow runs
+                // must not hold every dashboard card's chart in "loading" forever.
+                await withTimeout(enrichDashboardTestCounts(uniqueRuns, onRunDone), 6000);
+            } catch { /* charts still render with available data */ }
+        }
 
         if (token !== dashTrendRenderToken || loadDashViewMode() !== 'graphs') return;
 
@@ -18468,7 +18732,9 @@ Runner: AUTO lets the axos-qe-gh-runners group assign a free runner; a specific 
         }
         if (!runs.length) return;
         restoreDashTestCountsForRuns(runs);
-        await enrichDashboardTestCounts(runs);
+        // Same rule as the trend charts above: only enrich while an actual fetch is running,
+        // and same straggler cap so a couple of stuck runs can't hold this open indefinitely.
+        if (resultsFetchActive) await withTimeout(enrichDashboardTestCounts(runs), 6000);
         for (const card of cards) updateDashboardCardMetrics(card);
         updateDashboardHeaderPassRate();
     }
