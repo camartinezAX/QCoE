@@ -11427,6 +11427,11 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         for (const [k, outKey] of Object.entries(mobileMap)) {
             if (merged[k]) entry[outKey] = merged[k];
         }
+        // TEST_ENV in the caller YAML is lowercase (dev/qa/stg/uat/prod, matching the
+        // workflow_dispatch choice options), but every other env-derived value in this tool
+        // (ENVIRONMENTS, parseFilename's env, the Environment <select> options) is uppercase.
+        // Normalize here so synced pipelines don't lose their Environment selection.
+        if (entry.env) entry.env = String(entry.env).trim().toUpperCase();
 
         if (merged.BROWSERSTACK_CREDENTIAL_SET) entry.bsCredentialSet = String(merged.BROWSERSTACK_CREDENTIAL_SET).trim().toLowerCase();
         const projectDirFromYaml = merged.PROJECT_DIR || merged.project_dir;
