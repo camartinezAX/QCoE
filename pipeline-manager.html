@@ -871,6 +871,9 @@
         }
         [data-theme="light"] .cal-tip{ background:#1E3860; }
         .cal-tip.show{ opacity:1; transform:translateY(0) scale(1); }
+        .cal-tip.cal-tip-multi{ white-space:normal; text-align:center; }
+        .cal-tip-main{ font-size:12px; font-weight:700; }
+        .cal-tip-sub{ font-size:10.5px; font-weight:600; color:var(--orange); opacity:.9; margin-top:3px; }
 
         /* Schedule detail modal internals */
         .cal-modal-status{
@@ -6588,7 +6591,7 @@ ${os.map(n => `- ${n}`).join('\n')}
 
     function appendSchedulePromptLines(prompt, p) {
         if (p.scheduleEnabled && p.schedule) {
-            prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
+            prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
         } else {
             prompt += `\n\nKeep the schedule block commented out.`;
         }
@@ -6782,7 +6785,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                 `JOB_TIMEOUT: ${p.jobTimeout || 120}\n` +
                 `RUNNER_LABEL: ${p.runnerLabel || 'AUTO'}\nCUSTOM_RUNNER_LABEL: ${p.customRunnerLabel || ''}`;
 
-            if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
+            if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
             else prompt += `\n\nKeep the schedule block commented out.`;
 
             prompt += `\n\nUse the existing caller workflow file Mobile_Android_UAT_Smoke-BrowserStack.yml as the exact format reference. Include:\n` +
@@ -6847,7 +6850,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                     `Custom Suffix: ${suffix || 'none'}\n` +
                     `For the header breadcrumb, the <Feature> segment is exactly "${featureFull}" (it matches PIPELINE_NAME — do not abbreviate or re-split it).`;
             }
-            if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
+            if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
             else prompt += `\n\nKeep the schedule block as-is.`;
             if (p.renamedFrom) prompt += `\n\nAlso delete the old workflow file: .github/workflows/${p.renamedFrom}`;
             return prompt;
@@ -6894,7 +6897,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                 (runnerStrategy === 'group'
                     ? `RUNNER_STRATEGY: group\nRUNNER_GROUP: ${runnerGroup}\nRUNNER_LABELS_LINUX: ${runnerLabelsForOs('linux')}\nRUNNER_LABELS_WINDOWS: ${runnerLabelsForOs('windows')}`
                     : `RUNNER_LABEL_LINUX: ${runnerLinux}\nCUSTOM_RUNNER_LABEL_LINUX: ${customLinux}\nRUNNER_LABEL_WINDOWS: ${runnerWin}\nCUSTOM_RUNNER_LABEL_WINDOWS: ${customWin}`);
-            if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
+            if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
             else prompt += `\n\nKeep the schedule block commented out.`;
             prompt += `\n\nUse the existing workflow file Web_Enrollment_UAT-OLB_Smoke-Playwright.yml as the exact format reference. Include:\n` +
                 `- name: and run-name fields matching the pipeline name\n` +
@@ -6940,7 +6943,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                     ? `RUNNER_STRATEGY: group\nRUNNER_GROUP: ${runnerGroup}\nRUNNER_LABELS: ${runnerLabelsForOs('windows')}`
                     : `RUNNER_LABEL: ${p.runnerLabel || 'QSDW-TFSBA01'}`);
 
-            if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
+            if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
             else prompt += `\n\nKeep the schedule block commented out.`;
 
             prompt += `\n\nUse the existing workflow file Web_AxosBank_UAT-OLB_Login_Smoke-Playwright.yml as the exact format reference. Include:\n` +
@@ -6979,7 +6982,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                 `  - pass COLLECTION_SUBFOLDER as: \${{ inputs.RUN_FULL_COLLECTION && ' ' || inputs.COLLECTION_SUBFOLDER }}\n` +
                 `- jobs.test-results running on ubuntu-latest using dorny/test-reporter@v3 against reports/**/junit.xml`;
 
-            if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
+            if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
             else prompt += `\n\nKeep the schedule block commented out.`;
 
             if (runnerStrategy === 'group') {
@@ -7008,7 +7011,7 @@ ${os.map(n => `- ${n}`).join('\n')}
             `JOB_TIMEOUT: ${p.jobTimeout || 120}\n` +
             `RUNNER_LABEL: ${p.runnerLabel || 'AUTO'}\nCUSTOM_RUNNER_LABEL: ${p.customRunnerLabel || ''}`;
 
-        if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule}`;
+        if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
         else prompt += `\n\nKeep the schedule block commented out.`;
 
         prompt = appendEmailPromptLines(prompt, p);
@@ -10550,7 +10553,7 @@ RUNNER_LABEL: ${el('fRunnerLabel') || 'AUTO'}
 CUSTOM_RUNNER_LABEL: ${el('fCustomRunnerLabel') || ''}`;
 
             if (scheduleEnabled && scheduleCron) {
-                prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron}`;
+                prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
             } else {
                 prompt += `\n\nKeep the schedule block commented out.`;
             }
@@ -10620,7 +10623,7 @@ ${targets}
 Each target element supports: enabled, name, owner, repo, workflow, ref, inputs.`;
 
             if (scheduleEnabled && scheduleCron) {
-                prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron}`;
+                prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
             } else {
                 prompt += `\n\nKeep the schedule block commented out.`;
             }
@@ -10643,7 +10646,7 @@ CUSTOM_RUNNER_LABEL: ${el('fCustomRunnerLabel') || ''}
 JOB_TIMEOUT: ${el('fJobTimeout') || '120'}`;
 
             if (scheduleEnabled && scheduleCron) {
-                prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron}`;
+                prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
             } else {
                 prompt += `\n\nKeep the schedule block commented out.`;
             }
@@ -10680,7 +10683,7 @@ JOB_TIMEOUT: ${el('fJobTimeout') || '120'}`;
                     `PIPELINE_NAME: ${name}\nTEST: ${el('fJmxName')}   # .jmx base name in src/scripts (no extension)\nTHREADS: ${el('fJmxThreads')}\nRAMPUP: ${el('fJmxRampup')}\nDURATION: ${el('fJmxDuration')}\nGRANULARITY: ${el('fJmxGranularity') || '1000'}\nJOB_TIMEOUT: ${el('fJobTimeout') || '120'}\nRUNNER_LABEL: ${coercePerfJmeterRunnerLabel(el('fRunnerLabel'))}\nCUSTOM_RUNNER_LABEL: ${el('fCustomRunnerLabel') || ''}\n\n` +
                     `No repo secrets required. Runs on a self-hosted Windows runner via group ${runnerGroup} (labels [self-hosted, windows, x64]); JMeter expected at C:\\JMeter\\apache-jmeter-5.6.3 (self-heal install fallback). Use Perf_OLB_UAT_Regression-JMeter.yml as the exact format reference.`;
             }
-            if (scheduleEnabled && scheduleCron) prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron}`;
+            if (scheduleEnabled && scheduleCron) prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
             else prompt += `\n\nKeep the schedule block as-is.`;
 
         } else if (el('fRepo') === 'Axos.QE.Web') {
@@ -10722,7 +10725,7 @@ ${runnerStrategy === 'group'
     : `RUNNER_LABEL_LINUX: ${el('fRunnerLabelLinux') || 'dsdl-timab28'}\nCUSTOM_RUNNER_LABEL_LINUX: ${el('fCustomRunnerLabelLinux') || ''}\nRUNNER_LABEL_WINDOWS: ${el('fRunnerLabelWindows') || 'QSDW-TFSBA01'}\nCUSTOM_RUNNER_LABEL_WINDOWS: ${el('fCustomRunnerLabelWindows') || ''}`}`;
 
             if (scheduleEnabled && scheduleCron) {
-                prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron}`;
+                prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
             } else {
                 prompt += `\n\nKeep the schedule block commented out.`;
             }
@@ -10772,7 +10775,7 @@ ${runnerStrategy === 'group'
     : `RUNNER_LABEL: ${el('fRunnerLabel') || 'QSDW-TFSBA01'}`}`;
 
             if (scheduleEnabled && scheduleCron) {
-                prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron}`;
+                prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
             } else {
                 prompt += `\n\nKeep the schedule block commented out.`;
             }
@@ -10811,7 +10814,7 @@ CUSTOM_RUNNER_LABEL: ${el('fCustomRunnerLabel') || ''}
 Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific host pins it; CUSTOM_RUNNER_LABEL overrides.`;
 
             if (scheduleEnabled && scheduleCron) {
-                prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron}`;
+                prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
             } else {
                 prompt += `\n\nKeep the schedule block commented out.`;
             }
@@ -15429,15 +15432,12 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         const durations = timedRuns.map(runDur);
         const avgDur = durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0;
         // Longest / shortest individual runs (+ which pipeline they belong to, for click-to-focus).
-        let longestRun = null, shortestRun = null;
+        let longestRun = null;
         for (const r of timedRuns) {
             if (!longestRun || runDur(r) > runDur(longestRun)) longestRun = r;
-            if (!shortestRun || runDur(r) < runDur(shortestRun)) shortestRun = r;
         }
         const lrKey = longestRun ? resultsPipelineKey(longestRun.repo, longestRun.workflowName) : '';
-        const srKey = shortestRun ? resultsPipelineKey(shortestRun.repo, shortestRun.workflowName) : '';
         const lrName = longestRun ? String(longestRun.workflowName || '').replace(/-Testim$/, '') : '—';
-        const srName = shortestRun ? String(shortestRun.workflowName || '').replace(/-Testim$/, '') : '—';
         const uniquePipelines = resultsSelectedPipelines.size
             ? resultsSelectedPipelines.size
             : new Set(runs.map(r => resultsPipelineKey(r.repo, r.workflowName))).size;
@@ -15478,13 +15478,6 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 <div class="metric-value">${fmtDuration(longestRun ? runDur(longestRun) : 0)}</div>
                 <div class="metric-sub">${escapeHtml(lrName)}${lrKey ? ' &middot; click to focus' : ''}</div>
                 <div class="metric-bar"><div class="metric-bar-fill" style="width:100%; background:linear-gradient(90deg,#8b5cf6,#a78bfa);"></div></div>
-            </div>
-            <div class="metric-card m-green${srKey ? ' metric-clickable' : ''}"${srKey ? ` data-focus-key="${escapeHtml(srKey)}" title="Click to focus this pipeline"` : ''}>
-                <div class="metric-icon">&#9889;</div>
-                <div class="metric-label">Shortest Run</div>
-                <div class="metric-value v-green">${fmtDuration(shortestRun ? runDur(shortestRun) : 0)}</div>
-                <div class="metric-sub">${escapeHtml(srName)}${srKey ? ' &middot; click to focus' : ''}</div>
-                <div class="metric-bar"><div class="metric-bar-fill" style="width:100%; background:linear-gradient(90deg,#10b981,#34d399);"></div></div>
             </div>
         `;
         bindResultsFocusDelegation(document.getElementById('metricsGrid'));
@@ -17043,6 +17036,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
     let calMonthState = null;  // displayed month (0-11)
     let calOcc = [];           // per-render registry of occurrences, indexed by data-cid
     let calReturnPending = false; // when true, the pipeline form's Back button returns to the Calendar
+    let calScheduleFrom = null; // dateKey of the day modal the schedule modal was opened from, if any
     let calRepoFilter = 'all'; // calendar-local repo filter
     let calDashFilter = '';    // calendar-local dashboard filter (dashboard id; '' = all)
     let calSearch = '';        // calendar pipeline search text
@@ -17499,9 +17493,15 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         if (!t) { t = document.createElement('div'); t.id = 'calTip'; t.className = 'cal-tip'; document.body.appendChild(t); }
         return t;
     }
-    function calShowTip(anchor, text) {
+    function calShowTip(anchor, text, sub) {
         const t = calEnsureTip();
-        t.textContent = text;
+        if (sub) {
+            t.innerHTML = `<div class="cal-tip-main">${escapeHtml(text)}</div><div class="cal-tip-sub">${escapeHtml(sub)}</div>`;
+            t.classList.add('cal-tip-multi');
+        } else {
+            t.textContent = text;
+            t.classList.remove('cal-tip-multi');
+        }
         t.classList.add('show');
         const r = anchor.getBoundingClientRect();
         const tw = t.offsetWidth, th = t.offsetHeight;
@@ -17515,6 +17515,23 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
     function calHideTip() {
         const t = document.getElementById('calTip');
         if (t) t.classList.remove('show');
+    }
+
+    // Hover bubble for day-modal list rows: full pipeline name + hint, since the
+    // row itself truncates the name with an ellipsis.
+    function calBindDayListEvents(body) {
+        if (body._calDayBound) return;
+        body._calDayBound = true;
+        body.addEventListener('mouseover', (e) => {
+            const item = e.target.closest('.cal-day-item[data-cid]');
+            if (!item) return;
+            const o = calOcc[parseInt(item.dataset.cid, 10)];
+            if (o) calShowTip(item, calShortName(o.name), 'Click for schedule details');
+        });
+        body.addEventListener('mouseout', (e) => {
+            if (e.target.closest('.cal-day-item[data-cid]')) calHideTip();
+        });
+        body.addEventListener('mouseleave', calHideTip);
     }
 
     function calEnsureModal() {
@@ -17556,10 +17573,13 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         </div>`;
     }
 
-    function calOpenScheduleModal(cid) {
+    function calOpenScheduleModal(cid, fromDateKey) {
         const o = calOcc[cid];
         if (!o) return;
+        calHideTip();
+        calScheduleFrom = fromDateKey || null;
         const m = calEnsureModal();
+        document.getElementById('calModalFooter').style.display = '';
         const meta = calStatusMeta(o);
         const days = describeCronDays(o.schedule) || 'Custom';
         const repeatRow = o.repeatEvery > 1
@@ -17591,8 +17611,11 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         const runBtn = (o.status === 'run' && o.run?.url)
             ? `<a class="btn" style="background:linear-gradient(135deg, ${meta.color}, ${meta.color}); color:#fff; text-decoration:none;" href="${escapeHtml(o.run.url)}" target="_blank" rel="noopener">&#8599; Open run</a>`
             : '';
+        const backBtn = calScheduleFrom
+            ? `<button class="btn btn-secondary" onclick="calOpenDayModal('${calScheduleFrom}')">&#8592; Back</button>`
+            : `<button class="btn btn-secondary" onclick="closeModal('calModal')">Close</button>`;
         footer.innerHTML = `
-            <button class="btn btn-secondary" onclick="closeModal('calModal')">Close</button>
+            ${backBtn}
             <button class="btn btn-secondary" onclick="calGotoPipelineByCid(${cid}, false)" title="Open the pipeline details (read-only)">&#128065; View YAML</button>
             <button class="btn btn-orange" onclick="calGotoPipelineByCid(${cid}, true)" title="Open the pipeline editor">&#9999; Edit YAML</button>
             ${runBtn}`;
@@ -17602,6 +17625,8 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
 
     function calOpenDayModal(dateKey) {
         const items = calOcc.filter(o => o.dateKey === dateKey).sort((a, b) => a.instMs - b.instMs);
+        calHideTip();
+        calScheduleFrom = null;
         const m = calEnsureModal();
         // Parse the YYYY-MM-DD label into a readable date (label is date-only, no TZ math needed).
         const [yy, mm, dd] = dateKey.split('-').map(Number);
@@ -17631,7 +17656,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 const right = (o.status === 'run' && o.run?.url)
                     ? `<a class="cal-day-link" href="${escapeHtml(o.run.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Open run &#8599;</a>`
                     : (o.status === 'future' ? `<span class="cal-day-tag" style="color:var(--orange);">Upcoming</span>` : `<span class="cal-day-tag" style="color:#9ca3af;">${haveRuns ? 'No run' : 'Not fetched'}</span>`);
-                return `<div class="cal-day-item" data-cid="${o.cid}" onclick="calOpenScheduleModal(${o.cid})" title="Click for schedule details">
+                return `<div class="cal-day-item" data-cid="${o.cid}" data-day-key="${escapeHtml(dateKey)}" onclick="calOpenScheduleModal(${o.cid}, '${dateKey}')">
                     <span class="cal-day-dot" style="background:${meta.color};"></span>
                     <span class="cal-day-time">${escapeHtml(calFmtPSTTime(o.instMs))}</span>
                     <span class="cal-day-name">${escapeHtml(calShortName(o.name))}</span>
@@ -17639,8 +17664,10 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 </div>`;
             }).join('');
             body.innerHTML = summary + `<div class="cal-day-list">${rows}</div>`;
+            calBindDayListEvents(body);
         }
-        document.getElementById('calModalFooter').innerHTML = `<button class="btn btn-secondary" onclick="closeModal('calModal')">Close</button>`;
+        document.getElementById('calModalFooter').innerHTML = '';
+        document.getElementById('calModalFooter').style.display = 'none';
         m.classList.add('show');
     }
 
