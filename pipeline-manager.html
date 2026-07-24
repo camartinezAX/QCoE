@@ -2276,7 +2276,7 @@
                 </details>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('syncModal')">Cancel</button>
+                <button class="btn btn-secondary" id="syncCancelBtn" onclick="cancelSyncFromGitHub()" style="display:none;">Cancel sync</button>
                 <button class="btn btn-primary" id="syncAutoBtn" onclick="autoSyncFromGitHub()">Sync from GitHub</button>
             </div>
         </div>
@@ -11234,8 +11234,15 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         const fiEl = document.getElementById('syncFileInput');
         if (fiEl) fiEl.value = '';
         const statusEl = document.getElementById('syncStatus');
-        if (statusEl) statusEl.style.display = 'none';
-        resetSyncProgress();
+        const syncing = isGitHubSyncActive();
+        if (!syncing) {
+            if (statusEl) statusEl.style.display = 'none';
+            resetSyncProgress();
+            setSyncFooterSyncing(false);
+        } else {
+            if (statusEl) statusEl.style.display = 'block';
+            setSyncFooterSyncing(true);
+        }
         const refEl = document.getElementById('syncRef');
         if (refEl) refEl.value = getStoredSyncRef();
         renderSyncReposDisplay();
@@ -11592,21 +11599,25 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         }
     }
 
-    async function listWorkflowFilesForRepo(r, pat, ref) {
+    async function listWorkflowFilesForRepo(r, pat, ref, signal) {
+        if (signal?.aborted) throw new DOMException('Sync cancelled', 'AbortError');
         const refQ = ref ? `?ref=${encodeURIComponent(ref)}` : '';
         const resp = await fetch(`https://api.github.com/repos/${r.owner}/${r.repo}/contents/.github/workflows${refQ}`, {
-            headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/vnd.github.v3+json' }
+            headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/vnd.github.v3+json' },
+            signal
         });
         if (!resp.ok) throw new Error(`list failed (${resp.status})`);
         const files = await resp.json();
         return Array.isArray(files) ? files.filter(f => isSyncableWorkflowFile(f.name)) : [];
     }
 
-    async function fetchWorkflowEntry(r, fileName, pat) {
+    async function fetchWorkflowEntry(r, fileName, pat, signal) {
+        if (signal?.aborted) throw new DOMException('Sync cancelled', 'AbortError');
         const ref = getEffectiveSyncRef();
         const refQ = ref ? `?ref=${encodeURIComponent(ref)}` : '';
         const resp = await fetch(`https://api.github.com/repos/${r.owner}/${r.repo}/contents/.github/workflows/${encodeURIComponent(fileName)}${refQ}`, {
-            headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/vnd.github.v3+json' }
+            headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/vnd.github.v3+json' },
+            signal
         });
         if (!resp.ok) throw new Error(`fetch ${fileName} failed (${resp.status})`);
         const j = await resp.json();
@@ -11616,18 +11627,89 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         return { filename: fileName, repo: r.repo, ...parsed };
     }
 
+    let syncAbortController = null;
+
+    function setSyncFooterSyncing(syncing) {
+        const cancelBtn = document.getElementById('syncCancelBtn');
+        const syncBtn = document.getElementById('syncAutoBtn');
+        if (cancelBtn) cancelBtn.style.display = syncing ? '' : 'none';
+        if (syncBtn) {
+            syncBtn.disabled = !!syncing;
+            syncBtn.textContent = syncing ? 'Syncing...' : 'Sync from GitHub';
+        }
+    }
+
+    function isSyncCancelled() {
+        return !!(syncAbortController && syncAbortController.signal.aborted);
+    }
+
+    function throwIfSyncCancelled() {
+        if (isSyncCancelled()) throw new DOMException('Sync cancelled', 'AbortError');
+    }
+
+    function cancelSyncFromGitHub() {
+        if (!syncAbortController) return;
+        syncAbortController.abort();
+    }
+
+    function isGitHubSyncActive() {
+        return !!(syncAbortController && !syncAbortController.signal.aborted);
+    }
+
+    function capturePipelinesSyncRollback() {
+        if (!syncAbortController) return null;
+        return {
+            pipelines: JSON.parse(JSON.stringify(pipelines)),
+            savedSnapshot: JSON.parse(JSON.stringify(savedSnapshot || [])),
+            yamlBaseline: JSON.parse(JSON.stringify(yamlBaselineSnapshot || [])),
+            dashboardsState: JSON.parse(JSON.stringify(dashboardsState || { version: 1, dashboards: [] }))
+        };
+    }
+
+    function restorePipelinesSyncRollback(rollback) {
+        if (!rollback) return;
+        pipelines.length = 0;
+        pipelines.push(...rollback.pipelines);
+        savedSnapshot = rollback.savedSnapshot;
+        yamlBaselineSnapshot = rollback.yamlBaseline;
+        persistYamlBaseline();
+        dashboardsState = rollback.dashboardsState;
+        saveDashboardsState();
+        buildTree();
+        showFolderPipelines(selectedFolder);
+        refreshDashboardsIfActive();
+    }
+
+    function finishSyncUi(cancelled) {
+        const wasCancelled = cancelled || isSyncCancelled();
+        setSyncFooterSyncing(false);
+        syncAbortController = null;
+        if (wasCancelled) {
+            const statusText = document.getElementById('syncStatusText');
+            if (statusText) statusText.innerHTML += '<br><span style="color:var(--warning);">Sync cancelled.</span>';
+            const currentRepoEl = document.getElementById('syncCurrentRepo');
+            if (currentRepoEl) currentRepoEl.textContent = 'Cancelled';
+            showToast('Sync cancelled.');
+        }
+    }
+
     async function autoSyncFromGitHub() {
         const pat = getGitHubToken();
         if (!pat) {
             showToast('Configure your GitHub token first (Settings button in sidebar).', true);
             return;
         }
+        if (syncAbortController) return;
+
         const ref = persistSyncRefFromUi();
         const btn = document.getElementById('syncAutoBtn');
         const statusEl = document.getElementById('syncStatus');
         const statusText = document.getElementById('syncStatusText');
-        btn.disabled = true;
-        btn.textContent = 'Syncing...';
+        syncAbortController = new AbortController();
+        const signal = syncAbortController.signal;
+        let cancelled = false;
+
+        setSyncFooterSyncing(true);
         statusEl.style.display = 'block';
         resetSyncProgress();
         statusText.innerHTML = 'Discovering workflows...';
@@ -11635,21 +11717,21 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         const repos = loadSyncRepos();
         if (!repos.length) {
             showToast('No repos configured to sync. Click Manage to add repos.', true);
-            btn.disabled = false;
-            btn.textContent = 'Sync from GitHub';
+            finishSyncUi(false);
             return;
         }
 
-        // Optional: load orchestrator sets per-repo so orchestrator workflows can show/edit their targets.
         const orchestratorSetsByRepo = {};
         async function loadOrchestratorSetsForRepo(r) {
+            throwIfSyncCancelled();
             const key = String(r.repo || '');
             if (Object.prototype.hasOwnProperty.call(orchestratorSetsByRepo, key)) return orchestratorSetsByRepo[key];
             orchestratorSetsByRepo[key] = null;
             try {
                 const refQ = ref ? `?ref=${encodeURIComponent(ref)}` : '';
                 const resp = await fetch(`https://api.github.com/repos/${r.owner}/${r.repo}/contents/.github/orchestrator/targets.json${refQ}`, {
-                    headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/vnd.github.v3+json' }
+                    headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/vnd.github.v3+json' },
+                    signal
                 });
                 if (!resp.ok) return null;
                 const j = await resp.json();
@@ -11659,7 +11741,8 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 const sets = parsed && parsed.sets && typeof parsed.sets === 'object' ? parsed.sets : null;
                 orchestratorSetsByRepo[key] = sets;
                 return sets;
-            } catch {
+            } catch (e) {
+                if (e && e.name === 'AbortError') throw e;
                 return null;
             }
         }
@@ -11670,11 +11753,13 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             let grandTotal = 0;
 
             for (const r of repos) {
+                throwIfSyncCancelled();
                 try {
-                    const files = await listWorkflowFilesForRepo(r, pat, ref);
+                    const files = await listWorkflowFilesForRepo(r, pat, ref, signal);
                     repoPlans.push({ r, files, failed: false });
                     grandTotal += files.length;
                 } catch (e) {
+                    if (e && e.name === 'AbortError') throw e;
                     repoPlans.push({ r, files: [], failed: true, error: e.message || String(e) });
                 }
             }
@@ -11687,6 +11772,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             let doneOverall = 0;
 
             for (const plan of repoPlans) {
+                throwIfSyncCancelled();
                 const { r, files, failed } = plan;
                 const repoLabel = `${r.owner}/${r.repo}`;
                 const lineId = syncRepoLineId(r.repo);
@@ -11709,13 +11795,15 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 let count = 0;
 
                 for (const f of files) {
+                    throwIfSyncCancelled();
                     try {
-                        const entry = await fetchWorkflowEntry(r, f.name, pat);
+                        const entry = await fetchWorkflowEntry(r, f.name, pat, signal);
                         if (entry && entry.orchestratorSet && orchSets) {
                             entry.orchestratorTargets = orchSets[entry.orchestratorSet] || [];
                         }
                         allFiles.push(entry);
                     } catch (e) {
+                        if (e && e.name === 'AbortError') throw e;
                         allFiles.push({ filename: f.name, repo: r.repo });
                     }
                     count++;
@@ -11738,6 +11826,8 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 updateSyncProgress(grandTotal, grandTotal);
             }
 
+            throwIfSyncCancelled();
+
             if (allFiles.length === 0) {
                 statusText.innerHTML += '<br><span style="color:var(--danger);">No workflows found.</span>';
             } else {
@@ -11749,16 +11839,20 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             const currentRepoEl = document.getElementById('syncCurrentRepo');
             if (currentRepoEl) currentRepoEl.textContent = 'Fetching dashboards…';
             statusText.innerHTML += '<br>Fetching dashboards...';
-            const dashSynced = await syncDashboardsFromGitHub(repos, pat, ref);
+            const dashSynced = await syncDashboardsFromGitHub(repos, pat, ref, signal);
             statusText.innerHTML += ` <span style="color:var(--success);">${dashSynced} repo dashboard file(s)</span>`;
             if (currentRepoEl) currentRepoEl.textContent = 'Sync complete';
         } catch (err) {
-            statusText.innerHTML += `<br><span style="color:var(--danger);">Error: ${err.message}</span>`;
-            const currentRepoEl = document.getElementById('syncCurrentRepo');
-            if (currentRepoEl) currentRepoEl.textContent = 'Sync failed';
+            if (err && err.name === 'AbortError') {
+                cancelled = true;
+            } else {
+                statusText.innerHTML += `<br><span style="color:var(--danger);">Error: ${err.message}</span>`;
+                const currentRepoEl = document.getElementById('syncCurrentRepo');
+                if (currentRepoEl) currentRepoEl.textContent = 'Sync failed';
+            }
+        } finally {
+            finishSyncUi(cancelled || isSyncCancelled());
         }
-        btn.disabled = false;
-        btn.textContent = 'Sync from GitHub';
     }
 
     let syncFileContent = null;
@@ -11803,16 +11897,19 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
 
         let dirtyBeforeSync = new Set();
         if (Array.isArray(jsonData)) {
+            const rollback = capturePipelinesSyncRollback();
             try {
-                dirtyBeforeSync = new Set(
-                    getChanges()
-                        .filter(c => c?.pipeline)
-                        .map(c => pipelineKey(c.pipeline))
-                        .filter(Boolean)
-                );
-            } catch { dirtyBeforeSync = new Set(); }
+                throwIfSyncCancelled();
+                try {
+                    dirtyBeforeSync = new Set(
+                        getChanges()
+                            .filter(c => c?.pipeline)
+                            .map(c => pipelineKey(c.pipeline))
+                            .filter(Boolean)
+                    );
+                } catch { dirtyBeforeSync = new Set(); }
 
-            const repoKeys = new Set(jsonData.map(syncEntryPipelineKey).filter(Boolean));
+                const repoKeys = new Set(jsonData.map(syncEntryPipelineKey).filter(Boolean));
 
             if (replaceMode) {
                 // Replace mode: make the local list match the sync payload (destructive by design).
@@ -11841,6 +11938,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             }
 
             for (const entry of jsonData) {
+                throwIfSyncCancelled();
                 const parsed = parseFilename(entry.filename);
                 if (!parsed) continue;
 
@@ -11935,6 +12033,18 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 if (idx >= 0) { pipelines[idx] = parsed; updated++; }
                 else { pipelines.push(parsed); added++; }
             }
+
+                throwIfSyncCancelled();
+                applyYamlBaselineFromSync(jsonData, replaceMode, dirtyBeforeSync);
+                throwIfSyncCancelled();
+                persistPipelinesAfterSync(jsonData, replaceMode, dirtyBeforeSync);
+            } catch (e) {
+                if (e && e.name === 'AbortError' && rollback) {
+                    restorePipelinesSyncRollback(rollback);
+                    throw e;
+                }
+                throw e;
+            }
         } else {
             // Manual text import is merge-only (repo cannot be identified reliably from filenames).
             // Replace mode requires JSON (from Sync-from-GitHub or JSON file import).
@@ -11972,10 +12082,6 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         if (updated > 0) parts.push(`${updated} updated`);
         if (removed > 0) parts.push(`${removed} removed`);
         if (parts.length === 0) parts.push('already up to date');
-        if (Array.isArray(jsonData)) {
-            applyYamlBaselineFromSync(jsonData, replaceMode, dirtyBeforeSync);
-            persistPipelinesAfterSync(jsonData, replaceMode, dirtyBeforeSync);
-        }
         const statusEl = document.getElementById('syncStatus');
         const statusText = document.getElementById('syncStatusText');
         if (statusEl && statusText) {
@@ -12637,6 +12743,9 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
     //  UTILS
     // ══════════════════════════════════════════
     function closeModal(id) {
+        if (id === 'syncModal' && syncAbortController) {
+            cancelSyncFromGitHub();
+        }
         const el = document.getElementById(id);
         if (!el) return;
         el.classList.remove('show');
@@ -16895,16 +17004,23 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         showDashboardUpdatesPromptForSelection(repo, selected);
     }
 
-    async function syncDashboardsFromGitHub(repos, pat, ref) {
+    async function syncDashboardsFromGitHub(repos, pat, ref, signal) {
         if (!Array.isArray(repos) || !repos.length) return 0;
+        const dashboardsBackup = cloneJson(dashboardsState);
+        const dashboardsSnapshotBackup = cloneJson(savedDashboardsSnapshot || []);
+        const remoteSyncedBackup = new Set(dashboardsRemoteSyncedRepos);
+        const remoteMissingBackup = new Set(dashboardsRemoteMissingRepos);
         let synced = 0;
+        try {
         for (const r of repos) {
+            if (signal?.aborted) throw new DOMException('Sync cancelled', 'AbortError');
             const repoKey = String(r.repo || '').trim();
             if (!repoKey) continue;
             try {
                 const refQ = ref ? `?ref=${encodeURIComponent(ref)}` : '';
                 const resp = await fetch(`https://api.github.com/repos/${r.owner}/${r.repo}/contents/${DASHBOARD_CONFIG_PATH}${refQ}`, {
-                    headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/vnd.github.v3+json' }
+                    headers: { Authorization: getGhAuthHeader(pat), Accept: 'application/vnd.github.v3+json' },
+                    signal
                 });
                 if (resp.status === 404) {
                     // Preserve local working copy. Invalidate stale baseline so UI does not imply the remote file still exists.
@@ -16949,7 +17065,9 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 replaceDashboardsSnapshotForRepo(repoKey, incoming);
                 markDashboardsRemoteSynced(repoKey);
                 synced++;
-            } catch { /* ignore per-repo */ }
+            } catch (e) {
+                if (e && e.name === 'AbortError') throw e;
+            }
         }
         if (synced > 0) {
             saveDashboardsState();
@@ -16957,6 +17075,19 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             refreshDashboardsIfActive();
         }
         return synced;
+        } catch (e) {
+            if (e && e.name === 'AbortError') {
+                dashboardsState = dashboardsBackup;
+                savedDashboardsSnapshot = dashboardsSnapshotBackup;
+                saveDashboardsSnapshot();
+                dashboardsRemoteSyncedRepos = remoteSyncedBackup;
+                dashboardsRemoteMissingRepos = remoteMissingBackup;
+                saveDashboardsRemoteSyncedRepos(dashboardsRemoteSyncedRepos);
+                saveDashboardsRemoteMissingRepos(dashboardsRemoteMissingRepos);
+                refreshDashboardsIfActive();
+            }
+            throw e;
+        }
     }
 
     function revealDashboardsTab() {
