@@ -2559,10 +2559,9 @@
     //  RUNNERS (label vs runner group)
     // ══════════════════════════════════════════
     // GitHub split the old shared "axos-qe-gh-runners" org runner group into
-    // per-team groups. Axos.QE.Performance.Automation has not been migrated
-    // yet (out of scope — tracked separately), so it still uses the legacy
-    // group name until that repo gets its own "axos-gh-qe-performance" group.
-    const DEFAULT_RUNNER_GROUP = 'axos-qe-gh-runners';
+    // per-team groups. Axos.QE.Performance.Automation now has its own
+    // dedicated group.
+    const DEFAULT_RUNNER_GROUP = 'axos-gh-qe-performance';
 
     // Returns the correct runner group for a given repo. Axos.QE.Web and
     // Axos.QE.Crypto.Web run on BOTH pools depending on run target: local
@@ -2582,8 +2581,8 @@
         // (this tool's home repo).
         return 'axos-gh-qe-testim';
     }
-    const PERF_JMETER_RUNNERS = ['LOADRUN03'];
-    const DEFAULT_PERF_JMETER_RUNNER = 'LOADRUN03';
+    const PERF_JMETER_RUNNERS = ['AUTO', 'LOADRUN03'];
+    const DEFAULT_PERF_JMETER_RUNNER = 'AUTO';
 
     function coercePerfJmeterRunnerLabel(label) {
         const raw = String(label || '').trim() || DEFAULT_PERF_JMETER_RUNNER;
@@ -7987,7 +7986,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                             <select id="fRunnerLabel" ${isView ? 'disabled' : ''}>
                                 ${PERF_JMETER_RUNNERS.map(r => `<option value="${r}" ${perfJmeterRunnerSelected === r ? 'selected' : ''}>${r}</option>`).join('')}
                             </select>
-                            <span class="field-help">Pins JMeter runs to the dedicated Performance load runner (<code>LOADRUN03</code> / <code>axos-gh-qe-runner-SDDEV-LOADRUN03</code>).</span>
+                            <span class="field-help">AUTO = the axos-gh-qe-performance group assigns a free runner; or pin <code>LOADRUN03</code> (<code>axos-gh-qe-runner-SDDEV-LOADRUN03</code>).</span>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Custom Runner Label <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional)</span></label>
