@@ -5145,7 +5145,7 @@ ${os.map(n => `- ${n}`).join('\n')}
             'testSuite', 'baseUrl', 'branch', 'grid', 'parallel', 'parallels', 'retries', 'timeoutMin', 'browserTimeout',
             'grep', 'suite', 'spec', 'parallelSplit', 'tunnel', 'appId', 'deviceName', 'deviceOS', 'bsUsername', 'bsAccessKey',
             'runnerLabel', 'customRunnerLabel', 'jobTimeout',
-            'orchestratorSet', 'orchestratorTargets',
+            'orchestratorSet', 'androidAppId', 'iosAppId', 'orchestratorTargets',
             'scheduleEnabled', 'schedule', 'repeatUnit', 'repeatEvery', 'repeatDom',
             'emailEnabled', 'emailRecipients',
             'repo', 'filename', 'name'
@@ -6733,7 +6733,11 @@ ${os.map(n => `- ${n}`).join('\n')}
                   `- RUNNER_STRATEGY (choice inherit/group/label, default inherit)\n` +
                   `- RUNNER_GROUP (default inherit)\n` +
                   `- RUNNER_LABEL (choice inherit/QSDW-TFSBA01..04, default inherit)\n` +
-                  `- VERBOSE_OUTPUT, DRY_RUN, FAIL_FAST (choice true/false, default false)\n\n`
+                  (p.brand === 'iOS'
+                    ? `- IOS_APP (BS app ID bs://... — empty = latest, default: '${p.iosAppId || ''}'; pins the iOS app for every target in this set)\n`
+                    : `- ANDROID_APP (BS app ID bs://... — empty = latest, default: '${p.androidAppId || ''}'; pins the Android app for every target in this set)\n`) +
+                  `- VERBOSE_OUTPUT, DRY_RUN, FAIL_FAST (choice true/false, default false)\n\n` +
+                  `This set is single-platform (${p.brand || 'Android'} only) — declare ONLY the ${p.brand === 'iOS' ? 'IOS_APP' : 'ANDROID_APP'} input above, not both; the other platform's app-ID input does not belong on this orchestrator. Pass it through to dispatch-workflows.ps1 as ${p.brand === 'iOS' ? '-IosApp' : '-AndroidApp'} (mirroring how -AndroidAppVersion/-IosAppVersion already flow through), and include it in the sequence self-relay client_payload as ${p.brand === 'iOS' ? 'iosApp' : 'androidApp'} so a pinned app survives a long-running sequence relay. Also set BS_ANDROID_APP_ID/BS_IOS_APP_ID from the pinned value before resolving APP_VERSION, so the run/job name reflects the pinned build's real version instead of always the latest.\n\n`
                 : `Workflow inputs:\n` +
                   `- SET_NAME (default: ${setName})\n` +
                   `- TARGET_ENVIRONMENT (default: Development)\n` +
@@ -7300,7 +7304,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                         </div>
                         <div class="form-group">
                             <label class="form-label">Mobile Platform <span class="req">*</span></label>
-                            <select id="fBrand" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
+                            <select id="fBrand" onchange="updateNamePreview(); toggleOrchAppIdFields();" ${isView ? 'disabled' : ''}>
                                 <option value="">Select...</option>
                                 <option value="Android" ${p.brand === 'Android' ? 'selected' : ''}>Android</option>
                                 <option value="iOS" ${p.brand === 'iOS' ? 'selected' : ''}>iOS</option>
@@ -7441,6 +7445,18 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     <input type="text" id="fOrchSetName" placeholder="e.g. AndroidSmoke" value="${orchestratorSetForForm(p)}" oninput="onOrchSetNameInput()" ${isView ? 'disabled' : ''}>
                     <span class="field-help">The targets.json set this orchestrator dispatches. Independent of the pipeline name (Custom Suffix).</span>
                 </div>
+
+                <div class="form-row">
+                    <div class="form-group" id="fOrchAndroidAppIdGroup" style="${p.brand === 'iOS' ? 'display:none;' : ''}">
+                        <label class="form-label">Android App ID <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(bs://... or empty for latest)</span></label>
+                        <input type="text" id="fOrchAndroidAppId" placeholder="bs://... or leave empty" value="${p.androidAppId || ''}" ${isView ? 'disabled' : ''}>
+                    </div>
+                    <div class="form-group" id="fOrchIosAppIdGroup" style="${p.brand === 'iOS' ? '' : 'display:none;'}">
+                        <label class="form-label">iOS App ID <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(bs://... or empty for latest)</span></label>
+                        <input type="text" id="fOrchIosAppId" placeholder="bs://... or leave empty" value="${p.iosAppId || ''}" ${isView ? 'disabled' : ''}>
+                    </div>
+                </div>
+                <span class="field-help">Pins one BrowserStack app build for every target this orchestrator dispatches (matches the Mobile Platform above). Leave empty to let each target resolve its own latest.</span>
 
                 <div class="form-group">
                     <label class="form-label">Targets <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(simple mode)</span></label>
@@ -9810,6 +9826,18 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         if (isOrch && setInput) {
             if (suffix && !String(setInput.value || '').trim()) setInput.value = suffix;
         }
+        toggleOrchAppIdFields();
+    }
+
+    // Every current mobile orchestrator (and its targets.json set) is single-platform, so only
+    // show the App ID field matching the selected Mobile Platform — showing both is confusing
+    // (implies a capability, e.g. iOS pinning, that an Android-only orchestrator doesn't have).
+    function toggleOrchAppIdFields() {
+        const brand = document.getElementById('fBrand')?.value || '';
+        const androidGroup = document.getElementById('fOrchAndroidAppIdGroup');
+        const iosGroup = document.getElementById('fOrchIosAppIdGroup');
+        if (androidGroup) androidGroup.style.display = brand === 'iOS' ? 'none' : '';
+        if (iosGroup) iosGroup.style.display = brand === 'iOS' ? '' : 'none';
     }
 
     function updateFormStatus() {
@@ -10153,6 +10181,11 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 base.env = v('fEnv') || base.env;
                 base.envSpecific = true;
                 base.orchestratorSet = (v('fOrchSetName') || '').trim();
+                // Only persist the field matching the selected Mobile Platform — the other one is
+                // hidden (toggleOrchAppIdFields) and may still hold a stale value from before the
+                // platform was switched.
+                base.androidAppId = base.brand === 'iOS' ? '' : (document.getElementById('fOrchAndroidAppId')?.value || '').trim();
+                base.iosAppId = base.brand === 'iOS' ? (document.getElementById('fOrchIosAppId')?.value || '').trim() : '';
                 const nameSuffix = (v('fCustomSuffix') || '').trim().replace(/\s+/g, '_');
                 base.featureDetail = nameSuffix ? `Orchestrators_${nameSuffix}` : 'Orchestrators';
                 base.customSuffix = nameSuffix;
@@ -10593,14 +10626,26 @@ ${mobileEnvDispatchPromptText(el('fEnv'), envSpecific).trimEnd()}
 - PW_VIDEO (choice: 0/1, default: 1), PW_HEADLESS (choice: inherit/0/1, default: inherit)
 - VERBOSE_OUTPUT, DRY_RUN, FAIL_FAST (choice: true/false, default: false)`
                 : isMobileOrch
-                ? `- SET_NAME (default: ${setName || 'AndroidSmoke'})
+                ? (() => {
+                    const orchBrand = el('fBrand') || 'Android';
+                    const orchIsIos = orchBrand === 'iOS';
+                    const orchAndroidApp = (document.getElementById('fOrchAndroidAppId')?.value || '').trim();
+                    const orchIosApp = (document.getElementById('fOrchIosAppId')?.value || '').trim();
+                    const appIdLine = orchIsIos
+                        ? `- IOS_APP (BS app ID bs://... — empty = latest, default: '${orchIosApp}'; pins the iOS app for every target in this set)`
+                        : `- ANDROID_APP (BS app ID bs://... — empty = latest, default: '${orchAndroidApp}'; pins the Android app for every target in this set)`;
+                    return `- SET_NAME (default: ${setName || 'AndroidSmoke'})
 - TEST_ENV (choice: inherit/QA/UAT/STG/PROD, default: inherit)
 - PARALLELS (default: inherit)
 - RETRIES (default: inherit)
 - RUNNER_STRATEGY (choice: inherit/group/label, default: inherit)
 - RUNNER_GROUP (default: inherit)
 - RUNNER_LABEL (choice: inherit/QSDW-TFSBA01..04, default: inherit)
-- VERBOSE_OUTPUT, DRY_RUN, FAIL_FAST (choice: true/false, default: false)`
+${appIdLine}
+- VERBOSE_OUTPUT, DRY_RUN, FAIL_FAST (choice: true/false, default: false)
+
+This set is single-platform (${orchBrand} only) — declare ONLY the ${orchIsIos ? 'IOS_APP' : 'ANDROID_APP'} input above, not both. Pass it through to dispatch-workflows.ps1 as ${orchIsIos ? '-IosApp' : '-AndroidApp'} (mirroring how -AndroidAppVersion/-IosAppVersion already flow through), and include it in the sequence self-relay client_payload as ${orchIsIos ? 'iosApp' : 'androidApp'} so a pinned app survives a long-running sequence relay. Also set BS_ANDROID_APP_ID/BS_IOS_APP_ID from the pinned value before resolving APP_VERSION, so the run/job name reflects the pinned build's real version instead of always the latest.`;
+                  })()
                 : `- SET_NAME (default: ${setName || 'WFO'})
 - TARGET_ENVIRONMENT (default: Development)
 - DEPLOYMENT_TYPE (default: deploy-latest)
@@ -11451,6 +11496,17 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         if (projectDirFromYaml) entry.projectDir = String(projectDirFromYaml).trim();
 
         entry.appId = merged.IOS_APP || merged.ANDROID_APP || '';
+        // Orchestrators store these as two separate fields (a set can only ever pin one platform's
+        // app per the current single-platform targets.json convention, but never assume — keep
+        // both distinct rather than collapsing into the singular appId used by regular pipelines).
+        // Scope to orchestrators only (entry.orchestratorSet is only set when merged.SET_NAME was
+        // present, i.e. an actual orchestrator YAML) — otherwise every regular/non-mobile pipeline
+        // sync would pick up two new always-empty-or-duplicate fields and get marked dirty for no
+        // real reason.
+        if (entry.orchestratorSet !== undefined) {
+            entry.androidAppId = merged.ANDROID_APP || '';
+            entry.iosAppId = merged.IOS_APP || '';
+        }
         entry.deviceName = merged.IOS_DEVICE_NAME || merged.ANDROID_DEVICE_NAME || '';
         entry.deviceOS = merged.IOS_DEVICE_OS || merged.ANDROID_DEVICE_OS || '';
 
@@ -11980,6 +12036,8 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 if (entry.pwVideo !== undefined) parsed.pwVideo = entry.pwVideo;
                 if (entry.tunnel !== undefined) parsed.tunnel = entry.tunnel;
                 if (entry.appId !== undefined) parsed.appId = entry.appId;
+                if (entry.androidAppId !== undefined) parsed.androidAppId = entry.androidAppId;
+                if (entry.iosAppId !== undefined) parsed.iosAppId = entry.iosAppId;
                 if (entry.deviceName !== undefined) parsed.deviceName = entry.deviceName;
                 if (entry.deviceOS !== undefined) parsed.deviceOS = entry.deviceOS;
                 if (entry.bsUsername !== undefined) parsed.bsUsername = entry.bsUsername;
@@ -13913,6 +13971,25 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         return r.testCounts;
     }
 
+    function extractResolvedVersionFromJobs(jobs, workflowName) {
+        // Mobile pipelines resolve the BrowserStack app version at run-time and bake it into the
+        // main test job's own dynamic name (e.g. "Mobile_Android_Plan_PT_Regression-BrowserStack
+        // - v5.5.351") since GitHub gives no way to rename the run title itself after it starts.
+        // Pull that version back out of the job name so the dashboard can show it.
+        const wf = String(workflowName || '').trim();
+        if (!wf || !Array.isArray(jobs)) return null;
+        // Don't stop at the first job whose name merely includes the workflow name — sibling
+        // jobs (e.g. "... - Test Results", "... / junit") match too but never carry a version.
+        // Check all matches and return whichever one actually has the " - vX.Y.Z" suffix.
+        for (const j of jobs) {
+            const name = String(j?.name || '');
+            if (!name.includes(wf)) continue;
+            const m = name.match(/ - v([\w.\-]+)\s*$/);
+            if (m) return m[1];
+        }
+        return null;
+    }
+
     function pickTestimExecutionJob(jobs, workflowName) {
         const wf = String(workflowName || '').trim();
         const list = (Array.isArray(jobs) ? jobs : []).filter(j => j && j.id);
@@ -14940,6 +15017,35 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         });
     }
 
+    // Pulls the run-time-resolved app version (if any) out of each run's job list, so titles can
+    // show e.g. "UAT - 3 - Mobile_Android_Plan_PT_Regression-BrowserStack - v5.5.351" instead of
+    // the generic "#N - workflow" fallback. resolvedVersion stays `null` (not re-fetched) for
+    // runs/pipelines that never resolve a version, and `undefined` only until first fetched.
+    async function enrichRunResolvedVersions(owner) {
+        // Only mobile pipelines resolve/expose a version this way — scoping to r.isMobile keeps
+        // the Jobs API calls off pipelines that can never have one, and (more importantly) stops
+        // a high-frequency Testim/web pipeline from filling the whole cap and starving mobile
+        // runs of enrichment entirely in a multi-repo fetch.
+        // Require status === 'completed' (same as enrichGateSkippedRuns/enrichRunDurations): an
+        // in-progress run's versioned job may not exist yet, which would otherwise cache a
+        // premature `null` that's never revisited once the run finishes and the version appears.
+        const targets = (allRuns || [])
+            .filter(r => r && r.isMobile && r.status === 'completed' && r.resolvedVersion === undefined)
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+            .slice(0, 120);
+
+        await mapLimit(targets, 6, async (r) => {
+            try {
+                const data = await ghFetch(`/repos/${owner}/${r.repo}/actions/runs/${r.id}/jobs?per_page=100`);
+                r.resolvedVersion = extractResolvedVersionFromJobs(data?.jobs || [], r.workflowName);
+            } catch (e) {
+                // Leave resolvedVersion unset (undefined) on a transient fetch failure so the next
+                // enrichment pass retries it — assigning `null` here would permanently suppress the
+                // version even though the job name may genuinely carry one.
+            }
+        });
+    }
+
     async function fetchWorkflowRunsInRange(owner, repo, workflowFilename, startMs, endMs) {
         const wfIdOrFile = encodeURIComponent(String(workflowFilename || '').trim());
         const per = 100;
@@ -15068,7 +15174,18 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                                 url: r.html_url,
                                 branch: r.head_branch,
                                 headSha: r.head_sha,
-                                checkSuiteId: r.check_suite_id
+                                checkSuiteId: r.check_suite_id,
+                                // p.env only reflects the ACTUAL env for pipelines pinned to one environment
+                                // (envSpecific). Non-env-specific pipelines take TEST_ENV as a per-run
+                                // workflow_dispatch input, so p.env there is just a config default, not
+                                // this run's real environment — envSpecific gates whether we trust it.
+                                env: String(p.env || 'UAT').toUpperCase(),
+                                envSpecific: !!p.envSpecific,
+                                // Orchestrators are mobile pipelines too (by platform) but only dispatch OTHER
+                                // pipelines — their own job never gets a versioned "- vX.Y.Z" name, so exclude
+                                // them here or they'd waste enrichment slots that real test runs need.
+                                isMobile: isMobilePipeline(p) && !isOrchestratorPipeline(p),
+                                resolvedVersion: undefined // filled by enrichRunResolvedVersions() when the run's job name carries a version
                             };
                             allRuns.push(built);
                             enrichQueued++;
@@ -15098,6 +15215,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             const classifyPromise = (async () => {
                 await enrichGateSkippedRuns(owner);
                 await enrichRunDurations(owner);
+                await enrichRunResolvedVersions(owner);
             })();
             const progressTicker = setInterval(() => {
                 updateFetchProgress(enrichCompleted, Math.max(enrichQueued, 1), {
@@ -18588,10 +18706,43 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             : dashboardRunDots(repo, workflowFile);
     }
 
+    function wrapTooltipLines(text, maxLen) {
+        // Chart.js draws tooltips directly onto the chart's own canvas — a single line wider than
+        // the canvas doesn't wrap, it just gets clipped at the edge. The versioned titles here can
+        // run long, so break on word boundaries into several shorter lines the tooltip can render
+        // in full regardless of how narrow the surrounding chart card is.
+        const words = String(text || '').split(' ');
+        const lines = [];
+        let cur = '';
+        for (const w of words) {
+            const next = cur ? `${cur} ${w}` : w;
+            if (cur && next.length > maxLen) {
+                lines.push(cur);
+                cur = w;
+            } else {
+                cur = next;
+            }
+        }
+        if (cur) lines.push(cur);
+        return lines.length ? lines : [''];
+    }
+
     function dashboardTrendTooltipTitle(run, runs) {
         if (!run) return '';
         const wf = String(run.workflowName || run.workflowFile || '').replace(/\.ya?ml$/i, '');
-        let title = wf ? `#${run.runNumber} - ${wf}` : `#${run.runNumber}`;
+        let title;
+        if (run.resolvedVersion && run.envSpecific) {
+            // Mirrors the pipeline's own "Run title" job-summary text (env - run# - name - version).
+            // Only trust run.env here for pipelines pinned to one environment — non-env-specific
+            // pipelines take TEST_ENV as a per-run input, so p.env there is just a config default
+            // and could be flat-out wrong for this particular run.
+            title = `${run.env || 'UAT'} - ${run.runNumber} - ${wf} - v${run.resolvedVersion}`;
+        } else if (run.resolvedVersion) {
+            // Version is trustworthy (it came from this run's own job name), env isn't — omit it.
+            title = `#${run.runNumber} - ${wf} - v${run.resolvedVersion}`;
+        } else {
+            title = wf ? `#${run.runNumber} - ${wf}` : `#${run.runNumber}`;
+        }
         const branches = new Set((runs || []).map(r => String(r?.branch || '').trim()).filter(Boolean));
         if (branches.size > 1 && run.branch) title += ` (${run.branch})`;
         return title;
@@ -18691,7 +18842,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                         callbacks: {
                             title(items) {
                                 const idx = items?.[0]?.dataIndex ?? 0;
-                                return dashboardTrendTooltipTitle(runs[idx], runs);
+                                return wrapTooltipLines(dashboardTrendTooltipTitle(runs[idx], runs), 34);
                             },
                             label(ctx) {
                                 const idx = ctx.dataIndex;
