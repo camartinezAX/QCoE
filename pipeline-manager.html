@@ -2770,6 +2770,7 @@
     };
 
     const ENVIRONMENTS = ['DEV', 'QA', 'STG', 'UAT', 'PROD'];
+    const MOBILE_ENVIRONMENTS = ['QA', 'STG', 'UAT', 'PROD'];
 
     const FEATURES = [
         { id: '00', name: 'Health Check' },
@@ -3966,8 +3967,9 @@ ${os.map(n => `- ${n}`).join('\n')}
         if (envSpecific) {
             return `- Pipeline is pinned to ${envVal}: the workflow filename must include ${envVal}, hardcode TEST_ENV to "${envVal}", and do NOT expose TEST_ENV as a workflow_dispatch input.\n`;
         }
-        const envDefault = envVal.toLowerCase();
-        return `- Pipeline is not env-specific: omit the environment from the workflow filename, and expose TEST_ENV as a workflow_dispatch input (description: "Environment (dev, qa, uat, stg, prod)", choice: dev/qa/uat/stg/prod, default: ${envDefault}).\n`;
+        const mobileChoices = MOBILE_ENVIRONMENTS.map(e => e.toLowerCase());
+        const envDefault = mobileChoices.includes(envVal.toLowerCase()) ? envVal.toLowerCase() : 'uat';
+        return `- Pipeline is not env-specific: omit the environment from the workflow filename, and expose TEST_ENV as a workflow_dispatch input (description: "Environment (qa, uat, stg, prod)", choice: qa/uat/stg/prod, default: ${envDefault}).\n`;
     }
     function mobileWorkflowDispatchInputNames(envSpecific, extraFields) {
         const names = [];
@@ -7317,7 +7319,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                             </label>
                             <select id="fEnv" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
                                 <option value="">Select...</option>
-                                ${ENVIRONMENTS.map(e => `<option value="${e}" ${p.env === e ? 'selected' : ''}>${e}</option>`).join('')}
+                                ${MOBILE_ENVIRONMENTS.map(e => `<option value="${e}" ${p.env === e ? 'selected' : ''}>${e}</option>`).join('')}
                             </select>
                             <label class="toggle-row" id="mobileEnvSpecificToggle" style="margin-top:8px; padding:0;" onclick="event.stopPropagation()">
                                 <div class="toggle-switch" style="transform:scale(0.88); transform-origin:left center;">
@@ -12624,21 +12626,30 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             const subPlatform = parts[1];
             if (subPlatform !== 'Android' && subPlatform !== 'iOS') return null;
             const rest = parts.slice(2);
-            const lastSeg = rest[rest.length - 1];
-            let testType = 'Regression', featureParts = rest;
+            const envs = ['DEV', 'QA', 'STG', 'UAT', 'PROD'];
+            let env = 'UAT';
+            let nameRest = rest;
+            let envSpecific = false;
+            if (rest.length > 0 && envs.includes(rest[0])) {
+                env = rest[0];
+                nameRest = rest.slice(1);
+                envSpecific = true;
+            }
+            const lastSeg = nameRest[nameRest.length - 1];
+            let testType = 'Regression', featureParts = nameRest;
             const mobileTtMap = { Regression: 'Regression', Sanity: 'Sanity', Smoke: 'Smoke', HealthCheck: 'Health Check' };
             if (mobileTtMap[lastSeg]) {
                 testType = mobileTtMap[lastSeg];
-                featureParts = rest.slice(0, -1);
+                featureParts = nameRest.slice(0, -1);
+            } else {
+                // Names like Mobile_Android_Smoke_ProdBugLeak (or Mobile_Android_UAT_Smoke_ProdBugLeak)
+                // omit the trailing test-type segment when the suite name equals the test type.
+                const inferred = splitMobileFeature(nameRest.join('_'));
+                if (inferred.feature && MOBILE_TEST_TYPES.includes(inferred.feature)) {
+                    testType = inferred.feature;
+                }
             }
-            const envs = ['DEV', 'QA', 'STG', 'UAT', 'PROD'];
-            let env = 'UAT', feature = featureParts.join('_');
-            let envSpecific = false;
-            if (featureParts.length > 0 && envs.includes(featureParts[0])) {
-                env = featureParts[0];
-                feature = featureParts.slice(1).join('_') || '';
-                envSpecific = true;
-            }
+            let feature = featureParts.join('_');
             if (!feature && MOBILE_SUITES.some(s => s.name === testType)) {
                 feature = testType;
             }
