@@ -1100,6 +1100,14 @@
         .queue-spinner{ width:14px; height:14px; border:2px solid rgba(59,130,246,0.3); border-top-color:#3b82f6; border-radius:50%; animation:spin .8s linear infinite; flex:0 0 auto; }
         .queue-empty{ padding:34px 18px; text-align:center; color:var(--text-secondary); font-size:13px; border:1px dashed var(--border-color); border-radius:14px; }
         .queue-empty .qbig{ font-size:40px; display:block; margin-bottom:10px; filter:drop-shadow(0 4px 12px rgba(16,185,129,0.3)); }
+        .queue-section.others .queue-section-title{ color:var(--text-muted); }
+        .queue-section.others .queue-section-hint{ font-size:10px; font-weight:600; letter-spacing:0; text-transform:none; color:var(--text-muted); margin-left:4px; }
+        .queue-row.other{
+            padding:10px 14px; opacity:.88; border-style:dashed;
+            border-left-width:2px; animation:none;
+        }
+        .queue-row.other:hover{ transform:none; opacity:1; }
+        .queue-row.other .queue-name{ font-size:12.5px; font-weight:600; }
         @media (max-width:760px){
             .queue-right .queue-evt-wrap{ display:none; }
             .queue-pos{ width:32px; height:32px; }
@@ -17959,7 +17967,11 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
     let queueRepoFilter = 'all';
     let queueAutoTimer = null;
     let queueFetching = false;
-    let queueCollapsed = { running: false, queued: false }; // collapse state per section
+    let queueLastFetchDiag = { repos: 0, queued: 0, running: 0 };
+    let queueCollapsed = { running: false, queued: false, others: true }; // Others collapsed by default
+
+    // Optional hard overrides — always land in Others even if configured.
+    const QUEUE_ALWAYS_OTHERS = new Set(['critical-bug-gate']);
 
     function toggleQueueSection(which) {
         queueCollapsed[which] = !queueCollapsed[which];
@@ -17980,15 +17992,60 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         return [...set];
     }
 
-    // repo::filename for every configured pipeline, used to flag "your" runs.
-    function queueMyPipelineSet() {
-        const set = new Set();
+    function queueRunIdentity(r) {
+        const file = queueBasename(String(r?.file || '').trim());
+        const stem = file.replace(/\.ya?ml$/i, '');
+        const name = String(r?.name || '').trim();
+        return { file, stem, name };
+    }
+
+    function queueIsAlwaysOther(r) {
+        const id = queueRunIdentity(r);
+        return QUEUE_ALWAYS_OTHERS.has(id.stem) || QUEUE_ALWAYS_OTHERS.has(id.name);
+    }
+
+    // Match runs to pipelines configured in Pipeline Manager (repo::filename + name).
+    function queuePipelineMatchers() {
+        const keys = new Set();
+        const namesByRepo = new Map();
         for (const p of (pipelines || [])) {
-            const r = normRepoForPipeline(p);
-            const f = String(p.filename || '').trim();
-            if (r && f) set.add(r + '::' + f);
+            const repo = normRepoForPipeline(p);
+            if (!repo) continue;
+            const raw = String(p.filename || '').trim();
+            const base = queueBasename(raw);
+            const stem = base.replace(/\.ya?ml$/i, '');
+            if (raw) keys.add(pipelineKeyFrom(repo, raw));
+            if (base) keys.add(pipelineKeyFrom(repo, base));
+            if (stem) keys.add(pipelineKeyFrom(repo, stem));
+            const pName = String(p.name || stem).replace(/-Testim$/i, '').trim().toLowerCase();
+            if (!namesByRepo.has(repo)) namesByRepo.set(repo, new Set());
+            if (pName) namesByRepo.get(repo).add(pName);
         }
-        return set;
+        return { keys, namesByRepo, configured: keys.size > 0 };
+    }
+
+    function queueIsMineRun(r, matchers) {
+        if (queueIsAlwaysOther(r)) return false;
+        const m = matchers || queuePipelineMatchers();
+        if (!m.configured) return true; // no local pipeline list → show all runs in main sections
+        const repo = String(r?.repo || '').trim();
+        const id = queueRunIdentity(r);
+        const keyCandidates = [
+            pipelineKeyFrom(repo, id.file),
+            pipelineKeyFrom(repo, id.stem),
+        ];
+        if (keyCandidates.some(k => m.keys.has(k))) return true;
+        const repoNames = m.namesByRepo.get(repo);
+        if (repoNames) {
+            const rName = id.name.toLowerCase();
+            const rStem = id.stem.toLowerCase();
+            if (repoNames.has(rName) || repoNames.has(rStem)) return true;
+        }
+        return false;
+    }
+
+    function queueIsOther(r, matchers) {
+        return !queueIsMineRun(r, matchers);
     }
 
     function queueFmtDur(ms) {
@@ -18095,6 +18152,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             await enrichRunningJobStarts(owner);
             queueRunning.sort((a, b) => (a.jobStartMs || a.startedMs) - (b.jobStartMs || b.startedMs));
             resolveQueueOrchestrators();
+            queueLastFetchDiag = { repos: repos.length, queued: queueQueued.length, running: queueRunning.length };
             queueLastFetchMs = Date.now();
             renderQueue();
         } catch (e) {
@@ -18158,6 +18216,19 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         </div>`;
     }
 
+    function queueTimeLabel(r, running) {
+        if (running) {
+            if (r.heavyQueued) {
+                return `waited for ${queueAgo(r.createdMs)} &middot; runner not assigned yet`;
+            }
+            const startMs = r.jobStartMs || r.startedMs;
+            const waitedMs = (startMs && r.createdMs) ? Math.max(0, startMs - r.createdMs) : 0;
+            const runFor = `running for ${queueAgo(startMs)}`;
+            return waitedMs >= 60000 ? `waited ${queueFmtDur(waitedMs)} &middot; ${runFor}` : runFor;
+        }
+        return `waiting ${queueAgo(r.createdMs)}`;
+    }
+
     function queueRowHtml(r, opts) {
         const o = opts || {};
         const running = o.running;
@@ -18165,23 +18236,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             ? `<div class="queue-pos" title="Currently running">&#9654;</div>`
             : `<div class="queue-pos" title="Approx. position in the shared queue">${o.position}</div>`;
 
-        let timeLabel;
-        if (running) {
-            if (r.heavyQueued) {
-                // in_progress per GitHub, but the self-hosted job hasn't been picked up yet.
-                timeLabel = `waited for ${queueAgo(r.createdMs)} &middot; runner not assigned yet`;
-            } else {
-                // Use the real job start (set by enrichment) so this reflects actual run time,
-                // not the long pre-run queue wait. Fall back to run-level start if unknown.
-                const startMs = r.jobStartMs || r.startedMs;
-                const waitedMs = (startMs && r.createdMs) ? Math.max(0, startMs - r.createdMs) : 0;
-                const runFor = `running for ${queueAgo(startMs)}`;
-                timeLabel = waitedMs >= 60000 ? `waited ${queueFmtDur(waitedMs)} &middot; ${runFor}` : runFor;
-            }
-        } else {
-            // Still in line — present tense, because it's actively still waiting.
-            timeLabel = `waiting ${queueAgo(r.createdMs)}`;
-        }
+        let timeLabel = queueTimeLabel(r, running);
 
         // Trigger label — surface the orchestrator (best-effort, time-matched) instead of a bare event.
         let trigInner;
@@ -18220,12 +18275,34 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         </div>`;
     }
 
+    function queueOtherRowHtml(r, opts) {
+        const running = !!(opts && opts.running);
+        const timeLabel = queueTimeLabel(r, running);
+        return `<div class="queue-row other ${running ? 'running' : 'queued'}">
+            <div class="queue-main">
+                <div class="queue-name">${escapeHtml(r.name)}</div>
+                <div class="queue-meta">
+                    <span class="queue-repo-chip">${escapeHtml(r.repo)}</span>
+                    <span class="queue-wait">${timeLabel}</span>
+                </div>
+            </div>
+            <div class="queue-right">
+                <a class="queue-link" href="${escapeHtml(r.url)}" target="_blank" rel="noopener">Open &#8599;</a>
+            </div>
+        </div>`;
+    }
+
     function renderQueue() {
         const body = document.getElementById('queueBody');
         if (!body) return;
 
-        // Repo filter options (only repos that actually have activity).
-        const reposInData = [...new Set([...queueQueued, ...queueRunning].map(r => r.repo))].sort((a, b) => a.localeCompare(b));
+        // Repo filter: tracked repos plus any repo that currently has activity.
+        const trackedRepos = queueReposToScan();
+        const reposInData = [...new Set([
+            ...trackedRepos,
+            ...queueQueued.map(r => r.repo),
+            ...queueRunning.map(r => r.repo)
+        ])].filter(Boolean).sort((a, b) => a.localeCompare(b));
         const sel = document.getElementById('queueRepoFilter');
         if (sel) {
             if (queueRepoFilter !== 'all' && !reposInData.includes(queueRepoFilter)) queueRepoFilter = 'all';
@@ -18234,27 +18311,46 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         }
 
         const upd = document.getElementById('queueUpdated');
-        if (upd) upd.textContent = queueLastFetchMs ? `· Updated ${queueAgo(queueLastFetchMs)} ago` : '';
+        if (upd) {
+            if (!queueLastFetchMs) upd.textContent = '';
+            else {
+                const d = queueLastFetchDiag || {};
+                upd.textContent = `· Updated ${queueAgo(queueLastFetchMs)} ago · ${d.queued || 0} queued, ${d.running || 0} running (${d.repos || trackedRepos.length} repos scanned)`;
+            }
+        }
 
         const matchRepo = (r) => queueRepoFilter === 'all' || r.repo === queueRepoFilter;
+        const matchers = queuePipelineMatchers();
 
-        // Global queue position map (shared runners → position is across ALL repos).
+        const qAll = queueQueued.filter(matchRepo);
+        const rAll = queueRunning.filter(matchRepo);
+        const qFiltered = qAll.filter(r => queueIsMineRun(r, matchers));
+        const rFiltered = rAll.filter(r => queueIsMineRun(r, matchers));
+        const qOthers = qAll.filter(r => queueIsOther(r, matchers));
+        const rOthers = rAll.filter(r => queueIsOther(r, matchers));
+        const othersCount = qOthers.length + rOthers.length;
+        const pipelinesConfigured = matchers.configured;
+
+        // Queue position among your configured pipelines only.
         const posById = new Map();
-        queueQueued.forEach((r, i) => posById.set(r.id, i + 1));
+        queueQueued.filter(r => queueIsMineRun(r, matchers)).forEach((r, i) => posById.set(r.id, i + 1));
 
-        const qFiltered = queueQueued.filter(matchRepo);
-        const rFiltered = queueRunning.filter(matchRepo);
-        // Longest current wait = the front-of-line item (oldest created) still queued.
+        // Stats reflect your configured pipelines — Others are excluded.
         const longestWaitMs = qFiltered.length
             ? Math.max(...qFiltered.map(r => Date.now() - r.createdMs))
             : 0;
 
+        const runningSub = pipelinesConfigured ? 'tracked pipelines in progress' : 'in progress (tracked repos)';
+        const queuedSub = pipelinesConfigured ? 'tracked pipelines waiting' : 'waiting for a runner';
+        const waitSub = pipelinesConfigured ? 'tracked pipelines front of the line' : 'front of the line';
+
         const statsEl = document.getElementById('queueStats');
         if (statsEl) {
             statsEl.innerHTML =
-                queueStatCard('#3b82f6', 'Running now', rFiltered.length, 'in progress (tracked repos)') +
-                queueStatCard('var(--orange)', 'Queued', qFiltered.length, 'waiting for a runner') +
-                queueStatCard('#34d399', 'Longest wait', longestWaitMs ? queueFmtDur(longestWaitMs) : '—', longestWaitMs ? 'front of the line' : 'nothing waiting');
+                queueStatCard('#3b82f6', 'Running now', rFiltered.length, runningSub) +
+                queueStatCard('var(--orange)', 'Queued', qFiltered.length, queuedSub) +
+                queueStatCard('#34d399', 'Longest wait', longestWaitMs ? queueFmtDur(longestWaitMs) : '—', longestWaitMs ? waitSub : 'nothing waiting') +
+                (othersCount || pipelinesConfigured ? queueStatCard('#94a3b8', 'Others', othersCount, othersCount ? (pipelinesConfigured ? 'not in tracked pipeline list' : 'excluded from stats above') : 'none right now') : '');
         }
 
         if (!queueLastFetchMs) {
@@ -18262,30 +18358,51 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             return;
         }
 
-        if (!qFiltered.length && !rFiltered.length) {
-            const scope = queueRepoFilter === 'all' ? 'across all repos' : `for ${escapeHtml(queueRepoFilter)}`;
-            body.innerHTML = `<div class="queue-empty"><span class="qbig">&#9989;</span>Queue is clear ${scope} — nothing running or waiting right now.</div>`;
+        const hasMine = qFiltered.length || rFiltered.length;
+
+        if (!hasMine && !othersCount) {
+            const scope = queueRepoFilter === 'all' ? 'across all tracked repos' : `for ${escapeHtml(queueRepoFilter)}`;
+            const scanned = trackedRepos.length ? ` Scanned ${trackedRepos.length} tracked repo${trackedRepos.length === 1 ? '' : 's'}.` : '';
+            body.innerHTML = `<div class="queue-empty"><span class="qbig">&#9989;</span>Queue is clear ${scope} — nothing running or waiting right now.${scanned}</div>`;
             return;
         }
 
-        const section = (which, label, count, listHtml) => {
+        const section = (which, label, count, listHtml, extraClass, hint) => {
             const collapsed = !!queueCollapsed[which];
-            return `<div class="queue-section ${collapsed ? 'collapsed' : ''}">
+            const hintHtml = hint ? `<span class="queue-section-hint">${hint}</span>` : '';
+            return `<div class="queue-section ${extraClass || ''} ${collapsed ? 'collapsed' : ''}">
                 <div class="queue-section-title" onclick="toggleQueueSection('${which}')" title="Click to collapse/expand">
-                    <span class="queue-caret">&#9662;</span> ${label} <span class="qcount">(${count})</span>
+                    <span class="queue-caret">&#9662;</span> ${label} <span class="qcount">(${count})</span>${hintHtml}
                 </div>
                 <div class="queue-list">${listHtml}</div>
             </div>`;
         };
 
-        const runningHtml = rFiltered.length
-            ? section('running', '&#9654; Running now', rFiltered.length, rFiltered.map(r => queueRowHtml(r, { running: true })).join(''))
-            : '';
-        const queuedHtml = qFiltered.length
-            ? section('queued', '&#9203; Queued', qFiltered.length, qFiltered.map(r => queueRowHtml(r, { running: false, position: posById.get(r.id) })).join(''))
+        const mineEmptyHtml = pipelinesConfigured && !hasMine
+            ? `<div class="queue-empty" style="margin-bottom:8px;"><span class="qbig">&#9989;</span>Tracked pipelines are clear — nothing running or waiting.</div>`
             : '';
 
-        body.innerHTML = runningHtml + queuedHtml;
+        const runningLabel = pipelinesConfigured ? '&#9654; Tracked pipelines — running' : '&#9654; Running now';
+        const queuedLabel = pipelinesConfigured ? '&#9203; Tracked pipelines — queued' : '&#9203; Queued';
+
+        const runningHtml = rFiltered.length
+            ? section('running', runningLabel, rFiltered.length, rFiltered.map(r => queueRowHtml(r, { running: true })).join(''))
+            : '';
+        const queuedHtml = qFiltered.length
+            ? section('queued', queuedLabel, qFiltered.length, qFiltered.map(r => queueRowHtml(r, { running: false, position: posById.get(r.id) })).join(''))
+            : '';
+        const othersList = [
+            ...rOthers.map(r => queueOtherRowHtml(r, { running: true })),
+            ...qOthers.map(r => queueOtherRowHtml(r, { running: false }))
+        ].join('');
+        const othersHint = pipelinesConfigured
+            ? '— workflows in tracked repos but not in tracked pipeline list'
+            : '— excluded from stats (e.g. critical-bug-gate)';
+        const othersHtml = othersCount
+            ? section('others', '&#128269; Others', othersCount, othersList, 'others', othersHint)
+            : '';
+
+        body.innerHTML = mineEmptyHtml + runningHtml + queuedHtml + othersHtml;
     }
 
     let dashSelectedRepo = null; // Dashboards-tab repo; switching syncs the global repo filter.
