@@ -9364,11 +9364,9 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
     function getWebMonorepoFormBsCtx() {
         const projectDir = String(document.getElementById('fProjectDir')?.value || '').trim();
         const ctx = { projectDir };
-        const previewEl = document.getElementById('namePreview');
-        const previewRaw = String(previewEl?.textContent || '').trim();
-        if (previewRaw && !previewEl?.querySelector('.dim') && !/select all required/i.test(previewRaw)) {
-            const base = previewRaw.split('\n')[0].trim();
-            if (base) ctx.filename = base.endsWith('.yml') ? base : `${base}.yml`;
+        const generatedName = getGeneratedName();
+        if (generatedName) {
+            ctx.filename = generatedName.endsWith('.yml') ? generatedName : `${generatedName}.yml`;
         } else if (editingPipeline) {
             const ep = findPipeline(editingPipeline);
             if (ep?.filename) ctx.filename = ep.filename;
@@ -9524,6 +9522,45 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         }
     }
 
+    const NAME_PREVIEW_PLACEHOLDERS = {
+        default: 'Select options below to generate name...',
+        mobile: 'Select mobile platform, environment, suite, and test type...',
+        required: 'Select all required fields to generate pipeline name...',
+        perf: 'Select tool, environment, feature, and test type...',
+    };
+
+    function isNamePreviewPlaceholderText(text) {
+        const line = String(text || '').trim().split('\n')[0].trim();
+        if (!line) return true;
+        return Object.values(NAME_PREVIEW_PLACEHOLDERS).some(p => line === p || line.startsWith(p));
+    }
+
+    function setNamePreviewPlaceholder(message) {
+        const previewEl = document.getElementById('namePreview');
+        if (!previewEl) return;
+        const msg = message || NAME_PREVIEW_PLACEHOLDERS.default;
+        previewEl.innerHTML = `<span class="dim">${msg}</span>`;
+        previewEl.dataset.generatedName = '';
+        previewEl.style.borderColor = '';
+    }
+
+    function setNamePreviewName(name, { duplicate = false, duplicateHint } = {}) {
+        const previewEl = document.getElementById('namePreview');
+        if (!previewEl || !name) {
+            setNamePreviewPlaceholder();
+            return;
+        }
+        previewEl.dataset.generatedName = name;
+        const hint = duplicateHint || 'A pipeline with this exact name already exists.';
+        if (duplicate) {
+            previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:var(--font-b);">&#9888; ${hint}</div>`;
+            previewEl.style.borderColor = 'var(--error)';
+        } else {
+            previewEl.textContent = name;
+            previewEl.style.borderColor = '';
+        }
+    }
+
     function updateNamePreview() {
         const platform = document.getElementById('fPlatform')?.value;
         const env = document.getElementById('fEnv')?.value;
@@ -9533,7 +9570,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             const brand = document.getElementById('fBrand')?.value;
             const feature = document.getElementById('fFeature')?.value;
             if (!brand || !feature || !testType || !env) {
-                document.getElementById('namePreview').innerHTML = '<span class="dim">Select mobile platform, environment, suite, and test type...</span>';
+                setNamePreviewPlaceholder(NAME_PREVIEW_PLACEHOLDERS.mobile);
                 updateFormStatus();
                 return;
             }
@@ -9551,16 +9588,9 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             if (feature !== testType) name += `_${testType.replace(/\s+/g, '')}`;
             name += `-BrowserStack`;
 
-            const previewEl = document.getElementById('namePreview');
             const currentRepo = 'Axos.QE.Mobile';
             const duplicate = !viewOnlyMode && pipelines.some(p => pipeNamesEqual(p.name, name) && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
-            if (duplicate) {
-                previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:var(--font-b);">&#9888; A pipeline with this exact name already exists.</div>`;
-                previewEl.style.borderColor = 'var(--error)';
-            } else {
-                previewEl.textContent = name;
-                previewEl.style.borderColor = '';
-            }
+            setNamePreviewName(name, { duplicate });
             updateFormStatus();
             return;
         }
@@ -9574,7 +9604,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             // standard convention so the chosen Test Type appears in the title (not "-Orchestrator").
             const isOrch = feature === 'Orchestrators';
             if (!brand || !env || !feature || feature === '__custom__' || !testType) {
-                document.getElementById('namePreview').innerHTML = '<span class="dim">Select all required fields to generate pipeline name...</span>';
+                setNamePreviewPlaceholder(NAME_PREVIEW_PLACEHOLDERS.required);
                 updateFormStatus();
                 return;
             }
@@ -9598,16 +9628,9 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 ? `API_${bKey}_${env}_${featureStr}-Newman`
                 : `API_${bKey}_${env}_${featureStr}_${tKey}-Newman`;
 
-            const previewEl = document.getElementById('namePreview');
             const currentRepo = String(document.getElementById('fRepo')?.value || '').trim() || repo;
             const duplicate = !viewOnlyMode && pipelines.some(p => pipeNamesEqual(p.name, name) && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
-            if (duplicate) {
-                previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:var(--font-b);">&#9888; A pipeline with this exact name already exists.</div>`;
-                previewEl.style.borderColor = 'var(--error)';
-            } else {
-                previewEl.textContent = name;
-                previewEl.style.borderColor = '';
-            }
+            setNamePreviewName(name, { duplicate });
             updateFormStatus();
             return;
         }
@@ -9616,7 +9639,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             const suffix = document.getElementById('fCustomSuffix')?.value?.trim();
             const feature = document.getElementById('fFeature')?.value?.trim();
             if (!platform || !brand || !env || !testType || !feature) {
-                document.getElementById('namePreview').innerHTML = '<span class="dim">Select all required fields to generate pipeline name...</span>';
+                setNamePreviewPlaceholder(NAME_PREVIEW_PLACEHOLDERS.required);
                 updateFormStatus();
                 return;
             }
@@ -9629,16 +9652,9 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             const featureStr = sKey ? `OLB_${fKey}_${sKey}` : `OLB_${fKey}`;
             const name = `${pKey}_${bKey}_${env}-${featureStr}_${tKey}-Playwright`;
 
-            const previewEl = document.getElementById('namePreview');
             const currentRepo = String(document.getElementById('fRepo')?.value || '').trim() || 'Axos.QE.Crypto.Web';
             const duplicate = !viewOnlyMode && pipelines.some(p => pipeNamesEqual(p.name, name) && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
-            if (duplicate) {
-                previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:var(--font-b);">&#9888; A pipeline with this exact name already exists.</div>`;
-                previewEl.style.borderColor = 'var(--error)';
-            } else {
-                previewEl.textContent = name;
-                previewEl.style.borderColor = '';
-            }
+            setNamePreviewName(name, { duplicate });
             updateFormStatus();
             return;
         }
@@ -9648,7 +9664,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             const suffix = document.getElementById('fCustomSuffix')?.value?.trim();
             const feature = document.getElementById('fFeature')?.value?.trim();
             if (!brand || !env || !testType || !feature) {
-                document.getElementById('namePreview').innerHTML = '<span class="dim">Select all required fields to generate pipeline name...</span>';
+                setNamePreviewPlaceholder(NAME_PREVIEW_PLACEHOLDERS.required);
                 updateFormStatus();
                 return;
             }
@@ -9714,15 +9730,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 }
             }
 
-            const previewEl = document.getElementById('namePreview');
             const duplicate = !viewOnlyMode && pipelines.some(p => pipeNamesEqual(p.name, name) && normRepoForPipeline(p) === 'Axos.QE.Web' && pipelineKey(p) !== editingPipeline);
-            if (duplicate) {
-                previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:var(--font-b);">&#9888; A pipeline with this exact name already exists.</div>`;
-                previewEl.style.borderColor = 'var(--error)';
-            } else {
-                previewEl.textContent = name;
-                previewEl.style.borderColor = '';
-            }
+            setNamePreviewName(name, { duplicate });
             updateWebMonorepoBsInfo();
             updateFormStatus();
             return;
@@ -9734,7 +9743,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             // '__custom__' is the transient "+ Add custom feature…" sentinel, not a real
             // feature — treat it as unselected so the preview never builds Perf___custom__…
             if (!brand || !env || !testType || !feature || feature === '__custom__') {
-                document.getElementById('namePreview').innerHTML = '<span class="dim">Select tool, environment, feature, and test type...</span>';
+                setNamePreviewPlaceholder(NAME_PREVIEW_PLACEHOLDERS.perf);
                 updateFormStatus();
                 return;
             }
@@ -9747,16 +9756,9 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             const featureStr = sKey ? `${fKey}_${sKey}` : fKey;
             const tKey = testType.replace(/\s+/g, '');
             const name = `Perf_${featureStr}_${env}_${tKey}-${tool}`;
-            const previewEl = document.getElementById('namePreview');
             const currentRepo = 'Axos.QE.Performance.Automation';
             const duplicate = !viewOnlyMode && pipelines.some(p => pipeNamesEqual(p.name, name) && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
-            if (duplicate) {
-                previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:var(--font-b);">&#9888; A pipeline with this exact name already exists.</div>`;
-                previewEl.style.borderColor = 'var(--error)';
-            } else {
-                previewEl.textContent = name;
-                previewEl.style.borderColor = '';
-            }
+            setNamePreviewName(name, { duplicate });
             updateFormStatus();
             return;
         }
@@ -9770,7 +9772,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         // in the name; Team / Set Name is dispatch-only.
         const isOrch = feature === 'Orchestrators';
         if (!platform || !brand || !env || !feature || !testType) {
-            document.getElementById('namePreview').innerHTML = '<span class="dim">Select all required fields to generate pipeline name...</span>';
+            setNamePreviewPlaceholder(NAME_PREVIEW_PLACEHOLDERS.required);
             updateFormStatus();
             return;
         }
@@ -9787,17 +9789,13 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         const name = (fKey === tKey)
             ? `${pKey}_${bKey}_${env}_${featureStr}-Testim`
             : `${pKey}_${bKey}_${env}_${featureStr}_${tKey}-Testim`;
-        const previewEl = document.getElementById('namePreview');
         const currentRepo = String(document.getElementById('fRepo')?.value || '').trim() || 'Axos.QE.TestIM';
         const duplicate = !viewOnlyMode && pipelines.some(p => pipeNamesEqual(p.name, name) && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
 
-        if (duplicate) {
-            previewEl.innerHTML = `${name}<div style="color:var(--error); font-size:12px; margin-top:8px; font-family:var(--font-b);">&#9888; A pipeline with this exact name already exists. Change the feature, suffix, test type, or environment to make it unique.</div>`;
-            previewEl.style.borderColor = 'var(--error)';
-        } else {
-            previewEl.textContent = name;
-            previewEl.style.borderColor = '';
-        }
+        setNamePreviewName(name, {
+            duplicate,
+            duplicateHint: 'A pipeline with this exact name already exists. Change the feature, suffix, test type, or environment to make it unique.',
+        });
         updateFormStatus();
     }
 
@@ -9897,14 +9895,18 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
     function getGeneratedName() {
         const preview = document.getElementById('namePreview');
         if (!preview) return '';
-        // A dim placeholder means no real name has been generated yet.
+
+        // Authoritative value: set only when updateNamePreview computes a real pipeline name.
+        const stored = String(preview.dataset.generatedName || '').trim();
+        if (stored) return stored;
+
+        // Fallback for legacy DOM state before helpers ran (e.g. initial page load).
         if (preview.querySelector('.dim')) return '';
-        let text = preview.textContent || '';
-        // Strip any appended duplicate-warning copy (rendered after a ⚠ marker).
+        let text = String(preview.textContent || '').trim();
         const warnIdx = text.indexOf('⚠');
-        if (warnIdx >= 0) text = text.slice(0, warnIdx);
-        text = text.trim();
-        return text.includes('Select') ? '' : text;
+        if (warnIdx >= 0) text = text.slice(0, warnIdx).trim();
+        if (!text || isNamePreviewPlaceholderText(text)) return '';
+        return text;
     }
 
     function getFormRepo() {
@@ -10553,7 +10555,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         if (!isFormValid()) { showToast('Fill all required fields first'); return; }
 
         const el = id => { const e = document.getElementById(id); return e ? e.value : ''; };
-        const name = document.getElementById('namePreview').textContent;
+        const name = getGeneratedName();
+        if (!name) { showToast('Unable to generate a valid pipeline name'); return; }
         const commitPush = document.getElementById('fCommitPush').checked;
         const deleteOld = document.getElementById('fDeleteOld').checked;
         const scheduleEnabled = document.getElementById('fScheduleEnabled').checked;
