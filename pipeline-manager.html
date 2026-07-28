@@ -6727,19 +6727,19 @@ ${os.map(n => `- ${n}`).join('\n')}
                   `- PW_VIDEO (choice 0/1, default 1), PW_HEADLESS (choice inherit/0/1, default inherit)\n` +
                   `- VERBOSE_OUTPUT, DRY_RUN, FAIL_FAST (choice true/false, default false)\n\n`
                 : isMobileOrch
-                ? `Workflow inputs (mirror the existing Axos.QE.Mobile orchestrators — inheritable values use "inherit" so each downstream suite keeps its committed default):\n` +
-                  `- SET_NAME (default: ${setName})\n` +
-                  `- TEST_ENV (choice inherit/QA/UAT/STG/PROD, default inherit)\n` +
-                  `- PARALLELS (default inherit)\n` +
-                  `- RETRIES (default inherit)\n` +
-                  `- RUNNER_STRATEGY (choice inherit/group/label, default inherit)\n` +
-                  `- RUNNER_GROUP (default inherit)\n` +
-                  `- RUNNER_LABEL (choice inherit/QSDW-TFSBA01..04, default inherit)\n` +
-                  (p.brand === 'iOS'
-                    ? `- IOS_APP (BS app ID bs://... — empty = latest, default: '${p.iosAppId || ''}'; pins the iOS app for every target in this set)\n`
-                    : `- ANDROID_APP (BS app ID bs://... — empty = latest, default: '${p.androidAppId || ''}'; pins the Android app for every target in this set)\n`) +
-                  `- VERBOSE_OUTPUT, DRY_RUN, FAIL_FAST (choice true/false, default false)\n\n` +
-                  `This set is single-platform (${p.brand || 'Android'} only) — declare ONLY the ${p.brand === 'iOS' ? 'IOS_APP' : 'ANDROID_APP'} input above, not both; the other platform's app-ID input does not belong on this orchestrator. Pass it through to dispatch-workflows.ps1 as ${p.brand === 'iOS' ? '-IosApp' : '-AndroidApp'} (mirroring how -AndroidAppVersion/-IosAppVersion already flow through), and include it in the sequence self-relay client_payload as ${p.brand === 'iOS' ? 'iosApp' : 'androidApp'} so a pinned app survives a long-running sequence relay. Also set BS_ANDROID_APP_ID/BS_IOS_APP_ID from the pinned value before resolving APP_VERSION, so the run/job name reflects the pinned build's real version instead of always the latest.\n\n`
+                ? (() => {
+                    const orchEnv = String(p.env || 'UAT').toLowerCase();
+                    const orchBrand = p.brand === 'iOS' ? 'iOS' : 'Android';
+                    const referenceFile = `Mobile_${orchBrand}_${orchEnv.toUpperCase()}_Orchestrators_Smoke-BrowserStack.yml`;
+                    const appIdLine = p.brand === 'iOS'
+                        ? `IOS_APP (BS app ID bs://... — empty = latest, default: '${p.iosAppId || ''}')`
+                        : `ANDROID_APP (BS app ID bs://... — empty = latest, default: '${p.androidAppId || ''}')`;
+                    return `Workflow inputs and script logic MUST exactly mirror an existing Axos.QE.Mobile orchestrator of the same platform + environment — use .github/workflows/${referenceFile} (or whichever existing sibling orchestrator shares this platform and TEST_ENV) as the literal reference template. Do NOT invent a different input set, drop any of its capabilities, or hand-write the script from scratch: copy its exact workflow_dispatch inputs, the IN_*/CP_* env-var security mapping, and the full run: script logic — including the BrowserStack credential override + app version resolution, sequence-relay support (RUN_MODE, resumeIndex/resumeWaitRunId/resumeWaitOwner/resumeWaitRepo), RUNNER_LABEL/CUSTOM_RUNNER_LABEL, and dispatching downstream pipelines on the orchestrator's OWN branch (DEFAULT_REF via $env:GITHUB_REF_NAME for workflow_dispatch / client_payload.defaultRef for the relay path — never a hardcoded 'main'). Only these should differ from the reference file:\n` +
+                      `- SET_NAME (default: ${setName})\n` +
+                      `- TEST_ENV fixed to '${orchEnv}' (required: true, options: [${orchEnv}]) — this is NOT an "inherit" choice; every orchestrator on main is pinned to one environment via its filename\n` +
+                      `- repository_dispatch event type: "${eventType}"\n` +
+                      `- ${appIdLine} — declare ONLY this one app-ID input (this set is single-platform: ${orchBrand} only); never declare both ANDROID_APP and IOS_APP on the same orchestrator\n\n`;
+                  })()
                 : `Workflow inputs:\n` +
                   `- SET_NAME (default: ${setName})\n` +
                   `- TARGET_ENVIRONMENT (default: Development)\n` +
@@ -10616,6 +10616,8 @@ ${mobileEnvDispatchPromptText(el('fEnv'), envSpecific).trimEnd()}
             const orchRepo = el('fRepo') || 'Axos.QE.TestIM';
             const isWebOrch = orchRepo === 'Axos.QE.Web';
             const isMobileOrch = orchRepo === 'Axos.QE.Mobile';
+            const effectiveSetName = setName || (isMobileOrch ? 'AndroidSmoke' : 'WFO');
+            const orchEventType = `orchestrator-${String(effectiveSetName).toLowerCase()}`;
             const orchInputs = isWebOrch
                 ? `- SET_NAME (default: ${setName || 'WFO'})
 - RUN_TARGET (choice: inherit/local/browserstack, default: inherit)
@@ -10631,22 +10633,18 @@ ${mobileEnvDispatchPromptText(el('fEnv'), envSpecific).trimEnd()}
                 ? (() => {
                     const orchBrand = el('fBrand') || 'Android';
                     const orchIsIos = orchBrand === 'iOS';
+                    const orchEnv = (el('fEnv') || 'UAT').toLowerCase();
+                    const referenceFile = `Mobile_${orchBrand}_${orchEnv.toUpperCase()}_Orchestrators_Smoke-BrowserStack.yml`;
                     const orchAndroidApp = (document.getElementById('fOrchAndroidAppId')?.value || '').trim();
                     const orchIosApp = (document.getElementById('fOrchIosAppId')?.value || '').trim();
                     const appIdLine = orchIsIos
-                        ? `- IOS_APP (BS app ID bs://... — empty = latest, default: '${orchIosApp}'; pins the iOS app for every target in this set)`
-                        : `- ANDROID_APP (BS app ID bs://... — empty = latest, default: '${orchAndroidApp}'; pins the Android app for every target in this set)`;
-                    return `- SET_NAME (default: ${setName || 'AndroidSmoke'})
-- TEST_ENV (choice: inherit/QA/UAT/STG/PROD, default: inherit)
-- PARALLELS (default: inherit)
-- RETRIES (default: inherit)
-- RUNNER_STRATEGY (choice: inherit/group/label, default: inherit)
-- RUNNER_GROUP (default: inherit)
-- RUNNER_LABEL (choice: inherit/QSDW-TFSBA01..04, default: inherit)
-${appIdLine}
-- VERBOSE_OUTPUT, DRY_RUN, FAIL_FAST (choice: true/false, default: false)
-
-This set is single-platform (${orchBrand} only) — declare ONLY the ${orchIsIos ? 'IOS_APP' : 'ANDROID_APP'} input above, not both. Pass it through to dispatch-workflows.ps1 as ${orchIsIos ? '-IosApp' : '-AndroidApp'} (mirroring how -AndroidAppVersion/-IosAppVersion already flow through), and include it in the sequence self-relay client_payload as ${orchIsIos ? 'iosApp' : 'androidApp'} so a pinned app survives a long-running sequence relay. Also set BS_ANDROID_APP_ID/BS_IOS_APP_ID from the pinned value before resolving APP_VERSION, so the run/job name reflects the pinned build's real version instead of always the latest.`;
+                        ? `IOS_APP (BS app ID bs://... — empty = latest, default: '${orchIosApp}')`
+                        : `ANDROID_APP (BS app ID bs://... — empty = latest, default: '${orchAndroidApp}')`;
+                    return `Workflow inputs and script logic MUST exactly mirror an existing Axos.QE.Mobile orchestrator of the same platform + environment — use .github/workflows/${referenceFile} (or whichever existing sibling orchestrator shares this platform and TEST_ENV) as the literal reference template. Do NOT invent a different input set, drop any of its capabilities, or hand-write the script from scratch: copy its exact workflow_dispatch inputs, the IN_*/CP_* env-var security mapping, and the full run: script logic — including the BrowserStack credential override + app version resolution, sequence-relay support (RUN_MODE, resumeIndex/resumeWaitRunId/resumeWaitOwner/resumeWaitRepo), RUNNER_LABEL/CUSTOM_RUNNER_LABEL, and dispatching downstream pipelines on the orchestrator's OWN branch (DEFAULT_REF via $env:GITHUB_REF_NAME for workflow_dispatch / client_payload.defaultRef for the relay path — never a hardcoded 'main'). Only these should differ from the reference file:
+- SET_NAME (default: ${effectiveSetName})
+- TEST_ENV fixed to '${orchEnv}' (required: true, options: [${orchEnv}]) — this is NOT an "inherit" choice; every orchestrator on main is pinned to one environment via its filename
+- repository_dispatch event type: "${orchEventType}"
+- ${appIdLine} — declare ONLY this one app-ID input (this set is single-platform: ${orchBrand} only); never declare both ANDROID_APP and IOS_APP on the same orchestrator`;
                   })()
                 : `- SET_NAME (default: ${setName || 'WFO'})
 - TARGET_ENVIRONMENT (default: Development)
@@ -10658,15 +10656,16 @@ This set is single-platform (${orchBrand} only) — declare ONLY the ${orchIsIos
 
 This workflow is an ORCHESTRATOR (not a Testim pipeline). It should:
 - trigger on workflow_dispatch and repository_dispatch
+- use a unique repository_dispatch event type: "${orchEventType}"
 - use a GitHub secret GH_DISPATCH_TOKEN to dispatch other workflows (cross-repo supported)
 - call the existing script: .github/orchestrator/dispatch-workflows.ps1
-- pass -SetName "${setName || 'WFO'}" and -ConfigPath ".github/orchestrator/targets.json"
+- pass -SetName "${effectiveSetName}" and -ConfigPath ".github/orchestrator/targets.json"
 - SECURITY: do not reference github.event.client_payload.* or inputs.* directly inside the run: script; map each into the step env: block (IN_* for inputs, CP_* for client_payload) and read $env:IN_*/$env:CP_* in the script (avoids script injection), mirroring the other repos' orchestrators
 
 Workflow_dispatch inputs should include:
 ${orchInputs}
 
-Also create/update the file .github/orchestrator/targets.json so it includes a set named "${setName || 'WFO'}" with these targets (array):
+Also create/update the file .github/orchestrator/targets.json so it includes a set named "${effectiveSetName}" with these targets (array):
 
 ${targets}
 
