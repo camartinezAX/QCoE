@@ -8811,56 +8811,10 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         const lines = splitCronScheduleLines(cronStr);
 
         if (lines.length > 1) {
-            const parsed = lines.map(l => l.trim().split(/\s+/));
-            if (parsed.every(p => p.length === 5 && p[2] === '*' && p[3] === '*')) {
-                const minute = parsed[0][0];
-                if (parsed.every(p => p[0] === minute)) {
-                    const utcHours = [];
-                    for (const p of parsed) {
-                        for (const h of p[1].split(',')) {
-                            const n = parseInt(h, 10);
-                            if (!isNaN(n)) utcHours.push(n);
-                        }
-                    }
-                    const pacOff = pacOffsetHours(new Date());
-                    // Keep Pacific hour order (do not sort UTC first — that breaks cross-midnight intervals).
-                    const pstHours = [...new Set(utcHours.map(u => ((u - pacOff) % 24 + 24) % 24))]
-                        .sort((a, b) => a - b);
-                    const diffs = pstHours.length >= 2
-                        ? pstHours.slice(1).map((h, i) => h - pstHours[i])
-                        : [];
-                    const interval = diffs.length && diffs[0] > 0 && diffs.every(d => d === diffs[0])
-                        ? diffs[0]
-                        : 0;
-                    // Only coerce to interval UI when hours form an even Pacific cadence
-                    // and every cron line shares the same DOW (split schedules use per-line DOW).
-                    if (interval > 0 && cronDowFieldsMatch(parsed)) {
-                        setFreqRadio('interval');
-                        document.getElementById('fIntervalUnit').value = 'hours';
-                        document.getElementById('fIntervalValue').value = String(interval);
-                        const minVal = parseInt(minute, 10);
-                        if (!isNaN(minVal)) document.getElementById('fIntervalMinute').value = String(minVal);
-                        setIntervalFromUntil24(pstHours[0], pstHours[pstHours.length - 1]);
-
-                        const dowPart = parsed[0][4];
-                        let days = [];
-                        if (dowPart === '*') days = [0, 1, 2, 3, 4, 5, 6];
-                        else {
-                            for (const seg of dowPart.split(',')) {
-                                if (seg.includes('-')) {
-                                    const [a, b] = seg.split('-').map(Number);
-                                    for (let i = a; i <= b; i++) days.push(i);
-                                } else days.push(parseInt(seg, 10));
-                            }
-                        }
-                        document.querySelectorAll('#dayPicker .day-pill').forEach(pill => {
-                            pill.classList.toggle('active', days.includes(parseInt(pill.dataset.day)));
-                        });
-                        syncPresetFromDays();
-                        updateSchedPreview();
-                        return;
-                    }
-                }
+            const decoded = decodeIntervalFromCronLines(lines);
+            if (decoded && applyIntervalScheduleToUi(decoded)) {
+                updateSchedPreview();
+                return;
             }
             setFreqRadio('custom');
             const el = document.getElementById('fCustomCron');
@@ -9235,6 +9189,120 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         return parsed.every(p => p[4] === dow0);
     }
 
+    function parseCronDowDays(dowPart) {
+        const f = String(dowPart || '').trim();
+        if (!f || f === '*') return [0, 1, 2, 3, 4, 5, 6];
+        const days = [];
+        for (const seg of f.split(',')) {
+            const s = seg.trim();
+            if (!s) continue;
+            if (s.includes('-')) {
+                const [a, b] = s.split('-').map(Number);
+                if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
+                for (let i = a; i <= b; i++) days.push(i === 7 ? 0 : i);
+            } else {
+                const n = parseInt(s, 10);
+                if (!Number.isFinite(n)) continue;
+                days.push(n === 7 ? 0 : n);
+            }
+        }
+        return [...new Set(days)].sort((a, b) => a - b);
+    }
+
+    function isUtcSplitIntervalDow(parsed) {
+        if (!parsed || parsed.length !== 2) return false;
+        const days0 = parseCronDowDays(parsed[0][4]);
+        const days1 = parseCronDowDays(parsed[1][4]);
+        if (!days0.length || !days1.length) return false;
+        const shifted = [...new Set(days0.map(d => (d + 1) % 7))].sort((a, b) => a - b);
+        return shifted.join(',') === days1.join(',');
+    }
+
+    function describeSelectedDays(sorted) {
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        if (sorted.length === 7) return 'Every day';
+        if (sorted.length === 5 && [1, 2, 3, 4, 5].every(d => sorted.includes(d))) return 'Weekdays';
+        if (sorted.length === 2 && sorted.includes(0) && sorted.includes(6)) return 'Weekends';
+        return sorted.map(d => dayNames[d]).join(', ');
+    }
+
+    function decodeIntervalFromCronLines(lines) {
+        if (!lines || !lines.length) return null;
+        const parsed = lines.map(l => String(l || '').trim().split(/\s+/));
+        if (!parsed.every(p => p.length === 5 && p[2] === '*' && p[3] === '*')) return null;
+        const minute = parsed[0][0];
+        if (!parsed.every(p => p[0] === minute)) return null;
+
+        const utcHours = [];
+        for (const p of parsed) {
+            for (const h of p[1].split(',')) {
+                const n = parseInt(h, 10);
+                if (!isNaN(n)) utcHours.push(n);
+            }
+        }
+        const pacOff = pacOffsetHours(new Date());
+        const pstHours = [...new Set(utcHours.map(u => ((u - pacOff) % 24 + 24) % 24))]
+            .sort((a, b) => a - b);
+        const diffs = pstHours.length >= 2
+            ? pstHours.slice(1).map((h, i) => h - pstHours[i])
+            : [];
+        const interval = diffs.length && diffs[0] > 0 && diffs.every(d => d === diffs[0])
+            ? diffs[0]
+            : 0;
+        if (!interval) return null;
+        if (!cronDowFieldsMatch(parsed) && !isUtcSplitIntervalDow(parsed)) return null;
+
+        const days = parseCronDowDays(parsed[0][4]);
+        if (!days.length) return null;
+
+        const minVal = parseInt(minute, 10);
+        return {
+            interval,
+            minute: isNaN(minVal) ? 0 : minVal,
+            pstHours,
+            days,
+            parsed
+        };
+    }
+
+    function applyIntervalScheduleToUi(decoded) {
+        if (!decoded) return false;
+        setFreqRadio('interval');
+        document.getElementById('fIntervalUnit').value = 'hours';
+        document.getElementById('fIntervalValue').value = String(decoded.interval);
+        document.getElementById('fIntervalMinute').value = String(decoded.minute);
+        setIntervalFromUntil24(decoded.pstHours[0], decoded.pstHours[decoded.pstHours.length - 1]);
+        document.querySelectorAll('#dayPicker .day-pill').forEach(pill => {
+            pill.classList.toggle('active', decoded.days.includes(parseInt(pill.dataset.day)));
+        });
+        syncPresetFromDays();
+        return true;
+    }
+
+    function formatIntervalHumanSummary(sortedDays, interval, fromH, untilH, minute) {
+        const dayDesc = describeSelectedDays(sortedDays);
+        const fmtH = h => {
+            const ap = h >= 12 ? 'PM' : 'AM';
+            const hh = h % 12 || 12;
+            return hh + ' ' + ap;
+        };
+        const minLabel = `:${String(minute).padStart(2, '0')}`;
+        const timeDesc = `every ${interval}h from ${fmtH(fromH)} to ${fmtH(untilH)} ${pacLabel(new Date())} (at ${minLabel})`;
+        return `${dayDesc}, ${timeDesc}`;
+    }
+
+    function computeNextFromCronSchedule(cronStr) {
+        const lines = splitCronScheduleLines(cronStr);
+        if (!lines.length || !calScheduleIsValid(cronStr)) return null;
+        const now = getNowUtcForUi();
+        const endMs = now.getTime() + 14 * 24 * 3600 * 1000;
+        const occ = calCronOccurrences(cronStr, now.getTime(), endMs);
+        for (const inst of occ) {
+            if (inst.getTime() > now.getTime() + 500) return inst;
+        }
+        return null;
+    }
+
     function shiftDowStringForNextUtcDay(sortedDays) {
         if (!sortedDays.length) return '*';
         if (sortedDays.length === 7) return '*';
@@ -9287,6 +9355,21 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             }
             const lines = splitCronScheduleLines(raw);
             cronInput.value = lines.join('\n');
+            const decoded = decodeIntervalFromCronLines(lines);
+            if (decoded) {
+                const sorted = [...decoded.days].sort((a, b) => a - b);
+                if (ht) ht.textContent = formatIntervalHumanSummary(
+                    sorted,
+                    decoded.interval,
+                    decoded.pstHours[0],
+                    decoded.pstHours[decoded.pstHours.length - 1],
+                    decoded.minute
+                );
+                if (ct) ct.textContent = lines.map(c => 'cron: ' + c).join('  |  ');
+                const next = computeNextFromCronSchedule(lines.join('\n'));
+                if (nt) nt.textContent = next ? ('Next: ' + fmtPstDateTimeFromUtc(next)) : 'Next: --';
+                return;
+            }
             if (ht) ht.textContent = lines.length > 1 ? 'Custom multi-cron schedule (UTC)' : 'Custom schedule (UTC)';
             if (ct) ct.textContent = lines.map(c => 'cron: ' + c).join('  |  ');
             if (nt) nt.textContent = 'Next: (not computed for custom cron)';
@@ -9358,7 +9441,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 if (ht) ht.textContent = `${dayDesc}, ${timeDesc}`;
                 if (ct) ct.textContent = 'cron: ' + cronLines[0];
                 cronInput.value = cronLines[0];
-                if (nt) nt.textContent = 'Next: (interval schedule)';
+                const nextMin = computeNextFromCronSchedule(cronLines[0]);
+                if (nt) nt.textContent = nextMin ? ('Next: ' + fmtPstDateTimeFromUtc(nextMin)) : 'Next: --';
                 return;
             }
 
@@ -9388,7 +9472,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             if (ht) ht.textContent = `${dayDesc}, ${timeDesc}`;
             if (ct) ct.textContent = cronLines.map(c => 'cron: ' + c).join('  |  ');
             cronInput.value = cronLines.join('\n');
-            if (nt) nt.textContent = 'Next: (interval schedule)';
+            const nextInterval = computeNextFromCronSchedule(cronLines.join('\n'));
+            if (nt) nt.textContent = nextInterval ? ('Next: ' + fmtPstDateTimeFromUtc(nextInterval)) : 'Next: --';
             return;
         }
 
@@ -17473,6 +17558,12 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         return out.size ? out : null;
     }
 
+    function calCronFieldAll(min, max) {
+        const out = new Set();
+        for (let i = min; i <= max; i++) out.add(i);
+        return out;
+    }
+
     // Parse a 5-field cron string. day-of-week: 0/7 = Sunday.
     function calParseCron(cronStr) {
         const parts = String(cronStr || '').trim().split(/\s+/);
@@ -17488,8 +17579,8 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             dow = norm;
         }
         return {
-            minute: minute || new Set([0]),
-            hour: hour || new Set([0]),
+            minute: minute || calCronFieldAll(0, 59),
+            hour: hour || calCronFieldAll(0, 23),
             dom, month, dow,
             domRestricted: !!dom,
             dowRestricted: !!dow
