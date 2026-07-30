@@ -6634,44 +6634,119 @@ ${os.map(n => `- ${n}`).join('\n')}
 
     function supportsPowerAutomateEmailPrompt(p) {
         const repoName = String(p?.repo || 'Axos.QE.TestIM').trim();
+        if (isOrchestratorPipeline(p)) return false;
+        if (repoName === 'Axos.QE.Mobile') return isMobilePipeline(p);
         return repoName === 'Axos.QE.TestIM'
-            && !isOrchestratorPipeline(p)
-            && !isMobilePipeline(p)
             && !isWebMonorepoPipeline(p)
             && !isCryptoPipeline(p)
             && !isPerfPipeline(p);
     }
 
+    function supportsEmailResultsUi(repoName, p) {
+        const pipeline = p || { repo: repoName };
+        if (isOrchestratorPipeline(pipeline)) return false;
+        return supportsPowerAutomateEmailPrompt(pipeline);
+    }
+
+    function mobileArtifactPlatform(p) {
+        const name = String(p?.name || p?.filename || '').toLowerCase();
+        if (/_ios_/.test(name) || name.startsWith('mobile_ios')) return 'ios';
+        return 'android';
+    }
+
+    function isRepoVariableRecipientName(rec) {
+        const s = String(rec || '').trim();
+        // Repo variable override (e.g. DRAFT_TESTIM_EMAIL_RECIPIENTS), not raw emails.
+        return /^[A-Z][A-Z0-9_]*$/.test(s) && !s.includes('@') && !s.includes(';');
+    }
+
+    function parseEmailRecipientsFromYaml(raw) {
+        const rec = stripYamlScalarQuotes(String(raw || '').trim());
+        if (!rec) return '';
+        const mVar = rec.match(/^\$\{\{\s*vars\.([A-Za-z0-9_]+)\s*\}\}$/);
+        if (mVar) {
+            const varName = mVar[1];
+            return varName === 'TESTIM_EMAIL_RECIPIENTS' ? '' : varName;
+        }
+        return rec;
+    }
+
+    function formatEmailRecipientsYamlValue(rec) {
+        const s = String(rec || '').trim();
+        if (!s) return '${{ vars.TESTIM_EMAIL_RECIPIENTS }}';
+        if (isRepoVariableRecipientName(s)) return `\${{ vars.${s} }}`;
+        return s;
+    }
+
     function appendEmailPromptLines(prompt, p) {
+        const repoName = String(p?.repo || (isMobilePipeline(p) ? 'Axos.QE.Mobile' : 'Axos.QE.TestIM')).trim();
+        const isMobile = repoName === 'Axos.QE.Mobile';
         if (p.emailEnabled) {
             const rec = String(p.emailRecipients || '').trim();
-            prompt += `\n\nEMAIL RESULTS (Power Automate): In the caller workflow's \`test-results\` job, mirror the "Set up Node (for email)" and "Email results (Power Automate)" steps from Web_AxosBank_UAT_HealthCheck-Testim.yml. The email step runs \`node tools/build-email-from-junit.mjs\`, uses continue-on-error: true, and is gated on \`always() && (steps.detect.outputs.artifact == 'true' || needs.run.result == 'cancelled')\` (artifact optional for cancel — XML optional otherwise). Env: JUNIT_GLOB_DIR=reports, REPORT_TITLE=${p.name}, REPORT_ENV=${p.env || 'UAT'}, POWER_AUTOMATE_EMAIL_WEBHOOK_URL=\${{ secrets.POWER_AUTOMATE_EMAIL_WEBHOOK_URL }}, GITHUB_SERVER_URL/GITHUB_REPOSITORY/GITHUB_RUN_ID, and RUN_CONCLUSION=\${{ needs.run.result }} (required so cancelled runs email/Teams as CANCELLED instead of a false FAIL or "manual review").`;
-            if (rec) {
-                prompt += ` Recipients OVERRIDE for this pipeline: set TESTIM_EMAIL_RECIPIENTS="${rec}" (a literal string) and gate the two steps on \`always() && (steps.detect.outputs.artifact == 'true' || needs.run.result == 'cancelled')\` only (no vars gate).`;
+            const mobileSkipGate = "needs.test.outputs.run_tests_result != 'skipped'";
+            if (isMobile) {
+                const platform = mobileArtifactPlatform(p);
+                const envSpecific = isMobileEnvSpecific(p);
+                const jobIf = rec
+                    ? `always() && ${mobileSkipGate}`
+                    : `always() && vars.TESTIM_EMAIL_RECIPIENTS != '' && ${mobileSkipGate}`;
+                const reportEnvText = envSpecific
+                    ? `REPORT_ENV: ${p.env || 'UAT'} (literal — pipeline is env-pinned; do NOT reference inputs.TEST_ENV)`
+                    : `REPORT_ENV: \${{ inputs.TEST_ENV || '${(p.env || 'UAT').toLowerCase()}' }} (from workflow_dispatch TEST_ENV input)`;
+                const runConclusionText = `RUN_CONCLUSION: \${{ needs.test.result }} (caller job result — script uses JUnit when real results exist, CANCELLED only for cancel+no/placeholder XML; skip notify when job skipped)`;
+                prompt += `\n\nEMAIL RESULTS (Power Automate): Add an \`email-results\` job to the caller workflow (reference: Mobile_Android_UAT_Smoke-BrowserStack.yml). The job needs: test, if: \`${jobIf}\`, runs-on: ubuntu-latest. Steps: Checkout, Download test-results artifact \`test-results-${platform}-\${{ github.run_id }}\` into \`reports\` (continue-on-error: true, id: detect), Set up Node 20, Email results running \`node tools/build-email-from-junit.mjs\` with continue-on-error: true. Gate the Node + email steps on \`always()\` so missing artifacts still send a REVIEW REQUIRED fallback. Env: JUNIT_GLOB_DIR=reports, REPORT_TITLE=${p.name}, ${reportEnvText}, REPORT_PLATFORM=BrowserStack, POWER_AUTOMATE_EMAIL_WEBHOOK_URL=\${{ secrets.POWER_AUTOMATE_EMAIL_WEBHOOK_URL }}, GITHUB_SERVER_URL/GITHUB_REPOSITORY/GITHUB_RUN_ID, ${runConclusionText}. Do NOT add Testim API env (TESTIM_PAK, TESTIM_EXECUTION_ID). Teams notifications are already handled by _mobile-template.yml — do not duplicate them here.`;
             } else {
-                prompt += ` Recipients: use the shared repo variable — set TESTIM_EMAIL_RECIPIENTS=\${{ vars.TESTIM_EMAIL_RECIPIENTS }} and add \`&& vars.TESTIM_EMAIL_RECIPIENTS != ''\` to the two steps' if: condition (default behavior).`;
+                prompt += `\n\nEMAIL RESULTS (Power Automate): In the caller workflow's \`test-results\` job, mirror the "Set up Node (for email)" and "Email results (Power Automate)" steps from Web_AxosBank_UAT_HealthCheck-Testim.yml. The email step runs \`node tools/build-email-from-junit.mjs\`, uses continue-on-error: true, and is gated on \`always() && (steps.detect.outputs.artifact == 'true' || needs.run.result == 'cancelled')\` (artifact optional for cancel — XML optional otherwise). Env: JUNIT_GLOB_DIR=reports, REPORT_TITLE=${p.name}, REPORT_ENV=${p.env || 'UAT'}, POWER_AUTOMATE_EMAIL_WEBHOOK_URL=\${{ secrets.POWER_AUTOMATE_EMAIL_WEBHOOK_URL }}, GITHUB_SERVER_URL/GITHUB_REPOSITORY/GITHUB_RUN_ID, and RUN_CONCLUSION=\${{ needs.run.result }} (required so cancelled runs email/Teams as CANCELLED instead of a false FAIL or "manual review").`;
+            }
+            if (rec) {
+                const yamlVal = formatEmailRecipientsYamlValue(rec);
+                if (isMobile) {
+                    if (isRepoVariableRecipientName(rec)) {
+                        prompt += ` Recipients OVERRIDE for this pipeline: set TESTIM_EMAIL_RECIPIENTS=${yamlVal}, gate the email-results job on \`always() && ${mobileSkipGate}\` only (no vars gate), and gate the Node + email steps on \`always()\`.`;
+                    } else {
+                        prompt += ` Recipients OVERRIDE for this pipeline: set TESTIM_EMAIL_RECIPIENTS to the literal recipient list "${rec}", gate the email-results job on \`always() && ${mobileSkipGate}\` only (no vars gate), and gate the Node + email steps on \`always()\`.`;
+                    }
+                } else if (isRepoVariableRecipientName(rec)) {
+                    prompt += ` Recipients OVERRIDE for this pipeline: set TESTIM_EMAIL_RECIPIENTS=${yamlVal} and gate the two steps on \`always() && (steps.detect.outputs.artifact == 'true' || needs.run.result == 'cancelled')\` only (no vars gate).`;
+                } else {
+                    prompt += ` Recipients OVERRIDE for this pipeline: set TESTIM_EMAIL_RECIPIENTS to the literal recipient list "${rec}" and gate the two steps on \`always() && (steps.detect.outputs.artifact == 'true' || needs.run.result == 'cancelled')\` only (no vars gate).`;
+                }
+            } else {
+                if (isMobile) {
+                    prompt += ` Recipients: use the shared repo variable — set TESTIM_EMAIL_RECIPIENTS=\${{ vars.TESTIM_EMAIL_RECIPIENTS }} and gate the email-results job on \`always() && vars.TESTIM_EMAIL_RECIPIENTS != '' && ${mobileSkipGate}\` (default behavior).`;
+                } else {
+                    prompt += ` Recipients: use the shared repo variable — set TESTIM_EMAIL_RECIPIENTS=\${{ vars.TESTIM_EMAIL_RECIPIENTS }} and add \`&& vars.TESTIM_EMAIL_RECIPIENTS != ''\` to the two steps' if: condition (default behavior).`;
+                }
             }
         } else {
-            prompt += `\n\nEMAIL RESULTS: Do NOT email — omit the "Set up Node (for email)" and "Email results (Power Automate)" steps (remove them from the test-results job if present).`;
+            if (isMobile) {
+                prompt += `\n\nEMAIL RESULTS: Do NOT email — remove the \`email-results\` job from the caller workflow if present.`;
+            } else {
+                prompt += `\n\nEMAIL RESULTS: Do NOT email — omit the "Set up Node (for email)" and "Email results (Power Automate)" steps (remove them from the test-results job if present).`;
+            }
         }
         return prompt;
     }
 
     function buildEmailOnlyWorkflowPrompt(p, repoName) {
         const filePath = `.github/workflows/${p.filename || (p.name + '.yml')}`;
+        const jobNote = repoName === 'Axos.QE.Mobile'
+            ? `Change only the email-results job. Preserve everything else exactly as committed.\n`
+            : `Change only the test-results job email steps. Preserve everything else exactly as committed.\n`;
         let prompt = `Update ONLY the email results steps in the existing workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
-            `Change only the test-results job email steps. Preserve everything else exactly as committed.\n`;
+            jobNote;
         return appendEmailPromptLines(prompt, p);
     }
 
     function buildScheduleAndEmailWorkflowPrompt(p, repoName, kind) {
         const filePath = `.github/workflows/${p.filename || (p.name + '.yml')}`;
+        const emailJob = repoName === 'Axos.QE.Mobile' ? 'email-results' : 'test-results email';
         const orchNote = kind === 'orchestrator'
             ? `Do NOT rewrite workflow_dispatch inputs, the dispatch job script, or .github/orchestrator/targets.json.\n`
             : `Do NOT rewrite unrelated workflow inputs, jobs, or permissions.\n`;
         let prompt = `Update ONLY the schedule trigger and email results steps on the existing workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
             orchNote +
-            `Change only the schedule/cron block and test-results email steps. Preserve everything else exactly as committed.\n`;
+            `Change only the schedule/cron block and ${emailJob} steps. Preserve everything else exactly as committed.\n`;
         prompt = appendSchedulePromptLines(prompt, p);
         return appendEmailPromptLines(prompt, p);
     }
@@ -6826,7 +6901,8 @@ ${os.map(n => `- ${n}`).join('\n')}
                 mobileEnvDispatchPromptText(p.env, envSpecific) +
                 `- workflow_dispatch inputs for: ${mobileWorkflowDispatchInputNames(envSpecific, [appField, deviceNameField, deviceOsField])} — each with the correct default value from above\n` +
                 `- permissions block (contents: read, checks: write, actions: write)\n` +
-                `- jobs section calling _mobile-template.yml passing inputs with fallback defaults`;
+                `- jobs section calling _mobile-template.yml passing inputs with fallback defaults` +
+                (p.emailEnabled ? `\n- jobs section must ALSO include an \`email-results\` job when email is enabled (see EMAIL RESULTS below)` : '');
             if (runnerStrategy === 'group') {
                 prompt += `\n- Runner targeting: use runner group + labels:\n` +
                     `  runs-on:\n` +
@@ -6841,6 +6917,7 @@ ${os.map(n => `- ${n}`).join('\n')}
             }
 
             if (p.renamedFrom) prompt += `\n\nAlso delete the old workflow file: .github/workflows/${p.renamedFrom}`;
+            prompt = appendEmailPromptLines(prompt, p);
             return prompt;
         }
 
@@ -8503,7 +8580,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     </div>
                 </div>
 
-                ${repoName === 'Axos.QE.TestIM' ? `
+                ${supportsEmailResultsUi(repoName, p) ? `
                 <div style="margin-top:8px;">
                     <label class="form-label" style="margin-bottom:8px;">Email Results</label>
                     <label class="toggle-row" onclick="event.stopPropagation()">
@@ -8519,7 +8596,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     <div id="emailConfig" style="${p.emailEnabled ? 'display:block;' : 'display:none;'} margin-top:14px;">
                         <label class="form-label" style="margin-bottom:6px;">Recipients</label>
                         <input type="text" id="fEmailRecipients" value="${escapeHtml(p.emailRecipients || '')}" placeholder="Default: TESTIM_EMAIL_RECIPIENTS variable" ${isView ? 'disabled' : ''} style="width:100%;">
-                        <div class="toggle-desc" style="margin-top:6px;">Leave blank to use the shared <b>TESTIM_EMAIL_RECIPIENTS</b> variable. Or enter emails separated by <b>;</b> to override for this pipeline.</div>
+                        <div class="toggle-desc" style="margin-top:6px;">Leave blank to use the shared <b>TESTIM_EMAIL_RECIPIENTS</b> variable. Or enter a repo variable name (e.g. <b>DRAFT_TESTIM_EMAIL_RECIPIENTS</b>) or emails separated by <b>;</b> to override for this pipeline.</div>
                     </div>
                 </div>` : ''}
 
@@ -11750,11 +11827,8 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         // Email report step (mirror schedule detection so sync reflects reality).
         if (/build-email-from-junit\.mjs/.test(yamlText)) {
             entry.emailEnabled = true;
-            // Capture a literal recipients override; a ${{ vars.* }} value means "use the default variable".
             const mRec = yamlText.match(/TESTIM_EMAIL_RECIPIENTS:\s*(.+)/);
-            let rec = mRec ? stripYamlScalarQuotes(mRec[1].trim()) : '';
-            if (/\$\{\{/.test(rec)) rec = '';
-            entry.emailRecipients = rec;
+            entry.emailRecipients = mRec ? parseEmailRecipientsFromYaml(mRec[1].trim()) : '';
         } else {
             entry.emailEnabled = false;
             entry.emailRecipients = '';
