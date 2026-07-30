@@ -6602,12 +6602,29 @@ ${os.map(n => `- ${n}`).join('\n')}
         return !!pipelinePrevSnapshot(p) || !!p?.lastSyncAt;
     }
 
-    function appendSchedulePromptLines(prompt, p) {
-        if (p.scheduleEnabled && p.schedule) {
-            prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
-        } else {
-            prompt += `\n\nKeep the schedule block commented out.`;
+    function splitCronScheduleLines(cronStr) {
+        return String(cronStr || '').trim().split(/\n+/).map(s => s.trim()).filter(Boolean);
+    }
+
+    function formatScheduleCronPromptSuffix(scheduleCron, opts = {}) {
+        const disabled = opts.disabledText || 'commented out';
+        const lines = splitCronScheduleLines(scheduleCron);
+        if (!lines.length) return `\n\nKeep the schedule block ${disabled}.`;
+        if (lines.length === 1) {
+            return `\n\nEnable the schedule trigger with this cron: ${lines[0]} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
         }
+        const yamlBlock = lines.map(c => `  - cron: '${c}'`).join('\n');
+        return `\n\nEnable the schedule trigger with these cron entries (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so only these remain):\n\nschedule:\n${yamlBlock}`;
+    }
+
+    function appendScheduleCronToPrompt(prompt, scheduleEnabled, scheduleCron, opts = {}) {
+        if (scheduleEnabled && scheduleCron) return prompt + formatScheduleCronPromptSuffix(scheduleCron, opts);
+        const disabled = opts.disabledText || 'commented out';
+        return prompt + `\n\nKeep the schedule block ${disabled}.`;
+    }
+
+    function appendSchedulePromptLines(prompt, p) {
+        prompt = appendScheduleCronToPrompt(prompt, p.scheduleEnabled, p.schedule);
         if (p.scheduleEnabled && (p.repeatUnit || 'weeks') === 'weeks' && parseInt(p.repeatEvery || '1', 10) > 1) {
             const n = parseInt(p.repeatEvery || '1', 10);
             prompt += `\n- Add WEEK_MODULO: ${n} to the workflow if it supports off-week skipping (do NOT add a separate gate job)`;
@@ -6802,8 +6819,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                 `JOB_TIMEOUT: ${p.jobTimeout || 120}\n` +
                 `RUNNER_LABEL: ${p.runnerLabel || 'AUTO'}\nCUSTOM_RUNNER_LABEL: ${p.customRunnerLabel || ''}`;
 
-            if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
-            else prompt += `\n\nKeep the schedule block commented out.`;
+            prompt = appendScheduleCronToPrompt(prompt, p.scheduleEnabled, p.schedule);
 
             prompt += `\n\nUse the existing caller workflow file Mobile_Android_UAT_Smoke-BrowserStack.yml as the exact format reference. Include:\n` +
                 `- name: and run-name fields matching the pipeline name\n` +
@@ -6867,8 +6883,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                     `Custom Suffix: ${suffix || 'none'}\n` +
                     `For the header breadcrumb, the <Feature> segment is exactly "${featureFull}" (it matches PIPELINE_NAME — do not abbreviate or re-split it).`;
             }
-            if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
-            else prompt += `\n\nKeep the schedule block as-is.`;
+            prompt = appendScheduleCronToPrompt(prompt, p.scheduleEnabled, p.schedule, { disabledText: 'as-is' });
             if (p.renamedFrom) prompt += `\n\nAlso delete the old workflow file: .github/workflows/${p.renamedFrom}`;
             return prompt;
         }
@@ -6914,8 +6929,8 @@ ${os.map(n => `- ${n}`).join('\n')}
                 (runnerStrategy === 'group'
                     ? `RUNNER_STRATEGY: group\nRUNNER_GROUP: ${runnerGroup}\nRUNNER_LABELS_LINUX: ${runnerLabelsForOs('linux')}\nRUNNER_LABELS_WINDOWS: ${runnerLabelsForOs('windows')}`
                     : `RUNNER_LABEL_LINUX: ${runnerLinux}\nCUSTOM_RUNNER_LABEL_LINUX: ${customLinux}\nRUNNER_LABEL_WINDOWS: ${runnerWin}\nCUSTOM_RUNNER_LABEL_WINDOWS: ${customWin}`);
-            if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
-            else prompt += `\n\nKeep the schedule block commented out.`;
+            prompt = appendScheduleCronToPrompt(prompt, p.scheduleEnabled, p.schedule);
+
             prompt += `\n\nUse the existing workflow file Web_Enrollment_UAT-OLB_Smoke-Playwright.yml as the exact format reference. Include:\n` +
                 `- name: and run-name fields matching the pipeline name\n` +
                 `- workflow_dispatch inputs for run_target, local_browser, test_env, grep, parallels, retries, runner_label_linux (dsdl-timab*), custom_runner_label_linux (string), runner_label_windows (QSDW-TFSBA*), custom_runner_label_windows (string), pw_video, pw_headless (choice: inherit, 0, 1), browserstack_username, browserstack_access_key, bs_random_browser, bs_browser_name, bs_browser_version, bs_os_name, bs_os_version, and use_bs_local_tunnel (choice: false, true; default from USE_BS_LOCAL_TUNNEL) with correct defaults\n` +
@@ -6960,8 +6975,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                     ? `RUNNER_STRATEGY: group\nRUNNER_GROUP: ${runnerGroup}\nRUNNER_LABELS: ${runnerLabelsForOs('windows')}`
                     : `RUNNER_LABEL: ${p.runnerLabel || 'QSDW-TFSBA01'}`);
 
-            if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
-            else prompt += `\n\nKeep the schedule block commented out.`;
+            prompt = appendScheduleCronToPrompt(prompt, p.scheduleEnabled, p.schedule);
 
             prompt += `\n\nUse the existing workflow file Web_AxosBank_UAT-OLB_Login_Smoke-Playwright.yml as the exact format reference. Include:\n` +
                 `- permissions block (contents: read, checks: write, actions: write)`;
@@ -6999,8 +7013,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                 `  - pass COLLECTION_SUBFOLDER as: \${{ inputs.RUN_FULL_COLLECTION && ' ' || inputs.COLLECTION_SUBFOLDER }}\n` +
                 `- jobs.test-results running on ubuntu-latest using dorny/test-reporter@v3 against reports/**/junit.xml`;
 
-            if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
-            else prompt += `\n\nKeep the schedule block commented out.`;
+            prompt = appendScheduleCronToPrompt(prompt, p.scheduleEnabled, p.schedule);
 
             if (runnerStrategy === 'group') {
                 prompt += `\n\nRunner targeting: use runner group + labels:\n` +
@@ -7028,8 +7041,7 @@ ${os.map(n => `- ${n}`).join('\n')}
             `JOB_TIMEOUT: ${p.jobTimeout || 120}\n` +
             `RUNNER_LABEL: ${p.runnerLabel || 'AUTO'}\nCUSTOM_RUNNER_LABEL: ${p.customRunnerLabel || ''}`;
 
-        if (p.scheduleEnabled && p.schedule) prompt += `\n\nEnable the schedule trigger with this cron: ${p.schedule} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
-        else prompt += `\n\nKeep the schedule block commented out.`;
+        prompt = appendScheduleCronToPrompt(prompt, p.scheduleEnabled, p.schedule);
 
         prompt = appendEmailPromptLines(prompt, p);
 
@@ -8684,11 +8696,11 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                                 </div>
                             </div>
                             <div id="customCronBlock" style="display:none; margin-top:10px; padding:12px 14px; background:var(--bg-tertiary); border:1px solid var(--border-color); border-radius:10px;">
-                                <div style="display:flex; align-items:center; gap:10px;">
-                                    <span style="font-size:13px; font-weight:600;">Cron (UTC):</span>
-                                    <input type="text" id="fCustomCron" placeholder="0 */2 * * 1-5" onchange="updateSchedPreview()" oninput="updateSchedPreview()" style="flex:1; font-family:'JetBrains Mono',monospace; font-size:12px;" ${isView ? 'disabled' : ''}>
+                                <div style="display:flex; align-items:flex-start; gap:10px;">
+                                    <span style="font-size:13px; font-weight:600; padding-top:6px;">Cron (UTC):</span>
+                                    <textarea id="fCustomCron" placeholder="0 */2 * * 1-5" rows="2" onchange="updateSchedPreview()" oninput="updateSchedPreview()" style="flex:1; font-family:'JetBrains Mono',monospace; font-size:12px; resize:vertical; min-height:44px;" ${isView ? 'disabled' : ''}></textarea>
                                 </div>
-                                <div style="font-size:10px; color:var(--text-muted); margin-top:6px;">Format: minute hour day-of-month month day-of-week (UTC)</div>
+                                <div style="font-size:10px; color:var(--text-muted); margin-top:6px;">Format: minute hour day-of-month month day-of-week (UTC). One cron per line for multi-entry schedules.</div>
                             </div>
                         </div>
 
@@ -8796,7 +8808,71 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
 
     function initScheduleFromCron(cronStr) {
         if (!cronStr) return;
-        const parts = cronStr.trim().split(/\s+/);
+        const lines = splitCronScheduleLines(cronStr);
+
+        if (lines.length > 1) {
+            const parsed = lines.map(l => l.trim().split(/\s+/));
+            if (parsed.every(p => p.length === 5 && p[2] === '*' && p[3] === '*')) {
+                const minute = parsed[0][0];
+                if (parsed.every(p => p[0] === minute)) {
+                    const utcHours = [];
+                    for (const p of parsed) {
+                        for (const h of p[1].split(',')) {
+                            const n = parseInt(h, 10);
+                            if (!isNaN(n)) utcHours.push(n);
+                        }
+                    }
+                    const pacOff = pacOffsetHours(new Date());
+                    // Keep Pacific hour order (do not sort UTC first — that breaks cross-midnight intervals).
+                    const pstHours = [...new Set(utcHours.map(u => ((u - pacOff) % 24 + 24) % 24))]
+                        .sort((a, b) => a - b);
+                    const diffs = pstHours.length >= 2
+                        ? pstHours.slice(1).map((h, i) => h - pstHours[i])
+                        : [];
+                    const interval = diffs.length && diffs[0] > 0 && diffs.every(d => d === diffs[0])
+                        ? diffs[0]
+                        : 0;
+                    // Only coerce to interval UI when hours form an even Pacific cadence
+                    // and every cron line shares the same DOW (split schedules use per-line DOW).
+                    if (interval > 0 && cronDowFieldsMatch(parsed)) {
+                        setFreqRadio('interval');
+                        document.getElementById('fIntervalUnit').value = 'hours';
+                        document.getElementById('fIntervalValue').value = String(interval);
+                        const minVal = parseInt(minute, 10);
+                        if (!isNaN(minVal)) document.getElementById('fIntervalMinute').value = String(minVal);
+                        setIntervalFromUntil24(pstHours[0], pstHours[pstHours.length - 1]);
+
+                        const dowPart = parsed[0][4];
+                        let days = [];
+                        if (dowPart === '*') days = [0, 1, 2, 3, 4, 5, 6];
+                        else {
+                            for (const seg of dowPart.split(',')) {
+                                if (seg.includes('-')) {
+                                    const [a, b] = seg.split('-').map(Number);
+                                    for (let i = a; i <= b; i++) days.push(i);
+                                } else days.push(parseInt(seg, 10));
+                            }
+                        }
+                        document.querySelectorAll('#dayPicker .day-pill').forEach(pill => {
+                            pill.classList.toggle('active', days.includes(parseInt(pill.dataset.day)));
+                        });
+                        syncPresetFromDays();
+                        updateSchedPreview();
+                        return;
+                    }
+                }
+            }
+            setFreqRadio('custom');
+            const el = document.getElementById('fCustomCron');
+            const cronHidden = document.getElementById('fScheduleCron');
+            const joined = lines.join('\n');
+            if (el) el.value = joined;
+            if (cronHidden) cronHidden.value = joined;
+            updateSchedPreview();
+            return;
+        }
+
+        const parts = lines[0].trim().split(/\s+/);
         if (parts.length !== 5) return;
         const [minPart, hourPart, domPart, monPart, dowPart] = parts;
 
@@ -9148,6 +9224,51 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         }
     }
 
+    function calScheduleIsValid(cronStr) {
+        const lines = splitCronScheduleLines(cronStr);
+        return lines.length > 0 && lines.every(l => calParseCron(l));
+    }
+
+    function cronDowFieldsMatch(parsed) {
+        if (!parsed.length) return true;
+        const dow0 = parsed[0][4];
+        return parsed.every(p => p[4] === dow0);
+    }
+
+    function shiftDowStringForNextUtcDay(sortedDays) {
+        if (!sortedDays.length) return '*';
+        if (sortedDays.length === 7) return '*';
+        const shifted = [...new Set(sortedDays.map(d => (d + 1) % 7))].sort((a, b) => a - b);
+        return shifted.join(',');
+    }
+
+    function splitUtcHoursForIntervalSchedule(pstHours, pacOff, isOvernight, untilH) {
+        const sameDowUtc = [];
+        const shiftedDowUtc = [];
+        for (const h of pstHours) {
+            const utcH = (h + pacOff) % 24;
+            const crossesUtcMidnight = h + pacOff >= 24;
+            const isOvernightMorning = isOvernight && h <= untilH;
+            if (isOvernightMorning || crossesUtcMidnight) shiftedDowUtc.push(utcH);
+            else sameDowUtc.push(utcH);
+        }
+        return { sameDowUtc, shiftedDowUtc };
+    }
+
+    function setIntervalFromUntil24(fromH, untilH) {
+        const set12 = (hour24, hourId, ampmId) => {
+            const ampm = hour24 >= 12 ? 'PM' : 'AM';
+            let h12 = hour24 % 12;
+            if (h12 === 0) h12 = 12;
+            const hEl = document.getElementById(hourId);
+            const apEl = document.getElementById(ampmId);
+            if (hEl) hEl.value = h12;
+            if (apEl) apEl.value = ampm;
+        };
+        set12(fromH, 'fIntervalFrom', 'fIntervalFromAP');
+        set12(untilH, 'fIntervalUntil', 'fIntervalUntilAP');
+    }
+
     function updateSchedPreview() {
         const freq = getFreqValue();
         const ht = document.getElementById('schedHumanText');
@@ -9164,9 +9285,10 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 cronInput.value = '';
                 return;
             }
-            cronInput.value = raw;
-            if (ht) ht.textContent = 'Custom schedule (UTC)';
-            if (ct) ct.textContent = 'cron: ' + raw;
+            const lines = splitCronScheduleLines(raw);
+            cronInput.value = lines.join('\n');
+            if (ht) ht.textContent = lines.length > 1 ? 'Custom multi-cron schedule (UTC)' : 'Custom schedule (UTC)';
+            if (ct) ct.textContent = lines.map(c => 'cron: ' + c).join('  |  ');
             if (nt) nt.textContent = 'Next: (not computed for custom cron)';
             return;
         }
@@ -9253,16 +9375,19 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             }
 
             const pacOff = pacOffsetHours(new Date());
-            const utcHours = pstHours.map(h => (h + pacOff) % 24);
-            cronLines = [`${minute} ${utcHours.join(',')} * * ${dayStr}`];
+            const isOvernight = fromH > untilH;
+            const { sameDowUtc, shiftedDowUtc } = splitUtcHoursForIntervalSchedule(pstHours, pacOff, isOvernight, untilH);
+            cronLines = [];
+            if (sameDowUtc.length) cronLines.push(`${minute} ${sameDowUtc.join(',')} * * ${dayStr}`);
+            if (shiftedDowUtc.length) cronLines.push(`${minute} ${shiftedDowUtc.join(',')} * * ${shiftDowStringForNextUtcDay(sorted)}`);
 
             const fmtH = h => { const ap = h >= 12 ? 'PM' : 'AM'; const hh = h % 12 || 12; return hh + ' ' + ap; };
             const minLabel = minSel === 'random' ? `random :${String(minute).padStart(2,'0')}` : `:${String(minute).padStart(2,'0')}`;
             timeDesc = `every ${interval}h from ${fmtH(fromH)} to ${fmtH(untilH)} ${pacLabel(new Date())} (at ${minLabel})`;
 
             if (ht) ht.textContent = `${dayDesc}, ${timeDesc}`;
-            if (ct) ct.textContent = 'cron: ' + cronLines[0];
-            cronInput.value = cronLines[0];
+            if (ct) ct.textContent = cronLines.map(c => 'cron: ' + c).join('  |  ');
+            cronInput.value = cronLines.join('\n');
             if (nt) nt.textContent = 'Next: (interval schedule)';
             return;
         }
@@ -10601,11 +10726,7 @@ JOB_TIMEOUT: ${el('fJobTimeout')}
 RUNNER_LABEL: ${el('fRunnerLabel') || 'AUTO'}
 CUSTOM_RUNNER_LABEL: ${el('fCustomRunnerLabel') || ''}`;
 
-            if (scheduleEnabled && scheduleCron) {
-                prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
-            } else {
-                prompt += `\n\nKeep the schedule block commented out.`;
-            }
+            prompt = appendScheduleCronToPrompt(prompt, scheduleEnabled, scheduleCron);
 
             prompt += `\n\nUse the existing caller workflow file Mobile_Android_UAT_Smoke-BrowserStack.yml as the exact format reference. Include:
 - name: and run-name: fields matching the pipeline name
@@ -10682,11 +10803,7 @@ ${targets}
 
 Each target element supports: enabled, name, owner, repo, workflow, ref, inputs.`;
 
-            if (scheduleEnabled && scheduleCron) {
-                prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
-            } else {
-                prompt += `\n\nKeep the schedule block commented out.`;
-            }
+            prompt = appendScheduleCronToPrompt(prompt, scheduleEnabled, scheduleCron);
 
         } else if (el('fRepo') === 'Axos.QE.API_OLB' || el('fRepo') === 'Axos.QE.API_CS' || el('fRepo') === 'Axos.QE.API_UDB' || el('fRepo') === 'Axos.QE.API_WFO') {
             const apiRepo = el('fRepo') || 'Axos.QE.API_OLB';
@@ -10705,11 +10822,7 @@ RUNNER_LABEL: ${el('fRunnerLabel') || 'AUTO'}
 CUSTOM_RUNNER_LABEL: ${el('fCustomRunnerLabel') || ''}
 JOB_TIMEOUT: ${el('fJobTimeout') || '120'}`;
 
-            if (scheduleEnabled && scheduleCron) {
-                prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
-            } else {
-                prompt += `\n\nKeep the schedule block commented out.`;
-            }
+            prompt = appendScheduleCronToPrompt(prompt, scheduleEnabled, scheduleCron);
 
             prompt += `\n\nUse the existing workflow file ${apiRepo === 'Axos.QE.API_CS'
                 ? 'API_CS_UAT_Health_Checks_Sanity-Newman.yml'
@@ -10743,8 +10856,7 @@ JOB_TIMEOUT: ${el('fJobTimeout') || '120'}`;
                     `PIPELINE_NAME: ${name}\nTEST: ${el('fJmxName')}   # .jmx base name in src/scripts (no extension)\nTHREADS: ${el('fJmxThreads')}\nRAMPUP: ${el('fJmxRampup')}\nDURATION: ${el('fJmxDuration')}\nGRANULARITY: ${el('fJmxGranularity') || '1000'}\nJOB_TIMEOUT: ${el('fJobTimeout') || '120'}\nRUNNER_LABEL: ${coercePerfJmeterRunnerLabel(el('fRunnerLabel'))}\nCUSTOM_RUNNER_LABEL: ${el('fCustomRunnerLabel') || ''}\n\n` +
                     `No repo secrets required. Runs on a self-hosted Windows runner via group ${runnerGroup} (labels [self-hosted, windows, x64]); JMeter expected at C:\\JMeter\\apache-jmeter-5.6.3 (self-heal install fallback). Use Perf_OLB_UAT_Regression-JMeter.yml as the exact format reference.`;
             }
-            if (scheduleEnabled && scheduleCron) prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
-            else prompt += `\n\nKeep the schedule block as-is.`;
+            prompt = appendScheduleCronToPrompt(prompt, scheduleEnabled, scheduleCron, { disabledText: 'as-is' });
 
         } else if (el('fRepo') === 'Axos.QE.Web') {
             const brand = el('fBrand') || 'Enrollment';
@@ -10784,11 +10896,8 @@ ${runnerStrategy === 'group'
     ? `RUNNER_STRATEGY: group\nRUNNER_GROUP: ${runnerGroup}\nRUNNER_LABELS_LINUX: ${runnerLabelsForOs('linux')}\nRUNNER_LABELS_WINDOWS: ${runnerLabelsForOs('windows')}`
     : `RUNNER_LABEL_LINUX: ${el('fRunnerLabelLinux') || 'dsdl-timab28'}\nCUSTOM_RUNNER_LABEL_LINUX: ${el('fCustomRunnerLabelLinux') || ''}\nRUNNER_LABEL_WINDOWS: ${el('fRunnerLabelWindows') || 'QSDW-TFSBA01'}\nCUSTOM_RUNNER_LABEL_WINDOWS: ${el('fCustomRunnerLabelWindows') || ''}`}`;
 
-            if (scheduleEnabled && scheduleCron) {
-                prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
-            } else {
-                prompt += `\n\nKeep the schedule block commented out.`;
-            }
+            prompt = appendScheduleCronToPrompt(prompt, scheduleEnabled, scheduleCron);
+
             prompt += `\n\nUse the existing workflow file Web_Enrollment_UAT-OLB_Smoke-Playwright.yml as the exact format reference. Include:\n` +
                 `- name: and run-name fields matching the pipeline name\n` +
                 `- workflow_dispatch inputs for run_target, local_browser, test_env, grep, parallels, retries, runner_label_linux (dsdl-timab*), custom_runner_label_linux (string), runner_label_windows (QSDW-TFSBA*), custom_runner_label_windows (string), pw_video, pw_headless (choice: inherit, 0, 1), browserstack_username, browserstack_access_key, bs_random_browser, bs_browser_name, bs_browser_version, bs_os_name, bs_os_version, and use_bs_local_tunnel (choice: false, true; default from USE_BS_LOCAL_TUNNEL) with correct defaults\n` +
@@ -10834,11 +10943,7 @@ ${runnerStrategy === 'group'
     ? `RUNNER_STRATEGY: group\nRUNNER_GROUP: ${runnerGroup}\nRUNNER_LABELS: ${runnerLabelsForOs('windows')}`
     : `RUNNER_LABEL: ${el('fRunnerLabel') || 'QSDW-TFSBA01'}`}`;
 
-            if (scheduleEnabled && scheduleCron) {
-                prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
-            } else {
-                prompt += `\n\nKeep the schedule block commented out.`;
-            }
+            prompt = appendScheduleCronToPrompt(prompt, scheduleEnabled, scheduleCron);
 
             prompt += `\n\nUse the existing workflow file Web_AxosBank_UAT-OLB_Login_Smoke-Playwright.yml as the exact format reference. Include:\n` +
                 `- permissions block (contents: read, checks: write, actions: write)`;
@@ -10873,11 +10978,7 @@ CUSTOM_RUNNER_LABEL: ${el('fCustomRunnerLabel') || ''}
 
 Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific host pins it; CUSTOM_RUNNER_LABEL overrides.`;
 
-            if (scheduleEnabled && scheduleCron) {
-                prompt += `\n\nEnable the schedule trigger with this cron: ${scheduleCron} (this is the pipeline's complete schedule — replace/remove any other cron lines already in the workflow's schedule: block so this is the only one).`;
-            } else {
-                prompt += `\n\nKeep the schedule block commented out.`;
-            }
+            prompt = appendScheduleCronToPrompt(prompt, scheduleEnabled, scheduleCron);
 
             prompt += `\n\nUse the existing caller workflow file Web_AxosBank_UAT_HealthCheck-Testim.yml as the exact format reference. Include:
 - A header comment showing the folder path (e.g. Web > Axos Bank > UAT > ...)
@@ -11403,9 +11504,12 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 scheduleIndent = null;
             }
 
-            if (inSchedule && !scheduleCron) {
+            if (inSchedule) {
                 const mCron = line.match(/^\s*-\s*cron\s*:\s*(.+)\s*$/);
-                if (mCron) scheduleCron = stripYamlScalarQuotes(mCron[1]);
+                if (mCron) {
+                    const c = stripYamlScalarQuotes(mCron[1]);
+                    scheduleCron = scheduleCron ? `${scheduleCron}\n${c}` : c;
+                }
             }
 
             if (/^\s*with\s*:\s*$/.test(line)) {
@@ -17406,28 +17510,33 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
 
     // Generate scheduled run instants (Date objects) within [startMs, endMs].
     function calCronOccurrences(cronStr, startMs, endMs) {
-        const c = calParseCron(cronStr);
-        if (!c) return [];
+        const lines = splitCronScheduleLines(cronStr);
+        if (!lines.length) return [];
         const occ = [];
-        // Walk UTC days across a padded window so local-time placement is exact.
-        const startDay = new Date(startMs - 36 * 3600 * 1000);
-        const endDay = new Date(endMs + 36 * 3600 * 1000);
-        const cursor = new Date(Date.UTC(startDay.getUTCFullYear(), startDay.getUTCMonth(), startDay.getUTCDate()));
-        const lastMs = Date.UTC(endDay.getUTCFullYear(), endDay.getUTCMonth(), endDay.getUTCDate());
-        let guard = 0;
-        while (cursor.getTime() <= lastMs && guard < 800) {
-            guard++;
-            if (calCronMatchesUTCDate(c, cursor)) {
-                for (const h of c.hour) {
-                    for (const mi of c.minute) {
-                        const inst = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth(), cursor.getUTCDate(), h, mi));
-                        const t = inst.getTime();
-                        if (t >= startMs && t <= endMs) occ.push(inst);
+        for (const line of lines) {
+            const c = calParseCron(line);
+            if (!c) continue;
+            // Walk UTC days across a padded window so local-time placement is exact.
+            const startDay = new Date(startMs - 36 * 3600 * 1000);
+            const endDay = new Date(endMs + 36 * 3600 * 1000);
+            const cursor = new Date(Date.UTC(startDay.getUTCFullYear(), startDay.getUTCMonth(), startDay.getUTCDate()));
+            const lastMs = Date.UTC(endDay.getUTCFullYear(), endDay.getUTCMonth(), endDay.getUTCDate());
+            let guard = 0;
+            while (cursor.getTime() <= lastMs && guard < 800) {
+                guard++;
+                if (calCronMatchesUTCDate(c, cursor)) {
+                    for (const h of c.hour) {
+                        for (const mi of c.minute) {
+                            const inst = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth(), cursor.getUTCDate(), h, mi));
+                            const t = inst.getTime();
+                            if (t >= startMs && t <= endMs) occ.push(inst);
+                        }
                     }
                 }
+                cursor.setUTCDate(cursor.getUTCDate() + 1);
             }
-            cursor.setUTCDate(cursor.getUTCDate() + 1);
         }
+        occ.sort((a, b) => a.getTime() - b.getTime());
         return occ;
     }
 
@@ -17438,7 +17547,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         const dashSet = calDashFilter ? calDashboardPipelineKeySet(calDashFilter) : null;
         for (const p of (pipelines || [])) {
             if (!p || !p.scheduleEnabled || !p.schedule) continue;
-            if (!calParseCron(p.schedule)) continue;
+            if (!calScheduleIsValid(p.schedule)) continue;
             const repo = getPipelineRepo(p);
             if (!repoFilterMatches(globalRepoFilter, repo)) continue;
             if (calRepoFilter !== 'all' && repo !== calRepoFilter) continue;
@@ -17472,7 +17581,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
     function calAllScheduledRepos() {
         const set = new Set();
         for (const p of (pipelines || [])) {
-            if (!p || !p.scheduleEnabled || !p.schedule || !calParseCron(p.schedule)) continue;
+            if (!p || !p.scheduleEnabled || !p.schedule || !calScheduleIsValid(p.schedule)) continue;
             const repo = getPipelineRepo(p);
             if (!repoFilterMatches(globalRepoFilter, repo)) continue;
             set.add(repo);
