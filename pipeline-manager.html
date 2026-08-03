@@ -13678,11 +13678,20 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         return null;
     }
 
+    const DASHBOARD_MAX_RUNS = 10;
+
     function getDashboardRunCountLimit(rangeDefault) {
         const f = getDashboardFetchFilters();
         const mode = String(f.mode || 'count').toLowerCase();
-        if (mode === 'count') return Math.max(1, Number(f.perPage) || loadResultsRunCountPref() || 7);
+        if (mode === 'count') {
+            const requested = Math.max(1, Number(f.perPage) || loadResultsRunCountPref() || 7);
+            return Math.min(DASHBOARD_MAX_RUNS, requested);
+        }
         return rangeDefault ?? 15;
+    }
+
+    function getDashboardVizRunLimit() {
+        return Math.min(DASHBOARD_MAX_RUNS, getDashboardRunCountLimit(15));
     }
 
     function getDashboardFetchWindowLabel() {
@@ -13692,7 +13701,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             const r = getDashboardDateRange(f);
             return r ? `runs in ${r.label}` : 'runs in range';
         }
-        return `last ${Math.max(1, Number(f.perPage) || 7)} runs`;
+        return `last ${getDashboardRunCountLimit()} runs`;
     }
 
     function getDashboardRenderFetchKey() {
@@ -14791,8 +14800,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         const list = Array.isArray(runs) ? runs : [];
         const actionableRuns = list.filter(isDashboardActionableRun);
         const anyEnriched = list.some(r => hasEnrichedTestCounts(r?.testCounts));
-        const allSettled = actionableRuns.every(isDashboardRunStatsSettled);
-        const useTestLevel = anyEnriched && allSettled;
+        const useTestLevel = anyEnriched;
         let passed = 0;
         let failed = 0;
         let actionable = 0;
@@ -19249,10 +19257,9 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
     }
 
     function getDashboardPipelineRuns(repo, workflowFile, vizLimit) {
-        const mode = getDashboardResultsFetchMode();
         const limit = vizLimit != null
-            ? vizLimit
-            : getDashboardRunCountLimit(15);
+            ? Math.min(DASHBOARD_MAX_RUNS, vizLimit)
+            : getDashboardVizRunLimit();
         let runs = (allRuns || [])
             .filter(r => r && String(r.repo || '').trim() === String(repo || '').trim() && String(r.workflowFile || '').trim() === String(workflowFile || '').trim())
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -19732,7 +19739,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
     }
 
     function dashboardNeedsAttention(repo, workflowFile) {
-        const limit = getDashboardRunCountLimit();
+        const limit = getDashboardVizRunLimit();
         const runs = (allRuns || [])
             .filter(r => r && String(r.repo || '').trim() === String(repo || '').trim() && String(r.workflowFile || '').trim() === String(workflowFile || '').trim())
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
