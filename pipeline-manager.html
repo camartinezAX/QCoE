@@ -2826,6 +2826,7 @@
     // feature from the Custom Suffix and survive a re-sync. Longest match wins (OLB3.0
     // before OLB). User-added features persist via the custom-feature store below.
     const PERF_FEATURES = [
+        'Orchestrators',
         'OLB',
         'OLB3.0',
         'UDB',
@@ -2842,8 +2843,15 @@
     function splitPerfFeature(full) {
         const s = String(full || '').trim();
         if (!s) return { feature: '', suffix: '' };
+        // Orchestrators are dispatch workflows — always treat as the Feature, with any
+        // remainder as Custom Suffix (same rule as Mobile).
+        if (s === 'Orchestrators' || s.startsWith('Orchestrators_') || s.startsWith('Orchestrators-')) {
+            const rest = s.slice('Orchestrators'.length).replace(/^[_-]/, '');
+            return { feature: 'Orchestrators', suffix: rest };
+        }
         const lf = s.toLowerCase();
         const match = [...PERF_FEATURES]
+            .filter(f => f !== 'Orchestrators')
             .sort((a, b) => b.length - a.length)
             .find(f => lf === f.toLowerCase() || lf.startsWith(f.toLowerCase() + '_'));
         if (!match) return { feature: s, suffix: '' };
@@ -4134,21 +4142,27 @@ ${os.map(n => `- ${n}`).join('\n')}
             .map(l => l.trim())
             .filter(l => l && !l.startsWith('#'));
 
+        // When the form is open on a non-TestIM repo, bare `workflow.yml` lines should
+        // default to THAT repo (so Performance / Mobile / API / Web clones stay local).
+        const formRepo = String(document.getElementById('fRepo')?.value || '').trim();
+        const defaultRepo = formRepo || 'Axos.QE.TestIM';
+
         const targets = [];
         for (const line of lines) {
             // Formats supported:
             // - owner/repo:workflow.yml@ref
             // - repo:workflow.yml@ref                                 (assumes owner=axos-financial)
-            // - workflow.yml@ref                                      (assumes owner=axos-financial, repo=Axos.QE.TestIM)
+            // - workflow.yml@ref                                      (assumes owner=axos-financial, repo=current form repo or Axos.QE.TestIM)
             // - owner/repo/actions/workflows/workflow.yml@ref         (GitHub Actions path)
             // - https://github.com/owner/repo/actions/workflows/workflow.yml  (full URL)
             const [rawLeft, refPart] = line.split('@');
-            const ref = (refPart || '').trim() || 'main';
+            // Missing @ref → follow the orchestrator branch at runtime (not a hardcoded main).
+            const ref = (refPart || '').trim() || '{{DEFAULT_REF}}';
             const left = String(rawLeft || '').trim().replace(/^https?:\/\/github\.com\//i, '');
             if (!left) continue;
 
             let owner = 'axos-financial';
-            let repo = 'Axos.QE.TestIM';
+            let repo = defaultRepo;
             let repoPath = '';   // the owner/repo portion, if present
             let workflow = '';
 
@@ -4187,7 +4201,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                 enabled: true,
                 name: '',
                 owner: owner || 'axos-financial',
-                repo: repo || 'Axos.QE.TestIM',
+                repo: repo || defaultRepo,
                 workflow,
                 ref,
                 inputs: {}
@@ -6502,7 +6516,7 @@ ${os.map(n => `- ${n}`).join('\n')}
             owner: String(t?.owner || 'axos-financial').trim() || 'axos-financial',
             repo: String(t?.repo || 'Axos.QE.TestIM').trim() || 'Axos.QE.TestIM',
             workflow: String(t?.workflow || '').trim().replace(/.*\//, ''),
-            ref: String(t?.ref || 'main').trim() || 'main',
+            ref: String(t?.ref || '{{DEFAULT_REF}}').trim() || '{{DEFAULT_REF}}',
             enabled: t?.enabled !== false,
             inputs: normalizeOrchestratorTargetInputs(t?.inputs)
         };
@@ -6809,11 +6823,21 @@ ${os.map(n => `- ${n}`).join('\n')}
         }
 
         if (isOrchestratorPipeline(p)) {
-            const setName = orchestratorSetForForm(p) || 'WFO';
-            const targets = Array.isArray(p.orchestratorTargets) ? p.orchestratorTargets : [];
-            const eventType = `orchestrator-${String(setName || 'wfo').toLowerCase()}`;
             const isWebOrch = repoName === 'Axos.QE.Web';
             const isMobileOrch = repoName === 'Axos.QE.Mobile';
+            const isPerfOrch = repoName === 'Axos.QE.Performance.Automation';
+            const perfTool = (p.brand === 'BlazeMeter') ? 'BlazeMeter' : 'JMeter';
+            // Repo-aware fallback when SET_NAME is empty (must match generatePromptFromForm).
+            const setName = orchestratorSetForForm(p) || (
+                isMobileOrch ? 'AndroidSmoke'
+                    : isPerfOrch ? (perfTool === 'BlazeMeter' ? 'OLB3_E2E_UserLoad_Home' : 'UAT_OLB_JMeter')
+                        : 'WFO'
+            );
+            const targets = Array.isArray(p.orchestratorTargets) ? p.orchestratorTargets : [];
+            const eventType = `orchestrator-${String(setName || 'wfo').toLowerCase()}`;
+            const perfRefFile = perfTool === 'BlazeMeter'
+                ? 'Perf_Orchestrators_Home_UAT_Regression-BlazeMeter.yml'
+                : 'Perf_Orchestrators_OLB_UAT_Regression-JMeter.yml';
             const inputsBlock = isWebOrch
                 ? `Workflow inputs (mirror the existing Axos.QE.Web orchestrators — inheritable values use "inherit" so each downstream suite keeps its committed default):\n` +
                   `- SET_NAME (default: ${setName})\n` +
@@ -6840,6 +6864,17 @@ ${os.map(n => `- ${n}`).join('\n')}
                       `- repository_dispatch event type: "${eventType}"\n` +
                       `- ${appIdLine} — declare ONLY this one app-ID input (this set is single-platform: ${orchBrand} only); never declare both ANDROID_APP and IOS_APP on the same orchestrator\n\n`;
                   })()
+                : isPerfOrch
+                ? `Workflow inputs and script logic MUST exactly mirror an existing Axos.QE.Performance.Automation ${perfTool} orchestrator — use .github/workflows/${perfRefFile} (or whichever existing sibling ${perfTool} orchestrator is present) as the literal reference template. Do NOT invent a different input set, drop any of its capabilities, or hand-write the script from scratch: copy its exact workflow_dispatch inputs, the IN_*/CP_* env-var security mapping, and the full run: script logic — including sequence-relay support (RUN_MODE, resumeIndex/resumeWaitRunId/resumeWaitOwner/resumeWaitRepo) and dispatching downstream pipelines on the orchestrator's OWN branch (DEFAULT_REF via $env:GITHUB_REF_NAME for workflow_dispatch / client_payload.defaultRef for the relay path — never a hardcoded 'main'). Only these should differ from the reference file:\n` +
+                  `- SET_NAME (default: ${setName})\n` +
+                  `- RUN_MODE (choice: parallel/sequence, default: parallel)\n` +
+                  (perfTool === 'BlazeMeter'
+                    ? `- ACCOUNT, WORKSPACE, PROJECT, TEST, TEST_NAME, JOB_TIMEOUT (default: inherit — drop so each downstream suite keeps its committed default)\n`
+                    : `- TEST, THREADS, RAMPUP, DURATION, GRANULARITY, JOB_TIMEOUT (default: inherit)\n` +
+                      `- RUNNER_LABEL (choice: AUTO/LOADRUN03, default: AUTO), CUSTOM_RUNNER_LABEL\n`) +
+                  `- FAIL_FAST (choice: true/false, default: false)\n` +
+                  `- repository_dispatch event type: "${eventType}"\n` +
+                  `- Filename / PIPELINE_NAME must follow Perf_Orchestrators[_{CustomSuffix}]_{Env}_{TestType}-${perfTool}\n\n`
                 : `Workflow inputs:\n` +
                   `- SET_NAME (default: ${setName})\n` +
                   `- TARGET_ENVIRONMENT (default: Development)\n` +
@@ -6849,7 +6884,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                   `- DRY_RUN (choice true/false, default false)\n` +
                   `- FAIL_FAST (choice true/false, default false)\n\n`;
             let prompt = `Create or update an orchestrator workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
-                `This is an ORCHESTRATOR workflow (not a Testim pipeline). It must:\n` +
+                `This is an ORCHESTRATOR workflow (not a ${isPerfOrch ? 'JMeter/BlazeMeter pipeline' : 'Testim pipeline'}). It must:\n` +
                 `- trigger on workflow_dispatch and repository_dispatch\n` +
                 `- use a unique repository_dispatch event type: "${eventType}"\n` +
                 `- use secrets.GH_DISPATCH_TOKEN to dispatch workflows across repos\n` +
@@ -6860,7 +6895,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                 `Also create/update .github/orchestrator/targets.json so it contains the set "${setName}" with these targets:\n\n` +
                 `${JSON.stringify(targets, null, 2)}\n\n` +
                 `Each target element supports: enabled, name, owner, repo, workflow, ref, inputs.\n` +
-                `Note: for workflows in this repo, "workflow" should be the workflow filename (e.g. Web_AxosBank_UAT_HealthCheck-Testim.yml).`;
+                `Note: for workflows in this repo, "workflow" should be the workflow filename (e.g. ${isPerfOrch ? 'Perf_OLB_UAT_Regression-JMeter.yml' : 'Web_AxosBank_UAT_HealthCheck-Testim.yml'}).`;
 
             if (p.renamedFrom) prompt += `\n\nAlso delete the old workflow file: .github/workflows/${p.renamedFrom}`;
             prompt = appendSchedulePromptLines(prompt, p);
@@ -7252,17 +7287,22 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
     }
 
     // Performance form: toggle JMeter vs BlazeMeter config + secrets + runner blocks.
+    // When Feature is Orchestrators, hide engine-specific sections (targets section takes over).
     function onPerfBrandChange() {
         const brand = document.getElementById('fBrand')?.value || 'JMeter';
+        const isOrch = (document.getElementById('fFeature')?.value || '') === 'Orchestrators';
         const isJ = brand === 'JMeter';
         const show = (id, on) => { const el = document.getElementById(id); if (el) el.style.display = on ? 'block' : 'none'; };
-        show('jmeterConfigSection', isJ);
-        show('blazemeterConfigSection', !isJ);
-        show('jmeterSecretsInfo', isJ);
-        show('blazemeterSecretsInfo', !isJ);
+        show('jmeterConfigSection', !isOrch && isJ);
+        show('blazemeterConfigSection', !isOrch && !isJ);
+        show('jmeterSecretsInfo', !isOrch && isJ);
+        show('blazemeterSecretsInfo', !isOrch && !isJ);
+        show('perfSecretsSection', !isOrch);
+        show('perfRunnerSection', !isOrch);
         // JMeter = self-hosted Windows runner dropdown; BlazeMeter = cloud note (no runner picker).
-        show('perfJmeterRunner', isJ);
-        show('perfBlazeRunner', !isJ);
+        show('perfJmeterRunner', !isOrch && isJ);
+        show('perfBlazeRunner', !isOrch && !isJ);
+        show('perfOrchSecretsInfo', isOrch);
     }
 
     // ══════════════════════════════════════════
@@ -7559,8 +7599,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
 
                 <div class="form-group">
                     <label class="form-label">Targets <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(simple mode)</span></label>
-                    <textarea id="fOrchTargetRefs" rows="6" placeholder="axos-financial/Axos.QE.Mobile:Mobile_Android_UAT_Smoke-BrowserStack.yml@main" oninput="updateOrchestratorTargetsPreview()" ${isView ? 'disabled' : ''}>${escapeHtml(orchRefsPrefillMobile)}</textarea>
-                    <span class="field-help">One per line. Formats: <code>owner/repo:workflow.yml@ref</code>, <code>repo:workflow.yml@ref</code>, just <code>workflow.yml</code>, or paste a GitHub Actions path/URL like <code>owner/repo/actions/workflows/workflow.yml</code> (defaults to axos-financial/Axos.QE.TestIM @ main).</span>
+                    <textarea id="fOrchTargetRefs" rows="6" placeholder="axos-financial/Axos.QE.Mobile:Mobile_Android_UAT_Smoke-BrowserStack.yml@{{DEFAULT_REF}}" oninput="updateOrchestratorTargetsPreview()" ${isView ? 'disabled' : ''}>${escapeHtml(orchRefsPrefillMobile)}</textarea>
+                    <span class="field-help">One per line. Formats: <code>owner/repo:workflow.yml@ref</code>, <code>repo:workflow.yml@ref</code>, just <code>workflow.yml</code>, or paste a GitHub Actions path/URL like <code>owner/repo/actions/workflows/workflow.yml</code> (defaults to axos-financial/Axos.QE.TestIM @ <code>{{DEFAULT_REF}}</code> — follows the orchestrator branch).</span>
                 </div>
 
                 <div class="form-group">
@@ -7713,8 +7753,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
 
                 <div class="form-group">
                     <label class="form-label">Targets <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(simple mode)</span></label>
-                    <textarea id="fOrchTargetRefs" rows="10" placeholder="axos-financial/Axos.QE.API_UDB:API_UDB_UAT_Smoke-Newman.yml@main" oninput="updateOrchestratorTargetsPreview()" ${isView ? 'disabled' : ''}>${escapeHtml(orchRefsPrefill)}</textarea>
-                    <span class="field-help">One per line. Formats: <code>owner/repo:workflow.yml@ref</code>, <code>repo:workflow.yml@ref</code>, just <code>workflow.yml</code>, or paste a GitHub Actions path/URL like <code>owner/repo/actions/workflows/workflow.yml</code> (defaults to axos-financial/Axos.QE.TestIM @ main).</span>
+                    <textarea id="fOrchTargetRefs" rows="10" placeholder="axos-financial/Axos.QE.API_UDB:API_UDB_UAT_Smoke-Newman.yml@{{DEFAULT_REF}}" oninput="updateOrchestratorTargetsPreview()" ${isView ? 'disabled' : ''}>${escapeHtml(orchRefsPrefill)}</textarea>
+                    <span class="field-help">One per line. Formats: <code>owner/repo:workflow.yml@ref</code>, <code>repo:workflow.yml@ref</code>, just <code>workflow.yml</code>, or paste a GitHub Actions path/URL like <code>owner/repo/actions/workflows/workflow.yml</code> (defaults to axos-financial/Axos.QE.TestIM @ <code>{{DEFAULT_REF}}</code> — follows the orchestrator branch).</span>
                 </div>
 
                 <div class="form-group">
@@ -7967,13 +8007,15 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Feature <span class="req">*</span></label>
-                            <select id="fFeature" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
+                            <select id="fFeature" onchange="toggleOrchestratorSections(); onPerfBrandChange(); updateNamePreview()" ${isView ? 'disabled' : ''}>
                                 ${(() => {
                                     // Derive the catalog base from the FULL value (featureDetail), not the stored
                                     // feature — a stale sync may have left the whole "OLB3.0_E2E_UserLoad_Home" in
                                     // feature, and we must show OLB3.0 here (suffix goes to the Custom Suffix field),
                                     // never leak the combined value into the dropdown.
-                                    const cur = splitPerfFeature(String(p.featureDetail || p.feature || '').trim()).feature;
+                                    const cur = (p.feature === 'Orchestrators' || String(p.featureDetail || '').startsWith('Orchestrators'))
+                                        ? 'Orchestrators'
+                                        : splitPerfFeature(String(p.featureDetail || p.feature || '').trim()).feature;
                                     const opts = [...PERF_FEATURES];
                                     // Keep an unknown base selectable (no catalog match) so editing never loses it.
                                     if (cur && !opts.some(f => f.toLowerCase() === cur.toLowerCase())) opts.unshift(cur);
@@ -7981,11 +8023,11 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                                     return `<option value="">Select...</option>${optionEls}<option value="__custom__">+ Add custom feature…</option>`;
                                 })()}
                             </select>
-                            <span class="field-help">Domain under test (becomes part of the pipeline name). Custom Suffix below is appended after it.</span>
+                            <span class="field-help">Domain under test (becomes part of the pipeline name). Choose <b>Orchestrators</b> to dispatch a set of downstream Perf workflows. Custom Suffix below is appended after it.</span>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Test Type <span class="req">*</span></label>
-                            <select id="fTestType" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
+                            <select id="fTestType" onchange="toggleOrchestratorSections(); updateNamePreview()" ${isView ? 'disabled' : ''}>
                                 <option value="">Select...</option>
                                 ${TEST_TYPES.filter(t => t !== 'Orchestrator').map(t => `<option value="${t}" ${p.testType === t ? 'selected' : ''}>${t}</option>`).join('')}
                             </select>
@@ -7994,8 +8036,10 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 </div>
             </div>`;
 
+            const perfIsOrch = p.feature === 'Orchestrators' || String(p.featureDetail || '').startsWith('Orchestrators') || isOrchestratorPipeline(p);
+
             // ── JMeter config ──
-            html += `<div class="section" id="jmeterConfigSection" style="display:${perfBrand === 'JMeter' ? 'block' : 'none'};">
+            html += `<div class="section" id="jmeterConfigSection" style="display:${(!perfIsOrch && perfBrand === 'JMeter') ? 'block' : 'none'};">
                 <div class="section-header" onclick="toggleSection(this)">
                     <div class="section-title"><span class="section-icon">&#9881;</span> JMeter Configuration <span class="section-badge" style="background:rgba(34,197,94,0.12);color:#22c55e;">JMeter</span></div>
                     <div class="section-toggle">&#9660;</div>
@@ -8029,7 +8073,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             </div>`;
 
             // ── BlazeMeter config ──
-            html += `<div class="section" id="blazemeterConfigSection" style="display:${perfBrand === 'BlazeMeter' ? 'block' : 'none'};">
+            html += `<div class="section" id="blazemeterConfigSection" style="display:${(!perfIsOrch && perfBrand === 'BlazeMeter') ? 'block' : 'none'};">
                 <div class="section-header" onclick="toggleSection(this)">
                     <div class="section-title"><span class="section-icon">&#9881;</span> BlazeMeter Configuration <span class="section-badge" style="background:rgba(59,130,246,0.12);color:#60a5fa;">BlazeMeter</span></div>
                     <div class="section-toggle">&#9660;</div>
@@ -8065,16 +8109,16 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             </div>`;
 
             // ── Required secrets ──
-            html += `<div class="section">
+            html += `<div class="section" id="perfSecretsSection" style="display:${perfIsOrch ? 'none' : 'block'};">
                 <div class="section-header" onclick="toggleSection(this)">
                     <div class="section-title"><span class="section-icon">&#128273;</span> Required Secrets</div>
                     <div class="section-toggle">&#9660;</div>
                 </div>
                 <div class="section-content">
-                    <div id="jmeterSecretsInfo" style="display:${perfBrand === 'JMeter' ? 'block' : 'none'}; font-size:12px; color:var(--text-secondary);">
+                    <div id="jmeterSecretsInfo" style="display:${(!perfIsOrch && perfBrand === 'JMeter') ? 'block' : 'none'}; font-size:12px; color:var(--text-secondary);">
                         <strong>JMeter:</strong> no repo secrets required. Runs on a self-hosted Windows runner (<code>${escapeHtml(DEFAULT_RUNNER_GROUP)}</code> group) with JMeter at <code>C:\\JMeter\\apache-jmeter-5.6.3</code> (auto-installed if missing).
                     </div>
-                    <div id="blazemeterSecretsInfo" style="display:${perfBrand === 'BlazeMeter' ? 'block' : 'none'}; font-size:12px; color:var(--text-secondary);">
+                    <div id="blazemeterSecretsInfo" style="display:${(!perfIsOrch && perfBrand === 'BlazeMeter') ? 'block' : 'none'}; font-size:12px; color:var(--text-secondary);">
                         <strong>BlazeMeter:</strong> set these repo secrets in <em>Settings → Secrets and variables → Actions</em>:
                         <ul style="margin:8px 0 0 0;">
                             <li><code>BLAZEMETER_API_KEY</code></li>
@@ -8088,14 +8132,14 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             // section below; do NOT add another fJobTimeout here — a duplicate id would
             // shadow it and break getElementById/save.)
             const perfJmeterRunnerSelected = coercePerfJmeterRunnerLabel(p.runnerLabel);
-            html += `<div class="section">
+            html += `<div class="section" id="perfRunnerSection" style="display:${perfIsOrch ? 'none' : 'block'};">
                 <div class="section-header" onclick="toggleSection(this)">
                     <div class="section-title"><span class="section-icon">&#128421;</span> Runner</div>
                     <div class="section-toggle">&#9660;</div>
                 </div>
                 <div class="section-content">
                     <!-- JMeter: Performance load runner (LOADRUN03 / axos-gh-qe-runner-SDDEV-LOADRUN03). -->
-                    <div id="perfJmeterRunner" style="display:${perfBrand === 'JMeter' ? 'block' : 'none'};">
+                    <div id="perfJmeterRunner" style="display:${(!perfIsOrch && perfBrand === 'JMeter') ? 'block' : 'none'};">
                         <div class="form-group">
                             <label class="form-label">Runner Label</label>
                             <select id="fRunnerLabel" ${isView ? 'disabled' : ''}>
@@ -8110,11 +8154,49 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                         </div>
                     </div>
                     <!-- BlazeMeter: load runs in the BlazeMeter cloud; the GH job only triggers/polls it. -->
-                    <div id="perfBlazeRunner" style="display:${perfBrand === 'BlazeMeter' ? 'block' : 'none'};">
+                    <div id="perfBlazeRunner" style="display:${(!perfIsOrch && perfBrand === 'BlazeMeter') ? 'block' : 'none'};">
                         <p style="font-size:12px; color:var(--text-secondary); margin:0;">Runs on a GitHub-hosted <strong>Linux</strong> runner — no self-hosted runner selection needed. The load test itself executes in the BlazeMeter cloud.</p>
                     </div>
                 </div>
             </div>`;
+
+            // ── Orchestrator targets ──
+            const orchRefsPrefillPerf = orchestratorTargetsToRefs(p.orchestratorTargets || []);
+            html += `<div class="section" id="orchestratorConfigSection" style="display:${perfIsOrch ? '' : 'none'};">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title"><span class="section-icon">&#129517;</span> Orchestrator Targets <span class="section-badge" style="background:rgba(167,139,250,0.14);color:#a78bfa;">Orchestrator</span></div>
+                <div class="section-toggle">&#9660;</div>
+            </div>
+            <div class="section-content">
+                <div class="form-group">
+                    <label class="form-label">Team / Set Name <span class="req">*</span></label>
+                    <input type="text" id="fOrchSetName" placeholder="e.g. UAT_OLB_JMeter" value="${orchestratorSetForForm(p)}" oninput="onOrchSetNameInput()" ${isView ? 'disabled' : ''}>
+                    <span class="field-help">Dispatch-only: maps to <code>SET_NAME</code> and <code>targets.json</code>. It does <b>not</b> appear in the workflow filename — use <b>Custom Suffix</b> for an optional name segment.</span>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Targets <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(simple mode)</span></label>
+                    <textarea id="fOrchTargetRefs" rows="10" placeholder="axos-financial/Axos.QE.Performance.Automation:Perf_OLB_UAT_Regression-JMeter.yml@{{DEFAULT_REF}}" oninput="updateOrchestratorTargetsPreview()" ${isView ? 'disabled' : ''}>${escapeHtml(orchRefsPrefillPerf)}</textarea>
+                    <span class="field-help">One per line. Formats: <code>owner/repo:workflow.yml@ref</code>, <code>repo:workflow.yml@ref</code>, just <code>workflow.yml</code>, or paste a GitHub Actions path/URL. Missing <code>@ref</code> defaults to <code>{{DEFAULT_REF}}</code> (follows the orchestrator branch). Bare filenames use <code>axos-financial/Axos.QE.Performance.Automation</code> when this form is open.</span>
+                </div>
+
+                <div class="form-group">
+                    <details>
+                      <summary style="cursor:pointer; color:var(--text-secondary); font-size:12px; font-weight:700;">Advanced: Targets JSON (auto-generated)</summary>
+                      <div style="margin-top:10px;">
+                        <textarea id="fOrchTargets" rows="10" ${isView ? 'disabled' : ''}>${escapeHtml(JSON.stringify(p.orchestratorTargets || [], null, 2))}</textarea>
+                        <span class="field-help">You usually don’t need to touch this. Pipeline Manager will generate it from the simple list above.</span>
+                      </div>
+                    </details>
+                </div>
+
+                <div id="perfOrchSecretsInfo" style="display:${perfIsOrch ? 'block' : 'none'}; font-size:12px; color:var(--text-secondary); margin-top:8px;">
+                    <strong>Orchestrator:</strong> dispatches on <code>ubuntu-latest</code> via <code>.github/orchestrator/dispatch-workflows.ps1</code>.
+                    Uses <code>GH_DISPATCH_TOKEN</code> (falls back to <code>github.token</code>). Downstream JMeter/BlazeMeter suites keep their own secrets.
+                    Tool (JMeter vs BlazeMeter) above selects which engine’s inheritable inputs the orchestrator YAML exposes and the filename suffix.
+                </div>
+            </div>
+        </div>`;
         } else if (repoName === 'Axos.QE.Web') {
         // Web Monorepo (Playwright) form
         const webMonoTeamBrand = p.brand || 'Enrollment';
@@ -8381,8 +8463,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
 
                 <div class="form-group">
                     <label class="form-label">Targets <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(simple mode)</span></label>
-                    <textarea id="fOrchTargetRefs" rows="6" placeholder="axos-financial/Axos.QE.Web:Web_OutSystems_AML_Smoke-Playwright.yml@main" oninput="updateOrchestratorTargetsPreview()" ${isView ? 'disabled' : ''}>${escapeHtml(orchRefsPrefill)}</textarea>
-                    <span class="field-help">One per line. Formats: <code>owner/repo:workflow.yml@ref</code>, <code>repo:workflow.yml@ref</code>, just <code>workflow.yml</code>, or paste a GitHub Actions path/URL like <code>owner/repo/actions/workflows/workflow.yml</code> (defaults to axos-financial/Axos.QE.TestIM @ main).</span>
+                    <textarea id="fOrchTargetRefs" rows="6" placeholder="axos-financial/Axos.QE.Web:Web_OutSystems_AML_Smoke-Playwright.yml@{{DEFAULT_REF}}" oninput="updateOrchestratorTargetsPreview()" ${isView ? 'disabled' : ''}>${escapeHtml(orchRefsPrefill)}</textarea>
+                    <span class="field-help">One per line. Formats: <code>owner/repo:workflow.yml@ref</code>, <code>repo:workflow.yml@ref</code>, just <code>workflow.yml</code>, or paste a GitHub Actions path/URL like <code>owner/repo/actions/workflows/workflow.yml</code> (defaults to axos-financial/Axos.QE.TestIM @ <code>{{DEFAULT_REF}}</code> — follows the orchestrator branch).</span>
                 </div>
 
                 <div class="form-group">
@@ -8533,8 +8615,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
 
                 <div class="form-group">
                     <label class="form-label">Targets <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(simple mode)</span></label>
-                    <textarea id="fOrchTargetRefs" rows="6" placeholder="axos-financial/Axos.QE.TestIM:Web_Outsystems_UAT_EWM_Creation_Regression-Testim.yml@main" oninput="updateOrchestratorTargetsPreview()" ${isView ? 'disabled' : ''}>${escapeHtml(orchRefsPrefill)}</textarea>
-                    <span class="field-help">One per line. Formats: <code>owner/repo:workflow.yml@ref</code>, <code>repo:workflow.yml@ref</code>, just <code>workflow.yml</code>, or paste a GitHub Actions path/URL like <code>owner/repo/actions/workflows/workflow.yml</code> (defaults to axos-financial/Axos.QE.TestIM @ main).</span>
+                    <textarea id="fOrchTargetRefs" rows="6" placeholder="axos-financial/Axos.QE.TestIM:Web_Outsystems_UAT_EWM_Creation_Regression-Testim.yml@{{DEFAULT_REF}}" oninput="updateOrchestratorTargetsPreview()" ${isView ? 'disabled' : ''}>${escapeHtml(orchRefsPrefill)}</textarea>
+                    <span class="field-help">One per line. Formats: <code>owner/repo:workflow.yml@ref</code>, <code>repo:workflow.yml@ref</code>, just <code>workflow.yml</code>, or paste a GitHub Actions path/URL like <code>owner/repo/actions/workflows/workflow.yml</code> (defaults to axos-financial/Axos.QE.TestIM @ <code>{{DEFAULT_REF}}</code> — follows the orchestrator branch).</span>
                 </div>
 
                 <div class="form-group">
@@ -10097,7 +10179,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
     function toggleOrchestratorSections() {
         const feature = document.getElementById('fFeature')?.value || '';
         // Orchestrator mode is driven by the Feature ("Orchestrators"), so the Test Type
-        // stays a real type. Orchestrators (web + API + mobile) are stored with feature "Orchestrators".
+        // stays a real type. Orchestrators (web + API + mobile + performance) are stored with feature "Orchestrators".
         const isOrch = feature === 'Orchestrators';
 
         const testim = document.getElementById('testimConfigSection');
@@ -10112,6 +10194,11 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         if (browserstack) browserstack.style.display = isOrch ? 'none' : '';
         const envPin = document.getElementById('mobileEnvSpecificToggle');
         if (envPin) envPin.style.display = isOrch ? 'none' : '';
+
+        // Performance: re-apply JMeter/BlazeMeter visibility with orchestrator mode in mind.
+        if (String(document.getElementById('fRepo')?.value || '').trim() === 'Axos.QE.Performance.Automation') {
+            onPerfBrandChange();
+        }
 
         // Custom Suffix is the pipeline NAME; Team / Set Name is what the orchestrator dispatches.
         // They are independent. As a convenience only, pre-fill an empty Set Name from Custom Suffix
@@ -10337,8 +10424,14 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             // '__custom__' is the transient add-custom sentinel, not a real feature.
             if (val('fFeature') === '__custom__') missing.push('Feature');
             need('fTestType', 'Test Type');
-            if (val('fBrand') === 'BlazeMeter') need('fBzTestId', 'BlazeMeter Test ID');
-            else need('fJmxName', 'JMX Script');
+            if (val('fFeature') === 'Orchestrators') {
+                if (!val('fOrchSetName')) missing.push('Team / Set Name');
+                if (!val('fOrchTargetRefs')) missing.push('Orchestrator Targets');
+            } else if (val('fBrand') === 'BlazeMeter') {
+                need('fBzTestId', 'BlazeMeter Test ID');
+            } else {
+                need('fJmxName', 'JMX Script');
+            }
             return missing;
         }
 
@@ -10411,9 +10504,14 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 // option, not a real feature, so the form must not be considered valid while selected.
                 const featureVal = el('fFeature')?.value;
                 const common = el('fBrand')?.value && el('fEnv')?.value && featureVal && featureVal !== '__custom__' && el('fTestType')?.value;
-                fieldsOk = (brand === 'BlazeMeter')
-                    ? (common && el('fBzTestId')?.value)
-                    : (common && el('fJmxName')?.value);
+                if (featureVal === 'Orchestrators') {
+                    const team = (el('fOrchSetName')?.value || '').trim();
+                    fieldsOk = common && team && (el('fOrchTargetRefs')?.value || '').trim();
+                } else {
+                    fieldsOk = (brand === 'BlazeMeter')
+                        ? (common && el('fBzTestId')?.value)
+                        : (common && el('fJmxName')?.value);
+                }
                 return fieldsOk && !isNameDuplicate() && !isOrchSetNameDuplicate();
             }
             const isOrch = (el('fFeature')?.value || '') === 'Orchestrators';
@@ -10591,34 +10689,58 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 base.env = v('fEnv') || base.env;
                 base.feature = v('fFeature') || base.feature || 'OLB';
                 base.testType = v('fTestType') || base.testType || 'Regression';
-                // Custom Suffix is appended to the feature in the name; persist it in
-                // featureDetail (feature_suffix) so the name + Custom Suffix field round-trip.
-                {
-                    const fSuffix = (v('fCustomSuffix') || '').replace(/\s+/g, '_');
-                    const fKey = String(base.feature || '').replace(/\s+/g, '');
-                    base.featureDetail = fSuffix ? `${fKey}_${fSuffix}` : fKey;
-                }
-                if (base.brand === 'BlazeMeter') {
-                    base.bzAccount = v('fBzAccount');
-                    base.bzWorkspace = v('fBzWorkspace');
-                    base.bzProject = v('fBzProject');
-                    base.bzTestId = v('fBzTestId');
-                    base.bzTestName = v('fBzTestName');
+                if (base.feature === 'Orchestrators') {
+                    base.orchestratorSet = (v('fOrchSetName') || '').trim();
+                    const nameSuffix = (v('fCustomSuffix') || '').replace(/\s+/g, '_');
+                    base.featureDetail = nameSuffix ? `Orchestrators_${nameSuffix}` : 'Orchestrators';
+                    base.customSuffix = nameSuffix;
+                    const refs = (document.getElementById('fOrchTargetRefs')?.value || '').trim();
+                    if (refs) {
+                        base.orchestratorTargets = orchestratorRefsToTargets(refs);
+                    } else {
+                        const rawTargets = (document.getElementById('fOrchTargets')?.value || '').trim();
+                        if (rawTargets) {
+                            try { const arr = JSON.parse(rawTargets); base.orchestratorTargets = Array.isArray(arr) ? arr : []; }
+                            catch { base.orchestratorTargets = []; }
+                        } else {
+                            base.orchestratorTargets = base.orchestratorTargets || [];
+                        }
+                    }
+                    // Clear engine-specific fields (not used by orchestrators).
                     base.jmxName = ''; base.jmxThreads = ''; base.jmxRampup = ''; base.jmxDuration = ''; base.jmxGranularity = '1000';
-                } else {
-                    base.jmxName = v('fJmxName');
-                    base.jmxThreads = v('fJmxThreads');
-                    base.jmxRampup = v('fJmxRampup');
-                    base.jmxDuration = v('fJmxDuration');
-                    base.jmxGranularity = v('fJmxGranularity') || '1000';
                     base.bzAccount = ''; base.bzWorkspace = ''; base.bzProject = ''; base.bzTestId = ''; base.bzTestName = '';
+                    base.runnerLabel = ''; base.customRunnerLabel = '';
+                    base.jobTimeout = n('fJobTimeout', 30);
+                } else {
+                    // Custom Suffix is appended to the feature in the name; persist it in
+                    // featureDetail (feature_suffix) so the name + Custom Suffix field round-trip.
+                    {
+                        const fSuffix = (v('fCustomSuffix') || '').replace(/\s+/g, '_');
+                        const fKey = String(base.feature || '').replace(/\s+/g, '');
+                        base.featureDetail = fSuffix ? `${fKey}_${fSuffix}` : fKey;
+                    }
+                    if (base.brand === 'BlazeMeter') {
+                        base.bzAccount = v('fBzAccount');
+                        base.bzWorkspace = v('fBzWorkspace');
+                        base.bzProject = v('fBzProject');
+                        base.bzTestId = v('fBzTestId');
+                        base.bzTestName = v('fBzTestName');
+                        base.jmxName = ''; base.jmxThreads = ''; base.jmxRampup = ''; base.jmxDuration = ''; base.jmxGranularity = '1000';
+                    } else {
+                        base.jmxName = v('fJmxName');
+                        base.jmxThreads = v('fJmxThreads');
+                        base.jmxRampup = v('fJmxRampup');
+                        base.jmxDuration = v('fJmxDuration');
+                        base.jmxGranularity = v('fJmxGranularity') || '1000';
+                        base.bzAccount = ''; base.bzWorkspace = ''; base.bzProject = ''; base.bzTestId = ''; base.bzTestName = '';
+                    }
+                    base.runnerLabel = coercePerfJmeterRunnerLabel(v('fRunnerLabel'));
+                    base.customRunnerLabel = v('fCustomRunnerLabel');
+                    // Single timeout: the BlazeMeter poll window is derived from this at runtime
+                    // (JOB_TIMEOUT - 10), so no separate poll field. BlazeMeter defaults higher
+                    // (cloud tests run long); JMeter stays at the ADO 120 default.
+                    base.jobTimeout = n('fJobTimeout', base.brand === 'BlazeMeter' ? 250 : 120);
                 }
-                base.runnerLabel = coercePerfJmeterRunnerLabel(v('fRunnerLabel'));
-                base.customRunnerLabel = v('fCustomRunnerLabel');
-                // Single timeout: the BlazeMeter poll window is derived from this at runtime
-                // (JOB_TIMEOUT - 10), so no separate poll field. BlazeMeter defaults higher
-                // (cloud tests run long); JMeter stays at the ADO 120 default.
-                base.jobTimeout = n('fJobTimeout', base.brand === 'BlazeMeter' ? 250 : 120);
             } else if (repo === 'Axos.QE.Web') {
                 base.brand = v('fBrand') || base.brand;
                 base.env = v('fEnv') || base.env;
@@ -10910,10 +11032,19 @@ ${mobileEnvDispatchPromptText(el('fEnv'), envSpecific).trimEnd()}
             const orchRepo = el('fRepo') || 'Axos.QE.TestIM';
             const isWebOrch = orchRepo === 'Axos.QE.Web';
             const isMobileOrch = orchRepo === 'Axos.QE.Mobile';
-            const effectiveSetName = setName || (isMobileOrch ? 'AndroidSmoke' : 'WFO');
+            const isPerfOrch = orchRepo === 'Axos.QE.Performance.Automation';
+            const perfTool = (el('fBrand') === 'BlazeMeter') ? 'BlazeMeter' : 'JMeter';
+            const effectiveSetName = setName || (
+                isMobileOrch ? 'AndroidSmoke'
+                    : isPerfOrch ? (perfTool === 'BlazeMeter' ? 'OLB3_E2E_UserLoad_Home' : 'UAT_OLB_JMeter')
+                        : 'WFO'
+            );
             const orchEventType = `orchestrator-${String(effectiveSetName).toLowerCase()}`;
+            const perfRefFile = perfTool === 'BlazeMeter'
+                ? 'Perf_Orchestrators_Home_UAT_Regression-BlazeMeter.yml'
+                : 'Perf_Orchestrators_OLB_UAT_Regression-JMeter.yml';
             const orchInputs = isWebOrch
-                ? `- SET_NAME (default: ${setName || 'WFO'})
+                ? `- SET_NAME (default: ${effectiveSetName})
 - RUN_TARGET (choice: inherit/local/browserstack, default: inherit)
 - TEST_ENV (choice: inherit/QA/UAT/STG/PROD, default: inherit)
 - PARALLELS (default: inherit)
@@ -10940,7 +11071,17 @@ ${mobileEnvDispatchPromptText(el('fEnv'), envSpecific).trimEnd()}
 - repository_dispatch event type: "${orchEventType}"
 - ${appIdLine} — declare ONLY this one app-ID input (this set is single-platform: ${orchBrand} only); never declare both ANDROID_APP and IOS_APP on the same orchestrator`;
                   })()
-                : `- SET_NAME (default: ${setName || 'WFO'})
+                : isPerfOrch
+                ? `Workflow inputs and script logic MUST exactly mirror an existing Axos.QE.Performance.Automation ${perfTool} orchestrator — use .github/workflows/${perfRefFile} (or whichever existing sibling ${perfTool} orchestrator is present) as the literal reference template. Do NOT invent a different input set, drop any of its capabilities, or hand-write the script from scratch: copy its exact workflow_dispatch inputs, the IN_*/CP_* env-var security mapping, and the full run: script logic — including sequence-relay support (RUN_MODE, resumeIndex/resumeWaitRunId/resumeWaitOwner/resumeWaitRepo) and dispatching downstream pipelines on the orchestrator's OWN branch (DEFAULT_REF via $env:GITHUB_REF_NAME for workflow_dispatch / client_payload.defaultRef for the relay path — never a hardcoded 'main'). Only these should differ from the reference file:
+- SET_NAME (default: ${effectiveSetName})
+- RUN_MODE (choice: parallel/sequence, default: parallel)
+${perfTool === 'BlazeMeter'
+    ? '- ACCOUNT, WORKSPACE, PROJECT, TEST, TEST_NAME, JOB_TIMEOUT (default: inherit — drop so each downstream suite keeps its committed default)'
+    : '- TEST, THREADS, RAMPUP, DURATION, GRANULARITY, JOB_TIMEOUT (default: inherit)\n- RUNNER_LABEL (choice: AUTO/LOADRUN03, default: AUTO), CUSTOM_RUNNER_LABEL'}
+- FAIL_FAST (choice: true/false, default: false)
+- repository_dispatch event type: "${orchEventType}"
+- Filename / PIPELINE_NAME must follow Perf_Orchestrators[_{CustomSuffix}]_{Env}_{TestType}-${perfTool}`
+                : `- SET_NAME (default: ${effectiveSetName})
 - TARGET_ENVIRONMENT (default: Development)
 - DEPLOYMENT_TYPE (default: deploy-latest)
 - ARTIFACT_ID (default: empty)
@@ -10948,7 +11089,7 @@ ${mobileEnvDispatchPromptText(el('fEnv'), envSpecific).trimEnd()}
             prompt = `Create or update an orchestrator workflow file in the repo ${orchRepo} at:
 .github/workflows/${name}.yml
 
-This workflow is an ORCHESTRATOR (not a Testim pipeline). It should:
+This workflow is an ORCHESTRATOR (not a ${isPerfOrch ? 'JMeter/BlazeMeter pipeline' : 'Testim pipeline'}). It should:
 - trigger on workflow_dispatch and repository_dispatch
 - use a unique repository_dispatch event type: "${orchEventType}"
 - use a GitHub secret GH_DISPATCH_TOKEN to dispatch other workflows (cross-repo supported)
@@ -12675,6 +12816,42 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         // Performance pipelines (Axos.QE.Performance.Automation):
         // Perf_{Feature}_{Env}_{TestType}-{JMeter|BlazeMeter}
         // e.g. Perf_OLB_UAT_Regression-JMeter, Perf_OLB_UAT_Sanity-BlazeMeter
+        //
+        // Orchestrators (new): Perf_Orchestrators[_{CustomSuffix}]_{Env}_{TestType}-{Tool}
+        // Legacy (still parsed): Perf_{Prefix}_Orchestrators[_{Mid}]_{Env}_{TestType}-{Tool}
+        const perfOrchMatch = name.match(/^Perf_(?:(.+)_)?Orchestrators(?:_(.+))?_(DEV|QA|STG|UAT|PROD)_([A-Za-z]+)-(JMeter|BlazeMeter)$/i);
+        if (perfOrchMatch) {
+            const prefix = String(perfOrchMatch[1] || '').trim();
+            const mid = String(perfOrchMatch[2] || '').trim();
+            const nameSuffix = [prefix, mid].filter(Boolean).join('_');
+            const env = String(perfOrchMatch[3] || 'UAT').toUpperCase();
+            const ttRaw = String(perfOrchMatch[4] || 'Regression').toLowerCase();
+            const ttMap = { smoke: 'Smoke', sanity: 'Sanity', regression: 'Regression', healthcheck: 'Health Check', health: 'Health Check', load: 'Regression', stress: 'Regression' };
+            const testType = ttMap[ttRaw] || 'Regression';
+            const tool = /blazemeter/i.test(perfOrchMatch[5]) ? 'BlazeMeter' : 'JMeter';
+            return {
+                filename, name,
+                repo: 'Axos.QE.Performance.Automation',
+                platform: '04 Performance',
+                brand: tool,
+                env,
+                feature: 'Orchestrators',
+                featureDetail: nameSuffix ? `Orchestrators_${nameSuffix}` : 'Orchestrators',
+                customSuffix: nameSuffix,
+                testType,
+                orchestratorSet: '',
+                orchestratorTargets: [],
+                jmxName: '', jmxThreads: '', jmxRampup: '', jmxDuration: '', jmxGranularity: '1000',
+                bzAccount: '', bzWorkspace: '', bzProject: '', bzTestId: '', bzTestName: '', bzPollTimeout: '240',
+                runnerStrategy: '',
+                runnerGroup: '',
+                runnerLabel: '',
+                customRunnerLabel: '',
+                jobTimeout: 30,
+                schedule: '', scheduleEnabled: false
+            };
+        }
+
         const perfMatch = name.match(/^Perf_(.+)_(DEV|QA|STG|UAT|PROD)_([A-Za-z]+)-(JMeter|BlazeMeter)$/i);
         if (perfMatch) {
             // The captured group is the full feature[_suffix]. Split it against the known
