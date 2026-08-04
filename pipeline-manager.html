@@ -6866,12 +6866,12 @@ ${os.map(n => `- ${n}`).join('\n')}
                       `- ${appIdLine} — declare ONLY this one app-ID input (this set is single-platform: ${orchBrand} only); never declare both ANDROID_APP and IOS_APP on the same orchestrator\n\n`;
                   })()
                 : isPerfOrch
-                ? `Workflow inputs and script logic MUST exactly mirror an existing Axos.QE.Performance.Automation ${perfTool} orchestrator — use .github/workflows/${perfRefFile} (or whichever existing sibling ${perfTool} orchestrator is present) as the literal reference template. Do NOT invent a different input set, drop any of its capabilities, or hand-write the script from scratch: copy its exact workflow_dispatch inputs, the IN_*/CP_* env-var security mapping, and the full run: script logic — including sequence-relay support (RUN_MODE, resumeIndex/resumeWaitRunId/resumeWaitOwner/resumeWaitRepo) and dispatching downstream pipelines on the orchestrator's OWN branch (DEFAULT_REF via $env:GITHUB_REF_NAME for workflow_dispatch / client_payload.defaultRef for the relay path — never a hardcoded 'main'). Only these should differ from the reference file:\n` +
+                ? `Workflow inputs and script logic MUST mirror an existing Axos.QE.Performance.Automation ${perfTool} orchestrator — use .github/workflows/${perfRefFile} (or whichever existing sibling ${perfTool} orchestrator is present) as the literal reference template. Copy its workflow_dispatch inputs, IN_*/CP_* env-var security mapping, and run: script logic — including sequence-relay support (RUN_MODE, resumeIndex/resumeWaitRunId/resumeWaitOwner/resumeWaitRepo) and dispatching downstream pipelines on the orchestrator's OWN branch (DEFAULT_REF via $env:GITHUB_REF_NAME for workflow_dispatch / client_payload.defaultRef for the relay path — never a hardcoded 'main'). REQUIRED exception: omit JOB_TIMEOUT entirely (no workflow_dispatch input, no IN_/CP_ env vars, no -JobTimeout script arg) even if the reference still has it — orchestrators do not set child suite timeouts; each downstream suite keeps its committed default; long sequences use wait + self-relay (same as Mobile/TestIM). Only these should differ from the reference file:\n` +
                   `- SET_NAME (default: ${setName})\n` +
                   `- RUN_MODE (choice: parallel/sequence, default: parallel)\n` +
                   (perfTool === 'BlazeMeter'
-                    ? `- ACCOUNT, WORKSPACE, PROJECT, TEST, TEST_NAME, JOB_TIMEOUT (default: inherit — drop so each downstream suite keeps its committed default)\n`
-                    : `- TEST, THREADS, RAMPUP, DURATION, GRANULARITY, JOB_TIMEOUT (default: inherit)\n` +
+                    ? `- ACCOUNT, WORKSPACE, PROJECT, TEST, TEST_NAME (default: inherit — drop so each downstream suite keeps its committed default)\n`
+                    : `- TEST, THREADS, RAMPUP, DURATION, GRANULARITY (default: inherit)\n` +
                       `- RUNNER_LABEL (choice: AUTO/LOADRUN03, default: AUTO), CUSTOM_RUNNER_LABEL\n`) +
                   `- FAIL_FAST (choice: true/false, default: false)\n` +
                   `- repository_dispatch event type: "${eventType}"\n` +
@@ -11073,12 +11073,12 @@ ${mobileEnvDispatchPromptText(el('fEnv'), envSpecific).trimEnd()}
 - ${appIdLine} — declare ONLY this one app-ID input (this set is single-platform: ${orchBrand} only); never declare both ANDROID_APP and IOS_APP on the same orchestrator`;
                   })()
                 : isPerfOrch
-                ? `Workflow inputs and script logic MUST exactly mirror an existing Axos.QE.Performance.Automation ${perfTool} orchestrator — use .github/workflows/${perfRefFile} (or whichever existing sibling ${perfTool} orchestrator is present) as the literal reference template. Do NOT invent a different input set, drop any of its capabilities, or hand-write the script from scratch: copy its exact workflow_dispatch inputs, the IN_*/CP_* env-var security mapping, and the full run: script logic — including sequence-relay support (RUN_MODE, resumeIndex/resumeWaitRunId/resumeWaitOwner/resumeWaitRepo) and dispatching downstream pipelines on the orchestrator's OWN branch (DEFAULT_REF via $env:GITHUB_REF_NAME for workflow_dispatch / client_payload.defaultRef for the relay path — never a hardcoded 'main'). Only these should differ from the reference file:
+                ? `Workflow inputs and script logic MUST mirror an existing Axos.QE.Performance.Automation ${perfTool} orchestrator — use .github/workflows/${perfRefFile} (or whichever existing sibling ${perfTool} orchestrator is present) as the literal reference template. Copy its workflow_dispatch inputs, IN_*/CP_* env-var security mapping, and run: script logic — including sequence-relay support (RUN_MODE, resumeIndex/resumeWaitRunId/resumeWaitOwner/resumeWaitRepo) and dispatching downstream pipelines on the orchestrator's OWN branch (DEFAULT_REF via $env:GITHUB_REF_NAME for workflow_dispatch / client_payload.defaultRef for the relay path — never a hardcoded 'main'). REQUIRED exception: omit JOB_TIMEOUT entirely (no workflow_dispatch input, no IN_/CP_ env vars, no -JobTimeout script arg) even if the reference still has it — orchestrators do not set child suite timeouts; each downstream suite keeps its committed default; long sequences use wait + self-relay (same as Mobile/TestIM). Only these should differ from the reference file:
 - SET_NAME (default: ${effectiveSetName})
 - RUN_MODE (choice: parallel/sequence, default: parallel)
 ${perfTool === 'BlazeMeter'
-    ? '- ACCOUNT, WORKSPACE, PROJECT, TEST, TEST_NAME, JOB_TIMEOUT (default: inherit — drop so each downstream suite keeps its committed default)'
-    : '- TEST, THREADS, RAMPUP, DURATION, GRANULARITY, JOB_TIMEOUT (default: inherit)\n- RUNNER_LABEL (choice: AUTO/LOADRUN03, default: AUTO), CUSTOM_RUNNER_LABEL'}
+    ? '- ACCOUNT, WORKSPACE, PROJECT, TEST, TEST_NAME (default: inherit — drop so each downstream suite keeps its committed default)'
+    : '- TEST, THREADS, RAMPUP, DURATION, GRANULARITY (default: inherit)\n- RUNNER_LABEL (choice: AUTO/LOADRUN03, default: AUTO), CUSTOM_RUNNER_LABEL'}
 - FAIL_FAST (choice: true/false, default: false)
 - repository_dispatch event type: "${orchEventType}"
 - Filename / PIPELINE_NAME must follow Perf_Orchestrators[_{CustomSuffix}]_{Env}_{TestType}-${perfTool}`
