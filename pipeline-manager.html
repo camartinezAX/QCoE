@@ -2571,8 +2571,8 @@
     // dedicated group.
     const DEFAULT_RUNNER_GROUP = 'axos-gh-qe-performance';
 
-    // Returns the correct runner group for a given repo. Axos.QE.Web and
-    // Axos.QE.Crypto.Web run on BOTH pools depending on run target: local
+    // Returns the correct runner group for a given repo. Axos.QE.Web runs on BOTH
+    // pools depending on run target: local
     // (Windows) shares the Mobile group, browserstack (Linux) shares the
     // Testim group — pass the pipeline's runTarget to resolve the right one.
     function getDefaultRunnerGroupForRepo(repoName, runTarget) {
@@ -2581,7 +2581,7 @@
             return 'axos-gh-qe-api';
         }
         if (repo === 'Axos.QE.Mobile') return 'axos-gh-qe-mobile';
-        if (repo === 'Axos.QE.Web' || repo === 'Axos.QE.Crypto.Web') {
+        if (repo === 'Axos.QE.Web') {
             return runTarget === 'browserstack' ? 'axos-gh-qe-testim' : 'axos-gh-qe-mobile';
         }
         if (repo === 'Axos.QE.Performance.Automation') return DEFAULT_RUNNER_GROUP;
@@ -2641,7 +2641,6 @@
         if (repo === 'Axos.QE.API_UDB') return 'windows';
         if (repo === 'Axos.QE.API_WFO') return 'windows';
         if (repo === 'Axos.QE.Mobile') return 'windows';
-        if (repo === 'Axos.QE.Crypto.Web') return 'windows';
         // Performance: JMeter runs on self-hosted Windows; BlazeMeter runs on
         // GitHub-hosted Linux (load executes in the BlazeMeter cloud).
         if (repo === 'Axos.QE.Performance.Automation') {
@@ -4004,12 +4003,9 @@ ${os.map(n => `- ${n}`).join('\n')}
         const b = String(p.brand || '');
         return b === 'JMeter' || b === 'BlazeMeter';
     }
-    function isCryptoRepo(repo) { return String(repo || '').trim() === 'Axos.QE.Crypto.Web'; }
     function isWebMonorepo(repo) { return String(repo || '').trim() === 'Axos.QE.Web'; }
     function isWebMonorepoPipeline(p) {
         if (!p) return false;
-        if (p.repo && isCryptoRepo(p.repo)) return false;
-        if (isWebMonorepo(p.repo)) return true;
         const fn = String(p.filename || '').toLowerCase();
         return /^web_(enrollment|outsystems|crypto|olb3)_/.test(fn) && fn.includes('-playwright');
     }
@@ -4068,10 +4064,18 @@ ${os.map(n => `- ${n}`).join('\n')}
     }
     function isCryptoPipeline(p) {
         if (!p) return false;
-        if (isCryptoRepo(p.repo)) return true;
         if (isWebMonorepoPipeline(p)) return false;
         const fn = String(p.filename || '');
         return fn.includes('-Playwright') || fn.startsWith('crypto-web-') || fn.startsWith('crypto-web_');
+    }
+    function isLegacyCryptoPipeline(p) {
+        return isCryptoPipeline(p) && !isWebMonorepoPipeline(p);
+    }
+    function isLegacyCryptoFormActive() {
+        const pk = String(editingPipeline || '').trim();
+        if (!pk) return false;
+        const ep = findPipeline(pk);
+        return !!(ep && isLegacyCryptoPipeline(ep));
     }
     function isOrchestratorPipeline(p) {
         const fn = String(p?.filename || '');
@@ -4715,10 +4719,12 @@ ${os.map(n => `- ${n}`).join('\n')}
                 if (!Array.isArray(yamlBaselineSnapshot)) yamlBaselineSnapshot = [];
                 // Backfill repo for older cached entries (multi-repo support).
                 const backfillRepo = (p) => {
-                    if (!p || String(p.repo || '').trim()) return;
+                    if (!p) return;
+                    if (String(p.repo || '').trim() === 'Axos.QE.Crypto.Web') p.repo = 'Axos.QE.Web';
+                    if (String(p.repo || '').trim()) return;
                     const fn = String(p.filename || '').toLowerCase();
                     if (/^web_(enrollment|outsystems|crypto|olb3)_/.test(fn) && fn.includes('-playwright')) p.repo = 'Axos.QE.Web';
-                    else if (fn.includes('-playwright') || fn.startsWith('crypto-web-') || fn.startsWith('crypto-web_')) p.repo = 'Axos.QE.Crypto.Web';
+                    else if (fn.includes('-playwright') || fn.startsWith('crypto-web-') || fn.startsWith('crypto-web_')) p.repo = 'Axos.QE.Web';
                     else if (fn.startsWith('mobile_')) p.repo = 'Axos.QE.Mobile';
                     else if (fn.startsWith('api_cs_')) p.repo = 'Axos.QE.API_CS';
                     else if (fn.startsWith('api_udb_')) p.repo = 'Axos.QE.API_UDB';
@@ -4824,9 +4830,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                 const backfillCryptoFeature = (p) => {
                     if (!p) return;
                     if (isWebMonorepoPipeline(p)) return;
-                    const repo = String(p.repo || '').trim();
-                    const fn = String(p.filename || '');
-                    const isCrypto = repo === 'Axos.QE.Crypto.Web' || fn.includes('-Playwright') || fn.startsWith('crypto-web-') || fn.startsWith('crypto-web_');
+                    const isCrypto = isLegacyCryptoPipeline(p);
                     if (!isCrypto) return;
 
                     const cur = String(p.feature || '').trim();
@@ -4847,9 +4851,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                 const backfillCryptoDefaults = (p) => {
                     if (!p) return;
                     if (isWebMonorepoPipeline(p)) return;
-                    const repo = String(p.repo || '').trim();
-                    const fn = String(p.filename || '');
-                    const isCrypto = repo === 'Axos.QE.Crypto.Web' || fn.includes('-Playwright') || fn.startsWith('crypto-web-') || fn.startsWith('crypto-web_');
+                    const isCrypto = isLegacyCryptoPipeline(p);
                     if (!isCrypto) return;
                     if (p.runTarget === undefined || p.runTarget === null || p.runTarget === '') p.runTarget = 'local';
                     if (p.localBrowser === undefined || p.localBrowser === null || p.localBrowser === '') p.localBrowser = 'chromium';
@@ -4944,8 +4946,7 @@ ${os.map(n => `- ${n}`).join('\n')}
     function normRepoForPipeline(p) {
         const r = String(p?.repo || '').trim();
         if (r) return r;
-        if (isWebMonorepoPipeline(p)) return 'Axos.QE.Web';
-        if (isCryptoPipeline(p)) return 'Axos.QE.Crypto.Web';
+        if (isWebMonorepoPipeline(p) || isCryptoPipeline(p)) return 'Axos.QE.Web';
         if (isMobilePipeline(p)) return 'Axos.QE.Mobile';
         if (isPerfPipeline(p)) return 'Axos.QE.Performance.Automation';
         return 'Axos.QE.TestIM';
@@ -6410,7 +6411,7 @@ ${os.map(n => `- ${n}`).join('\n')}
         })());
         const normRepo = (p) => String(
             p.repo ||
-            (isWebMonorepoPipeline(p) ? 'Axos.QE.Web' : (isCryptoPipeline(p) ? 'Axos.QE.Crypto.Web' : (isMobilePipeline(p) ? 'Axos.QE.Mobile' : (isPerfPipeline(p) ? 'Axos.QE.Performance.Automation' : 'Axos.QE.TestIM'))))
+            (isWebMonorepoPipeline(p) || isCryptoPipeline(p) ? 'Axos.QE.Web' : (isMobilePipeline(p) ? 'Axos.QE.Mobile' : (isPerfPipeline(p) ? 'Axos.QE.Performance.Automation' : 'Axos.QE.TestIM')))
         ).trim();
         const byRepo = new Map();
         for (const it of items) {
@@ -6793,7 +6794,7 @@ ${os.map(n => `- ${n}`).join('\n')}
         const isMobile = isMobilePipeline(p);
         const repoName = String(
             p.repo ||
-            (isWebMonorepoPipeline(p) ? 'Axos.QE.Web' : (isCryptoPipeline(p) ? 'Axos.QE.Crypto.Web' : (isMobile ? 'Axos.QE.Mobile' : (isPerfPipeline(p) ? 'Axos.QE.Performance.Automation' : 'Axos.QE.TestIM'))))
+            (isWebMonorepoPipeline(p) || isCryptoPipeline(p) ? 'Axos.QE.Web' : (isMobile ? 'Axos.QE.Mobile' : (isPerfPipeline(p) ? 'Axos.QE.Performance.Automation' : 'Axos.QE.TestIM')))
         ).trim();
         const filePath = `.github/workflows/${p.filename || (p.name + '.yml')}`;
         // Migrated repos use the consolidated single RUNNER_LABEL model (AUTO = group). Force
@@ -7062,7 +7063,7 @@ ${os.map(n => `- ${n}`).join('\n')}
             return prompt;
         }
 
-        if (repoName === 'Axos.QE.Crypto.Web' || isCryptoPipeline(p)) {
+        if (isLegacyCryptoPipeline(p)) {
             let prompt = `Create or update a Playwright pipeline workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
                 `This workflow should be self-contained (Playwright + BrowserStack) and reflect these settings:\n\n` +
                 `RUN_TARGET: ${p.runTarget || 'local'}\n` +
@@ -7331,6 +7332,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             normalizeParsedPipeline(p);
         }
         const mobileFeatureSplit = isMobilePipeline(p) ? splitMobileFeature(String(p.featureDetail || p.feature || '')) : null;
+        const formIsMobile = isMobilePipeline(p);
+        const cryptoForm = !formIsMobile && isLegacyCryptoPipeline(p);
 
         // New pipeline: choose the repo first (repo drives the config section).
         if (editable && !isEdit && !String(p.repo || '').trim()) {
@@ -7341,7 +7344,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         // Normalize repo for older entries (default based on filename/platform).
         const repoName = String(
             p.repo ||
-            (isWebMonorepoPipeline(p) ? 'Axos.QE.Web' : (isCryptoPipeline(p) ? 'Axos.QE.Crypto.Web' : (isMobilePipeline(p) ? 'Axos.QE.Mobile' : (isPerfPipeline(p) ? 'Axos.QE.Performance.Automation' : 'Axos.QE.TestIM'))))
+            (isWebMonorepoPipeline(p) || isCryptoPipeline(p) ? 'Axos.QE.Web' : (isMobilePipeline(p) ? 'Axos.QE.Mobile' : (isPerfPipeline(p) ? 'Axos.QE.Performance.Automation' : 'Axos.QE.TestIM')))
         ).trim();
         p.repo = repoName;
         const runnerStrategyUi = getRunnerStrategy(p);
@@ -7353,7 +7356,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             ? (p.brand === 'BlazeMeter' ? 'blazemeter' : 'jmeter')
             : p.runTarget;
         const runnerOsUi = getRunnerOsForRepo(repoName, runnerOsRunTarget);
-        const cryptoScenarioPrefill = (repoName === 'Axos.QE.Crypto.Web')
+        const cryptoScenarioPrefill = isLegacyCryptoPipeline(p)
             ? (String(p.cryptoScenario || '').trim() || (() => {
                 const fd = String(p.featureDetail || '').trim();
                 if (fd.startsWith('OLB_')) return (fd.split('_')[1] || '').trim();
@@ -7426,7 +7429,6 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         </div>`;
 
         // Location — unified form; mobile or web shown based on platform
-        const formIsMobile = isMobilePipeline(p);
         if (formIsMobile) {
             html += `<div class="section">
                 <div class="section-header" onclick="toggleSection(this)">
@@ -7770,7 +7772,6 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             </div>
         </div>`;
         } else {
-        const cryptoForm = repoName === 'Axos.QE.Crypto.Web' || isCryptoPipeline(p);
         if (cryptoForm) {
             html += `<div class="section">
             <div class="section-header" onclick="toggleSection(this)">
@@ -8083,26 +8084,26 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Test ID <span class="req">*</span></label>
-                            <input type="text" id="fBzTestId" placeholder="15558117" value="${p.bzTestId || ''}" oninput="updateFormStatus && updateFormStatus()" ${isView ? 'disabled' : ''}>
+                            <input type="text" id="fBzTestId" placeholder="BlazeMeter test id" value="${p.bzTestId || ''}" oninput="updateFormStatus && updateFormStatus()" ${isView ? 'disabled' : ''}>
                             <span class="field-help">Numeric BlazeMeter test id to run (the existing test).</span>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Test Name (display)</label>
-                            <input type="text" id="fBzTestName" placeholder="UAT - Main flows in OLB - SANITY - 100VU" value="${p.bzTestName || ''}" ${isView ? 'disabled' : ''}>
+                            <input type="text" id="fBzTestName" placeholder="e.g. UAT sanity test name" value="${p.bzTestName || ''}" ${isView ? 'disabled' : ''}>
                         </div>
                     </div>
                     <div class="form-row-3">
                         <div class="form-group">
                             <label class="form-label">Account ID</label>
-                            <input type="text" id="fBzAccount" placeholder="1607162" value="${p.bzAccount || ''}" ${isView ? 'disabled' : ''}>
+                            <input type="text" id="fBzAccount" placeholder="Account id" value="${p.bzAccount || ''}" ${isView ? 'disabled' : ''}>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Workspace ID</label>
-                            <input type="text" id="fBzWorkspace" placeholder="1663446" value="${p.bzWorkspace || ''}" ${isView ? 'disabled' : ''}>
+                            <input type="text" id="fBzWorkspace" placeholder="Workspace id" value="${p.bzWorkspace || ''}" ${isView ? 'disabled' : ''}>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Project ID</label>
-                            <input type="text" id="fBzProject" placeholder="2334179" value="${p.bzProject || ''}" ${isView ? 'disabled' : ''}>
+                            <input type="text" id="fBzProject" placeholder="Project id" value="${p.bzProject || ''}" ${isView ? 'disabled' : ''}>
                         </div>
                     </div>
                     <p style="font-size:11px; color:var(--text-muted); margin:4px 0 0;">The BlazeMeter poll window is derived automatically from <strong>Pipeline Timeout</strong> (in Execution Settings) — no separate poll timeout needed.</p>
@@ -8656,10 +8657,10 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 </div>
 
                 <div style="background:var(--bg-tertiary); border-radius:10px; padding:12px 16px; display:flex; align-items:center; gap:10px;">
-                    <span style="font-size:16px;">${(formIsMobile || repoName === 'Axos.QE.Crypto.Web' || repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB' || repoName === 'Axos.QE.API_WFO') ? '&#128187;' : '&#129302;'}</span>
+                    <span style="font-size:16px;">${(formIsMobile || cryptoForm || repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB' || repoName === 'Axos.QE.API_WFO') ? '&#128187;' : '&#129302;'}</span>
                     <div>
                         <div style="font-size:12px; font-weight:600; color:var(--success);">Runner: ${runnerStrategyUi === 'group' ? `Runner group ${escapeHtml(runnerGroupUi)} (${runnerOsUi})` : (runnerOsUi === 'windows' ? 'Self-hosted Windows' : 'Self-hosted Linux')}</div>
-                        <div style="font-size:11px; color:var(--text-muted);">${runnerStrategyUi === 'group' ? 'Targets runners via runner group + OS labels (no machine-name pinning).' : ((repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB' || repoName === 'Axos.QE.API_WFO') ? 'Runs Newman on a self-hosted Windows runner (ensure it has network access to the target env).' : ((formIsMobile || repoName === 'Axos.QE.Crypto.Web') ? 'Picks from QSDW-TFSBA01–05 Windows runners (same pool as Mobile)' : 'Selects a self-hosted runner by label (no wildcard runner-name matching)'))}</div>
+                        <div style="font-size:11px; color:var(--text-muted);">${runnerStrategyUi === 'group' ? 'Targets runners via runner group + OS labels (no machine-name pinning).' : ((repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB' || repoName === 'Axos.QE.API_WFO') ? 'Runs Newman on a self-hosted Windows runner (ensure it has network access to the target env).' : ((formIsMobile || cryptoForm) ? 'Picks from QSDW-TFSBA01–05 Windows runners (same pool as Mobile)' : 'Selects a self-hosted runner by label (no wildcard runner-name matching)'))}</div>
                     </div>
                 </div>
 
@@ -9702,7 +9703,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
     function onBrandChange(initialSelectedFeature) {
         if (isMobileForm()) return;
         const repo = document.getElementById('fRepo')?.value || '';
-        if (repo === 'Axos.QE.Crypto.Web') return;
+        if (isLegacyCryptoFormActive()) return;
         // Performance renders #fFeature from its own PERF_FEATURES catalog (not the Web/Testim
         // feature list keyed by brand), so never let a brand change rebuild it from the wrong
         // catalog — that would wipe the perf options and the "+ Add custom feature" entry.
@@ -10012,7 +10013,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             updateFormStatus();
             return;
         }
-        if (repo === 'Axos.QE.Crypto.Web') {
+        if (isLegacyCryptoFormActive()) {
             const brand = document.getElementById('fBrand')?.value;
             const suffix = document.getElementById('fCustomSuffix')?.value?.trim();
             const feature = document.getElementById('fFeature')?.value?.trim();
@@ -10030,7 +10031,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             const featureStr = sKey ? `OLB_${fKey}_${sKey}` : `OLB_${fKey}`;
             const name = `${pKey}_${bKey}_${env}-${featureStr}_${tKey}-Playwright`;
 
-            const currentRepo = String(document.getElementById('fRepo')?.value || '').trim() || 'Axos.QE.Crypto.Web';
+            const currentRepo = String(document.getElementById('fRepo')?.value || '').trim() || 'Axos.QE.Web';
             const duplicate = !viewOnlyMode && pipelines.some(p => pipeNamesEqual(p.name, name) && normRepoForPipeline(p) === currentRepo && pipelineKey(p) !== editingPipeline);
             setNamePreviewName(name, { duplicate });
             updateFormStatus();
@@ -10391,16 +10392,16 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             return missing;
         }
 
-        if (repo === 'Axos.QE.Crypto.Web' || repo === 'Axos.QE.Web') {
+        if (repo === 'Axos.QE.Web') {
             need('fBrand', 'Brand');
             need('fEnv', 'Environment');
             need('fTestType', 'Test Type');
-            if (repo === 'Axos.QE.Web' && isOrch) {
+            if (isOrch) {
                 if (!val('fOrchSetName')) missing.push('Team / Set Name');
                 if (!val('fOrchTargetRefs')) missing.push('Orchestrator Targets');
             } else {
                 need('fFeature', 'Feature');
-                if (repo === 'Axos.QE.Web') {
+                if (!isLegacyCryptoFormActive()) {
                     if (!val('fProjectDir')) missing.push('Project Directory');
                     else if (!isValidWebMonorepoProjectDir(val('fProjectDir'))) {
                         missing.push('Project Directory (must include OLB 3.0, Enrollment, or OutSystems path)');
@@ -10482,8 +10483,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 }
                 return fieldsOk && !isNameDuplicate() && !isOrchSetNameDuplicate();
             }
-            if (repo === 'Axos.QE.Crypto.Web' || repo === 'Axos.QE.Web') {
-                const isOrchWeb = repo === 'Axos.QE.Web' && (el('fFeature')?.value || '') === 'Orchestrators';
+            if (repo === 'Axos.QE.Web') {
+                const isOrchWeb = (el('fFeature')?.value || '') === 'Orchestrators';
                 if (isOrchWeb) {
                     const team = (el('fOrchSetName')?.value || '').trim();
                     fieldsOk =
@@ -10491,7 +10492,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                         team && (el('fOrchTargetRefs')?.value || '').trim();
                 } else {
                     const projectDir = (el('fProjectDir')?.value || '').trim();
-                    const needsProjectDir = repo === 'Axos.QE.Web';
+                    const needsProjectDir = !isLegacyCryptoFormActive();
                     fieldsOk =
                         el('fBrand')?.value && el('fEnv')?.value &&
                         el('fFeature')?.value && el('fTestType')?.value &&
@@ -10742,7 +10743,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     // (cloud tests run long); JMeter stays at the ADO 120 default.
                     base.jobTimeout = n('fJobTimeout', base.brand === 'BlazeMeter' ? 250 : 120);
                 }
-            } else if (repo === 'Axos.QE.Web') {
+            } else if (repo === 'Axos.QE.Web' && !isLegacyCryptoFormActive()) {
                 base.brand = v('fBrand') || base.brand;
                 base.env = v('fEnv') || base.env;
                 base.feature = v('fFeature') || base.feature || 'Login';
@@ -10813,8 +10814,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 base.customRunnerLabel = rt === 'browserstack' ? base.customRunnerLabelLinux : base.customRunnerLabelWindows;
                 base.jobTimeout = n('fJobTimeout', 120);
                 }
-            } else if (repo === 'Axos.QE.Crypto.Web') {
-                base.feature = v('fFeature') || cryptoScenarioPrefill || base.feature || 'Login';
+            } else if (repo === 'Axos.QE.Web' && isLegacyCryptoFormActive()) {
+                base.feature = v('fFeature') || base.feature || 'Login';
                 base.brand = v('fBrand') || base.brand;
                 base.env = v('fEnv') || base.env;
                 // Keep for backwards-compat with older cached entries / name parsing.
@@ -11217,8 +11218,8 @@ ${runnerStrategy === 'group'
                     `- Implement runner selection via runs-on.group + labels (do NOT target a runner by machine name)`;
             }
 
-        } else if (el('fRepo') === 'Axos.QE.Crypto.Web') {
-            prompt = `Create or update a Playwright pipeline workflow file in the repo Axos.QE.Crypto.Web at:
+        } else if (isLegacyCryptoFormActive()) {
+            prompt = `Create or update a Playwright pipeline workflow file in the repo Axos.QE.Web at:
 .github/workflows/${name}.yml
 
 This workflow should be self-contained (Playwright + BrowserStack) and reflect these settings:
@@ -11567,38 +11568,6 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 customRunnerLabel: '',
             };
         }
-        if (repo === 'Axos.QE.Crypto.Web') {
-            return {
-                repo,
-                platform: '02 Web',
-                brand: 'Axos Bank',
-                env: 'UAT',
-                feature: 'Login',
-                testType: 'Smoke',
-                cryptoScenario: 'Login',
-                grep: '@Smoke',
-                suite: '',
-                spec: '',
-                parallel: '1',
-                retries: '1',
-                tunnel: 'false',
-                bsRandomBrowser: 'true',
-                bsBrowserName: '',
-                bsBrowserVersion: '',
-                bsOsName: '',
-                bsOsVersion: '',
-                runTarget: 'local',
-                localBrowser: 'chromium',
-                pwVideo: '1',
-                pwHeadless: 'inherit',
-                bsUsername: '',
-                bsAccessKey: '',
-                jobTimeout: 120,
-                runnerStrategy: 'group',
-                runnerGroup: getDefaultRunnerGroupForRepo(repo, 'local'),
-                runnerLabel: 'QSDW-TFSBA01',
-            };
-        }
         if (repo === 'Axos.QE.Performance.Automation') {
             return {
                 repo,
@@ -11660,7 +11629,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         const repos = loadSyncRepos().map(r => r.repo);
         const unique = [...new Set(repos.filter(Boolean))];
         const defaultRepo = 'Axos.QE.Web';
-        const KNOWN_REPOS = ['Axos.QE.TestIM', 'Axos.QE.Mobile', 'Axos.QE.Crypto.Web', defaultRepo, 'Axos.QE.API_OLB', 'Axos.QE.API_CS', 'Axos.QE.API_UDB', 'Axos.QE.API_WFO', 'Axos.QE.Performance.Automation'];
+        const KNOWN_REPOS = ['Axos.QE.TestIM', 'Axos.QE.Mobile', defaultRepo, 'Axos.QE.API_OLB', 'Axos.QE.API_CS', 'Axos.QE.API_UDB', 'Axos.QE.API_WFO', 'Axos.QE.Performance.Automation'];
         // Always offer the known repos (so Performance is selectable even when the
         // user has only synced a subset), unioned with any extra synced repos.
         const baseList = [...new Set([...(unique.length ? unique : []), ...KNOWN_REPOS])];
@@ -12451,6 +12420,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 if (entry.bsOsName !== undefined) parsed.bsOsName = entry.bsOsName;
                 if (entry.bsOsVersion !== undefined) parsed.bsOsVersion = entry.bsOsVersion;
                 if (entry.pwVideo !== undefined) parsed.pwVideo = entry.pwVideo;
+                if (entry.pwHeadless !== undefined) parsed.pwHeadless = entry.pwHeadless;
                 if (entry.tunnel !== undefined) parsed.tunnel = entry.tunnel;
                 if (entry.appId !== undefined) parsed.appId = entry.appId;
                 if (entry.androidAppId !== undefined) parsed.androidAppId = entry.androidAppId;
@@ -13023,7 +12993,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 filename,
                 name,
                 platform: '02 Web',
-                brand: 'Axos.QE.Crypto.Web',
+                brand: 'Crypto',
                 env,
                 feature: 'Crypto Web',
                 featureDetail: 'CryptoWeb',
@@ -14174,8 +14144,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
     function getPipelineRepo(p) {
         if (!p) return 'Axos.QE.TestIM';
         if (p.repo) return p.repo;
-        if (isWebMonorepoPipeline(p)) return 'Axos.QE.Web';
-        if (isCryptoPipeline(p)) return 'Axos.QE.Crypto.Web';
+        if (isWebMonorepoPipeline(p) || isCryptoPipeline(p)) return 'Axos.QE.Web';
         if (isMobilePipeline(p)) return 'Axos.QE.Mobile';
         if (isPerfPipeline(p)) return 'Axos.QE.Performance.Automation';
         return 'Axos.QE.TestIM';
@@ -14801,6 +14770,9 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         const list = Array.isArray(runs) ? runs : [];
         const actionableRuns = list.filter(isDashboardActionableRun);
         const anyEnriched = list.some(r => hasEnrichedTestCounts(r?.testCounts));
+        // Use test-level counts whenever any run is enriched (don't wait for every
+        // run in the window to settle — Mobile/shared-cache windows often have a
+        // couple of incomplete enrichments that would otherwise force run-level %).
         const useTestLevel = anyEnriched;
         let passed = 0;
         let failed = 0;
@@ -19556,15 +19528,23 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             const allDone = prog && prog.done >= prog.total;
             if (!force && !hasAnyData && !allDone) return;
             try {
+                if (typeof Chart === 'undefined') {
+                    throw new Error('Chart.js failed to load (CDN blocked?)');
+                }
                 const existing = dashTrendChartInstances.get(trendId || wrap);
                 if (existing) { try { existing.destroy(); } catch { /* ignore */ } }
+                // Chart.js 3+ refuses to reuse a canvas until its chart is destroyed.
+                if (typeof Chart.getChart === 'function') {
+                    const leaked = Chart.getChart(canvas);
+                    if (leaked) { try { leaked.destroy(); } catch { /* ignore */ } }
+                }
                 const chart = buildDashboardTrendChart(canvas, runs, repo);
                 dashTrendChartInstances.set(trendId || wrap, chart);
                 if (allDone || hasAnyData) wrap.classList.add('ready');
                 const card = wrap.closest('.dash-pipe-card');
                 if (card) updateDashboardCardMetrics(card);
-            } catch {
-                if (loading) loading.textContent = 'Could not render chart';
+            } catch (err) {
+                if (loading) loading.textContent = 'Could not render chart: ' + String(err?.message || err || 'unknown');
             }
         };
 
