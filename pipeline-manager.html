@@ -13972,7 +13972,9 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             const raw = localStorage.getItem(RESULTS_CACHE_KEY);
             if (!raw) return false;
             const payload = JSON.parse(raw);
-            if (!payload || !Array.isArray(payload.runs) || !payload.runs.length) return false;
+            // Accept empty runs[] so a legitimate 0-run fetch (saved via shouldSaveCache)
+            // restores sync metadata / filters instead of being ignored on reload.
+            if (!payload || !Array.isArray(payload.runs)) return false;
             allRuns = payload.runs;
             for (const r of allRuns) {
                 if (hasEnrichedTestCounts(r?.testCounts)) r._testCountsDone = true;
@@ -21212,16 +21214,23 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
         updateResultsEmptyStateForLocal();
     } catch { /* ignore */ }
     if (hadResultsCache) {
-        hydrateAllRunsTestCountsFromCache();
-        try { revealDashboardsTab(); } catch { /* ignore */ }
-        try { revealQueueTab(); } catch { /* ignore */ }
-        try {
-            document.getElementById('emailNoData').style.display = 'none';
-            document.getElementById('emailReady').style.display = 'block';
-            populateEmailPipePicker();
-        } catch { /* ignore */ }
-        renderResults();
-        if (document.getElementById('panelDashboards')?.classList.contains('active')) renderDashboardsIfNeeded();
+        if (allRuns.length) {
+            hydrateAllRunsTestCountsFromCache();
+            try { revealDashboardsTab(); } catch { /* ignore */ }
+            try { revealQueueTab(); } catch { /* ignore */ }
+            try {
+                document.getElementById('emailNoData').style.display = 'none';
+                document.getElementById('emailReady').style.display = 'block';
+                populateEmailPipePicker();
+            } catch { /* ignore */ }
+            renderResults();
+            if (document.getElementById('panelDashboards')?.classList.contains('active')) renderDashboardsIfNeeded();
+        } else {
+            // Restored a legitimate empty fetch — keep filters/sidebar, show empty state.
+            try { populateResultsRepoFilter(); } catch { /* ignore */ }
+            try { renderResultsTree(); } catch { /* ignore */ }
+            try { updateResultsEmptyStateForLocal(); } catch { /* ignore */ }
+        }
     }
     updateSaveStatus();
     updatePatDot();
