@@ -1749,6 +1749,9 @@
                 <div class="sidebar-stats">
                     <div class="stat"><span class="stat-val" id="statTotal">0</span> pipelines</div>
                     <div class="stat"><span class="stat-val" id="statFolders">0</span> categories</div>
+                    <div class="stat" id="statSkippedWrap" style="display:none; cursor:pointer;" onclick="openSkippedWorkflowsModal()" title="Workflow files skipped during sync because their name didn't match a known pattern">
+                        <span class="stat-val" id="statSkipped" style="color:var(--warning, #f59e0b);">0</span> skipped
+                    </div>
                 </div>
                 <button onclick="openPatModal()" style="margin-top:10px; width:100%; padding:8px 12px; border-radius:8px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.05); color:var(--text-secondary); transition:all 0.2s; display:flex; align-items:center; justify-content:center; gap:6px;" onmouseover="this.style.borderColor='var(--axos-orange)';this.style.color='var(--axos-orange)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.color='var(--text-secondary)'">
                     <span style="font-size:13px;">&#9881;</span> Settings
@@ -2375,6 +2378,21 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeModal('deleteModal')">Cancel</button>
                 <button class="btn" style="background:linear-gradient(135deg, var(--error), #dc2626); color:#fff;" onclick="confirmDelete()">Generate Delete Prompt</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Skipped Workflows Modal -->
+    <div class="modal-overlay" id="skippedWorkflowsModal">
+        <div class="modal" style="max-width:650px;">
+            <div class="modal-header" style="border-left:4px solid var(--warning, #f59e0b);">
+                <div class="modal-title">Skipped Workflow Files</div>
+                <button class="modal-close" onclick="closeModal('skippedWorkflowsModal')">x</button>
+            </div>
+            <div class="modal-body" id="skippedWorkflowsBody" style="max-height:60vh; overflow-y:auto;">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('skippedWorkflowsModal')">Close</button>
             </div>
         </div>
     </div>
@@ -12312,6 +12330,77 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         reader.readAsText(file);
     }
 
+    const SKIPPED_WORKFLOWS_KEY = 'pm.sync.skippedWorkflows.v1';
+
+    function loadSkippedWorkflows() {
+        try {
+            const raw = JSON.parse(localStorage.getItem(SKIPPED_WORKFLOWS_KEY) || '[]');
+            return Array.isArray(raw) ? raw : [];
+        } catch { return []; }
+    }
+
+    // Merges freshly-skipped entries into the persisted list, scoped by which repos were
+    // actually part of this sync — a repo that wasn't synced keeps its prior skipped list
+    // untouched; a repo that WAS synced gets its list replaced (even to empty, meaning
+    // previously-flagged files got fixed/renamed/deleted).
+    function persistSkippedWorkflows(freshEntries, syncedRepos) {
+        try {
+            const existing = loadSkippedWorkflows();
+            const scoped = syncedRepos && syncedRepos.size > 0 ? syncedRepos : null;
+            const kept = scoped ? existing.filter(e => !scoped.has(String(e?.repo || '').trim())) : existing;
+            const merged = [...kept, ...(freshEntries || [])];
+            localStorage.setItem(SKIPPED_WORKFLOWS_KEY, JSON.stringify(merged));
+        } catch { /* ignore */ }
+        renderSkippedWorkflowsStat();
+    }
+
+    function renderSkippedWorkflowsStat() {
+        const list = loadSkippedWorkflows();
+        const wrap = document.getElementById('statSkippedWrap');
+        const val = document.getElementById('statSkipped');
+        if (!wrap || !val) return;
+        if (list.length > 0) {
+            val.textContent = list.length;
+            wrap.style.display = '';
+        } else {
+            wrap.style.display = 'none';
+        }
+    }
+
+    function openSkippedWorkflowsModal() {
+        const list = loadSkippedWorkflows();
+        const byRepo = new Map();
+        for (const s of list) {
+            const repo = String(s?.repo || '').trim() || '(unknown repo)';
+            if (!byRepo.has(repo)) byRepo.set(repo, []);
+            byRepo.get(repo).push(String(s?.filename || '').trim());
+        }
+        const blocks = [...byRepo.entries()]
+            .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+            .map(([repo, files]) => {
+                const safeRepo = escapeHtml(repo);
+                const sorted = files.slice().sort();
+                const items = sorted.map(f => `<li style="margin:2px 0;"><code>${escapeHtml(f)}</code></li>`).join('');
+                return `
+<details style="margin-top:10px;" open>
+  <summary style="cursor:pointer; font-weight:800; color:var(--text-primary); outline:none;">
+    ${safeRepo} <span style="color:var(--text-muted); font-weight:700;">(${sorted.length})</span>
+  </summary>
+  <div style="margin-top:8px; color:var(--text-secondary); font-size:12px;">
+    <ul style="margin:0 0 0 18px; padding:0;">${items}</ul>
+  </div>
+</details>`;
+            })
+            .join('');
+        const body = document.getElementById('skippedWorkflowsBody');
+        if (body) {
+            body.innerHTML = list.length > 0
+                ? `<div style="margin-bottom:10px; color:var(--text-secondary); font-size:13px;">These workflow files were seen the last time each repo was synced, but their names don't match a known naming convention, so they were never added as pipelines. Rename to match a known convention, prefix with <code>_</code> to mark as non-pipeline infra, or delete if unused. Re-syncing a repo refreshes its section below.</div>${blocks}`
+                : `<div style="color:var(--text-muted);">Nothing currently skipped — every synced repo's workflow files matched a known naming pattern.</div>`;
+        }
+        document.getElementById('skippedWorkflowsModal')?.classList.add('show');
+    }
+
     function processSyncInput(opts = null) {
         const input = (syncFileContent || document.getElementById('syncInput').value || '').trim();
         syncFileContent = null;
@@ -12320,6 +12409,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         try { jsonData = JSON.parse(input); } catch(e) { /* not JSON */ }
 
         let added = 0, removed = 0, updated = 0;
+        const skippedEntries = [];
         const replaceMode = (() => {
             try {
                 if (opts && typeof opts === 'object' && typeof opts.replace === 'boolean') return !!opts.replace;
@@ -12382,7 +12472,13 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             for (const entry of jsonData) {
                 throwIfSyncCancelled();
                 const parsed = parseFilename(entry.filename);
-                if (!parsed) continue;
+                if (!parsed) {
+                    skippedEntries.push({
+                        repo: String(entry?.repo || '').trim() || '(unknown repo)',
+                        filename: String(entry?.filename || '').trim() || '(unknown filename)'
+                    });
+                    continue;
+                }
 
                 // Preserve repo source for Results/Metrics and for multi-repo workflows.
                 if (entry.repo) parsed.repo = entry.repo;
@@ -12479,6 +12575,11 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 else { pipelines.push(parsed); added++; }
             }
 
+                {
+                    const syncedRepos = new Set(jsonData.map(e => String(e?.repo || '').trim()).filter(Boolean));
+                    persistSkippedWorkflows(skippedEntries, syncedRepos);
+                }
+
                 throwIfSyncCancelled();
                 applyYamlBaselineFromSync(jsonData, replaceMode, dirtyBeforeSync);
                 throwIfSyncCancelled();
@@ -12509,6 +12610,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 if (!pipelines.some(p => p.filename === fn)) {
                     const parsed = parseFilename(fn);
                     if (parsed) { pipelines.push(parsed); added++; }
+                    else skippedEntries.push({ repo: '(manual input)', filename: fn });
                 }
             }
         }
@@ -12526,6 +12628,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         if (added > 0) parts.push(`${added} added`);
         if (updated > 0) parts.push(`${updated} updated`);
         if (removed > 0) parts.push(`${removed} removed`);
+        if (skippedEntries.length > 0) parts.push(`${skippedEntries.length} skipped (unrecognized name)`);
         if (parts.length === 0) parts.push('already up to date');
         const statusEl = document.getElementById('syncStatus');
         const statusText = document.getElementById('syncStatusText');
@@ -12571,6 +12674,36 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                         })
                         .join('');
 
+                    let skippedHtml = '';
+                    if (skippedEntries.length > 0) {
+                        const skippedByRepo = new Map();
+                        for (const s of skippedEntries) {
+                            if (!skippedByRepo.has(s.repo)) skippedByRepo.set(s.repo, []);
+                            skippedByRepo.get(s.repo).push(s.filename);
+                        }
+                        const skippedBlocks = [...skippedByRepo.entries()]
+                            .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+                            .map(([repo, files]) => {
+                                const safeRepo = escapeHtml(repo);
+                                const list = (files || []).slice().sort();
+                                const items = list.map(f => `<li style="margin:2px 0;"><code>${escapeHtml(f)}</code></li>`).join('');
+                                return `
+<details style="margin-top:10px;" open>
+  <summary style="cursor:pointer; font-weight:800; color:var(--text-primary); outline:none;">
+    ${safeRepo} <span style="color:var(--text-muted); font-weight:700;">(${list.length})</span>
+  </summary>
+  <div style="margin-top:8px; color:var(--text-secondary); font-size:12px;">
+    <ul style="margin:0 0 0 18px; padding:0;">${items}</ul>
+  </div>
+</details>`;
+                            })
+                            .join('');
+                        skippedHtml = `
+    <div style="margin-top:12px; margin-bottom:6px;"><span style="color:var(--warning, #b45309); font-weight:800;">Skipped — filename didn't match a known naming pattern (${skippedEntries.length}):</span></div>
+    <div style="margin-bottom:6px; color:var(--text-muted); font-size:12px;">These were fetched from GitHub but not added — the workflow name doesn't follow a pattern this tool recognizes. Rename to match a known convention, prefix with <code>_</code> to mark as non-pipeline infra, or delete if unused.</div>
+    ${skippedBlocks}`;
+                    }
+
                     detailsHtml = `
 <details style="margin-top:12px;">
   <summary style="cursor:pointer; font-weight:800; color:var(--text-primary); outline:none;">Details</summary>
@@ -12579,15 +12712,29 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
     <div style="margin-bottom:6px;"><span style="color:var(--text-muted);">Ref:</span> <code>${escapeHtml(refLabel)}</code></div>
     <div style="margin-bottom:6px;"><span style="color:var(--text-muted);">Workflows by repo:</span></div>
     ${repoBlocks || `<div style="color:var(--text-muted);">No repo details found in the sync payload.</div>`}
+    ${skippedHtml}
   </div>
 </details>`;
                 } else if (input) {
+                    let manualSkippedHtml = '';
+                    if (skippedEntries.length > 0) {
+                        const items = skippedEntries
+                            .map(s => s.filename)
+                            .sort()
+                            .map(f => `<li style="margin:2px 0;"><code>${escapeHtml(f)}</code></li>`)
+                            .join('');
+                        manualSkippedHtml = `
+    <div style="margin-top:12px; margin-bottom:6px;"><span style="color:var(--warning, #b45309); font-weight:800;">Skipped — filename didn't match a known naming pattern (${skippedEntries.length}):</span></div>
+    <div style="margin-bottom:6px; color:var(--text-muted); font-size:12px;">These were pasted but not added — the workflow name doesn't follow a pattern this tool recognizes. Rename to match a known convention, prefix with <code>_</code> to mark as non-pipeline infra, or delete if unused.</div>
+    <ul style="margin:0 0 0 18px; padding:0;">${items}</ul>`;
+                    }
                     detailsHtml = `
 <details style="margin-top:12px;">
   <summary style="cursor:pointer; font-weight:800; color:var(--text-primary); outline:none;">Details</summary>
   <div style="margin-top:10px; color:var(--text-secondary); font-size:12px;">
     <div style="margin-bottom:6px;"><span style="color:var(--text-muted);">Mode:</span> <code>Merge</code></div>
     Imported from manual input (repo information isn’t available in this mode).
+    ${manualSkippedHtml}
   </div>
 </details>`;
                 }
@@ -12611,6 +12758,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem(YAML_BASELINE_KEY);
         localStorage.removeItem(TREE_STATE_KEY);
+        localStorage.removeItem(SKIPPED_WORKFLOWS_KEY);
         pipelines.length = 0;
         savedSnapshot = [];
         yamlBaselineSnapshot = [];
@@ -12621,6 +12769,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         buildTree();
         showFolderPipelines(null);
         updateSaveStatus();
+        renderSkippedWorkflowsStat();
         showToast('Cache cleared. Run Sync to reload pipelines from repo.');
     }
 
@@ -20954,6 +21103,7 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
     // ══════════════════════════════════════════
     initCustomFeatures();
     initPipelines();
+    renderSkippedWorkflowsStat();
     populateGlobalRepoFilter();
     setGlobalRepoFilter(globalRepoFilter, { persist: false });
     purgeBadDashTestCountsCache();
