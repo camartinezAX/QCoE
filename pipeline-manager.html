@@ -14350,15 +14350,30 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
 
     function updateResultsEmptyStateForLocal() {
         if (allRuns.length) return;
+        const empty = document.getElementById('resultsEmpty');
+        const tableWrap = document.getElementById('resultsTableWrap');
+        const metricsArea = document.getElementById('metricsArea');
+        if (empty) empty.style.display = '';
+        if (tableWrap) tableWrap.style.display = 'none';
+        if (metricsArea) metricsArea.style.display = 'none';
+        try { renderResultsSyncBanner(); } catch { /* ignore */ }
+        try {
+            document.getElementById('emailNoData').style.display = 'block';
+            document.getElementById('emailReady').style.display = 'none';
+        } catch { /* ignore */ }
         const callout = document.querySelector('#resultsEmpty .token-callout');
         if (!callout) return;
         const hasToken = !!getGitHubToken();
         callout.style.display = hasToken ? 'none' : 'inline-block';
         const msg = document.querySelector('#resultsEmpty p');
-        if (msg && hasToken) {
-            msg.textContent = (resultsPipelines || []).length
-                ? 'Pipelines are listed on the left. Click "Fetch Results" to load run history from GitHub (check PAT / org SSO if fetches fail).'
-                : 'Click "Fetch Results" to load your pipeline run data with live metrics.';
+        if (msg) {
+            if (hasToken && (resultsPipelines || []).length) {
+                msg.textContent = 'Pipelines are listed on the left. Click "Fetch Results" to load run history from GitHub (check PAT / org SSO if fetches fail).';
+            } else if (hasToken) {
+                msg.textContent = 'No pipelines in the catalog yet — Sync from GitHub on the Pipelines tab, then Fetch Results.';
+            } else {
+                msg.textContent = 'Click "Fetch Results" to load your pipeline run data with live metrics.';
+            }
         }
     }
 
@@ -15880,9 +15895,11 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
 
             hydrateAllRunsTestCountsFromCache();
             const syncedAt = Date.now();
-            // Never overwrite a previous good cache with an empty one (total fetch failure).
+            // Skip cache write only when the fetch failed for workflows (keep prior good cache).
+            // A legitimate empty result (0 runs, 0 fetch errors) must still be persisted.
+            const shouldSaveCache = allRuns.length > 0 || missingWorkflows.length === 0;
             let cacheSaved = true;
-            if (allRuns.length) {
+            if (shouldSaveCache) {
                 cacheSaved = saveResultsCache({
                     syncedAt,
                     mode,
@@ -15905,11 +15922,9 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 }
             } else {
                 resultsLastSyncedAt = syncedAt;
-                if (missingWorkflows.length) {
-                    try {
-                        showToast(`Fetch finished with 0 runs — ${missingWorkflows.length} pipeline(s) failed (see Fetch issues). Pipelines stay listed on the left.`, true);
-                    } catch { /* ignore */ }
-                }
+                try {
+                    showToast(`Fetch finished with 0 runs — ${missingWorkflows.length} pipeline(s) failed (see Fetch issues). Pipelines stay listed on the left.`, true);
+                } catch { /* ignore */ }
             }
             markDashboardsDirty();
             // Reveal the dashboard immediately with best-available data (fast path), but hold
