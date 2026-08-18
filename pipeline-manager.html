@@ -441,6 +441,80 @@
         .toggle-label { font-size: 13px; font-weight: 600; }
         .toggle-desc { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
 
+        /* Landing repo picker */
+        .landing-repo-overlay { z-index: 1100; }
+        .landing-repo-modal { max-width: 760px; width: 100%; }
+        .landing-repo-intro {
+            background: linear-gradient(135deg, rgba(250,167,74,0.10), rgba(30,56,96,0.08));
+            border: 1px solid rgba(250,167,74,0.22);
+            border-radius: 14px;
+            padding: 16px 18px;
+            margin-bottom: 16px;
+        }
+        .landing-repo-intro h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+        .landing-repo-intro p { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin: 0; }
+        .landing-repo-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .landing-repo-count { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+        .landing-repo-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .landing-repo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 10px;
+            max-height: min(52vh, 420px);
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        .landing-repo-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+        }
+        .landing-repo-card:hover {
+            border-color: rgba(250,167,74,0.35);
+            box-shadow: 0 4px 18px rgba(30,56,96,0.08);
+        }
+        .landing-repo-card:has(input:checked) {
+            border-color: rgba(16,185,129,0.45);
+            background: rgba(16,185,129,0.06);
+        }
+        .landing-repo-card-info { flex: 1; min-width: 0; }
+        .landing-repo-card-name {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .landing-repo-card-owner {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .sidebar-repo-change {
+            margin-top: 6px;
+            font-size: 11px;
+            color: var(--text-muted);
+            cursor: pointer;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+        .sidebar-repo-change:hover { color: var(--axos-orange); }
+
         /* Action Bar */
         .action-bar {
             position: fixed; bottom: 0; right: 0; left: 320px;
@@ -1768,6 +1842,7 @@
                     <input type="hidden" id="globalRepoFilter" value="all">
                     <div class="repo-ms-menu" id="globalRepoFilter__menu" role="listbox"></div>
                 </div>
+                <div class="sidebar-repo-change" id="changeVisibleReposLink" style="display:none;" onclick="reopenLandingRepoPicker()" title="Choose which synced repos are visible">Choose visible repos</div>
             </div>
             <div class="sidebar-actions">
                 <button class="btn-sm active" onclick="setView('tree')" id="viewTreeBtn">Folders</button>
@@ -1995,8 +2070,14 @@
                 <div class="empty-state" id="resultsEmpty" style="animation:fadeSlideUp 0.5s ease-out both;">
                     <div class="empty-icon" style="font-size:56px; filter:drop-shadow(0 4px 12px rgba(250,167,74,0.3));">&#128202;</div>
                     <h3 style="font-size:20px; margin:12px 0 6px;">No results loaded</h3>
-                    <p style="color:var(--text-secondary); max-width:400px; margin:0 auto;">Click "Fetch Results" to load your pipeline run data with live metrics.</p>
-                    <div class="token-callout" style="margin-top:20px; padding:20px 24px; background:linear-gradient(135deg, rgba(22,29,46,0.95), rgba(31,41,55,0.9)); border:1px solid rgba(255,255,255,0.06); border-radius:14px; text-align:left; max-width:520px; display:inline-block; backdrop-filter:blur(12px);">
+                    <p id="resultsEmptyMessage" style="color:var(--text-secondary); max-width:400px; margin:0 auto;">Click "Fetch Results" to load your pipeline run data with live metrics.</p>
+                    <div id="resultsEmptyServerNotice" style="display:none; margin-top:20px; padding:20px 24px; background:linear-gradient(135deg, rgba(22,29,46,0.95), rgba(31,41,55,0.9)); border:1px solid rgba(239,68,68,0.35); border-radius:14px; text-align:left; max-width:520px; backdrop-filter:blur(12px);">
+                        <div style="font-size:13px; font-weight:700; color:var(--warning); margin-bottom:10px;">&#9888; Server results cache unavailable</div>
+                        <div id="resultsEmptyServerDetail" style="font-size:12px; color:var(--text-secondary); line-height:1.8;">
+                            Shared <code>data/results-cache.json</code> is missing or the last sync failed. Ask your QE admin to run <code>Sync-PipelineManagerData.ps1 -ResultsOnly</code> on the server, or use <strong>Fetch Results</strong> with your own GitHub PAT.
+                        </div>
+                    </div>
+                    <div id="resultsEmptyTokenCallout" class="token-callout" style="margin-top:20px; padding:20px 24px; background:linear-gradient(135deg, rgba(22,29,46,0.95), rgba(31,41,55,0.9)); border:1px solid rgba(255,255,255,0.06); border-radius:14px; text-align:left; max-width:520px; display:inline-block; backdrop-filter:blur(12px);">
                         <div style="font-size:13px; font-weight:700; color:var(--axos-orange); margin-bottom:10px;">&#128274; GitHub Token Required</div>
                         <div style="font-size:12px; color:var(--text-secondary); line-height:1.8;">
                             Set your GitHub PAT via the <strong>Settings</strong> button in the Pipelines sidebar. It's saved only in your browser.
@@ -2229,6 +2310,9 @@
                     <p style="font-size:13px; color:var(--text-secondary); line-height:1.6;">
                         Sync pulls all workflow files from GitHub and updates your pipeline list automatically.
                     </p>
+                    <p id="hostedSyncServerBanner" style="display:none; font-size:12px; color:var(--warning, #f59e0b); line-height:1.5; margin:10px 0 0; font-weight:600;">
+                        Hosted mode: this Sync updates <em>your browser only</em> (localStorage). It does <strong>not</strong> write IIS <code>data/</code>. Shared catalog refreshes from the server sync job (~30 min) or a full <code>Sync-PipelineManagerData.ps1</code> on the box.
+                    </p>
                 </div>
 
                 <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:12px; padding:12px 14px; border:1px solid var(--border-color); border-radius:12px; background:var(--bg-tertiary);">
@@ -2348,6 +2432,34 @@
         </div>
     </div>
 
+    <!-- Landing Repo Picker (server-hosted: choose visible repos on first visit) -->
+    <div class="modal-overlay landing-repo-overlay" id="landingRepoPickerModal">
+        <div class="modal landing-repo-modal">
+            <div class="modal-header">
+                <div class="modal-title">Choose Repositories</div>
+                <button class="modal-close" id="landingRepoPickerClose" style="display:none;" onclick="closeLandingRepoPickerModal()">x</button>
+            </div>
+            <div class="modal-body">
+                <div class="landing-repo-intro">
+                    <h3>What do you want to see?</h3>
+                    <p>Turn on the repos you care about. Pipeline Manager will filter pipelines, results, and dashboards to your selection. You can change this anytime from the sidebar.</p>
+                </div>
+                <div class="landing-repo-toolbar">
+                    <span class="landing-repo-count" id="landingRepoPickerCount">0 of 0 selected</span>
+                    <div class="landing-repo-actions">
+                        <button type="button" class="btn-sm" onclick="landingRepoPickerSelectAll(true)">Select all</button>
+                        <button type="button" class="btn-sm" onclick="landingRepoPickerSelectAll(false)">Deselect all</button>
+                    </div>
+                </div>
+                <div class="landing-repo-grid" id="landingRepoPickerGrid"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="landingRepoPickerCancel" style="display:none;" onclick="closeLandingRepoPickerModal()">Cancel</button>
+                <button class="btn btn-primary" id="landingRepoPickerContinue" onclick="confirmLandingRepoPicker()" disabled>Continue</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Delete Confirmation Modal -->
     <div class="modal-overlay" id="deleteModal">
         <div class="modal" style="max-width:550px;">
@@ -2442,6 +2554,12 @@
                             Required for syncing workflows and fetching run results from GitHub.<br>
                             Needs <strong>repo</strong> and <strong>actions:read</strong> scopes. Saved only in <strong>your browser's localStorage</strong> — never sent anywhere except the GitHub API.
                         </span>
+                        <div id="useServerDataAgainWrap" style="display:none; margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.08);">
+                            <div style="font-size:12px; color:var(--text-muted); line-height:1.5; margin-bottom:8px;">
+                                You are viewing <strong>personal results</strong> (manual fetch or browser cache), not the shared server cache.
+                            </div>
+                            <button type="button" class="btn-lite" onclick="useServerDataAgain(); closeModal('patModal');">Use server data again</button>
+                        </div>
                     </div>
                 </div>
 
@@ -4417,10 +4535,223 @@ ${os.map(n => `- ${n}`).join('\n')}
     });
 
     const GLOBAL_REPO_FILTER_KEY = 'pm.globalRepoFilter.v1';
+    const LANDING_REPO_SELECTION_KEY = 'pm.landingRepoSelection.v1';
+    const SERVER_LANDING_REPO_SELECTION_KEY = 'pm.server.landingRepoSelection.v1';
+    const SHARED_REPOS_CATALOG_URL = './data/repos.json';
+    let serverAvailableRepos = [];
+    let landingRepoPickerResolver = null;
+
+    function isServerHostedApp() {
+        return canLoadSharedServerData();
+    }
+
+    function getLandingRepoSelectionKey() {
+        return isServerHostedApp() ? SERVER_LANDING_REPO_SELECTION_KEY : LANDING_REPO_SELECTION_KEY;
+    }
+
+    function loadLandingRepoSelection() {
+        try {
+            const raw = localStorage.getItem(getLandingRepoSelectionKey());
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) return null;
+            const cleaned = parsed.map(r => String(r || '').trim()).filter(Boolean);
+            return cleaned.length ? cleaned : null;
+        } catch {
+            return null;
+        }
+    }
+
+    function persistLandingRepoSelection(repos) {
+        const cleaned = (repos || []).map(r => String(r || '').trim()).filter(Boolean);
+        try {
+            const key = getLandingRepoSelectionKey();
+            if (cleaned.length) localStorage.setItem(key, JSON.stringify(cleaned));
+            else localStorage.removeItem(key);
+        } catch { /* ignore */ }
+        const filterVal = cleaned.length ? cleaned.join('|') : 'all';
+        globalRepoFilter = filterVal;
+        persistGlobalRepoFilterPref(filterVal);
+    }
+
+    function hasLandingRepoSelection() {
+        const sel = loadLandingRepoSelection();
+        return Array.isArray(sel) && sel.length > 0;
+    }
+
+    function getLandingRepoCatalog() {
+        const fromServer = (serverAvailableRepos || []).map(r => String(r || '').trim()).filter(Boolean);
+        if (fromServer.length) return [...new Set(fromServer)].sort((a, b) => a.localeCompare(b));
+        return getKnownRepoNames();
+    }
+
+    function shouldUseLandingRepoPicker() {
+        // Disabled: the server hub shows all synced repos by default, matching the root
+        // Pipeline Manager (which never had this picker). Repo filtering is still
+        // available via the existing "REPO" dropdown in the sidebar.
+        return false;
+    }
+
+    function updateChangeVisibleReposLink() {
+        const el = document.getElementById('changeVisibleReposLink');
+        if (!el) return;
+        el.style.display = shouldUseLandingRepoPicker() ? 'block' : 'none';
+    }
+
+    function landingRepoEsc(s) {
+        return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    }
+
+    function getLandingRepoPickerSelection() {
+        const grid = document.getElementById('landingRepoPickerGrid');
+        if (!grid) return [];
+        return [...grid.querySelectorAll('input[type=checkbox]:checked')]
+            .map(cb => String(cb.dataset.repo || '').trim())
+            .filter(Boolean);
+    }
+
+    function updateLandingRepoPickerCount() {
+        const el = document.getElementById('landingRepoPickerCount');
+        const sel = getLandingRepoPickerSelection();
+        const catalog = getLandingRepoCatalog();
+        if (el) el.textContent = `${sel.length} of ${catalog.length} selected`;
+        const btn = document.getElementById('landingRepoPickerContinue');
+        if (btn) btn.disabled = sel.length === 0;
+    }
+
+    function landingRepoPickerSelectAll(on) {
+        const grid = document.getElementById('landingRepoPickerGrid');
+        if (!grid) return;
+        grid.querySelectorAll('input[type=checkbox]').forEach(cb => { cb.checked = !!on; });
+        updateLandingRepoPickerCount();
+    }
+
+    function renderLandingRepoPickerGrid(preselect) {
+        const grid = document.getElementById('landingRepoPickerGrid');
+        if (!grid) return;
+        const catalog = getLandingRepoCatalog();
+        const pre = new Set(Array.isArray(preselect) ? preselect : []);
+        grid.innerHTML = catalog.map(repo => {
+            const id = `landingRepo_${repo.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            const checked = pre.has(repo) ? ' checked' : '';
+            return `<label class="landing-repo-card" for="${id}">
+                <div class="toggle-switch">
+                    <input type="checkbox" id="${id}" data-repo="${landingRepoEsc(repo)}"${checked}>
+                    <span class="toggle-slider"></span>
+                </div>
+                <div class="landing-repo-card-info">
+                    <div class="landing-repo-card-name">${landingRepoEsc(repo)}</div>
+                    <div class="landing-repo-card-owner">axos-financial</div>
+                </div>
+            </label>`;
+        }).join('');
+        grid.querySelectorAll('input[type=checkbox]').forEach(cb => {
+            cb.addEventListener('change', updateLandingRepoPickerCount);
+        });
+        updateLandingRepoPickerCount();
+    }
+
+    function openLandingRepoPickerModal(opts = {}) {
+        const o = opts && typeof opts === 'object' ? opts : {};
+        const preselect = o.allOff
+            ? []
+            : (o.preselect !== undefined ? o.preselect : (repoFilterList(globalRepoFilter) || []));
+        renderLandingRepoPickerGrid(preselect);
+        const allowCancel = o.allowCancel === true;
+        const closeBtn = document.getElementById('landingRepoPickerClose');
+        const cancelBtn = document.getElementById('landingRepoPickerCancel');
+        if (closeBtn) closeBtn.style.display = allowCancel ? '' : 'none';
+        if (cancelBtn) cancelBtn.style.display = allowCancel ? '' : 'none';
+        document.getElementById('landingRepoPickerModal')?.classList.add('show');
+    }
+
+    function closeLandingRepoPickerModal() {
+        document.getElementById('landingRepoPickerModal')?.classList.remove('show');
+    }
+
+    function reopenLandingRepoPicker() {
+        openLandingRepoPickerModal({
+            preselect: repoFilterList(globalRepoFilter) || [],
+            allowCancel: true
+        });
+    }
+
+    function confirmLandingRepoPicker() {
+        const sel = getLandingRepoPickerSelection();
+        if (!sel.length) {
+            showToast('Select at least one repo to continue.', true);
+            return;
+        }
+        persistLandingRepoSelection(sel);
+        closeLandingRepoPickerModal();
+        if (landingRepoPickerResolver) {
+            landingRepoPickerResolver();
+            landingRepoPickerResolver = null;
+        }
+        try {
+            populateGlobalRepoFilter();
+            setGlobalRepoFilter(globalRepoFilter, { persist: true });
+            applyLandingSelectionToResults();
+        } catch { /* ignore */ }
+    }
+
+    function applyLandingSelectionToResults() {
+        try {
+            resultsPipelines = getResultsPipelineConfigs(globalRepoFilter);
+            populateResultsRepoFilter();
+            repoMsSetValue('resultsRepoFilter', globalRepoFilter, { silent: true });
+            resultsSelectedPipelines.clear();
+            resultsActiveOutcome = null;
+            resultsActiveDay = null;
+            resultsTopPipelinesShowAll = false;
+            clearResultsDashboardSelect();
+            renderResultsTree();
+            renderResults();
+            if (document.getElementById('panelDashboards')?.classList.contains('active')) renderDashboardsIfNeeded();
+        } catch { /* ignore */ }
+    }
+
+    function getReposWithSyncedRuns() {
+        return [...new Set((allRuns || []).map(r => String(r?.repo || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    }
+
+    function reconcileServerRepoFilterAfterHydrate() {
+        if (!isServerHostedApp() || !allRuns?.length) return false;
+        const reposWithRuns = getReposWithSyncedRuns();
+        if (!reposWithRuns.length) return false;
+        const current = repoFilterList(globalRepoFilter);
+        if (!current || !current.length) return false;
+        const hasData = current.some(r => reposWithRuns.includes(r));
+        if (hasData) return false;
+        setGlobalRepoFilter('all', { persist: true });
+        try {
+            showToast(`Selected repo(s) have no runs in the server sync yet — showing all repos with data (${reposWithRuns.join(', ')}).`, true);
+        } catch { /* ignore */ }
+        return true;
+    }
+
+    function ensureLandingRepoSelection() {
+        updateChangeVisibleReposLink();
+        if (!shouldUseLandingRepoPicker()) return Promise.resolve();
+        if (hasLandingRepoSelection()) {
+            const sel = loadLandingRepoSelection();
+            if (sel?.length) globalRepoFilter = sel.join('|');
+            return Promise.resolve();
+        }
+        return new Promise(resolve => {
+            landingRepoPickerResolver = resolve;
+            openLandingRepoPickerModal({ allOff: true, allowCancel: false });
+        });
+    }
 
     function loadGlobalRepoFilterPref() {
-        // Always default to All Repos on page load.
-        // (Repo selection is a session action; we do not restore the last repo automatically.)
+        const sel = loadLandingRepoSelection();
+        if (sel && sel.length) return sel.join('|');
+        if (isServerHostedApp()) return 'all';
+        try {
+            const raw = String(localStorage.getItem(GLOBAL_REPO_FILTER_KEY) || '').trim();
+            if (raw) return normalizeRepoFilterValue(raw);
+        } catch { /* ignore */ }
         return 'all';
     }
 
@@ -4437,9 +4768,10 @@ ${os.map(n => `- ${n}`).join('\n')}
     }
 
     function getKnownRepoNames() {
+        const fromServer = (serverAvailableRepos || []).map(r => String(r || '').trim()).filter(Boolean);
         const fromSync = (loadSyncRepos?.() || []).map(r => String(r?.repo || '').trim()).filter(Boolean);
         const fromPipes = (pipelines || []).map(p => normRepoForPipeline(p)).filter(Boolean);
-        return [...new Set([...fromSync, ...fromPipes])].sort((a, b) => a.localeCompare(b));
+        return [...new Set([...fromServer, ...fromSync, ...fromPipes])].sort((a, b) => a.localeCompare(b));
     }
 
     function populateGlobalRepoFilter() {
@@ -6671,6 +7003,17 @@ ${os.map(n => `- ${n}`).join('\n')}
         const repoName = String(p?.repo || 'Axos.QE.TestIM').trim();
         if (isOrchestratorPipeline(p)) return false;
         if (repoName === 'Axos.QE.Mobile') return isMobilePipeline(p);
+        // Axos.QE.Web: same opt-in "email-results" job pattern as Mobile (see
+        // docs/web-email-notifications.md in that repo — reference pipeline
+        // Web_Enrollment_UAT-OLB_Smoke-Playwright.yml). Matches the same repoName-OR-filename
+        // check the main workflow prompt builder already uses (do NOT additionally require
+        // isWebMonorepoPipeline(p) alone — new/cloned pipelines have no filename yet, so that
+        // would always be false and the toggle would never appear during creation). Still
+        // excludes legacy (non-monorepo) crypto pipelines, which are also tagged repo
+        // 'Axos.QE.Web' but don't use _reusable-playwright.yml / the test_result output this
+        // scaffolding assumes — isLegacyCryptoPipeline is false (not true) for a brand-new,
+        // filename-less pipeline, so this doesn't reintroduce the creation-time bug above.
+        if (repoName === 'Axos.QE.Web' || isWebMonorepoPipeline(p)) return !isLegacyCryptoPipeline(p);
         return repoName === 'Axos.QE.TestIM'
             && !isWebMonorepoPipeline(p)
             && !isCryptoPipeline(p)
@@ -6714,32 +7057,45 @@ ${os.map(n => `- ${n}`).join('\n')}
     }
 
     function appendEmailPromptLines(prompt, p) {
-        const repoName = String(p?.repo || (isMobilePipeline(p) ? 'Axos.QE.Mobile' : 'Axos.QE.TestIM')).trim();
+        const repoName = String(p?.repo || (isMobilePipeline(p) ? 'Axos.QE.Mobile' : (isWebMonorepoPipeline(p) ? 'Axos.QE.Web' : 'Axos.QE.TestIM'))).trim();
         const isMobile = repoName === 'Axos.QE.Mobile';
+        const isWeb = repoName === 'Axos.QE.Web';
+        // Mobile and Web both use the opt-in standalone `email-results` job pattern (as opposed
+        // to TestIM's inline steps inside its existing `test-results` job) — see each repo's own
+        // docs/*-email-notifications.md for why: Mobile/Web callers don't already have a
+        // dorny/test-reporter "test-results" job the way TestIM's template does.
+        const usesEmailResultsJob = isMobile || isWeb;
         if (p.emailEnabled) {
             const rec = String(p.emailRecipients || '').trim();
-            const mobileSkipGate = "needs.test.outputs.run_tests_result != 'skipped'";
+            const jobSkipGate = isMobile
+                ? "needs.test.outputs.run_tests_result != 'skipped'"
+                : "needs.<job-id-that-calls-_reusable-playwright.yml>.outputs.test_result != 'skipped'"; // e.g. needs.smoke / needs.regression / needs.sanity — match this workflow's own job id
             if (isMobile) {
                 const platform = mobileArtifactPlatform(p);
                 const envSpecific = isMobileEnvSpecific(p);
                 const jobIf = rec
-                    ? `always() && ${mobileSkipGate}`
-                    : `always() && vars.TESTIM_EMAIL_RECIPIENTS != '' && ${mobileSkipGate}`;
+                    ? `always() && ${jobSkipGate}`
+                    : `always() && vars.TESTIM_EMAIL_RECIPIENTS != '' && ${jobSkipGate}`;
                 const reportEnvText = envSpecific
                     ? `REPORT_ENV: ${p.env || 'UAT'} (literal — pipeline is env-pinned; do NOT reference inputs.TEST_ENV)`
                     : `REPORT_ENV: \${{ inputs.TEST_ENV || '${(p.env || 'UAT').toLowerCase()}' }} (from workflow_dispatch TEST_ENV input)`;
                 const runConclusionText = `RUN_CONCLUSION: \${{ needs.test.outputs.run_tests_result }} (run-tests job result, NOT needs.test.result — the reusable-workflow aggregate also reflects publish_junit, so a publish failure after a passing run would falsely read as FAIL; script uses JUnit when real results exist, CANCELLED only for cancel+no/placeholder XML; skip notify when job skipped)`;
                 prompt += `\n\nEMAIL RESULTS (Power Automate): Add an \`email-results\` job to the caller workflow (reference: Mobile_Android_UAT_Smoke-BrowserStack.yml). The job needs: test, if: \`${jobIf}\`, runs-on: ubuntu-latest. Steps: Checkout, Download test-results artifact \`test-results-${platform}-\${{ github.run_id }}\` into \`reports\` (continue-on-error: true, id: detect), Set up Node 20, Email results running \`node tools/build-email-from-junit.mjs\` with continue-on-error: true. Gate the Node + email steps on \`always()\` so missing artifacts still send a REVIEW REQUIRED fallback. Env: JUNIT_GLOB_DIR=reports, REPORT_TITLE=${p.name}, ${reportEnvText}, REPORT_PLATFORM=BrowserStack, POWER_AUTOMATE_EMAIL_WEBHOOK_URL=\${{ secrets.POWER_AUTOMATE_EMAIL_WEBHOOK_URL }}, GITHUB_SERVER_URL/GITHUB_REPOSITORY/GITHUB_RUN_ID, ${runConclusionText}. Do NOT add Testim API env (TESTIM_PAK, TESTIM_EXECUTION_ID). Teams notifications are already handled by _mobile-template.yml — do not duplicate them here.`;
+            } else if (isWeb) {
+                const jobIf = rec
+                    ? `always()`
+                    : `always() && vars.TESTIM_EMAIL_RECIPIENTS != ''`;
+                prompt += `\n\nEMAIL RESULTS (Power Automate): Add an \`email-results\` job to the caller workflow (reference: Web_Enrollment_UAT-OLB_Smoke-Playwright.yml — copy that file's \`email-results\` job structure and comment verbatim, adapting only the values below). The job needs: <the job id already used in this workflow to call _reusable-playwright.yml — e.g. \`smoke\`/\`regression\`/\`sanity\`, keep whatever it already is>, if: \`${jobIf} && ${jobSkipGate}\`, runs-on: ubuntu-latest, permissions: { contents: read, actions: read } (actions:read lets the email script fall back to the GH workflow-run API for duration if the BrowserStack/local wall-clock sidecar file is missing). Steps: Checkout, Download test-results artifact \`test-results-<project_name>-\${{ github.run_id }}\` into \`reports\` (continue-on-error: true, id: detect) — \`<project_name>\` MUST match the exact \`project_name:\` value already passed to _reusable-playwright.yml in this same workflow's \`with:\` block, Set up Node 20, Email results running \`node tools/build-email-from-junit.mjs\` with continue-on-error: true. Gate the Node + email steps on \`always()\`. Env: JUNIT_GLOB_DIR=reports, REPORT_TITLE=${p.name}, REPORT_ENV: \${{ inputs.test_env || '${(p.env || 'UAT').toLowerCase()}' }}, REPORT_PLATFORM: \${{ (inputs.run_target || 'local') == 'browserstack' && 'BrowserStack' || format('Local {0}', inputs.local_browser || 'chromium') }}, POWER_AUTOMATE_EMAIL_WEBHOOK_URL=\${{ secrets.POWER_AUTOMATE_EMAIL_WEBHOOK_URL }}, GITHUB_SERVER_URL/GITHUB_REPOSITORY/GITHUB_RUN_ID, GH_TOKEN=\${{ github.token }}, RUN_CONCLUSION: \${{ needs.<job id>.outputs.test_result }} (the reusable workflow's own \`workflow_call\` output — NOT \`needs.<job>.result\`, which reflects the aggregate including publish_junit). Do NOT add BrowserStack App-Automate or Testim API env vars — BrowserStack duration/build-link enrichment for Web already happens inside _reusable-playwright.yml's \`test\` job itself, not in the email step.`;
             } else {
                 prompt += `\n\nEMAIL RESULTS (Power Automate): In the caller workflow's \`test-results\` job, mirror the "Set up Node (for email)" and "Email results (Power Automate)" steps from Web_AxosBank_UAT_HealthCheck-Testim.yml. The email step runs \`node tools/build-email-from-junit.mjs\`, uses continue-on-error: true, and is gated on \`always() && (steps.detect.outputs.artifact == 'true' || needs.run.result == 'cancelled')\` (artifact optional for cancel — XML optional otherwise). Env: JUNIT_GLOB_DIR=reports, REPORT_TITLE=${p.name}, REPORT_ENV=${p.env || 'UAT'}, POWER_AUTOMATE_EMAIL_WEBHOOK_URL=\${{ secrets.POWER_AUTOMATE_EMAIL_WEBHOOK_URL }}, GITHUB_SERVER_URL/GITHUB_REPOSITORY/GITHUB_RUN_ID, and RUN_CONCLUSION=\${{ needs.run.result }} (required so cancelled runs email/Teams as CANCELLED instead of a false FAIL or "manual review").`;
             }
             if (rec) {
                 const yamlVal = formatEmailRecipientsYamlValue(rec);
-                if (isMobile) {
+                if (usesEmailResultsJob) {
                     if (isRepoVariableRecipientName(rec)) {
-                        prompt += ` Recipients OVERRIDE for this pipeline: set TESTIM_EMAIL_RECIPIENTS=${yamlVal}, gate the email-results job on \`always() && ${mobileSkipGate}\` only (no vars gate), and gate the Node + email steps on \`always()\`.`;
+                        prompt += ` Recipients OVERRIDE for this pipeline: set TESTIM_EMAIL_RECIPIENTS=${yamlVal}, gate the email-results job on \`always() && ${jobSkipGate}\` only (no vars gate), and gate the Node + email steps on \`always()\`.`;
                     } else {
-                        prompt += ` Recipients OVERRIDE for this pipeline: set TESTIM_EMAIL_RECIPIENTS to the literal recipient list "${rec}", gate the email-results job on \`always() && ${mobileSkipGate}\` only (no vars gate), and gate the Node + email steps on \`always()\`.`;
+                        prompt += ` Recipients OVERRIDE for this pipeline: set TESTIM_EMAIL_RECIPIENTS to the literal recipient list "${rec}", gate the email-results job on \`always() && ${jobSkipGate}\` only (no vars gate), and gate the Node + email steps on \`always()\`.`;
                     }
                 } else if (isRepoVariableRecipientName(rec)) {
                     prompt += ` Recipients OVERRIDE for this pipeline: set TESTIM_EMAIL_RECIPIENTS=${yamlVal} and gate the two steps on \`always() && (steps.detect.outputs.artifact == 'true' || needs.run.result == 'cancelled')\` only (no vars gate).`;
@@ -6747,14 +7103,14 @@ ${os.map(n => `- ${n}`).join('\n')}
                     prompt += ` Recipients OVERRIDE for this pipeline: set TESTIM_EMAIL_RECIPIENTS to the literal recipient list "${rec}" and gate the two steps on \`always() && (steps.detect.outputs.artifact == 'true' || needs.run.result == 'cancelled')\` only (no vars gate).`;
                 }
             } else {
-                if (isMobile) {
-                    prompt += ` Recipients: use the shared repo variable — set TESTIM_EMAIL_RECIPIENTS=\${{ vars.TESTIM_EMAIL_RECIPIENTS }} and gate the email-results job on \`always() && vars.TESTIM_EMAIL_RECIPIENTS != '' && ${mobileSkipGate}\` (default behavior).`;
+                if (usesEmailResultsJob) {
+                    prompt += ` Recipients: use the shared repo variable — set TESTIM_EMAIL_RECIPIENTS=\${{ vars.TESTIM_EMAIL_RECIPIENTS }} and gate the email-results job on \`always() && vars.TESTIM_EMAIL_RECIPIENTS != '' && ${jobSkipGate}\` (default behavior).`;
                 } else {
                     prompt += ` Recipients: use the shared repo variable — set TESTIM_EMAIL_RECIPIENTS=\${{ vars.TESTIM_EMAIL_RECIPIENTS }} and add \`&& vars.TESTIM_EMAIL_RECIPIENTS != ''\` to the two steps' if: condition (default behavior).`;
                 }
             }
         } else {
-            if (isMobile) {
+            if (usesEmailResultsJob) {
                 prompt += `\n\nEMAIL RESULTS: Do NOT email — remove the \`email-results\` job from the caller workflow if present.`;
             } else {
                 prompt += `\n\nEMAIL RESULTS: Do NOT email — omit the "Set up Node (for email)" and "Email results (Power Automate)" steps (remove them from the test-results job if present).`;
@@ -6765,7 +7121,7 @@ ${os.map(n => `- ${n}`).join('\n')}
 
     function buildEmailOnlyWorkflowPrompt(p, repoName) {
         const filePath = `.github/workflows/${p.filename || (p.name + '.yml')}`;
-        const jobNote = repoName === 'Axos.QE.Mobile'
+        const jobNote = (repoName === 'Axos.QE.Mobile' || repoName === 'Axos.QE.Web')
             ? `Change only the email-results job. Preserve everything else exactly as committed.\n`
             : `Change only the test-results job email steps. Preserve everything else exactly as committed.\n`;
         let prompt = `Update ONLY the email results steps in the existing workflow file in the repo ${repoName} at:\n${filePath}\n\n` +
@@ -6775,7 +7131,7 @@ ${os.map(n => `- ${n}`).join('\n')}
 
     function buildScheduleAndEmailWorkflowPrompt(p, repoName, kind) {
         const filePath = `.github/workflows/${p.filename || (p.name + '.yml')}`;
-        const emailJob = repoName === 'Axos.QE.Mobile' ? 'email-results' : 'test-results email';
+        const emailJob = (repoName === 'Axos.QE.Mobile' || repoName === 'Axos.QE.Web') ? 'email-results' : 'test-results email';
         const orchNote = kind === 'orchestrator'
             ? `Do NOT rewrite workflow_dispatch inputs, the dispatch job script, or .github/orchestrator/targets.json.\n`
             : `Do NOT rewrite unrelated workflow inputs, jobs, or permissions.\n`;
@@ -7079,6 +7435,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                     `- Implement runner selection via runs-on.group + labels (do NOT target a runner by machine name)`;
             }
             if (p.renamedFrom) prompt += `\n\nAlso delete the old workflow file: .github/workflows/${p.renamedFrom}`;
+            prompt = appendEmailPromptLines(prompt, p);
             return prompt;
         }
 
@@ -11720,6 +12077,10 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         const refEl = document.getElementById('syncRef');
         if (refEl) refEl.value = getStoredSyncRef();
         renderSyncReposDisplay();
+        try {
+            const banner = document.getElementById('hostedSyncServerBanner');
+            if (banner) banner.style.display = canLoadSharedServerData() ? 'block' : 'none';
+        } catch { /* ignore */ }
         document.getElementById('syncModal').classList.add('show');
     }
 
@@ -12470,10 +12831,11 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
 
             if (replaceMode) {
                 // Replace mode: make the local list match the sync payload (destructive by design).
-                removed = pipelines.filter(p => !repoKeys.has(pipelineKey(p))).length;
+                removed = pipelines.filter(p => !repoKeys.has(pipelineKey(p)) && !dirtyBeforeSync.has(pipelineKey(p))).length;
                 for (let i = pipelines.length - 1; i >= 0; i--) {
-                    if (!repoKeys.has(pipelineKey(pipelines[i]))) {
-                        removeKeyFromAllDashboards(pipelineKey(pipelines[i])); // drop stale dashboard refs
+                    const pk = pipelineKey(pipelines[i]);
+                    if (!repoKeys.has(pk) && !dirtyBeforeSync.has(pk)) {
+                        removeKeyFromAllDashboards(pk); // drop stale dashboard refs
                         pipelines.splice(i, 1);
                     }
                 }
@@ -12595,6 +12957,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 }
 
                 const k = pipelineKey(parsed);
+                if (dirtyBeforeSync.has(k)) continue;
                 const idx = pipelines.findIndex(p => pipelineKey(p) === k);
                 if (idx >= 0) { pipelines[idx] = parsed; updated++; }
                 else { pipelines.push(parsed); added++; }
@@ -12777,7 +13140,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             hydrateResultsPipelinesFromCatalog();
             populateResultsRepoFilter();
             renderResultsTree();
-            updateResultsEmptyStateForLocal();
+            updateResultsEmptyState();
         } catch { /* ignore */ }
     }
 
@@ -13596,15 +13959,12 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
         document.getElementById('panel' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
         if (tab === 'results') {
-            // Always refresh the Results sidebar from the Pipelines catalog — do not
-            // require a successful runs fetch. Otherwise a failed Fetch (0 runs) or a
-            // refresh leaves the left tree empty even though YMLs are configured.
             try { hydrateResultsPipelinesFromCatalog(); } catch { /* ignore */ }
             if (allRuns.length) renderResults();
             else {
                 try { populateResultsRepoFilter(); } catch { /* ignore */ }
                 try { renderResultsTree(); } catch { /* ignore */ }
-                try { updateResultsEmptyStateForLocal(); } catch { /* ignore */ }
+                try { updateResultsEmptyState(); } catch { /* ignore */ }
             }
         }
         if (tab === 'calendar') renderCalendar();
@@ -13992,14 +14352,114 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         try { filterResults(); } catch { /* ignore */ }
     }
 
-    function restoreResultsCache() {
+    const SHARED_PIPELINES_SYNC_URL = './data/pipelines-sync.json';
+    const SHARED_RESULTS_CACHE_URL = './data/results-cache.json';
+    const SHARED_DASHBOARDS_URL = './data/dashboards.json';
+    const SHARED_QUEUE_URL = './data/queue.json';
+    const SHARED_SYNC_META_URL = './data/sync-meta.json';
+    const SHARED_ORCH_TARGETS_URL = './data/orchestrator-targets.json';
+    const MANUAL_RESULTS_SESSION_KEY = 'pm.manualResultsSession';
+    let resultsLoadedFromSharedServer = false;
+    let dashboardsLoadedFromSharedServer = false;
+    let queueLoadedFromSharedServer = false;
+    let serverSyncMetaAt = null;
+    let serverSyncIntervalMinutes = 30;
+    let serverPagePollMinutes = 5;
+    let lastKnownServerFinishedAt = null;
+    let serverSyncSuccess = true;
+    let serverSyncError = null;
+    let serverDataPollTimer = null;
+    let sharedResultsLoadFailed = false;
+
+    function getServerPagePollMs() {
+        return Math.max(1, serverPagePollMinutes) * 60 * 1000;
+    }
+
+    function isManualResultsSession() {
         try {
-            const raw = localStorage.getItem(RESULTS_CACHE_KEY);
-            if (!raw) return false;
-            const payload = JSON.parse(raw);
-            // Accept empty runs[] so a legitimate 0-run fetch (saved via shouldSaveCache)
-            // restores sync metadata / filters instead of being ignored on reload.
-            if (!payload || !Array.isArray(payload.runs)) return false;
+            let manualAt = parseInt(String(localStorage.getItem(MANUAL_RESULTS_SESSION_KEY) || ''), 10);
+            if (!Number.isFinite(manualAt) || manualAt <= 0) {
+                manualAt = parseInt(String(sessionStorage.getItem(MANUAL_RESULTS_SESSION_KEY) || ''), 10);
+                if (Number.isFinite(manualAt) && manualAt > 0) {
+                    localStorage.setItem(MANUAL_RESULTS_SESSION_KEY, String(manualAt));
+                    try { sessionStorage.removeItem(MANUAL_RESULTS_SESSION_KEY); } catch { /* ignore */ }
+                }
+            }
+            return Number.isFinite(manualAt) && manualAt > 0;
+        } catch {
+            return false;
+        }
+    }
+
+    function markManualResultsPreferLocal() {
+        try { localStorage.setItem(MANUAL_RESULTS_SESSION_KEY, String(Date.now())); } catch { /* ignore */ }
+    }
+
+    function clearManualResultsPreferLocal() {
+        try {
+            localStorage.removeItem(MANUAL_RESULTS_SESSION_KEY);
+            sessionStorage.removeItem(MANUAL_RESULTS_SESSION_KEY);
+        } catch { /* ignore */ }
+    }
+
+    function syncUseServerDataAgainUi() {
+        const show = canLoadSharedServerData() && isManualResultsSession();
+        try {
+            const wrap = document.getElementById('useServerDataAgainWrap');
+            if (wrap) wrap.style.display = show ? 'block' : 'none';
+        } catch { /* ignore */ }
+    }
+
+    function isServerDataMode() {
+        if (!canLoadSharedServerData() || isManualResultsSession()) return false;
+        return resultsLoadedFromSharedServer || dashboardsLoadedFromSharedServer || queueLoadedFromSharedServer;
+    }
+
+    function formatNextGitHubSyncLabel() {
+        if (!serverSyncMetaAt) return '';
+        const intervalMs = Math.max(5, serverSyncIntervalMinutes) * 60 * 1000;
+        const nextAt = serverSyncMetaAt + intervalMs;
+        const remainMs = nextAt - Date.now();
+        if (remainMs <= 0) return 'due soon';
+        const mins = Math.ceil(remainMs / 60000);
+        if (mins < 60) return `~in ${mins}m`;
+        const hrs = Math.floor(mins / 60);
+        const rm = mins % 60;
+        return rm ? `~in ${hrs}h ${rm}m` : `~in ${hrs}h`;
+    }
+
+    function buildServerSyncStatusHtml() {
+        if (!canLoadSharedServerData()) return '';
+        if (isManualResultsSession()) return '';
+        const lastLabel = serverSyncMetaAt
+            ? formatResultsSyncedAt(serverSyncMetaAt)
+            : 'unknown';
+        const nextLabel = formatNextGitHubSyncLabel();
+        const nextPart = nextLabel ? ` &middot; Next GitHub sync: <strong>${escapeHtml(nextLabel)}</strong>` : '';
+        const failPart = (!serverSyncSuccess && serverSyncError)
+            ? ` <span style="color:var(--warning);">Last sync failed: <strong>${escapeHtml(serverSyncError)}</strong></span>`
+            : '';
+        return `<div class="results-sync-filters">Last server sync: <strong>${escapeHtml(lastLabel)}</strong> (Pacific Time)${nextPart}${failPart}</div>`;
+    }
+
+    async function loadServerReposCatalog() {
+        if (!canLoadSharedServerData()) return false;
+        try {
+            const resp = await fetch(SHARED_REPOS_CATALOG_URL, { cache: 'no-store' });
+            if (!resp.ok) return false;
+            const data = await resp.json();
+            const repos = Array.isArray(data?.repos) ? data.repos : [];
+            serverAvailableRepos = repos.map(r => String(r || '').trim()).filter(Boolean);
+            updateChangeVisibleReposLink();
+            return serverAvailableRepos.length > 0;
+        } catch {
+            return false;
+        }
+    }
+
+    function applyResultsCachePayload(payload, opts = {}) {
+        if (!payload || !Array.isArray(payload.runs)) return false;
+        try {
             allRuns = payload.runs;
             for (const r of allRuns) {
                 if (hasEnrichedTestCounts(r?.testCounts)) r._testCountsDone = true;
@@ -14008,22 +14468,312 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 ?? parseInt(String(localStorage.getItem(RESULTS_SYNCED_AT_KEY) || ''), 10);
             const syncedNum = Number(syncedRaw);
             resultsLastSyncedAt = Number.isFinite(syncedNum) && syncedNum > 0 ? syncedNum : null;
-            if (payload.mode) saveResultsFetchModePref(payload.mode);
-            if (payload.perPage) {
-                try { localStorage.setItem(RESULTS_RUN_COUNT_KEY, String(payload.perPage)); } catch { /* ignore */ }
+            if (opts.persistLocal !== false) {
+                if (payload.mode) saveResultsFetchModePref(payload.mode);
+                if (payload.perPage) {
+                    try { localStorage.setItem(RESULTS_RUN_COUNT_KEY, String(payload.perPage)); } catch { /* ignore */ }
+                }
+                if (payload.range?.preset) {
+                    try { localStorage.setItem(RESULTS_DATE_PRESET_KEY, payload.range.preset); } catch { /* ignore */ }
+                }
+                if (payload.range?.dateStart) saveResultsDateStartPref(payload.range.dateStart);
+                if (payload.range?.dateEnd) saveResultsDateEndPref(payload.range.dateEnd);
             }
-            if (payload.range?.preset) {
-                try { localStorage.setItem(RESULTS_DATE_PRESET_KEY, payload.range.preset); } catch { /* ignore */ }
-            }
-            if (payload.range?.dateStart) saveResultsDateStartPref(payload.range.dateStart);
-            if (payload.range?.dateEnd) saveResultsDateEndPref(payload.range.dateEnd);
             resultsLastFetchFilters = normalizeResultsFetchFilters(payload);
             if (Array.isArray(payload.repos) && payload.repos.length && resultsLastFetchFilters) {
                 resultsLastFetchFilters.repos = payload.repos;
             }
             missingWorkflows = [];
             markDashboardsDirty();
+            if (opts.persistLocal !== false) {
+                try {
+                    localStorage.setItem(RESULTS_CACHE_KEY, JSON.stringify(payload));
+                    if (resultsLastSyncedAt) localStorage.setItem(RESULTS_SYNCED_AT_KEY, String(resultsLastSyncedAt));
+                } catch { /* ignore */ }
+            }
             return true;
+        } catch {
+            return false;
+        }
+    }
+
+    function restoreResultsCache() {
+        try {
+            const raw = localStorage.getItem(RESULTS_CACHE_KEY);
+            if (!raw) return false;
+            return applyResultsCachePayload(JSON.parse(raw), { persistLocal: false });
+        } catch {
+            return false;
+        }
+    }
+
+    function canLoadSharedServerData() {
+        try {
+            const p = String(location.protocol || '').toLowerCase();
+            return p === 'http:' || p === 'https:';
+        } catch {
+            return false;
+        }
+    }
+
+    async function loadServerSyncMeta() {
+        if (!canLoadSharedServerData()) return null;
+        try {
+            const resp = await fetch(SHARED_SYNC_META_URL, { cache: 'no-store' });
+            if (!resp.ok) return null;
+            const meta = await resp.json();
+            const finished = meta?.finishedAt ? Date.parse(meta.finishedAt) : NaN;
+            serverSyncMetaAt = Number.isFinite(finished) && finished > 0 ? finished : null;
+            serverSyncSuccess = meta?.success !== false;
+            serverSyncError = serverSyncSuccess
+                ? null
+                : (String(meta?.error || 'Server sync reported failure').trim() || 'Server sync reported failure');
+            const intervalRaw = meta?.syncIntervalMinutes;
+            const intervalNum = parseInt(String(intervalRaw ?? ''), 10);
+            if (Number.isFinite(intervalNum) && intervalNum >= 5) serverSyncIntervalMinutes = intervalNum;
+            const pagePollRaw = meta?.pageRefreshIntervalMinutes;
+            const pagePollNum = parseInt(String(pagePollRaw ?? ''), 10);
+            const prevPollMinutes = serverPagePollMinutes;
+            if (Number.isFinite(pagePollNum) && pagePollNum >= 1) serverPagePollMinutes = pagePollNum;
+            if (serverDataPollTimer && prevPollMinutes !== serverPagePollMinutes) {
+                startServerDataPoll();
+            }
+            return meta;
+        } catch {
+            return null;
+        }
+    }
+
+    async function loadSharedOrchestratorTargets() {
+        if (!canLoadSharedServerData()) return {};
+        try {
+            const resp = await fetch(SHARED_ORCH_TARGETS_URL, { cache: 'no-store' });
+            if (!resp.ok) return {};
+            const data = await resp.json();
+            return (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+        } catch {
+            return {};
+        }
+    }
+
+    // Server catalog historically stored only filename + schedule. Enrich with the same
+    // YAML-derived fields a browser Sync produces so edit forms get real values instead of
+    // placeholders (BlazeMeter Test ID, orchestrator targets, etc.).
+    function enrichSharedPipelineCatalogEntries(entries, orchTargetsByRepo) {
+        const list = Array.isArray(entries) ? entries : [];
+        const orchMap = (orchTargetsByRepo && typeof orchTargetsByRepo === 'object') ? orchTargetsByRepo : {};
+        return list.map(raw => {
+            if (!raw || typeof raw !== 'object') return raw;
+            const entry = { ...raw };
+            const yamlText = String(entry.yaml || '').trim();
+            if (yamlText) {
+                try {
+                    const parsed = parseCallerWorkflowYaml(yamlText);
+                    if (parsed && typeof parsed === 'object') {
+                        for (const [k, v] of Object.entries(parsed)) {
+                            if (v !== undefined) entry[k] = v;
+                        }
+                    }
+                } catch { /* ignore bad yaml */ }
+                delete entry.yaml;
+            }
+            const setName = String(entry.orchestratorSet || '').trim();
+            const repo = String(entry.repo || '').trim();
+            if (setName && repo && !Array.isArray(entry.orchestratorTargets)) {
+                const sets = orchMap[repo];
+                if (sets && typeof sets === 'object' && Array.isArray(sets[setName])) {
+                    entry.orchestratorTargets = sets[setName];
+                }
+            }
+            return entry;
+        });
+    }
+
+    async function loadSharedPipelinesSync(opts = {}) {
+        if (!canLoadSharedServerData()) return false;
+        try {
+            const resp = await fetch(SHARED_PIPELINES_SYNC_URL, { cache: 'no-store' });
+            if (!resp.ok) return false;
+            let jsonData = await resp.json();
+            if (!Array.isArray(jsonData) || !jsonData.length) return false;
+            // Defensive: tolerate a nested array shape ([[{...}],[{...}]]) by flattening
+            // one level so each entry is a pipeline object, not an array.
+            if (jsonData.some(e => Array.isArray(e))) {
+                jsonData = jsonData.reduce((acc, e) => acc.concat(Array.isArray(e) ? e : [e]), []);
+            }
+            const orchTargets = await loadSharedOrchestratorTargets();
+            jsonData = enrichSharedPipelineCatalogEntries(jsonData, orchTargets);
+            // Poll/replace must not clobber pipelines with unsaved local edits.
+            let dirtyKeys = new Set();
+            try {
+                dirtyKeys = new Set(
+                    getChanges()
+                        .filter(c => c?.pipeline)
+                        .map(c => pipelineKey(c.pipeline))
+                        .filter(Boolean)
+                );
+            } catch { dirtyKeys = new Set(); }
+            if (opts.replace !== false && dirtyKeys.size) {
+                const before = new Map((pipelines || []).map(p => [pipelineKey(p), p]));
+                syncFileContent = JSON.stringify(jsonData);
+                processSyncInput({ replace: true });
+                for (const k of dirtyKeys) {
+                    const kept = before.get(k);
+                    if (!kept) continue;
+                    const idx = pipelines.findIndex(p => pipelineKey(p) === k);
+                    if (idx >= 0) pipelines[idx] = kept;
+                    else pipelines.push(kept);
+                }
+                try { localStorage.setItem(STORAGE_KEY, JSON.stringify(pipelines)); } catch { /* ignore */ }
+                try { renderPipelines(); } catch { /* ignore */ }
+                try { updateSaveBar(); } catch { /* ignore */ }
+                return true;
+            }
+            syncFileContent = JSON.stringify(jsonData);
+            processSyncInput({ replace: opts.replace !== false });
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    async function loadSharedResultsCache() {
+        if (!canLoadSharedServerData()) return false;
+        try {
+            const resp = await fetch(SHARED_RESULTS_CACHE_URL, { cache: 'no-store' });
+            if (!resp.ok) {
+                sharedResultsLoadFailed = true;
+                return false;
+            }
+            const payload = await resp.json();
+            const ok = applyResultsCachePayload(payload, { persistLocal: false });
+            if (ok) {
+                resultsLoadedFromSharedServer = true;
+                sharedResultsLoadFailed = false;
+            } else {
+                sharedResultsLoadFailed = true;
+            }
+            return ok;
+        } catch {
+            sharedResultsLoadFailed = true;
+            return false;
+        }
+    }
+
+    function updateResultsEmptyState() {
+        if (allRuns.length) return;
+        const empty = document.getElementById('resultsEmpty');
+        const tableWrap = document.getElementById('resultsTableWrap');
+        const metricsArea = document.getElementById('metricsArea');
+        if (empty) empty.style.display = '';
+        if (tableWrap) tableWrap.style.display = 'none';
+        if (metricsArea) metricsArea.style.display = 'none';
+        try { renderResultsSyncBanner(); } catch { /* ignore */ }
+        try {
+            document.getElementById('emailNoData').style.display = 'block';
+            document.getElementById('emailReady').style.display = 'none';
+        } catch { /* ignore */ }
+        const tokenCallout = document.getElementById('resultsEmptyTokenCallout');
+        const serverNotice = document.getElementById('resultsEmptyServerNotice');
+        const emptyMsg = document.getElementById('resultsEmptyMessage');
+        const serverDetail = document.getElementById('resultsEmptyServerDetail');
+        const onServer = canLoadSharedServerData() && !isManualResultsSession();
+        const showServerIssue = onServer && (sharedResultsLoadFailed || !serverSyncSuccess);
+        if (tokenCallout) tokenCallout.style.display = showServerIssue ? 'none' : 'inline-block';
+        if (serverNotice) serverNotice.style.display = showServerIssue ? 'inline-block' : 'none';
+        if (emptyMsg) {
+            emptyMsg.textContent = showServerIssue
+                ? 'Server auto-sync did not provide results for this browser session.'
+                : 'Click "Fetch Results" to load your pipeline run data with live metrics.';
+        }
+        if (serverDetail && showServerIssue) {
+            const err = String(serverSyncError || '').trim();
+            const suffix = err
+                ? ` Last sync error: <strong>${escapeHtml(err)}</strong>.`
+                : ' The shared <code>data/results-cache.json</code> file is missing or could not be loaded.';
+            serverDetail.innerHTML = `Ask your QE admin to run <code>Sync-PipelineManagerData.ps1 -ResultsOnly</code> on the server.${suffix} Or use <strong>Fetch Results</strong> with your own GitHub PAT.`;
+        }
+    }
+
+    function applySharedDashboardsPayload(payload, opts = {}) {
+        if (!payload || !Array.isArray(payload.dashboards) || !payload.dashboards.length) return false;
+        try {
+            const incoming = payload.dashboards.map(cleanDashboard).filter(Boolean);
+            if (!incoming.length) return false;
+            const reposInPayload = [...new Set(incoming.map(d => String(d.repo || '').trim()).filter(Boolean))];
+            for (const repoKey of reposInPayload) {
+                const repoIncoming = incoming.filter(d => String(d.repo || '').trim() === repoKey);
+                const hasPending = getDashboardChanges(repoKey).length > 0;
+                if (hasPending) {
+                    const workingIds = new Set(dashboardsForRepo(repoKey).map(d => d.id));
+                    const remoteOnly = repoIncoming.filter(d => !workingIds.has(d.id));
+                    if (remoteOnly.length) {
+                        dashboardsState.dashboards.push(...remoteOnly.map(d => cloneJson(cleanDashboard(d))).filter(Boolean));
+                    }
+                    replaceDashboardsSnapshotForRepo(repoKey, repoIncoming);
+                    markDashboardsRemoteSynced(repoKey);
+                } else {
+                    const workingForRepo = dashboardsForRepo(repoKey);
+                    const incomingIds = new Set(repoIncoming.map(d => d.id));
+                    const localOnly = workingForRepo.filter(d => !incomingIds.has(d.id));
+                    dashboardsState.dashboards = (dashboardsState.dashboards || []).filter(d => String(d?.repo || '').trim() !== repoKey);
+                    dashboardsState.dashboards.push(
+                        ...repoIncoming.map(d => cloneJson(cleanDashboard(d))).filter(Boolean),
+                        ...localOnly.map(d => cloneJson(cleanDashboard(d))).filter(Boolean)
+                    );
+                    replaceDashboardsSnapshotForRepo(repoKey, repoIncoming);
+                    markDashboardsRemoteSynced(repoKey);
+                }
+            }
+            if (opts.persistLocal !== false) saveDashboardsState();
+            markDashboardsDirty();
+            dashboardsLoadedFromSharedServer = true;
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    async function loadSharedDashboards(opts = {}) {
+        if (!canLoadSharedServerData()) return false;
+        try {
+            const resp = await fetch(SHARED_DASHBOARDS_URL, { cache: 'no-store' });
+            if (!resp.ok) return false;
+            const payload = await resp.json();
+            return applySharedDashboardsPayload(payload, { persistLocal: opts.persistLocal });
+        } catch {
+            return false;
+        }
+    }
+
+    function applySharedQueuePayload(payload) {
+        if (!payload) return false;
+        try {
+            queueQueued = Array.isArray(payload.queued) ? payload.queued : [];
+            queueRunning = Array.isArray(payload.running) ? payload.running : [];
+            const updated = payload.updatedAt ? Date.parse(payload.updatedAt) : NaN;
+            queueLastFetchMs = Number.isFinite(updated) && updated > 0 ? updated : Date.now();
+            queueLastFetchDiag = payload.diag || {
+                repos: 0,
+                queued: queueQueued.length,
+                running: queueRunning.length
+            };
+            try { resolveQueueOrchestrators(); } catch { /* ignore */ }
+            queueLoadedFromSharedServer = true;
+            renderQueue();
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    async function loadSharedQueue() {
+        if (!canLoadSharedServerData()) return false;
+        try {
+            const resp = await fetch(SHARED_QUEUE_URL, { cache: 'no-store' });
+            if (!resp.ok) return false;
+            const payload = await resp.json();
+            return applySharedQueuePayload(payload);
         } catch {
             return false;
         }
@@ -14048,15 +14798,23 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
 
     function buildSyncBannerHtml() {
         if (!allRuns.length || !resultsLastSyncedAt) return '';
+        const isManualSession = isManualResultsSession();
         const filtersDesc = describeResultsFetchFilters(resultsLastFetchFilters);
         const filtersHtml = filtersDesc
             ? `<div class="results-sync-filters">Fetched with: <strong>${escapeHtml(filtersDesc)}</strong></div>`
             : '';
         const staleHtml = buildResultsStaleFilterHtml(true);
+        let sourceHtml = '';
+        if (isManualSession) {
+            sourceHtml = `<div class="results-sync-filters" style="color:var(--warning);">Viewing <strong>your manual fetch</strong> (personal to this browser — not shared server data).${serverSyncMetaAt ? ` Server last synced: <strong>${escapeHtml(formatResultsSyncedAt(serverSyncMetaAt))}</strong>.` : ''} <button type="button" class="btn-lite" onclick="useServerDataAgain()" title="Reload shared server cache">Use server data again</button></div>`;
+        } else if (resultsLoadedFromSharedServer) {
+            sourceHtml = buildServerSyncStatusHtml() || '<div class="results-sync-filters">Source: <strong>server auto-sync</strong></div>';
+        }
         return `<div class="results-sync-banner" style="display:flex;">
             <div class="results-sync-body">
                 <span class="results-sync-text">Last synced: <strong>${escapeHtml(formatResultsSyncedAt(resultsLastSyncedAt))}</strong> (Pacific Time)</span>
                 ${filtersHtml}
+                ${sourceHtml}
                 ${staleHtml}
             </div>
             <button type="button" class="btn-lite" onclick="fetchAllResults()" title="Fetch fresh results from GitHub">Refresh</button>
@@ -14095,12 +14853,165 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             ? `<div class="results-sync-filters">Fetched with: <strong>${escapeHtml(filtersDesc)}</strong></div>`
             : '';
         const staleHtml = buildResultsStaleFilterHtml(false);
+        let sourceHtml = '';
+        if (isManualResultsSession()) {
+            sourceHtml = `<div class="results-sync-filters" style="color:var(--warning);">Viewing <strong>your manual fetch</strong> (personal). <button type="button" class="btn-lite" onclick="useServerDataAgain()">Use server data again</button></div>`;
+        } else if (resultsLoadedFromSharedServer) {
+            sourceHtml = buildServerSyncStatusHtml();
+        }
         el.innerHTML = `<div class="results-sync-body">
                 <span class="results-sync-text">Last synced: <strong>${escapeHtml(formatResultsSyncedAt(resultsLastSyncedAt))}</strong> (Pacific Time)</span>
                 ${filtersHtml}
+                ${sourceHtml}
                 ${staleHtml}
             </div>
             <button type="button" class="btn-lite" onclick="fetchAllResults()" title="Fetch fresh results from GitHub">Refresh</button>`;
+    }
+
+    async function useServerDataAgain() {
+        if (!canLoadSharedServerData()) {
+            showToast('Server data is only available when hosted on http(s).');
+            return;
+        }
+        try { clearManualResultsPreferLocal(); } catch { /* ignore */ }
+        try { localStorage.removeItem(RESULTS_CACHE_KEY); } catch { /* ignore */ }
+        try { localStorage.removeItem(RESULTS_SYNCED_AT_KEY); } catch { /* ignore */ }
+        resultsLoadedFromSharedServer = false;
+        allRuns = [];
+        resultsLastSyncedAt = null;
+        resultsLastFetchFilters = null;
+        markDashboardsDirty();
+        await loadServerSyncMeta();
+        if (serverSyncMetaAt) lastKnownServerFinishedAt = serverSyncMetaAt;
+        await loadSharedPipelinesSync({ replace: true });
+        await loadSharedDashboards({ persistLocal: false });
+        const ok = await loadSharedResultsCache();
+        await loadSharedQueue();
+        if (!ok && !dashboardsLoadedFromSharedServer && !queueLoadedFromSharedServer) {
+            try { updateResultsEmptyState(); } catch { /* ignore */ }
+            showToast('Could not load server results cache. Run sync on the server or try again later.', true);
+            return;
+        }
+        try { reconcileServerRepoFilterAfterHydrate(); } catch { /* ignore */ }
+        if (hasLandingRepoSelection() || repoFilterList(globalRepoFilter)) {
+            try { applyLandingSelectionToResults(); } catch { /* ignore */ }
+        }
+        hydrateAllRunsTestCountsFromCache();
+        if (allRuns.length) {
+            renderResults();
+        } else {
+            try { updateResultsEmptyState(); } catch { /* ignore */ }
+        }
+        if (document.getElementById('panelDashboards')?.classList.contains('active')) renderDashboardsIfNeeded();
+        if (document.getElementById('panelQueue')?.classList.contains('active')) renderQueue();
+        try { refreshSyncBanners(); } catch { /* ignore */ }
+        try {
+            const wrap = document.getElementById('useServerDataAgainWrap');
+            if (wrap) wrap.style.display = 'none';
+        } catch { /* ignore */ }
+        syncUseServerDataAgainUi();
+        startServerDataPoll();
+        if (ok || allRuns.length) {
+            showToast('Loaded shared server data.');
+        }
+    }
+
+    async function pollServerDataFromIis() {
+        if (!canLoadSharedServerData() || isManualResultsSession()) {
+            if (canLoadSharedServerData()) {
+                try { await loadServerSyncMeta(); } catch { /* ignore */ }
+                try { refreshSyncBanners(); } catch { /* ignore */ }
+            }
+            return;
+        }
+        try {
+            const meta = await loadServerSyncMeta();
+            const finished = meta?.finishedAt ? Date.parse(meta.finishedAt) : NaN;
+            const finishedAt = Number.isFinite(finished) && finished > 0 ? finished : null;
+            if (!finishedAt || (lastKnownServerFinishedAt && finishedAt === lastKnownServerFinishedAt)) {
+                if (!isServerDataMode()) {
+                    await loadServerReposCatalog();
+                    await loadSharedPipelinesSync({ replace: false });
+                    const ok = await loadSharedResultsCache();
+                    if (ok || await loadSharedDashboards({ persistLocal: false }) || await loadSharedQueue()) {
+                        try { reconcileServerRepoFilterAfterHydrate(); } catch { /* ignore */ }
+                        hydrateAllRunsTestCountsFromCache();
+                        renderResults();
+                    }
+                } else if (!resultsLoadedFromSharedServer) {
+                    await loadServerReposCatalog();
+                    await loadSharedPipelinesSync({ replace: false });
+                    const ok = await loadSharedResultsCache();
+                    if (ok) {
+                        try { reconcileServerRepoFilterAfterHydrate(); } catch { /* ignore */ }
+                        hydrateAllRunsTestCountsFromCache();
+                        renderResults();
+                    }
+                } else {
+                    const hadRuns = allRuns.length;
+                    const ok = await loadSharedResultsCache();
+                    await loadSharedDashboards({ persistLocal: false });
+                    await loadSharedQueue();
+                    if (ok) {
+                        try { reconcileServerRepoFilterAfterHydrate(); } catch { /* ignore */ }
+                        hydrateAllRunsTestCountsFromCache();
+                        renderResults();
+                    }
+                    if (document.getElementById('panelDashboards')?.classList.contains('active')) renderDashboardsIfNeeded();
+                    if (document.getElementById('panelQueue')?.classList.contains('active')) renderQueue();
+                    if (ok && allRuns.length !== hadRuns) {
+                        try { showToast('Server data updated.'); } catch { /* ignore */ }
+                    }
+                }
+                try { refreshSyncBanners(); } catch { /* ignore */ }
+                if (!allRuns.length) {
+                    try { updateResultsEmptyState(); } catch { /* ignore */ }
+                }
+                return;
+            }
+            lastKnownServerFinishedAt = finishedAt;
+            await loadServerReposCatalog();
+            try { populateGlobalRepoFilter(); } catch { /* ignore */ }
+            await loadSharedPipelinesSync({ replace: true });
+            await loadSharedDashboards({ persistLocal: false });
+            const hadRuns = allRuns.length;
+            const ok = await loadSharedResultsCache();
+            await loadSharedQueue();
+            if (ok) {
+                try { reconcileServerRepoFilterAfterHydrate(); } catch { /* ignore */ }
+                hydrateAllRunsTestCountsFromCache();
+                renderResults();
+            }
+            if (document.getElementById('panelDashboards')?.classList.contains('active')) renderDashboardsIfNeeded();
+            if (document.getElementById('panelQueue')?.classList.contains('active')) renderQueue();
+            try { refreshSyncBanners(); } catch { /* ignore */ }
+            if (!allRuns.length) {
+                try { updateResultsEmptyState(); } catch { /* ignore */ }
+            }
+            if (ok && allRuns.length !== hadRuns) {
+                try { showToast('Server data updated.'); } catch { /* ignore */ }
+            } else if (dashboardsLoadedFromSharedServer || queueLoadedFromSharedServer) {
+                try { showToast('Server data updated.'); } catch { /* ignore */ }
+            }
+        } catch { /* ignore */ }
+    }
+
+    function startServerDataPoll() {
+        if (serverDataPollTimer) {
+            clearInterval(serverDataPollTimer);
+            serverDataPollTimer = null;
+        }
+        if (!canLoadSharedServerData()) return;
+        serverDataPollTimer = setInterval(() => {
+            pollServerDataFromIis().catch(() => { /* ignore */ });
+        }, getServerPagePollMs());
+    }
+
+    function stopServerDataPoll() {
+        if (serverDataPollTimer) {
+            clearInterval(serverDataPollTimer);
+            serverDataPollTimer = null;
+        }
     }
 
     function loadResultsRunCountPref() {
@@ -14362,46 +15273,13 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         return out;
     }
 
-    // Results sidebar lists pipelines from the Pipelines catalog — independent of
-    // whether Fetch Results succeeded. Without this, a 0-run fetch (or page reload
-    // after one) leaves #resultsTree empty while the Pipelines tab still shows YMLs.
     function hydrateResultsPipelinesFromCatalog(repoFilterOverride) {
         const next = getResultsPipelineConfigs(repoFilterOverride);
         if (next.length) {
             resultsPipelines = next;
             return true;
         }
-        // Keep any previously populated list if the catalog is momentarily empty.
         return (resultsPipelines || []).length > 0;
-    }
-
-    function updateResultsEmptyStateForLocal() {
-        if (allRuns.length) return;
-        const empty = document.getElementById('resultsEmpty');
-        const tableWrap = document.getElementById('resultsTableWrap');
-        const metricsArea = document.getElementById('metricsArea');
-        if (empty) empty.style.display = '';
-        if (tableWrap) tableWrap.style.display = 'none';
-        if (metricsArea) metricsArea.style.display = 'none';
-        try { renderResultsSyncBanner(); } catch { /* ignore */ }
-        try {
-            document.getElementById('emailNoData').style.display = 'block';
-            document.getElementById('emailReady').style.display = 'none';
-        } catch { /* ignore */ }
-        const callout = document.querySelector('#resultsEmpty .token-callout');
-        if (!callout) return;
-        const hasToken = !!getGitHubToken();
-        callout.style.display = hasToken ? 'none' : 'inline-block';
-        const msg = document.querySelector('#resultsEmpty p');
-        if (msg) {
-            if (hasToken && (resultsPipelines || []).length) {
-                msg.textContent = 'Pipelines are listed on the left. Click "Fetch Results" to load run history from GitHub (check PAT / org SSO if fetches fail).';
-            } else if (hasToken) {
-                msg.textContent = 'No pipelines in the catalog yet — Sync from GitHub on the Pipelines tab, then Fetch Results.';
-            } else {
-                msg.textContent = 'Click "Fetch Results" to load your pipeline run data with live metrics.';
-            }
-        }
     }
 
     async function ghFetch(path) {
@@ -15005,9 +15883,6 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         const list = Array.isArray(runs) ? runs : [];
         const actionableRuns = list.filter(isDashboardActionableRun);
         const anyEnriched = list.some(r => hasEnrichedTestCounts(r?.testCounts));
-        // Use test-level counts whenever any run is enriched (don't wait for every
-        // run in the window to settle — Mobile/shared-cache windows often have a
-        // couple of incomplete enrichments that would otherwise force run-level %).
         const useTestLevel = anyEnriched;
         let passed = 0;
         let failed = 0;
@@ -15789,12 +16664,10 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 status.className = 'pat-status';
                 showToast('No pipelines configured to fetch.');
                 showFetchProgress(false);
-                try { updateResultsEmptyStateForLocal(); } catch { /* ignore */ }
+                try { updateResultsEmptyState(); } catch { /* ignore */ }
                 return;
             }
 
-            // Show the catalog in the Results sidebar immediately so YMLs are visible
-            // even if every GitHub runs call fails.
             try {
                 populateResultsRepoFilter();
                 renderResultsTree();
@@ -15954,13 +16827,13 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 } catch { /* ignore */ }
             }
             markDashboardsDirty();
-            // Reveal the dashboard immediately with best-available data (fast path), but hold
-            // the fetch spinner/progress bar open until background test-count enrichment also
-            // settles — a single continuous "busy" state instead of "done" then a second,
-            // separately-flickering load.
+            try { markManualResultsPreferLocal(); } catch { /* ignore */ }
+            resultsLoadedFromSharedServer = false;
+            stopServerDataPoll();
+            syncUseServerDataAgainUi();
             const enrichDone = allRuns.length
                 ? renderResults({ holdRepaint: true })
-                : (populateResultsRepoFilter(), renderResultsTree(), updateResultsEmptyStateForLocal(), Promise.resolve());
+                : (populateResultsRepoFilter(), renderResultsTree(), updateResultsEmptyState(), Promise.resolve());
             if (allRuns.length) {
                 playDashboardCinematic(document.getElementById('metricsArea'));
                 revealQueueTab();
@@ -15971,9 +16844,6 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 document.getElementById('emailReady').style.display = 'block';
                 populateEmailPipePicker();
             }
-            // By now test-count enrichment already finished above (interleaved with fetching),
-            // so this is just a cheap safety net for anything outside that pass's scope — same
-            // straggler cap applies, so a couple of slow/stuck runs still can't hold this open.
             await withTimeout(enrichDone, 4000);
             status.innerHTML = `<span style="color:var(--success); font-weight:600;">&#10003; Loaded ${allRuns.length} run(s)</span> across ${resultsPipelines.length} pipeline(s) (${totalMatched} matched in GitHub)${miss}.`;
             status.className = 'pat-status ok';
@@ -18815,7 +19685,22 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
 
     async function fetchQueue() {
         const pat = getGitHubToken();
-        if (!pat) { showToast('No GitHub token — set one via Settings in the Pipelines sidebar.', true); return; }
+        if (!pat) {
+            if (canLoadSharedServerData()) {
+                const ok = await loadSharedQueue();
+                if (ok) {
+                    renderQueue();
+                    return;
+                }
+            }
+            if (queueLoadedFromSharedServer) {
+                renderQueue();
+                return;
+            }
+            showToast('No GitHub token — set one via Settings in the Pipelines sidebar.', true);
+            return;
+        }
+
         if (queueFetching) return;
         queueFetching = true;
         const btn = document.getElementById('queueRefreshBtn');
@@ -21210,59 +22095,107 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
         }
     })();
 
-    // ══════════════════════════════════════════
-    //  INIT
-    // ══════════════════════════════════════════
-    initCustomFeatures();
-    initPipelines();
-    renderSkippedWorkflowsStat();
-    populateGlobalRepoFilter();
-    setGlobalRepoFilter(globalRepoFilter, { persist: false });
-    purgeBadDashTestCountsCache();
-    const hadResultsCache = restoreResultsCache();
-    if (hadResultsCache) {
-        try { applyCachedRepoFilterFromLastFetch(); } catch { /* ignore */ }
-        if (!resultsPipelines?.length && resultsLastFetchFilters) {
-            try {
-                resultsPipelines = getResultsPipelineConfigs(resolveRepoFilterFromFetchFilters(resultsLastFetchFilters));
-            } catch { /* ignore */ }
-        }
-    }
-    initResultsRunCountPref();
-    initResultsFetchControls();
-    // Always seed the Results sidebar from the Pipelines catalog (YMLs), even before
-    // any successful Fetch Results. Previously the tree stayed empty until runs loaded.
-    try {
-        hydrateResultsPipelinesFromCatalog();
-        populateResultsRepoFilter();
-        renderResultsTree();
-        updateResultsEmptyStateForLocal();
-    } catch { /* ignore */ }
-    if (hadResultsCache) {
-        if (allRuns.length) {
-            hydrateAllRunsTestCountsFromCache();
-            try { revealDashboardsTab(); } catch { /* ignore */ }
-            try { revealQueueTab(); } catch { /* ignore */ }
-            try {
-                document.getElementById('emailNoData').style.display = 'none';
-                document.getElementById('emailReady').style.display = 'block';
-                populateEmailPipePicker();
-            } catch { /* ignore */ }
-            renderResults();
-            if (document.getElementById('panelDashboards')?.classList.contains('active')) renderDashboardsIfNeeded();
+    async function initPipelineManagerApp() {
+        const manualSession = isManualResultsSession();
+        initCustomFeatures();
+        initPipelines();
+        renderSkippedWorkflowsStat();
+
+        try { await loadServerSyncMeta(); } catch { /* ignore */ }
+        try { await loadServerReposCatalog(); } catch { /* ignore */ }
+        try { await loadSharedPipelinesSync(); } catch { /* ignore */ }
+        try { await loadSharedDashboards({ persistLocal: false }); } catch { /* ignore */ }
+
+        await ensureLandingRepoSelection();
+
+        populateGlobalRepoFilter();
+        setGlobalRepoFilter(globalRepoFilter, { persist: false });
+        purgeBadDashTestCountsCache();
+
+        let hadResultsCache = false;
+        if (manualSession) {
+            hadResultsCache = restoreResultsCache();
+            resultsLoadedFromSharedServer = false;
+            syncUseServerDataAgainUi();
         } else {
-            // Restored a legitimate empty fetch — keep filters/sidebar, show empty state.
-            try { populateResultsRepoFilter(); } catch { /* ignore */ }
-            try { renderResultsTree(); } catch { /* ignore */ }
-            try { updateResultsEmptyStateForLocal(); } catch { /* ignore */ }
+            try { hadResultsCache = await loadSharedResultsCache(); } catch { /* ignore */ }
+            if (hadResultsCache) {
+                try { clearManualResultsPreferLocal(); } catch { /* ignore */ }
+            } else {
+                hadResultsCache = restoreResultsCache();
+                if (hadResultsCache) {
+                    resultsLoadedFromSharedServer = false;
+                    try { markManualResultsPreferLocal(); } catch { /* ignore */ }
+                }
+            }
+            syncUseServerDataAgainUi();
         }
+        try { await loadSharedQueue(); } catch { /* ignore */ }
+
+        if (hadResultsCache) {
+            try { reconcileServerRepoFilterAfterHydrate(); } catch { /* ignore */ }
+            if (hasLandingRepoSelection() || repoFilterList(globalRepoFilter)) {
+                try { applyLandingSelectionToResults(); } catch { /* ignore */ }
+            } else {
+                try { applyCachedRepoFilterFromLastFetch(); } catch { /* ignore */ }
+            }
+            if (!resultsPipelines?.length) {
+                try {
+                    resultsPipelines = getResultsPipelineConfigs(globalRepoFilter !== 'all' ? globalRepoFilter : resolveRepoFilterFromFetchFilters(resultsLastFetchFilters));
+                } catch { /* ignore */ }
+            }
+        }
+        initResultsRunCountPref();
+        initResultsFetchControls();
+        try {
+            hydrateResultsPipelinesFromCatalog();
+            populateResultsRepoFilter();
+            renderResultsTree();
+            updateResultsEmptyState();
+        } catch { /* ignore */ }
+        if (hadResultsCache) {
+            if (allRuns.length) {
+                hydrateAllRunsTestCountsFromCache();
+                try { revealDashboardsTab(); } catch { /* ignore */ }
+                try { revealQueueTab(); } catch { /* ignore */ }
+                try {
+                    document.getElementById('emailNoData').style.display = 'none';
+                    document.getElementById('emailReady').style.display = 'block';
+                    populateEmailPipePicker();
+                } catch { /* ignore */ }
+                renderResults();
+                if (document.getElementById('panelDashboards')?.classList.contains('active')) renderDashboardsIfNeeded();
+            } else {
+                try { populateResultsRepoFilter(); } catch { /* ignore */ }
+                try { renderResultsTree(); } catch { /* ignore */ }
+                try { updateResultsEmptyState(); } catch { /* ignore */ }
+            }
+        } else if (dashboardsLoadedFromSharedServer) {
+            try { revealDashboardsTab(); } catch { /* ignore */ }
+            if (document.getElementById('panelDashboards')?.classList.contains('active')) renderDashboardsIfNeeded();
+        }
+        if (queueLoadedFromSharedServer) {
+            try { revealQueueTab(); } catch { /* ignore */ }
+        }
+        updateSaveStatus();
+        updatePatDot();
+        updateResultsTokenStatus();
+        try { updateResultsEmptyState(); } catch { /* ignore */ }
+        if (!hadResultsCache && canLoadSharedServerData() && !manualSession && (!serverSyncSuccess || sharedResultsLoadFailed)) {
+            const toastMsg = serverSyncError
+                ? `Server sync issue: ${serverSyncError}`
+                : 'Server results cache is missing — ask QE admin to re-run sync.';
+            try { showToast(toastMsg, true); } catch { /* ignore */ }
+        }
+        try { refreshSyncBanners(); } catch { /* ignore */ }
+        if (canLoadSharedServerData() && !manualSession) {
+            if (serverSyncMetaAt) lastKnownServerFinishedAt = serverSyncMetaAt;
+            startServerDataPoll();
+        }
+        initResultsSidebarResize();
     }
-    updateSaveStatus();
-    updatePatDot();
-    updateResultsTokenStatus();
-    try { updateResultsEmptyStateForLocal(); } catch { /* ignore */ }
-    try { refreshSyncBanners(); } catch { /* ignore */ }
-    initResultsSidebarResize();
+
+    initPipelineManagerApp();
 
     function initResultsSidebarResize() {
         const panel = document.getElementById('panelResults');
@@ -21352,6 +22285,7 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
         const el = document.getElementById('resultsTokenStatus');
         if (!el) return;
         const hasToken = !!getGitHubToken();
+        const hasServerData = resultsLoadedFromSharedServer || dashboardsLoadedFromSharedServer || queueLoadedFromSharedServer;
         if (hasToken) {
             el.textContent = 'Token configured';
             el.style.color = 'var(--success)';
@@ -21359,6 +22293,13 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
             el.style.border = '1px solid rgba(16,185,129,0.35)';
             el.style.cursor = 'default';
             el.onclick = null;
+        } else if (hasServerData) {
+            el.textContent = 'Server data (optional token for live refresh)';
+            el.style.color = 'var(--text-muted)';
+            el.style.background = 'rgba(148,163,184,0.12)';
+            el.style.border = '1px solid rgba(148,163,184,0.35)';
+            el.style.cursor = 'pointer';
+            el.onclick = openPatModal;
         } else {
             el.textContent = 'No token — set in Settings';
             el.style.color = 'var(--error)';
