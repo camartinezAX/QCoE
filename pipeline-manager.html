@@ -2631,6 +2631,53 @@
         return getWebMonorepoDefaultRunTarget();
     }
 
+    function getWebMonorepoRecommendedGrep(teamShort, testTypeKey, featureKey) {
+        const tKey = String(testTypeKey || '').replace(/\s+/g, '');
+        const fKey = String(featureKey || '').replace(/\s+/g, '');
+        return `@${teamShort}_${tKey}_${fKey}`;
+    }
+
+    function hasPersistedGrep(p) {
+        return !!String(p?.grep || '').trim();
+    }
+
+    function shouldPreserveWebMonorepoGrepOnLoad(p, isEdit, isClone, isView) {
+        const grepUserEdited = p.grepUserEdited === true || String(p.grepUserEdited || '').trim().toLowerCase() === 'true';
+        if (grepUserEdited) return true;
+        if (isView && hasPersistedGrep(p)) return true;
+        if (isClone && hasPersistedGrep(p)) return true;
+        if (isEdit && hasPersistedGrep(p)) return true;
+        return false;
+    }
+
+    function updateWebMonorepoGrepRecommend() {
+        const hint = document.getElementById('fGrepRecommend');
+        if (!hint) return;
+        const repo = String(document.getElementById('fRepo')?.value || '').trim();
+        if (repo !== 'Axos.QE.Web') {
+            hint.textContent = '';
+            return;
+        }
+        const brand = document.getElementById('fBrand')?.value;
+        const env = document.getElementById('fEnv')?.value;
+        const testType = document.getElementById('fTestType')?.value;
+        const feature = document.getElementById('fFeature')?.value;
+        if (!brand || !env || !testType || !feature || feature === 'Orchestrators') {
+            hint.textContent = '';
+            return;
+        }
+        const teamKey = (String(brand) === 'OLB 3.0') ? 'OLB3' : String(brand);
+        const teamShortMap = { Enrollment: 'Enr', OutSystems: 'OutSys', Crypto: 'Crypto', 'OLB 3.0': 'OLB3' };
+        const teamShort = teamShortMap[brand] || teamKey;
+        const tKey = String(testType).replace(/\s+/g, '');
+        const fKey = String(feature).replace(/\s+/g, '');
+        const recommended = getWebMonorepoRecommendedGrep(teamShort, tKey, fKey);
+        const current = String(document.getElementById('fGrep')?.value || '').trim();
+        hint.textContent = (current && current === recommended)
+            ? ''
+            : `Recommended: ${recommended}`;
+    }
+
     function isStandardWebRunnerGroup(group) {
         return WEB_STANDARD_RUNNER_GROUPS.has(String(group || '').trim().toLowerCase());
     }
@@ -8416,8 +8463,9 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     </div>
                     <div class="form-group">
                         <label class="form-label">Grep Filter</label>
-                        <input type="text" id="fGrep" placeholder="@Enr_Smoke_Login" value="${p.grep || ''}" oninput="this.dataset.userEdited='1'" ${isView ? 'disabled' : ''}>
-                        <span class="field-help">Auto-generated from team/type/feature. Edit to override.</span>
+                        <input type="text" id="fGrep" placeholder="@Enr_Smoke_Login" value="${p.grep || ''}" oninput="this.dataset.userEdited='1'; updateWebMonorepoGrepRecommend();" ${isView ? 'disabled' : ''}>
+                        <span class="field-help" id="fGrepRecommend" style="color:#60a5fa;"></span>
+                        <span class="field-help">Based on team, type, and feature (same pattern as the pipeline name). Your saved value is kept on reopen.</span>
                     </div>
                 </div>
 
@@ -9068,6 +9116,18 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             } else {
                 runTargetEl.dataset.autoComputed = '1';
                 runTargetEl.dataset.lastComputed = persistedRt;
+            }
+        }
+        const grepEl = document.getElementById('fGrep');
+        if (grepEl && repoName === 'Axos.QE.Web') {
+            if (shouldPreserveWebMonorepoGrepOnLoad(p, isEdit, isClone, isView)) {
+                grepEl.dataset.userEdited = '1';
+            } else {
+                const seed = String(grepEl.value || '').trim();
+                if (seed) {
+                    grepEl.dataset.autoComputed = '1';
+                    grepEl.dataset.lastComputed = seed;
+                }
             }
         }
         if (p.scheduleEnabled && p.schedule) initScheduleFromCron(p.schedule);
@@ -10208,9 +10268,18 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             const teamShortMap = { Enrollment: 'Enr', OutSystems: 'OutSys', Crypto: 'Crypto', 'OLB 3.0': 'OLB3' };
             const teamShort = teamShortMap[brand] || teamKey;
             const grepInput = document.getElementById('fGrep');
-            if (!isOrch && grepInput && !grepInput.dataset.userEdited) {
-                grepInput.value = `@${teamShort}_${tKey}_${fKey}`;
+            if (!isOrch && grepInput && !grepInput.dataset.userEdited && !viewOnlyMode) {
+                const recommended = getWebMonorepoRecommendedGrep(teamShort, tKey, fKey);
+                const current = String(grepInput.value || '').trim();
+                const last = String(grepInput.dataset.lastComputed || '').trim();
+                const shouldUpdate = !current || grepInput.dataset.autoComputed === '1' || (!!last && current === last);
+                if (shouldUpdate && recommended && current !== recommended) {
+                    grepInput.value = recommended;
+                    grepInput.dataset.autoComputed = '1';
+                    grepInput.dataset.lastComputed = recommended;
+                }
             }
+            updateWebMonorepoGrepRecommend();
 
             const projectDirEl = document.getElementById('fProjectDir');
             if (!isOrch && projectDirEl && !projectDirEl.dataset.userEdited) {
@@ -10892,6 +10961,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     base.runTarget = normalizeRunTarget(rawRt) || getWebMonorepoDefaultRunTarget();
                     base.runTargetUserEdited = !!(rtEl && String(rtEl.dataset.userEdited || '') === '1');
                 }
+                const grepEl = document.getElementById('fGrep');
+                base.grepUserEdited = !!(grepEl && String(grepEl.dataset.userEdited || '') === '1');
                 base.localBrowser = v('fLocalBrowser') || 'chromium';
                 base.grep = v('fGrep');
                 base.suite = v('fSuite');
@@ -13234,7 +13305,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 feature,
                 featureDetail: hadOlbPrefix ? `OLB_${feature}` : feature,
                 testType,
-                grep: `@${teamShort}_${testType}_${feature.replace(/\s+/g, '')}`,
+                grep: getWebMonorepoRecommendedGrep(teamShort, testType.replace(/\s+/g, ''), feature.replace(/\s+/g, '')),
                 parallel: '3',
                 retries: '1',
                 runTarget: 'local',
