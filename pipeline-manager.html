@@ -2607,6 +2607,92 @@
         // (this tool's home repo).
         return 'axos-gh-qe-testim';
     }
+
+    // Axos.QE.Web standard pools — leave runner_group blank in generated YAML so
+    // _reusable-playwright.yml picks testim (browserstack) vs mobile (local).
+    const WEB_STANDARD_RUNNER_GROUPS = new Set(['axos-gh-qe-testim', 'axos-gh-qe-mobile']);
+
+    function normalizeRunTarget(v) {
+        return String(v || '').trim().toLowerCase() === 'browserstack' ? 'browserstack' : 'local';
+    }
+
+    function hasPersistedRunTarget(p) {
+        const rt = String(p?.runTarget || '').trim().toLowerCase();
+        return rt === 'local' || rt === 'browserstack';
+    }
+
+    // New Web pipelines default to local; any team may switch to browserstack.
+    function getWebMonorepoDefaultRunTarget() {
+        return 'local';
+    }
+
+    function getWebMonorepoRunTargetForForm(p) {
+        if (hasPersistedRunTarget(p)) return normalizeRunTarget(p.runTarget);
+        return getWebMonorepoDefaultRunTarget();
+    }
+
+    function isStandardWebRunnerGroup(group) {
+        return WEB_STANDARD_RUNNER_GROUPS.has(String(group || '').trim().toLowerCase());
+    }
+
+    function getRunnerGroupForWebYaml(repoName, runTarget, explicitGroup) {
+        const repo = String(repoName || '').trim();
+        if (repo !== 'Axos.QE.Web') return String(explicitGroup || '').trim();
+        const group = String(explicitGroup || '').trim();
+        if (!group || isStandardWebRunnerGroup(group)) return '';
+        return group;
+    }
+
+    function formatWebRunnerGroupSettingsLines(repoName, runTarget, runnerGroup) {
+        const yamlGroup = getRunnerGroupForWebYaml(repoName, runTarget, runnerGroup);
+        const groupToken = yamlGroup === '' ? "''" : yamlGroup;
+        return `RUNNER_STRATEGY: group\nRUNNER_GROUP: ${groupToken}  # empty => _reusable-playwright.yml auto-selects by RUN_TARGET\nRUNNER_LABELS_LINUX: ${runnerLabelsForOs('linux')}\nRUNNER_LABELS_WINDOWS: ${runnerLabelsForOs('windows')}`;
+    }
+
+    function formatWebRunnerGroupPromptAddon(repoName, runTarget, runnerGroup) {
+        const yamlGroup = getRunnerGroupForWebYaml(repoName, runTarget, runnerGroup);
+        if (yamlGroup === '') {
+            return `\n\nRunner targeting (runner group mode):\n` +
+                `- Set \`runner_group: ''\` (empty) in jobs.smoke \`with:\` — do NOT hardcode axos-gh-qe-testim or axos-gh-qe-mobile\n` +
+                `- _reusable-playwright.yml auto-selects the runner group from \`run_target\` (browserstack → testim/Linux, local → mobile/Windows)\n` +
+                `- Select labels by RUN_TARGET:\n` +
+                `  - browserstack => [self-hosted, linux, x64]\n` +
+                `  - local => [self-hosted, windows, x64]\n` +
+                `- Implement runner selection via runs-on.group + labels (do NOT target a runner by machine name)`;
+        }
+        return `\n\nRunner targeting (runner group mode):\n` +
+            `- Use runner group: ${yamlGroup}\n` +
+            `- Select labels by RUN_TARGET:\n` +
+            `  - browserstack => [self-hosted, linux, x64]\n` +
+            `  - local => [self-hosted, windows, x64]\n` +
+            `- Implement runner selection via runs-on.group + labels (do NOT target a runner by machine name)`;
+    }
+
+    function syncRunnerGroupWithRunTarget() {
+        const repo = String(document.getElementById('fRepo')?.value || '').trim();
+        if (repo !== 'Axos.QE.Web') return;
+        if (normalizeRunnerStrategy(document.getElementById('fRunnerStrategy')?.value || 'label') !== 'group') return;
+        const groupEl = document.getElementById('fRunnerGroup');
+        if (!groupEl) return;
+        const runTarget = normalizeRunTarget(document.getElementById('fRunTarget')?.value);
+        const nextGroup = getDefaultRunnerGroupForRepo(repo, runTarget);
+        const current = String(groupEl.value || '').trim();
+        const userCustom = groupEl.dataset.userEdited === '1' && current && !isStandardWebRunnerGroup(current);
+        if (userCustom) return;
+        if (!current || groupEl.dataset.autoComputed === '1' || isStandardWebRunnerGroup(current)) {
+            groupEl.value = nextGroup;
+            groupEl.dataset.autoComputed = '1';
+            groupEl.dataset.lastComputed = nextGroup;
+        }
+    }
+
+    function onWebRunTargetChange() {
+        const el = document.getElementById('fRunTarget');
+        if (el) el.dataset.userEdited = '1';
+        toggleCryptoRunTargetSections();
+        syncRunnerGroupWithRunTarget();
+    }
+
     const PERF_JMETER_RUNNERS = ['AUTO', 'LOADRUN03'];
     const DEFAULT_PERF_JMETER_RUNNER = 'AUTO';
 
@@ -7084,7 +7170,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                 `PW_HEADLESS: ${p.pwHeadless || 'inherit'}\n` +
                 `JOB_TIMEOUT: ${p.jobTimeout || 120}\n` +
                 (runnerStrategy === 'group'
-                    ? `RUNNER_STRATEGY: group\nRUNNER_GROUP: ${runnerGroup}\nRUNNER_LABELS_LINUX: ${runnerLabelsForOs('linux')}\nRUNNER_LABELS_WINDOWS: ${runnerLabelsForOs('windows')}`
+                    ? formatWebRunnerGroupSettingsLines(repoName, p.runTarget, runnerGroup)
                     : `RUNNER_LABEL_LINUX: ${runnerLinux}\nCUSTOM_RUNNER_LABEL_LINUX: ${customLinux}\nRUNNER_LABEL_WINDOWS: ${runnerWin}\nCUSTOM_RUNNER_LABEL_WINDOWS: ${customWin}`);
             prompt = appendScheduleCronToPrompt(prompt, p.scheduleEnabled, p.schedule);
 
@@ -7095,12 +7181,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                 `- jobs.smoke calling ./.github/workflows/_reusable-playwright.yml with secrets: inherit and with: passing the settings above with fallback defaults, including use_bs_local_tunnel and browserstack_credential_set: ${bsCredentialSet} (reusable input only — not a workflow_dispatch input)\n` +
                 `- Repo secrets REGISTER_DB_SERVER / REGISTER_DB_USER / REGISTER_DB_PASSWORD are available via secrets: inherit into _reusable-playwright.yml; do not hardcode them; do not add workflow_dispatch inputs for them`;
             if (runnerStrategy === 'group') {
-                prompt += `\n\nRunner targeting (runner group mode):\n` +
-                    `- Use runner group: ${runnerGroup}\n` +
-                    `- Select labels by RUN_TARGET:\n` +
-                    `  - browserstack => [self-hosted, linux, x64]\n` +
-                    `  - local => [self-hosted, windows, x64]\n` +
-                    `- Implement runner selection via runs-on.group + labels (do NOT target a runner by machine name)`;
+                prompt += formatWebRunnerGroupPromptAddon(repoName, p.runTarget, runnerGroup);
             }
             if (p.renamedFrom) prompt += `\n\nAlso delete the old workflow file: .github/workflows/${p.renamedFrom}`;
             prompt = appendEmailPromptLines(prompt, p);
@@ -8248,7 +8329,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         } else if (repoName === 'Axos.QE.Web') {
         // Web Monorepo (Playwright) form
         const webMonoTeamBrand = p.brand || 'Enrollment';
-        const webMonoDefaultRunTarget = isOutsystemsBrand(webMonoTeamBrand) ? 'browserstack' : 'local';
+        const webMonoFormRunTarget = getWebMonorepoRunTargetForForm(p);
         const webMonoInitialDir = resolveWebMonorepoProjectDirForForm(p);
         const webMonoBsCtx = { projectDir: webMonoInitialDir, filename: p.filename, bsCredentialSet: p.bsCredentialSet };
         const webMonoParallelCap = webMonoParallelMax(webMonoBsCtx);
@@ -8319,9 +8400,9 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 <div class="form-row-3">
                     <div class="form-group">
                         <label class="form-label">Run Target</label>
-                        <select id="fRunTarget" onchange="toggleCryptoRunTargetSections(); this.dataset.userEdited='1'" ${isView ? 'disabled' : ''}>
-                            <option value="local" ${String(p.runTarget || webMonoDefaultRunTarget) === 'local' ? 'selected' : ''}>Local runner</option>
-                            <option value="browserstack" ${String(p.runTarget || webMonoDefaultRunTarget) === 'browserstack' ? 'selected' : ''}>BrowserStack</option>
+                        <select id="fRunTarget" onchange="onWebRunTargetChange()" ${isView ? 'disabled' : ''}>
+                            <option value="local" ${String(p.runTarget || webMonoFormRunTarget) === 'local' ? 'selected' : ''}>Local runner</option>
+                            <option value="browserstack" ${String(p.runTarget || webMonoFormRunTarget) === 'browserstack' ? 'selected' : ''}>BrowserStack</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -8405,8 +8486,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     </div>
                     <div class="form-group" id="runnerGroupBlock" style="display:${runnerStrategyUi === 'group' ? 'block' : 'none'};">
                         <label class="form-label">Runner Group</label>
-                        <input type="text" id="fRunnerGroup" value="${escapeHtml(runnerGroupUi)}" ${isView ? 'disabled' : ''}>
-                        <span class="field-help">Default: <code>axos-gh-qe-mobile</code> (local/Windows) or <code>axos-gh-qe-testim</code> (browserstack/Linux)</span>
+                        <input type="text" id="fRunnerGroup" value="${escapeHtml(runnerGroupUi)}" oninput="this.dataset.userEdited='1'; delete this.dataset.autoComputed;" ${isView ? 'disabled' : ''}>
+                        <span class="field-help">Auto-fills from Run Target: <code>axos-gh-qe-mobile</code> (local) or <code>axos-gh-qe-testim</code> (browserstack). Generated YAML uses <code>runner_group: ''</code> unless you enter a custom group.</span>
                     </div>
                 </div>
 
@@ -8980,14 +9061,13 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         }
         const runTargetEl = document.getElementById('fRunTarget');
         if (runTargetEl && repoName === 'Axos.QE.Web') {
-            const team = String(p.brand || 'Enrollment');
-            const computedRt = isOutsystemsBrand(team) ? 'browserstack' : 'local';
+            const persistedRt = getWebMonorepoRunTargetForForm(p);
             const runTargetUserEdited = p.runTargetUserEdited === true || String(p.runTargetUserEdited || '').trim().toLowerCase() === 'true';
-            if (runTargetUserEdited) {
+            if (hasPersistedRunTarget(p) || runTargetUserEdited) {
                 runTargetEl.dataset.userEdited = '1';
             } else {
                 runTargetEl.dataset.autoComputed = '1';
-                runTargetEl.dataset.lastComputed = computedRt;
+                runTargetEl.dataset.lastComputed = persistedRt;
             }
         }
         if (p.scheduleEnabled && p.schedule) initScheduleFromCron(p.schedule);
@@ -9003,6 +9083,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         toggleOrchestratorSections();
         updateOrchestratorTargetsPreview();
         toggleCryptoRunTargetSections();
+        syncRunnerGroupWithRunTarget();
         updateNamePreview();
         if (repoName === 'Axos.QE.Web') updateWebMonorepoBsInfo();
         updateFormStatus();
@@ -9153,7 +9234,10 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             const repoForGroup = document.getElementById('fRepo')?.value || '';
             const runTargetForGroup = document.getElementById('fRunTarget')?.value || '';
             groupEl.value = getDefaultRunnerGroupForRepo(repoForGroup, runTargetForGroup);
+            groupEl.dataset.autoComputed = '1';
+            groupEl.dataset.lastComputed = groupEl.value;
         }
+        syncRunnerGroupWithRunTarget();
     }
 
     function toggleDay(el) {
@@ -10099,20 +10183,6 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             const isOrch = feature === 'Orchestrators';
             const effSuffix = isOrch ? String(suffix || '').trim() : suffix;
 
-            const runTargetEl = document.getElementById('fRunTarget');
-            if (!isOrch && runTargetEl && !runTargetEl.dataset.userEdited) {
-                const computedRt = isOutsystemsBrand(brand) ? 'browserstack' : 'local';
-                const current = String(runTargetEl.value || '').trim().toLowerCase();
-                const last = String(runTargetEl.dataset.lastComputed || '').trim().toLowerCase();
-                const shouldUpdate = !current || runTargetEl.dataset.autoComputed === '1' || (!!last && current === last);
-                if (shouldUpdate && current !== computedRt) {
-                    runTargetEl.value = computedRt;
-                    runTargetEl.dataset.autoComputed = '1';
-                    runTargetEl.dataset.lastComputed = computedRt;
-                    toggleCryptoRunTargetSections();
-                }
-            }
-
             const teamKey = (String(brand) === 'OLB 3.0') ? 'OLB3' : String(brand);
             const fKey = feature.replace(/\s+/g, '');
             const sKey = effSuffix ? effSuffix.replace(/\s+/g, isOrch ? '_' : '') : '';
@@ -10818,9 +10888,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 } else {
                 {
                     const rtEl = document.getElementById('fRunTarget');
-                    const computedRt = isOutsystemsBrand(base.brand) ? 'browserstack' : 'local';
                     const rawRt = v('fRunTarget');
-                    base.runTarget = rawRt || computedRt;
+                    base.runTarget = normalizeRunTarget(rawRt) || getWebMonorepoDefaultRunTarget();
                     base.runTargetUserEdited = !!(rtEl && String(rtEl.dataset.userEdited || '') === '1');
                 }
                 base.localBrowser = v('fLocalBrowser') || 'chromium';
@@ -11246,7 +11315,7 @@ PW_VIDEO: ${el('fPwVideo') || '1'}
 PW_HEADLESS: ${el('fPwHeadless') || 'inherit'}
 JOB_TIMEOUT: ${el('fJobTimeout') || '120'}
 ${runnerStrategy === 'group'
-    ? `RUNNER_STRATEGY: group\nRUNNER_GROUP: ${runnerGroup}\nRUNNER_LABELS_LINUX: ${runnerLabelsForOs('linux')}\nRUNNER_LABELS_WINDOWS: ${runnerLabelsForOs('windows')}`
+    ? formatWebRunnerGroupSettingsLines('Axos.QE.Web', el('fRunTarget'), runnerGroup)
     : `RUNNER_LABEL_LINUX: ${el('fRunnerLabelLinux') || 'dsdl-timab28'}\nCUSTOM_RUNNER_LABEL_LINUX: ${el('fCustomRunnerLabelLinux') || ''}\nRUNNER_LABEL_WINDOWS: ${el('fRunnerLabelWindows') || 'QSDW-TFSBA01'}\nCUSTOM_RUNNER_LABEL_WINDOWS: ${el('fCustomRunnerLabelWindows') || ''}`}`;
 
             prompt = appendScheduleCronToPrompt(prompt, scheduleEnabled, scheduleCron);
@@ -11258,12 +11327,7 @@ ${runnerStrategy === 'group'
                 `- jobs.smoke calling ./.github/workflows/_reusable-playwright.yml with secrets: inherit and with: passing the settings above with fallback defaults, including use_bs_local_tunnel and browserstack_credential_set: ${bsCredentialSet} (reusable input only — not a workflow_dispatch input)\n` +
                 `- Repo secrets REGISTER_DB_SERVER / REGISTER_DB_USER / REGISTER_DB_PASSWORD are available via secrets: inherit into _reusable-playwright.yml; do not hardcode them; do not add workflow_dispatch inputs for them`;
             if (runnerStrategy === 'group') {
-                prompt += `\n\nRunner targeting (runner group mode):\n` +
-                    `- Use runner group: ${runnerGroup}\n` +
-                    `- Select labels by RUN_TARGET:\n` +
-                    `  - browserstack => [self-hosted, linux, x64]\n` +
-                    `  - local => [self-hosted, windows, x64]\n` +
-                    `- Implement runner selection via runs-on.group + labels (do NOT target a runner by machine name)`;
+                prompt += formatWebRunnerGroupPromptAddon('Axos.QE.Web', el('fRunTarget'), runnerGroup);
             }
 
         } else if (isLegacyCryptoFormActive()) {
