@@ -2783,6 +2783,32 @@
         'dsdl-timab37', 'dsdl-timab38', 'dsdl-adtfw06',
     ];
     const LINUX_QE_RUNNER_CHOICES = ['AUTO', ...LINUX_QE_RUNNERS];
+    const MOBILE_WIN_RUNNERS = ['AUTO', 'QSDW-TFSBA16', 'QSDW-TFSBA17', 'QSDW-TFSBA18', 'QSDW-TFSBA19', 'QSDW-TFSBA20'];
+    const LEGACY_MOBILE_WIN_RUNNERS = new Set(['QSDW-TFSBA01', 'QSDW-TFSBA02', 'QSDW-TFSBA03', 'QSDW-TFSBA04', 'QSDW-TFSBA05']);
+
+    function coerceMobileWindowsRunnerLabel(label) {
+        const raw = String(label || '').trim();
+        if (!raw || LEGACY_MOBILE_WIN_RUNNERS.has(raw)) return 'AUTO';
+        return MOBILE_WIN_RUNNERS.includes(raw) ? raw : 'AUTO';
+    }
+
+    function migrateMobileWindowsRunnerFields(p) {
+        if (!p) return false;
+        let changed = false;
+        if (p.runnerLabelWindows !== undefined && p.runnerLabelWindows !== null) {
+            const coerced = coerceMobileWindowsRunnerLabel(p.runnerLabelWindows);
+            if (coerced !== p.runnerLabelWindows) {
+                p.runnerLabelWindows = coerced;
+                changed = true;
+            }
+        }
+        const rl = String(p.runnerLabel || '').trim();
+        if (LEGACY_MOBILE_WIN_RUNNERS.has(rl)) {
+            p.runnerLabel = 'AUTO';
+            changed = true;
+        }
+        return changed;
+    }
 
     function getRunnerOsForRepo(repoName, runTarget) {
         const repo = String(repoName || '').trim();
@@ -4915,8 +4941,25 @@ ${os.map(n => `- ${n}`).join('\n')}
                     if (!p) return;
                     const repo = String(p.repo || '').trim();
                     if (repo !== 'Axos.QE.Web') return;
-                    const fn = String(p.filename || '').trim();
+                    let fn = String(p.filename || '').trim();
                     if (!fn) return;
+
+                    if (fn === 'Web_Enrollment_UAT-OLB_Smoke-Playwright.yml') {
+                        const newFilename = 'Web_Enrollment_UAT-OLB_Login_Smoke-Playwright.yml';
+                        const oldParsed = parseFilename(fn) || {};
+                        const newParsed = parseFilename(newFilename) || {};
+                        p.filename = newFilename;
+                        if (!p.name || String(p.name) === String(oldParsed.name || '')) {
+                            p.name = String(newParsed.name || newFilename.replace(/\.yml$/i, ''));
+                        }
+                        for (const k of ['brand', 'env', 'feature', 'featureDetail', 'testType', 'grep']) {
+                            if (p[k] === undefined || p[k] === null || String(p[k]).trim() === '' || String(p[k]) === String(oldParsed[k] || '')) {
+                                if (newParsed[k] !== undefined) p[k] = newParsed[k];
+                            }
+                        }
+                        fn = newFilename;
+                    }
+
                     // Only rename when the entry clearly targets the RelationshipMaster workflow.
                     // Do NOT use projectDir as a signal (users may point other pipelines at axos-aml).
                     const signal = `${p.name || ''} ${p.grep || ''}`.toLowerCase();
@@ -5032,6 +5075,19 @@ ${os.map(n => `- ${n}`).join('\n')}
                 (pipelines || []).forEach(backfillCryptoDefaults);
                 (savedSnapshot || []).forEach(backfillCryptoDefaults);
                 (yamlBaselineSnapshot || []).forEach(backfillCryptoDefaults);
+                let migratedMobileWindowsRunners = false;
+                const migrateRetiredMobileWindowsRunners = (p) => {
+                    if (migrateMobileWindowsRunnerFields(p)) migratedMobileWindowsRunners = true;
+                };
+                (pipelines || []).forEach(migrateRetiredMobileWindowsRunners);
+                (savedSnapshot || []).forEach(migrateRetiredMobileWindowsRunners);
+                (yamlBaselineSnapshot || []).forEach(migrateRetiredMobileWindowsRunners);
+                if (migratedMobileWindowsRunners) {
+                    try {
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(pipelines));
+                        savedSnapshot = JSON.parse(JSON.stringify(pipelines || []));
+                    } catch { /* ignore */ }
+                }
 
                 // Auto-heal: if a workflow filename contains a feature not in the hardcoded lists,
                 // older parses may have left p.feature blank. Recover it from featureDetail.
@@ -6806,7 +6862,7 @@ ${os.map(n => `- ${n}`).join('\n')}
         if (repoName === 'Axos.QE.Mobile') return isMobilePipeline(p);
         // Axos.QE.Web: same opt-in "email-results" job pattern as Mobile (see
         // docs/web-email-notifications.md in that repo — reference pipeline
-        // Web_Enrollment_UAT-OLB_Smoke-Playwright.yml). Matches the same repoName-OR-filename
+        // Web_Enrollment_UAT-OLB_Login_Smoke-Playwright.yml). Matches the same repoName-OR-filename
         // check the main workflow prompt builder already uses (do NOT additionally require
         // isWebMonorepoPipeline(p) alone — new/cloned pipelines have no filename yet, so that
         // would always be false and the toggle would never appear during creation). Still
@@ -6886,7 +6942,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                 const jobIf = rec
                     ? `always()`
                     : `always() && vars.TESTIM_EMAIL_RECIPIENTS != ''`;
-                prompt += `\n\nEMAIL RESULTS (Power Automate): Add an \`email-results\` job to the caller workflow (reference: Web_Enrollment_UAT-OLB_Smoke-Playwright.yml — copy that file's \`email-results\` job structure and comment verbatim, adapting only the values below). The job needs: <the job id already used in this workflow to call _reusable-playwright.yml — e.g. \`smoke\`/\`regression\`/\`sanity\`, keep whatever it already is>, if: \`${jobIf} && ${jobSkipGate}\`, runs-on: ubuntu-latest, permissions: { contents: read, actions: read } (actions:read lets the email script fall back to the GH workflow-run API for duration if the BrowserStack/local wall-clock sidecar file is missing). Steps: Checkout, Download test-results artifact \`test-results-<project_name>-\${{ github.run_id }}\` into \`reports\` (continue-on-error: true, id: detect) — \`<project_name>\` MUST match the exact \`project_name:\` value already passed to _reusable-playwright.yml in this same workflow's \`with:\` block, Set up Node 20, Email results running \`node tools/build-email-from-junit.mjs\` with continue-on-error: true. Gate the Node + email steps on \`always()\`. Env: JUNIT_GLOB_DIR=reports, REPORT_TITLE=${p.name}, REPORT_ENV: \${{ inputs.test_env || '${(p.env || 'UAT').toLowerCase()}' }}, REPORT_PLATFORM: \${{ (inputs.run_target || 'local') == 'browserstack' && 'BrowserStack' || format('Local {0}', inputs.local_browser || 'chromium') }}, POWER_AUTOMATE_EMAIL_WEBHOOK_URL=\${{ secrets.POWER_AUTOMATE_EMAIL_WEBHOOK_URL }}, GITHUB_SERVER_URL/GITHUB_REPOSITORY/GITHUB_RUN_ID, GH_TOKEN=\${{ github.token }}, RUN_CONCLUSION: \${{ needs.<job id>.outputs.test_result }} (the reusable workflow's own \`workflow_call\` output — NOT \`needs.<job>.result\`, which reflects the aggregate including publish_junit). Do NOT add BrowserStack App-Automate or Testim API env vars — BrowserStack duration/build-link enrichment for Web already happens inside _reusable-playwright.yml's \`test\` job itself, not in the email step.`;
+                prompt += `\n\nEMAIL RESULTS (Power Automate): Add an \`email-results\` job to the caller workflow (reference: Web_Enrollment_UAT-OLB_Login_Smoke-Playwright.yml — copy that file's \`email-results\` job structure and comment verbatim, adapting only the values below). The job needs: <the job id already used in this workflow to call _reusable-playwright.yml — e.g. \`smoke\`/\`regression\`/\`sanity\`, keep whatever it already is>, if: \`${jobIf} && ${jobSkipGate}\`, runs-on: ubuntu-latest, permissions: { contents: read, actions: read } (actions:read lets the email script fall back to the GH workflow-run API for duration if the BrowserStack/local wall-clock sidecar file is missing). Steps: Checkout, Download test-results artifact \`test-results-<project_name>-\${{ github.run_id }}\` into \`reports\` (continue-on-error: true, id: detect) — \`<project_name>\` MUST match the exact \`project_name:\` value already passed to _reusable-playwright.yml in this same workflow's \`with:\` block, Set up Node 20, Email results running \`node tools/build-email-from-junit.mjs\` with continue-on-error: true. Gate the Node + email steps on \`always()\`. Env: JUNIT_GLOB_DIR=reports, REPORT_TITLE=${p.name}, REPORT_ENV: \${{ inputs.test_env || '${(p.env || 'UAT').toLowerCase()}' }}, REPORT_PLATFORM: \${{ (inputs.run_target || 'local') == 'browserstack' && 'BrowserStack' || format('Local {0}', inputs.local_browser || 'chromium') }}, POWER_AUTOMATE_EMAIL_WEBHOOK_URL=\${{ secrets.POWER_AUTOMATE_EMAIL_WEBHOOK_URL }}, GITHUB_SERVER_URL/GITHUB_REPOSITORY/GITHUB_RUN_ID, GH_TOKEN=\${{ github.token }}, RUN_CONCLUSION: \${{ needs.<job id>.outputs.test_result }} (the reusable workflow's own \`workflow_call\` output — NOT \`needs.<job>.result\`, which reflects the aggregate including publish_junit). Do NOT add BrowserStack App-Automate or Testim API env vars — BrowserStack duration/build-link enrichment for Web already happens inside _reusable-playwright.yml's \`test\` job itself, not in the email step.`;
             } else {
                 prompt += `\n\nEMAIL RESULTS (Power Automate): In the caller workflow's \`test-results\` job, mirror the "Set up Node (for email)" and "Email results (Power Automate)" steps from Web_AxosBank_UAT_HealthCheck-Testim.yml. The email step runs \`node tools/build-email-from-junit.mjs\`, uses continue-on-error: true, and is gated on \`always() && (steps.detect.outputs.artifact == 'true' || needs.run.result == 'cancelled')\` (artifact optional for cancel — XML optional otherwise). Env: JUNIT_GLOB_DIR=reports, REPORT_TITLE=${p.name}, REPORT_ENV=${p.env || 'UAT'}, POWER_AUTOMATE_EMAIL_WEBHOOK_URL=\${{ secrets.POWER_AUTOMATE_EMAIL_WEBHOOK_URL }}, GITHUB_SERVER_URL/GITHUB_REPOSITORY/GITHUB_RUN_ID, and RUN_CONCLUSION=\${{ needs.run.result }} (required so cancelled runs email/Teams as CANCELLED instead of a false FAIL or "manual review").`;
             }
@@ -7186,11 +7242,11 @@ ${os.map(n => `- ${n}`).join('\n')}
             const team = getWebMonorepoTeamFromFilename(filename) || resolveWebMonorepoBsTeam(promptCtx) || p.brand || 'Unknown';
             const bsCredentialSet = getWebMonorepoCredentialSet(promptCtx);
             const linuxRunners = LINUX_QE_RUNNERS;
-            const winRunners = ['QSDW-TFSBA01','QSDW-TFSBA02','QSDW-TFSBA03','QSDW-TFSBA04','QSDW-TFSBA05'];
+            const winRunners = MOBILE_WIN_RUNNERS;
             const rawLinux = String(p.runnerLabelLinux || p.runnerLabel || '').trim();
             const rawWin = String(p.runnerLabelWindows || p.runnerLabel || '').trim();
             const runnerLinux = linuxRunners.includes(rawLinux) ? rawLinux : 'dsdl-timab28';
-            const runnerWin = winRunners.includes(rawWin) ? rawWin : 'QSDW-TFSBA01';
+            const runnerWin = coerceMobileWindowsRunnerLabel(rawWin);
             const customLinux = String(p.customRunnerLabelLinux || (String(p.runTarget || 'local') === 'browserstack' ? (p.customRunnerLabel || '') : '') || '').trim();
             const customWin = String(p.customRunnerLabelWindows || (String(p.runTarget || 'local') === 'local' ? (p.customRunnerLabel || '') : '') || '').trim();
             let prompt = `Create or update a Playwright pipeline workflow file in the repo Axos.QE.Web at:\n${filePath}\n\n` +
@@ -7221,9 +7277,9 @@ ${os.map(n => `- ${n}`).join('\n')}
                     : `RUNNER_LABEL_LINUX: ${runnerLinux}\nCUSTOM_RUNNER_LABEL_LINUX: ${customLinux}\nRUNNER_LABEL_WINDOWS: ${runnerWin}\nCUSTOM_RUNNER_LABEL_WINDOWS: ${customWin}`);
             prompt = appendScheduleCronToPrompt(prompt, p.scheduleEnabled, p.schedule);
 
-            prompt += `\n\nUse the existing workflow file Web_Enrollment_UAT-OLB_Smoke-Playwright.yml as the exact format reference. Include:\n` +
+            prompt += `\n\nUse the existing workflow file Web_Enrollment_UAT-OLB_Login_Smoke-Playwright.yml as the exact format reference. Include:\n` +
                 `- name: and run-name fields matching the pipeline name\n` +
-                `- workflow_dispatch inputs for run_target, local_browser, test_env, grep, parallels, retries, runner_label_linux (dsdl-timab*), custom_runner_label_linux (string), runner_label_windows (QSDW-TFSBA*), custom_runner_label_windows (string), pw_video, pw_headless (choice: inherit, 0, 1), browserstack_username, browserstack_access_key, bs_random_browser, bs_browser_name, bs_browser_version, bs_os_name, bs_os_version, and use_bs_local_tunnel (choice: false, true; default from USE_BS_LOCAL_TUNNEL) with correct defaults\n` +
+                `- workflow_dispatch inputs for run_target, local_browser, test_env, grep, parallels, retries, runner_label_linux (dsdl-timab*), custom_runner_label_linux (string), runner_label_windows (choice: AUTO, QSDW-TFSBA16, QSDW-TFSBA17, QSDW-TFSBA18, QSDW-TFSBA19, QSDW-TFSBA20; default AUTO), custom_runner_label_windows (string), pw_video, pw_headless (choice: inherit, 0, 1), browserstack_username, browserstack_access_key, bs_random_browser, bs_browser_name, bs_browser_version, bs_os_name, bs_os_version, and use_bs_local_tunnel (choice: false, true; default from USE_BS_LOCAL_TUNNEL) with correct defaults\n` +
                 `- permissions block (contents: read, checks: write, actions: write)\n` +
                 `- jobs.smoke calling ./.github/workflows/_reusable-playwright.yml with secrets: inherit and with: passing the settings above with fallback defaults, including use_bs_local_tunnel and browserstack_credential_set: ${bsCredentialSet} (reusable input only — not a workflow_dispatch input)\n` +
                 `- Repo secrets REGISTER_DB_SERVER / REGISTER_DB_USER / REGISTER_DB_PASSWORD are available via secrets: inherit into _reusable-playwright.yml; do not hardcode them; do not add workflow_dispatch inputs for them`;
@@ -7259,7 +7315,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                 `JOB_TIMEOUT: ${p.jobTimeout || 120}\n` +
                 (runnerStrategy === 'group'
                     ? `RUNNER_STRATEGY: group\nRUNNER_GROUP: ${runnerGroup}\nRUNNER_LABELS: ${runnerLabelsForOs('windows')}`
-                    : `RUNNER_LABEL: ${p.runnerLabel || 'QSDW-TFSBA01'}`);
+                    : `RUNNER_LABEL: ${p.runnerLabel || 'AUTO'}`);
 
             prompt = appendScheduleCronToPrompt(prompt, p.scheduleEnabled, p.schedule);
 
@@ -7742,9 +7798,9 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     <div class="form-group">
                         <label class="form-label">Runner Label</label>
                         <select id="fRunnerLabel" ${isView ? 'disabled' : ''}>
-                            ${['AUTO','QSDW-TFSBA01','QSDW-TFSBA02','QSDW-TFSBA03','QSDW-TFSBA04','QSDW-TFSBA05'].map(r => `<option value="${r}" ${(p.runnerLabel || 'AUTO') === r ? 'selected' : ''}>${r}</option>`).join('')}
+                            ${MOBILE_WIN_RUNNERS.map(r => `<option value="${r}" ${(p.runnerLabel || 'AUTO') === r ? 'selected' : ''}>${r}</option>`).join('')}
                         </select>
-                        <span class="field-help">AUTO = the axos-gh-qe-mobile group assigns a free runner; or pin a specific host (QSDW-TFSBA*).</span>
+                        <span class="field-help">AUTO = the axos-gh-qe-mobile group assigns a free runner; or pin a specific host (QSDW-TFSBA16–20).</span>
                     </div>
                 </div>
             </div>`;
@@ -8140,7 +8196,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     <div class="form-group">
                         <label class="form-label">Runner Label</label>
                         <select id="fRunnerLabel" ${isView ? 'disabled' : ''}>
-                            ${['QSDW-TFSBA01','QSDW-TFSBA02','QSDW-TFSBA03','QSDW-TFSBA04','QSDW-TFSBA05'].map(r => `<option value="${r}" ${(p.runnerLabel || 'QSDW-TFSBA01') === r ? 'selected' : ''}>${r}</option>`).join('')}
+                            ${MOBILE_WIN_RUNNERS.map(r => `<option value="${r}" ${(p.runnerLabel || 'AUTO') === r ? 'selected' : ''}>${r}</option>`).join('')}
                         </select>
                         <span class="field-help">Windows self-hosted runner from the same pool used by Mobile pipelines</span>
                     </div>
@@ -8608,9 +8664,9 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                             <label class="form-label">Runner Label (Windows - local)</label>
                             <select id="fRunnerLabelWindows" ${isView ? 'disabled' : ''}>
                                 ${(() => {
-                                    const winRunners = ['QSDW-TFSBA01','QSDW-TFSBA02','QSDW-TFSBA03','QSDW-TFSBA04','QSDW-TFSBA05'];
+                                    const winRunners = MOBILE_WIN_RUNNERS;
                                     const raw = String(p.runnerLabelWindows || p.runnerLabel || '').trim();
-                                    const selected = winRunners.includes(raw) ? raw : 'QSDW-TFSBA01';
+                                    const selected = coerceMobileWindowsRunnerLabel(raw);
                                     return winRunners.map(r => `<option value="${r}" ${(selected === r) ? 'selected' : ''}>${r}</option>`).join('');
                                 })()}
                             </select>
@@ -8835,7 +8891,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     <span style="font-size:16px;">${(formIsMobile || cryptoForm || repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB' || repoName === 'Axos.QE.API_WFO' || repoName === 'Axos.QE.PROD_API_CS') ? '&#128187;' : '&#129302;'}</span>
                     <div>
                         <div style="font-size:12px; font-weight:600; color:var(--success);">Runner: ${runnerStrategyUi === 'group' ? `Runner group ${escapeHtml(runnerGroupUi)} (${runnerOsUi})` : (runnerOsUi === 'windows' ? 'Self-hosted Windows' : 'Self-hosted Linux')}</div>
-                        <div style="font-size:11px; color:var(--text-muted);">${runnerStrategyUi === 'group' ? 'Targets runners via runner group + OS labels (no machine-name pinning).' : ((repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB' || repoName === 'Axos.QE.API_WFO' || repoName === 'Axos.QE.PROD_API_CS') ? 'Runs Newman on a self-hosted Windows runner (ensure it has network access to the target env).' : ((formIsMobile || cryptoForm) ? 'Picks from QSDW-TFSBA01–05 Windows runners (same pool as Mobile)' : 'Selects a self-hosted runner by label (no wildcard runner-name matching)'))}</div>
+                        <div style="font-size:11px; color:var(--text-muted);">${runnerStrategyUi === 'group' ? 'Targets runners via runner group + OS labels (no machine-name pinning).' : ((repoName === 'Axos.QE.API_OLB' || repoName === 'Axos.QE.API_CS' || repoName === 'Axos.QE.API_UDB' || repoName === 'Axos.QE.API_WFO' || repoName === 'Axos.QE.PROD_API_CS') ? 'Runs Newman on a self-hosted Windows runner (ensure it has network access to the target env).' : ((formIsMobile || cryptoForm) ? 'Picks from QSDW-TFSBA16–20 Windows runners (same pool as Mobile)' : 'Selects a self-hosted runner by label (no wildcard runner-name matching)'))}</div>
                     </div>
                 </div>
 
@@ -10811,7 +10867,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             base.retries = v('fRetries') || '1';
             base.tunnel = v('fTunnel') || 'true';
             base.appId = v('fAppId');
-            base.runnerLabel = v('fRunnerLabel') || 'QSDW-TFSBA01';
+            base.runnerLabel = v('fRunnerLabel') || 'AUTO';
             base.deviceName = v('fDeviceName');
             base.deviceOS = v('fDeviceOS');
             base.bsUsername = v('fBsUsername');
@@ -10992,7 +11048,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 }
                 base.runnerLabelLinux = v('fRunnerLabelLinux') || 'dsdl-timab28';
                 base.customRunnerLabelLinux = v('fCustomRunnerLabelLinux') || '';
-                base.runnerLabelWindows = v('fRunnerLabelWindows') || 'QSDW-TFSBA01';
+                base.runnerLabelWindows = coerceMobileWindowsRunnerLabel(v('fRunnerLabelWindows') || 'AUTO');
                 base.customRunnerLabelWindows = v('fCustomRunnerLabelWindows') || '';
                 // Back-compat: keep the legacy runnerLabel/customRunnerLabel fields in sync with the selected run target.
                 const rt = String(base.runTarget || 'local').toLowerCase();
@@ -11023,7 +11079,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 base.pwHeadless = v('fPwHeadless') || 'inherit';
                 base.bsUsername = v('fBsUsername');
                 base.bsAccessKey = v('fBsAccessKey');
-                base.runnerLabel = v('fRunnerLabel') || 'QSDW-TFSBA01';
+                base.runnerLabel = v('fRunnerLabel') || 'AUTO';
                 base.jobTimeout = n('fJobTimeout', 120);
             } else {
             // Orchestrator mode is driven by the Feature ("Orchestrators"); Test Type stays a real type.
@@ -11387,13 +11443,13 @@ PW_HEADLESS: ${el('fPwHeadless') || 'inherit'}
 JOB_TIMEOUT: ${el('fJobTimeout') || '120'}
 ${runnerStrategy === 'group'
     ? formatWebRunnerGroupSettingsLines('Axos.QE.Web', el('fRunTarget'), runnerGroup)
-    : `RUNNER_LABEL_LINUX: ${el('fRunnerLabelLinux') || 'dsdl-timab28'}\nCUSTOM_RUNNER_LABEL_LINUX: ${el('fCustomRunnerLabelLinux') || ''}\nRUNNER_LABEL_WINDOWS: ${el('fRunnerLabelWindows') || 'QSDW-TFSBA01'}\nCUSTOM_RUNNER_LABEL_WINDOWS: ${el('fCustomRunnerLabelWindows') || ''}`}`;
+    : `RUNNER_LABEL_LINUX: ${el('fRunnerLabelLinux') || 'dsdl-timab28'}\nCUSTOM_RUNNER_LABEL_LINUX: ${el('fCustomRunnerLabelLinux') || ''}\nRUNNER_LABEL_WINDOWS: ${coerceMobileWindowsRunnerLabel(el('fRunnerLabelWindows') || 'AUTO')}\nCUSTOM_RUNNER_LABEL_WINDOWS: ${el('fCustomRunnerLabelWindows') || ''}`}`;
 
             prompt = appendScheduleCronToPrompt(prompt, scheduleEnabled, scheduleCron);
 
-            prompt += `\n\nUse the existing workflow file Web_Enrollment_UAT-OLB_Smoke-Playwright.yml as the exact format reference. Include:\n` +
+            prompt += `\n\nUse the existing workflow file Web_Enrollment_UAT-OLB_Login_Smoke-Playwright.yml as the exact format reference. Include:\n` +
                 `- name: and run-name fields matching the pipeline name\n` +
-                `- workflow_dispatch inputs for run_target, local_browser, test_env, grep, parallels, retries, runner_label_linux (dsdl-timab*), custom_runner_label_linux (string), runner_label_windows (QSDW-TFSBA*), custom_runner_label_windows (string), pw_video, pw_headless (choice: inherit, 0, 1), browserstack_username, browserstack_access_key, bs_random_browser, bs_browser_name, bs_browser_version, bs_os_name, bs_os_version, and use_bs_local_tunnel (choice: false, true; default from USE_BS_LOCAL_TUNNEL) with correct defaults\n` +
+                `- workflow_dispatch inputs for run_target, local_browser, test_env, grep, parallels, retries, runner_label_linux (dsdl-timab*), custom_runner_label_linux (string), runner_label_windows (choice: AUTO, QSDW-TFSBA16, QSDW-TFSBA17, QSDW-TFSBA18, QSDW-TFSBA19, QSDW-TFSBA20; default AUTO), custom_runner_label_windows (string), pw_video, pw_headless (choice: inherit, 0, 1), browserstack_username, browserstack_access_key, bs_random_browser, bs_browser_name, bs_browser_version, bs_os_name, bs_os_version, and use_bs_local_tunnel (choice: false, true; default from USE_BS_LOCAL_TUNNEL) with correct defaults\n` +
                 `- permissions block (contents: read, checks: write, actions: write)\n` +
                 `- jobs.smoke calling ./.github/workflows/_reusable-playwright.yml with secrets: inherit and with: passing the settings above with fallback defaults, including use_bs_local_tunnel and browserstack_credential_set: ${bsCredentialSet} (reusable input only — not a workflow_dispatch input)\n` +
                 `- Repo secrets REGISTER_DB_SERVER / REGISTER_DB_USER / REGISTER_DB_PASSWORD are available via secrets: inherit into _reusable-playwright.yml; do not hardcode them; do not add workflow_dispatch inputs for them`;
@@ -11429,7 +11485,7 @@ PW_HEADLESS: ${el('fPwHeadless') || 'inherit'}
 JOB_TIMEOUT: ${el('fJobTimeout') || '120'}
 ${runnerStrategy === 'group'
     ? `RUNNER_STRATEGY: group\nRUNNER_GROUP: ${runnerGroup}\nRUNNER_LABELS: ${runnerLabelsForOs('windows')}`
-    : `RUNNER_LABEL: ${el('fRunnerLabel') || 'QSDW-TFSBA01'}`}`;
+    : `RUNNER_LABEL: ${el('fRunnerLabel') || 'AUTO'}`}`;
 
             prompt = appendScheduleCronToPrompt(prompt, scheduleEnabled, scheduleCron);
 
@@ -11741,7 +11797,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 jobTimeout: 120,
                 runnerStrategy: 'group',
                 runnerGroup: getDefaultRunnerGroupForRepo(repo),
-                runnerLabel: 'QSDW-TFSBA01',
+                runnerLabel: 'AUTO',
             };
         }
         if (repo === 'Axos.QE.Web') {
@@ -11765,9 +11821,9 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 runnerGroup: getDefaultRunnerGroupForRepo(repo, 'local'),
                 runnerLabelLinux: 'dsdl-timab28',
                 customRunnerLabelLinux: '',
-                runnerLabelWindows: 'QSDW-TFSBA01',
+                runnerLabelWindows: 'AUTO',
                 customRunnerLabelWindows: '',
-                runnerLabel: 'QSDW-TFSBA01',
+                runnerLabel: 'AUTO',
                 customRunnerLabel: '',
             };
         }
@@ -13428,7 +13484,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 retries: '1', tunnel: 'true', appId: '',
                 deviceName: '', deviceOS: '',
                 bsUsername: '', bsAccessKey: '',
-                runnerLabel: 'QSDW-TFSBA01',
+                runnerLabel: 'AUTO',
                 jobTimeout: 120,
                 schedule: '', scheduleEnabled: false
             };
