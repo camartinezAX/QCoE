@@ -5278,7 +5278,7 @@ ${os.map(n => `- ${n}`).join('\n')}
 
     function isSensitiveKey(key) {
         const k = String(key || '').toLowerCase();
-        return k.includes('accesskey') || k.includes('access_key') || k.includes('token') || k.includes('secret');
+        return k.includes('accesskey') || k.includes('access_key') || k.includes('token') || k.includes('secret') || k.includes('password');
     }
 
     function maskSecretValue(v) {
@@ -5347,6 +5347,18 @@ ${os.map(n => `- ${n}`).join('\n')}
             deviceOS: 'Device OS version',
             bsUsername: 'BrowserStack username',
             bsAccessKey: 'BrowserStack access key',
+
+            // DB / Identity service credential overrides
+            dbCredsEnabled: 'DB/Identity credential inputs enabled',
+            dbServer: 'DB server',
+            dbUser: 'DB username',
+            dbPassword: 'DB password',
+            dbDatabase: 'DB database',
+            dbPort: 'DB port',
+            dbEncrypt: 'DB encrypt',
+            dbTrustCert: 'DB trust server cert',
+            identitySvcUsername: 'Identity service username',
+            identitySvcPassword: 'Identity service password',
 
             // Schedule
             scheduleEnabled: 'Schedule enabled',
@@ -6703,6 +6715,19 @@ ${os.map(n => `- ${n}`).join('\n')}
         return !isEmptyDiffValue(a) && isEmptyDiffValue(b);
     }
 
+    // Saving any Axos.QE.Web pipeline always writes dbCredsEnabled/dbEncrypt/dbTrustCert as
+    // concrete strings (the form's own defaults) even when the DB/Identity credential toggle
+    // was never touched. A sync baseline that predates this feature (or simply never declared
+    // register_db_*/identity_svc_* inputs) has these keys missing entirely, so a plain string
+    // compare would misread "always had the default" as a real YAML-affecting change.
+    const DB_CREDS_DEFAULTS = { dbCredsEnabled: 'false', dbEncrypt: 'true', dbTrustCert: 'true' };
+    function isSpuriousDbCredsDefaultChange(prev, next, key) {
+        if (!(key in DB_CREDS_DEFAULTS)) return false;
+        const a = prev ? prev[key] : undefined;
+        const b = next ? next[key] : undefined;
+        return isEmptyDiffValue(a) && String(b ?? '') === DB_CREDS_DEFAULTS[key];
+    }
+
     function isEmptyDiffValue(v) {
         if (v === null || v === undefined) return true;
         if (typeof v === 'string') return v.trim() === '';
@@ -6779,6 +6804,7 @@ ${os.map(n => `- ${n}`).join('\n')}
             const b = next ? next[k] : undefined;
             if (k === 'jobTimeout' && isOrch && isSpuriousOrchestratorJobTimeoutChange(prev, next, pipeline || next || prev)) continue;
             if ((k === 'runnerLabel' || k === 'customRunnerLabel') && isOrch && isSpuriousOrchestratorRunnerLabelChange(prev, next, k, pipeline || next || prev)) continue;
+            if (isSpuriousDbCredsDefaultChange(prev, next, k)) continue;
             if (k === 'orchestratorTargets') {
                 if (!orchestratorTargetsYamlEqual(a, b)) changed.push(k);
                 continue;
@@ -7250,6 +7276,12 @@ ${os.map(n => `- ${n}`).join('\n')}
             const runnerWin = coerceMobileWindowsRunnerLabel(rawWin);
             const customLinux = String(p.customRunnerLabelLinux || (String(p.runTarget || 'local') === 'browserstack' ? (p.customRunnerLabel || '') : '') || '').trim();
             const customWin = String(p.customRunnerLabelWindows || (String(p.runTarget || 'local') === 'local' ? (p.customRunnerLabel || '') : '') || '').trim();
+            const dbCredsEnabled = String(p.dbCredsEnabled || 'false') === 'true';
+            const dbServerVal = p.dbServer || 'bofi-uatsql.dev.mybofi.local';
+            const dbDatabaseVal = p.dbDatabase || 'olb-uat';
+            const dbPortVal = p.dbPort || '1433';
+            const dbEncryptVal = p.dbEncrypt || 'true';
+            const dbTrustCertVal = p.dbTrustCert || 'true';
             let prompt = `Create or update a Playwright pipeline workflow file in the repo Axos.QE.Web at:\n${filePath}\n\n` +
                 `This is a monorepo workflow for the ${team} team.\n` +
                 `The repo uses a reusable workflow (_reusable-playwright.yml) called by thin project-specific workflows.\n\n` +
@@ -7275,15 +7307,23 @@ ${os.map(n => `- ${n}`).join('\n')}
                 `JOB_TIMEOUT: ${p.jobTimeout || 120}\n` +
                 (runnerStrategy === 'group'
                     ? formatWebRunnerGroupSettingsLines(repoName, p.runTarget, runnerGroup)
-                    : `RUNNER_LABEL_LINUX: ${runnerLinux}\nCUSTOM_RUNNER_LABEL_LINUX: ${customLinux}\nRUNNER_LABEL_WINDOWS: ${runnerWin}\nCUSTOM_RUNNER_LABEL_WINDOWS: ${customWin}`);
+                    : `RUNNER_LABEL_LINUX: ${runnerLinux}\nCUSTOM_RUNNER_LABEL_LINUX: ${customLinux}\nRUNNER_LABEL_WINDOWS: ${runnerWin}\nCUSTOM_RUNNER_LABEL_WINDOWS: ${customWin}`) +
+                (dbCredsEnabled
+                    ? `\nREGISTER_DB_SERVER: ${dbServerVal}\nREGISTER_DB_DATABASE: ${dbDatabaseVal}\nREGISTER_DB_PORT: ${dbPortVal}\nREGISTER_DB_ENCRYPT: ${dbEncryptVal}\nREGISTER_DB_TRUST_CERT: ${dbTrustCertVal}\nREGISTER_DB_USER: ''  # never hardcode — keep the workflow_dispatch default blank\nREGISTER_DB_PASSWORD: ''  # never hardcode — keep the workflow_dispatch default blank\nIDENTITY_SVC_USERNAME: ''  # leave blank to use repo secret IDENTITY_SVC_USERNAME\nIDENTITY_SVC_PASSWORD: ''  # leave blank to use repo secret IDENTITY_SVC_PASSWORD`
+                    : '');
             prompt = appendScheduleCronToPrompt(prompt, p.scheduleEnabled, p.schedule);
 
             prompt += `\n\nUse the existing workflow file Web_Enrollment_UAT-OLB_Login_Smoke-Playwright.yml as the exact format reference. Include:\n` +
                 `- name: and run-name fields matching the pipeline name\n` +
-                `- workflow_dispatch inputs for run_target, local_browser, test_env, grep, parallels, retries, runner_label_linux (dsdl-timab*), custom_runner_label_linux (string), runner_label_windows (choice: AUTO, QSDW-TFSBA16, QSDW-TFSBA17, QSDW-TFSBA18, QSDW-TFSBA19, QSDW-TFSBA20; default AUTO), custom_runner_label_windows (string), pw_video, pw_headless (choice: inherit, 0, 1), browserstack_username, browserstack_access_key, bs_random_browser, bs_browser_name, bs_browser_version, bs_os_name, bs_os_version, and use_bs_local_tunnel (choice: false, true; default from USE_BS_LOCAL_TUNNEL) with correct defaults\n` +
+                `- workflow_dispatch inputs for run_target, local_browser, test_env, grep, parallels, retries, runner_label_linux (dsdl-timab*), custom_runner_label_linux (string), runner_label_windows (choice: AUTO, QSDW-TFSBA16, QSDW-TFSBA17, QSDW-TFSBA18, QSDW-TFSBA19, QSDW-TFSBA20; default AUTO), custom_runner_label_windows (string), pw_video, pw_headless (choice: inherit, 0, 1), browserstack_username, browserstack_access_key, bs_random_browser, bs_browser_name, bs_browser_version, bs_os_name, bs_os_version, and use_bs_local_tunnel (choice: false, true; default from USE_BS_LOCAL_TUNNEL) with correct defaults` +
+                (dbCredsEnabled ? `, plus register_db_server (required string, default '${dbServerVal}'), register_db_database (required string, default '${dbDatabaseVal}'), register_db_user (optional string, default blank — required: false, so it falls back to repo secret REGISTER_DB_USER via _reusable-playwright.yml), and register_db_password (optional string, default blank, same required: false note; falls back to repo secret REGISTER_DB_PASSWORD); also identity_svc_username and identity_svc_password (both optional string, default blank, falling back to repo secrets IDENTITY_SVC_USERNAME / IDENTITY_SVC_PASSWORD)` : '') + `\n` +
                 `- permissions block (contents: read, checks: write, actions: write)\n` +
-                `- jobs.smoke calling ./.github/workflows/_reusable-playwright.yml with secrets: inherit and with: passing the settings above with fallback defaults, including use_bs_local_tunnel and browserstack_credential_set: ${bsCredentialSet} (reusable input only — not a workflow_dispatch input)\n` +
-                `- Repo secrets REGISTER_DB_SERVER / REGISTER_DB_USER / REGISTER_DB_PASSWORD are available via secrets: inherit into _reusable-playwright.yml; do not hardcode them; do not add workflow_dispatch inputs for them`;
+                `- jobs.smoke calling ./.github/workflows/_reusable-playwright.yml with secrets: inherit and with: passing the settings above with fallback defaults, including use_bs_local_tunnel and browserstack_credential_set: ${bsCredentialSet} (reusable input only — not a workflow_dispatch input)` +
+                (dbCredsEnabled
+                    ? `\n- Also pass to _reusable-playwright.yml: register_db_server: \${{ inputs.register_db_server || '${dbServerVal}' }}, register_db_user: \${{ inputs.register_db_user || '' }}, register_db_password: \${{ inputs.register_db_password || '' }}, register_db_database: \${{ inputs.register_db_database || '${dbDatabaseVal}' }}, register_db_port: '${dbPortVal}', register_db_encrypt: '${dbEncryptVal}', register_db_trust_cert: '${dbTrustCertVal}', identity_svc_username: \${{ inputs.identity_svc_username || '' }}, identity_svc_password: \${{ inputs.identity_svc_password || '' }}\n` +
+                      `- register_db_port / register_db_encrypt / register_db_trust_cert are fixed with: values, NOT workflow_dispatch inputs\n` +
+                      `- Never hardcode register_db_user, register_db_password, identity_svc_username, or identity_svc_password as literal defaults, and mark register_db_user / register_db_password as required: false (NOT required: true) — leaving them blank/optional lets _reusable-playwright.yml's built-in fallback chain (input → secret → variable) resolve them from repo secrets REGISTER_DB_USER / REGISTER_DB_PASSWORD; identity_svc_username / identity_svc_password already fall back to repo secrets IDENTITY_SVC_USERNAME / IDENTITY_SVC_PASSWORD the same way`
+                    : `\n- Repo secrets REGISTER_DB_SERVER / REGISTER_DB_USER / REGISTER_DB_PASSWORD are available via secrets: inherit into _reusable-playwright.yml; do not hardcode them; do not add workflow_dispatch inputs for them\n- If register_db_* or identity_svc_* workflow_dispatch inputs (and their with: passthrough lines) already exist in this file, remove them — this pipeline no longer uses direct DB/Identity credential inputs`);
             if (runnerStrategy === 'group') {
                 prompt += formatWebRunnerGroupPromptAddon(repoName, p.runTarget, runnerGroup);
             }
@@ -8679,6 +8719,79 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                         </div>
                     </div>
                 </div>
+
+                <div style="margin-top:14px;">
+                    <div class="form-group">
+                        <label class="form-label">DB / Identity Service Credential Inputs</label>
+                        <select id="fDbCredsEnabled" onchange="toggleDbCredsUI()" ${isView ? 'disabled' : ''}>
+                            <option value="false" ${String(p.dbCredsEnabled || 'false') === 'false' ? 'selected' : ''}>Not used (default)</option>
+                            <option value="true" ${String(p.dbCredsEnabled || 'false') === 'true' ? 'selected' : ''}>Enabled (adds register_db_* / identity_svc_* workflow_dispatch inputs)</option>
+                        </select>
+                        <span class="field-help">Turn on only for pipelines that hit interstitial/registration flows needing direct DB + Identity API credentials instead of the team's default repo secrets (e.g. Intercepts). Values below are saved locally as defaults, stay editable here on reopen, and remain overridable at workflow dispatch time.</span>
+                    </div>
+                    <div id="dbCredsBlock" style="display:${String(p.dbCredsEnabled || 'false') === 'true' ? 'block' : 'none'};">
+                        <div class="form-row-3">
+                            <div class="form-group">
+                                <label class="form-label">DB Server <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional)</span></label>
+                                <input type="text" id="fDbServer" placeholder="bofi-uatsql.dev.mybofi.local" value="${escapeHtml(p.dbServer || '')}" ${isView ? 'disabled' : ''}>
+                                <span class="field-help">Leave blank to fall back to repo secret/variable REGISTER_DB_SERVER (the current Intercepts pipeline instead keeps a literal default here — either works)</span>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">DB Username <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional)</span></label>
+                                <input type="text" id="fDbUser" value="${escapeHtml(p.dbUser || '')}" ${isView ? 'disabled' : ''}>
+                                <span class="field-help">Leave blank to use repo secret REGISTER_DB_USER (make sure this input is NOT marked required: true in the workflow, or GitHub's Run workflow form will refuse to submit it blank)</span>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">DB Password <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional)</span></label>
+                                <input type="password" id="fDbPassword" autocomplete="new-password" value="${escapeHtml(p.dbPassword || '')}" ${isView ? 'disabled' : ''}>
+                                <span class="field-help">Leave blank to use repo secret REGISTER_DB_PASSWORD (same required: false note as DB Username)</span>
+                            </div>
+                        </div>
+                        <div class="form-row-3">
+                            <div class="form-group">
+                                <label class="form-label">DB Database <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional)</span></label>
+                                <input type="text" id="fDbDatabase" placeholder="olb-uat" value="${escapeHtml(p.dbDatabase || '')}" ${isView ? 'disabled' : ''}>
+                                <span class="field-help">Leave blank to fall back to repo secret/variable REGISTER_DB_DATABASE (or keep a literal default, as the current Intercepts pipeline does)</span>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">DB Port</label>
+                                <input type="text" id="fDbPort" placeholder="1433" value="${escapeHtml(p.dbPort || '')}" ${isView ? 'disabled' : ''}>
+                                <span class="field-help">Not a workflow_dispatch input in the current Intercepts pipeline — written as a fixed with: value</span>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">DB Encrypt</label>
+                                <select id="fDbEncrypt" ${isView ? 'disabled' : ''}>
+                                    <option value="true" ${String(p.dbEncrypt || 'true') === 'true' ? 'selected' : ''}>true</option>
+                                    <option value="false" ${String(p.dbEncrypt || 'true') === 'false' ? 'selected' : ''}>false</option>
+                                </select>
+                                <span class="field-help">Also a fixed with: value, not a workflow_dispatch input</span>
+                            </div>
+                        </div>
+                        <div class="form-row-3">
+                            <div class="form-group">
+                                <label class="form-label">DB Trust Server Cert</label>
+                                <select id="fDbTrustCert" ${isView ? 'disabled' : ''}>
+                                    <option value="true" ${String(p.dbTrustCert || 'true') === 'true' ? 'selected' : ''}>true</option>
+                                    <option value="false" ${String(p.dbTrustCert || 'true') === 'false' ? 'selected' : ''}>false</option>
+                                </select>
+                                <span class="field-help">Also a fixed with: value, not a workflow_dispatch input</span>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Identity Service Username <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional)</span></label>
+                                <input type="text" id="fIdentitySvcUsername" value="${escapeHtml(p.identitySvcUsername || '')}" ${isView ? 'disabled' : ''}>
+                                <span class="field-help">Leave blank to use repo secret IDENTITY_SVC_USERNAME</span>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Identity Service Password <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(optional)</span></label>
+                                <input type="password" id="fIdentitySvcPassword" autocomplete="new-password" value="${escapeHtml(p.identitySvcPassword || '')}" ${isView ? 'disabled' : ''}>
+                                <span class="field-help">Leave blank to use repo secret IDENTITY_SVC_PASSWORD</span>
+                            </div>
+                        </div>
+                        <div style="font-size:11px; color:var(--text-muted); font-weight:700; margin-top:2px;">
+                            Stored only in this browser's Pipeline Manager data — the password fields are never written into the generated prompt or committed to the workflow file. Secret fallback confirmed against _reusable-playwright.yml, which resolves each of these as input → secret → variable.
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>`;
 
@@ -9355,6 +9468,12 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             groupEl.dataset.lastComputed = groupEl.value;
         }
         syncRunnerGroupWithRunTarget();
+    }
+
+    function toggleDbCredsUI() {
+        const enabled = String(document.getElementById('fDbCredsEnabled')?.value || 'false') === 'true';
+        const block = document.getElementById('dbCredsBlock');
+        if (block) block.style.display = enabled ? 'block' : 'none';
     }
 
     function toggleDay(el) {
@@ -11055,6 +11174,16 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 const rt = String(base.runTarget || 'local').toLowerCase();
                 base.runnerLabel = rt === 'browserstack' ? base.runnerLabelLinux : base.runnerLabelWindows;
                 base.customRunnerLabel = rt === 'browserstack' ? base.customRunnerLabelLinux : base.customRunnerLabelWindows;
+                base.dbCredsEnabled = v('fDbCredsEnabled') || 'false';
+                base.dbServer = v('fDbServer');
+                base.dbUser = v('fDbUser');
+                base.dbPassword = v('fDbPassword');
+                base.dbDatabase = v('fDbDatabase');
+                base.dbPort = v('fDbPort');
+                base.dbEncrypt = v('fDbEncrypt') || 'true';
+                base.dbTrustCert = v('fDbTrustCert') || 'true';
+                base.identitySvcUsername = v('fIdentitySvcUsername');
+                base.identitySvcPassword = v('fIdentitySvcPassword');
                 base.jobTimeout = n('fJobTimeout', 120);
                 }
             } else if (repo === 'Axos.QE.Web' && isLegacyCryptoFormActive()) {
@@ -12134,6 +12263,27 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         for (const [k, outKey] of Object.entries(mobileMap)) {
             if (merged[k]) entry[outKey] = merged[k];
         }
+
+        const dbCredsMap = {
+            REGISTER_DB_SERVER: 'dbServer',
+            REGISTER_DB_USER: 'dbUser',
+            REGISTER_DB_PASSWORD: 'dbPassword',
+            REGISTER_DB_DATABASE: 'dbDatabase',
+            REGISTER_DB_PORT: 'dbPort',
+            REGISTER_DB_ENCRYPT: 'dbEncrypt',
+            REGISTER_DB_TRUST_CERT: 'dbTrustCert',
+            IDENTITY_SVC_USERNAME: 'identitySvcUsername',
+            IDENTITY_SVC_PASSWORD: 'identitySvcPassword'
+        };
+        for (const [k, outKey] of Object.entries(dbCredsMap)) {
+            if (merged[k] !== undefined && merged[k] !== null && String(merged[k]).trim() !== '') entry[outKey] = merged[k];
+        }
+        // Only flag the credential-override UI as enabled when the synced file actually
+        // declares these as real workflow_dispatch inputs (not just literal `with:` values
+        // any Web pipeline could carry) — keeps the toggle honest across a sync.
+        if (['REGISTER_DB_SERVER', 'REGISTER_DB_USER', 'REGISTER_DB_PASSWORD', 'REGISTER_DB_DATABASE'].some(k => dispatchInputs.has(k))) {
+            entry.dbCredsEnabled = 'true';
+        }
         // TEST_ENV in the caller YAML is lowercase (dev/qa/stg/uat/prod, matching the
         // workflow_dispatch choice options), but every other env-derived value in this tool
         // (ENVIRONMENTS, parseFilename's env, the Environment <select> options) is uppercase.
@@ -12769,6 +12919,16 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 if (entry.bsAccessKey !== undefined) parsed.bsAccessKey = entry.bsAccessKey;
                 if (entry.bsCredentialSet !== undefined) parsed.bsCredentialSet = entry.bsCredentialSet;
                 if (entry.projectDir !== undefined) parsed.projectDir = entry.projectDir;
+                if (entry.dbCredsEnabled !== undefined) parsed.dbCredsEnabled = entry.dbCredsEnabled;
+                if (entry.dbServer !== undefined) parsed.dbServer = entry.dbServer;
+                if (entry.dbUser !== undefined) parsed.dbUser = entry.dbUser;
+                if (entry.dbPassword !== undefined) parsed.dbPassword = entry.dbPassword;
+                if (entry.dbDatabase !== undefined) parsed.dbDatabase = entry.dbDatabase;
+                if (entry.dbPort !== undefined) parsed.dbPort = entry.dbPort;
+                if (entry.dbEncrypt !== undefined) parsed.dbEncrypt = entry.dbEncrypt;
+                if (entry.dbTrustCert !== undefined) parsed.dbTrustCert = entry.dbTrustCert;
+                if (entry.identitySvcUsername !== undefined) parsed.identitySvcUsername = entry.identitySvcUsername;
+                if (entry.identitySvcPassword !== undefined) parsed.identitySvcPassword = entry.identitySvcPassword;
                 // API (Newman) fields
                 if (entry.collectionId !== undefined) parsed.collectionId = entry.collectionId;
                 if (entry.environmentId !== undefined) parsed.environmentId = entry.environmentId;
@@ -12813,8 +12973,21 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
 
                 const k = pipelineKey(parsed);
                 const idx = pipelines.findIndex(p => pipelineKey(p) === k);
-                if (idx >= 0) { pipelines[idx] = parsed; updated++; }
-                else { pipelines.push(parsed); added++; }
+                if (idx >= 0) {
+                    // dbUser/dbPassword/identitySvcUsername/identitySvcPassword are Pipeline-Manager-local-only
+                    // fields we deliberately never write into the committed workflow file (see the
+                    // generate-prompt "never hardcode" guidance), so a GitHub sync can never observe them.
+                    // Always carry the previously saved local value forward instead of letting sync wipe it.
+                    const priorLocal = pipelines[idx];
+                    for (const credKey of ['dbUser', 'dbPassword', 'identitySvcUsername', 'identitySvcPassword']) {
+                        if (parsed[credKey] === undefined && priorLocal[credKey] !== undefined) parsed[credKey] = priorLocal[credKey];
+                    }
+                    pipelines[idx] = parsed;
+                    updated++;
+                } else {
+                    pipelines.push(parsed);
+                    added++;
+                }
             }
 
                 {
