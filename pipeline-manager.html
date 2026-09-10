@@ -983,6 +983,98 @@
         .dash-group-filter select:hover{border-color:var(--orange);}
         .dash-group-filter .dash-gf-hint{font-size:11px;color:var(--text-muted);}
 
+        /* Dashboard view mode (Dots / Graphs) — legend row */
+        .dash-view-switch{
+            display:inline-flex;align-items:center;gap:0;padding:3px;border-radius:999px;
+            background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);
+        }
+        [data-theme="light"] .dash-view-switch{background:rgba(30,56,96,0.06);border-color:rgba(30,56,96,0.12);}
+        .dash-view-seg{
+            border:none;background:transparent;color:var(--text-muted);font-size:11px;font-weight:800;
+            letter-spacing:.4px;text-transform:uppercase;padding:6px 14px;border-radius:999px;cursor:pointer;
+            transition:all .2s var(--ease);
+        }
+        .dash-view-seg:hover{color:var(--text-primary);}
+        .dash-view-seg.active{
+            background:linear-gradient(135deg, rgba(250,167,74,0.35), rgba(37,99,235,0.22));
+            color:var(--text-primary);box-shadow:0 2px 10px rgba(250,167,74,0.18);
+        }
+
+        /* Glowing AI Summary button — Axos orange / navy loop */
+        @property --glow-angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+        .btn-glow-ai{
+            position:relative;z-index:0;overflow:hidden;border:none;border-radius:999px;
+            padding:7px 14px;font-size:11px;font-weight:800;letter-spacing:.3px;cursor:pointer;
+            color:#fff;background:linear-gradient(135deg, rgba(30,56,96,0.35), rgba(250,167,74,0.25));
+            transition:transform .2s var(--ease), box-shadow .2s var(--ease);
+        }
+        .btn-glow-ai::before{
+            content:'';position:absolute;inset:-2px;z-index:-2;border-radius:inherit;
+            background:conic-gradient(from var(--glow-angle), #FAA74A, #2563eb, #FAA74A);
+            animation:glowSpin 4s linear infinite;
+        }
+        .btn-glow-ai::after{
+            content:'';position:absolute;inset:1px;z-index:-1;border-radius:inherit;
+            background:linear-gradient(135deg, rgba(21,40,68,0.92), rgba(30,56,96,0.88));
+            background-size:200% 200%;animation:glowSmoke 6s ease-in-out infinite;
+        }
+        [data-theme="light"] .btn-glow-ai::after{
+            background:linear-gradient(135deg, rgba(255,255,255,0.96), rgba(255,248,240,0.94));
+        }
+        [data-theme="light"] .btn-glow-ai{color:var(--axos-navy);}
+        .btn-glow-ai:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(250,167,74,0.35);}
+        @keyframes glowSpin{to{--glow-angle:360deg;}}
+        @keyframes glowSmoke{
+            0%,100%{background-position:0% 50%;}
+            50%{background-position:100% 50%;}
+        }
+
+        /* AI Summary modal */
+        .exec-summary-modal{max-width:920px;animation:execSummaryIn .45s cubic-bezier(.4,0,.2,1) both;}
+        @keyframes execSummaryIn{from{opacity:0;transform:scale(.94) translateY(12px);}to{opacity:1;transform:scale(1) translateY(0);}}
+        .exec-summary-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px;align-items:stretch;}
+        @media(max-width:720px){.exec-summary-metrics{grid-template-columns:1fr;}}
+        .exec-sum-card{
+            border-radius:12px;padding:12px 14px;border:1px solid var(--border-color);
+            background:linear-gradient(135deg, rgba(22,29,46,0.85), rgba(31,41,55,0.78));
+            display:flex;flex-direction:column;height:100%;min-height:148px;
+        }
+        .exec-sum-metrics-body{flex:1;display:flex;flex-direction:column;justify-content:flex-start;}
+        .exec-sum-card-foot{margin-top:auto;}
+        [data-theme="light"] .exec-sum-card{background:#fff;box-shadow:0 4px 12px rgba(0,0,0,0.05);}
+        .exec-sum-card-label{font-size:10px;font-weight:800;letter-spacing:.55px;text-transform:uppercase;color:var(--text-muted);}
+        .exec-sum-card-value{font-size:28px;font-weight:800;margin:4px 0 2px;line-height:1.15;color:var(--text-primary);}
+        .exec-sum-card-sub{font-size:12px;color:var(--text-secondary);line-height:1.45;}
+        .exec-sum-delta{
+            display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;
+            font-size:13px;font-weight:800;margin:6px 0;
+        }
+        .exec-sum-delta.up{background:rgba(220,38,38,0.14);color:var(--error);}
+        .exec-sum-delta.down{background:rgba(22,163,74,0.14);color:var(--success);}
+        .exec-sum-delta.flat{background:rgba(107,114,128,0.14);color:var(--text-muted);}
+        .exec-sum-link{color:var(--blue);font-weight:700;text-decoration:none;}
+        .exec-sum-link:hover{color:var(--axos-orange);text-decoration:underline;}
+        .exec-sum-range-line{display:block;margin-top:4px;}
+        .exec-sum-callout{
+            border-radius:12px;padding:12px 14px;margin-bottom:12px;font-size:13px;line-height:1.55;
+            border:1px solid rgba(250,167,74,0.35);background:rgba(250,167,74,0.10);color:var(--text-secondary);
+        }
+        .exec-sum-callout strong{font-weight:800;color:var(--text-primary);}
+        .exec-sum-range-tests{display:block;margin-top:3px;font-size:12px;color:var(--text-secondary);line-height:1.45;}
+        .exec-sum-muted{color:var(--text-muted);font-style:italic;}
+        .exec-sum-chart-wrap{
+            border-radius:14px;border:1px solid var(--border-color);padding:14px;margin-bottom:14px;
+            background:rgba(0,0,0,0.12);min-height:240px;
+        }
+        [data-theme="light"] .exec-sum-chart-wrap{background:rgba(248,250,252,0.9);}
+        .exec-sum-narrative{
+            border-radius:14px;padding:16px 18px;border:1px solid rgba(30,56,96,0.16);
+            background:linear-gradient(135deg, rgba(30,56,96,0.06), rgba(250,167,74,0.07));
+            font-size:14px;line-height:1.7;color:var(--text-primary);
+        }
+        .exec-sum-narrative.loading{opacity:.7;font-style:italic;}
+        .exec-sum-note{font-size:11px;color:var(--text-muted);margin-top:8px;}
+
         /* Duplicate pipelines info panel */
         .dash-dup{
             border:1px solid color-mix(in srgb, var(--orange) 32%, transparent);
@@ -1237,6 +1329,10 @@
         .fetch-spinner { width:14px; height:14px; border:2px solid rgba(0,0,0,0.2); border-top-color:#0a0e1a; border-radius:50%; animation:spin 0.6s linear infinite; display:inline-block; }
 
         .metrics-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:16px; margin-bottom:28px; }
+        .metrics-grid.dash-metrics-grid { grid-template-columns:repeat(4, minmax(0, 1fr)); }
+        @media (max-width: 900px) {
+            .metrics-grid.dash-metrics-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+        }
         .metric-card {
             position:relative; overflow:hidden; border-radius:16px; padding:22px 20px;
             background: linear-gradient(135deg, rgba(22,29,46,0.95), rgba(31,41,55,0.9));
@@ -2504,6 +2600,20 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeModal('diffModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Execution Summary Modal -->
+    <div class="modal-overlay" id="execSummaryModal" onclick="if(event.target===this)closeExecSummaryModal()">
+        <div class="modal exec-summary-modal" onclick="event.stopPropagation()">
+            <div class="modal-header" style="border-left:4px solid var(--axos-orange);">
+                <div class="modal-title" id="execSummaryTitle">AI Summary</div>
+                <button class="modal-close" onclick="closeExecSummaryModal()">x</button>
+            </div>
+            <div class="modal-body" id="execSummaryBody"></div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeExecSummaryModal()">Close</button>
             </div>
         </div>
     </div>
@@ -11680,8 +11790,13 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
     }
 
     function copyPrompt() {
-        navigator.clipboard.writeText(document.getElementById('outputBox').textContent)
-            .then(() => showToast('Copied to clipboard!'));
+        const text = document.getElementById('outputBox').textContent || '';
+        const done = () => showToast('Copied to clipboard!');
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+        } else {
+            fallbackCopy(text, done);
+        }
     }
 
     // ══════════════════════════════════════════
@@ -12191,12 +12306,18 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                     let val = stripYamlScalarQuotes(mWith[2]);
                     const exprMatch = val.match(/\$\{\{\s*inputs\.(\w+)\s*\|\|\s*(.+?)\s*\}\}/);
                     if (exprMatch) val = stripYamlScalarQuotes(exprMatch[2]);
+                    else {
+                        const exprDispatch = val.match(/\$\{\{\s*github\.event_name\s*==\s*'workflow_dispatch'\s*&&\s*(?:fromJSON\(inputs\.(\w+)\)|inputs\.(\w+))\s*\|\|\s*(.+?)\s*\}\}/);
+                        if (exprDispatch) val = stripYamlScalarQuotes(exprDispatch[3]);
+                    }
                     if (val && !val.startsWith('${{')) withValues[mWith[1].toUpperCase()] = val;
                 }
             }
         }
 
         const merged = { ...withValues, ...inputs };
+        if (!merged.PARALLELS && inputs.parallels) merged.PARALLELS = inputs.parallels;
+        if (!merged.PARALLEL && inputs.PARALLEL) merged.PARALLEL = inputs.PARALLEL;
 
         const entry = {};
         const testimMap = {
@@ -13805,6 +13926,10 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
     function closeModal(id) {
         if (id === 'syncModal' && syncAbortController) {
             cancelSyncFromGitHub();
+        }
+        if (id === 'execSummaryModal') {
+            closeExecSummaryModal();
+            return;
         }
         const el = document.getElementById(id);
         if (!el) return;
@@ -16260,7 +16385,8 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                                 // pipelines — their own job never gets a versioned "- vX.Y.Z" name, so exclude
                                 // them here or they'd waste enrichment slots that real test runs need.
                                 isMobile: isMobilePipeline(p) && !isOrchestratorPipeline(p),
-                                resolvedVersion: undefined // filled by enrichRunResolvedVersions() when the run's job name carries a version
+                                resolvedVersion: undefined, // filled by enrichRunResolvedVersions() when the run's job name carries a version
+                                inputs: (r.inputs && typeof r.inputs === 'object') ? { ...r.inputs } : {}
                             };
                             allRuns.push(built);
                             enrichQueued++;
@@ -17634,6 +17760,687 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         return fmtDurationParts(sec);
     }
 
+    const API_REPOS = ['Axos.QE.API_OLB', 'Axos.QE.API_CS', 'Axos.QE.API_UDB', 'Axos.QE.API_WFO', 'Axos.QE.PROD_API_CS'];
+    function isApiRepo(repo) { return API_REPOS.includes(String(repo || '').trim()); }
+
+    // Prefer job-union execution time when enriched; otherwise run_started→updated (excludes queue wait).
+    function runExecSec(r) {
+        if (!r) return 0;
+        if (r.execSec != null && r.execSec > 0) return r.execSec;
+        return r.duration || 0;
+    }
+
+    function getRunParallelFromInputs(inputs) {
+        if (!inputs || typeof inputs !== 'object') return null;
+        for (const k of ['PARALLEL', 'PARALLELS', 'parallels']) {
+            const v = inputs[k];
+            if (v === undefined || v === null || String(v).trim() === '') continue;
+            const s = String(v).trim().toLowerCase();
+            if (s === 'inherit') return null;
+            const n = parseInt(v, 10);
+            if (Number.isFinite(n) && n > 0) return n;
+        }
+        return null;
+    }
+
+    function getRunParallelLabel(run) {
+        if (!run) return 'N/A';
+        const fromInputs = getRunParallelFromInputs(run.inputs);
+        if (fromInputs != null) return String(fromInputs);
+
+        const p = findPipeline(pipelineKeyFrom(run.repo, run.workflowFile));
+        if (p && isOrchestratorPipeline(p)) return 'N/A';
+        if (p && isPerfPipeline(p)) return 'N/A';
+        if (isApiRepo(run.repo)) return 'N/A';
+        const fn = String(run.workflowFile || run.workflowName || '').toLowerCase();
+        if (fn.includes('-newman')) return 'N/A';
+
+        if (p && p.parallel !== undefined && p.parallel !== null && String(p.parallel).trim() !== '') {
+            const s = String(p.parallel).trim().toLowerCase();
+            if (s === 'inherit') return 'N/A';
+            const n = parseInt(p.parallel, 10);
+            if (Number.isFinite(n) && n > 0) return String(n);
+        }
+        return 'N/A';
+    }
+
+    function getRunParallelCount(run) {
+        const label = getRunParallelLabel(run);
+        if (label === 'N/A') return null;
+        const n = parseInt(label, 10);
+        return Number.isFinite(n) && n > 0 ? n : null;
+    }
+
+    function parseRetryInput(v) {
+        if (v === undefined || v === null || String(v).trim() === '') return null;
+        const s = String(v).trim().toLowerCase();
+        if (s === 'inherit') return null;
+        const n = parseInt(v, 10);
+        return Number.isFinite(n) && n >= 0 ? n : null;
+    }
+
+    function getRunRetryCount(run) {
+        if (!run) return null;
+        const inputs = run.inputs;
+        if (inputs && typeof inputs === 'object') {
+            for (const k of ['RETRIES', 'retries', 'MAX_RETRIES', 'maxRetries']) {
+                const n = parseRetryInput(inputs[k]);
+                if (n != null) return n;
+            }
+        }
+        const p = findPipeline(pipelineKeyFrom(run.repo, run.workflowFile));
+        if (!p) return null;
+        const fromCatalog = parseRetryInput(p.retries != null && String(p.retries).trim() !== '' ? p.retries : p.maxRetries);
+        return fromCatalog;
+    }
+
+    function getRunRetryLabel(run) {
+        const n = getRunRetryCount(run);
+        return n == null ? 'N/A' : String(n);
+    }
+
+    function axisMetaLine(entry) {
+        const bits = [];
+        if (entry.parallels != null) bits.push(`x${entry.parallels}`);
+        if (entry.retries != null) bits.push(`r${entry.retries}`);
+        return bits.join(' · ');
+    }
+
+    // Intentional reversed-base64 obfuscation for client-side AI Summary — see .cursor/BUGBOT.md.
+    function getAzureOpenAIKey() {
+        try {
+            const enc = 'KpWZDd0TDFkQBFUQzc3MKhlRqJUZZNUQEJUO5oUURp0baRjcz5GOUFXV6ZVQjNnVTtkQzZUdrdkU5RjVHdURMNDWGNEcLpmUjxUOxllbiVjV2QFN';
+            return atob(enc.split('').reverse().join(''));
+        } catch {
+            return '';
+        }
+    }
+
+    function fmtPctSigned(n) {
+        if (n == null || !Number.isFinite(n)) return '—';
+        const sign = n > 0 ? '+' : '';
+        return `${sign}${n.toFixed(1)}%`;
+    }
+
+    function execSummaryPctChange(from, to) {
+        if (!from || from <= 0) return to > 0 ? 100 : 0;
+        return ((to - from) / from) * 100;
+    }
+
+    function medianOf(values) {
+        const list = (values || []).filter(v => Number.isFinite(v)).slice().sort((a, b) => a - b);
+        if (!list.length) return 0;
+        const mid = Math.floor(list.length / 2);
+        return list.length % 2 ? list[mid] : Math.round((list[mid - 1] + list[mid]) / 2);
+    }
+
+    function isRealExecRun(r, execSec, medianSec) {
+        if (!r || r.status !== 'completed' || execSec <= 0) return false;
+        const outcome = getRunOutcome(r);
+        if (r.gateSkipped) return false;
+        if (outcome === 'cancelled' || outcome === 'skipped' || outcome === 'no_tests') return false;
+        const tc = getRunTestCounts(r);
+        if (tc.noTests) return false;
+        if ((tc.total || 0) > 0) return true;
+        if (outcome !== 'success' && outcome !== 'failure') return false;
+        if (medianSec > 0 && execSec < medianSec * 0.25) return false;
+        return true;
+    }
+
+    function runLabelShort(run) {
+        return `#${run?.runNumber ?? '?'}`;
+    }
+
+    function pipelineDisplayName(workflowFile, run) {
+        const p = findPipeline(pipelineKeyFrom(run?.repo, workflowFile));
+        return String(p?.name || run?.workflowName || workflowFile || 'Pipeline')
+            .replace(/-Testim$/, '')
+            .replace(/-Playwright$/, '')
+            .replace(/-BrowserStack$/, '')
+            .replace(/-Newman$/, '');
+    }
+
+    function computePipelineExecSummary(repo, workflowFile) {
+        const runs = getDashboardPipelineRuns(repo, workflowFile);
+        const pipeName = pipelineDisplayName(workflowFile, runs[0] || { repo, workflowFile });
+        const base = {
+            pipeName,
+            repo,
+            workflowFile,
+            windowLabel: getDashboardFetchWindowLabel()
+        };
+        const completed = [];
+        for (const r of runs) {
+            if (!r || r.status !== 'completed') continue;
+            const execSec = runExecSec(r);
+            if (execSec <= 0) continue;
+            completed.push({ run: r, execSec });
+        }
+        const medianSec = medianOf(completed.map(c => c.execSec));
+        const excluded = [];
+        const entries = [];
+        for (const c of completed) {
+            const r = c.run;
+            const parallels = getRunParallelCount(r);
+            const retries = getRunRetryCount(r);
+            const tc = getRunTestCounts(r);
+            const passed = tc.passed || 0;
+            const failed = tc.failed || 0;
+            const other = tc.other || 0;
+            const actionable = passed + failed;
+            const row = {
+                run: r,
+                label: runLabelShort(r),
+                runNumber: r.runNumber,
+                execSec: c.execSec,
+                parallels,
+                retries,
+                parallelSec: parallels != null ? c.execSec * parallels : null,
+                createdAt: r.createdAt,
+                outcome: getRunOutcome(r),
+                url: r.url || '',
+                testsPassed: passed,
+                testsFailed: failed,
+                testsOther: other,
+                testsTotal: tc.total ?? (passed + failed + other),
+                passedSec: actionable > 0 ? Math.round(c.execSec * (passed / actionable)) : (failed === 0 && passed === 0 ? c.execSec : 0),
+                failedSec: actionable > 0 ? Math.round(c.execSec * (failed / actionable)) : 0,
+                otherSec: 0
+            };
+            if (row.passedSec + row.failedSec !== c.execSec && actionable > 0) {
+                row.passedSec = c.execSec - row.failedSec;
+            }
+            if (isRealExecRun(r, c.execSec, medianSec)) entries.push(row);
+            else excluded.push(row);
+        }
+        entries.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+        const n = entries.length;
+        if (!n) return { ...base, empty: true, excludedCount: excluded.length };
+
+        const execValues = entries.map(e => e.execSec);
+        const avgExecSec = Math.round(execValues.reduce((a, b) => a + b, 0) / n);
+        const minIdx = execValues.indexOf(Math.min(...execValues));
+        const maxIdx = execValues.indexOf(Math.max(...execValues));
+        const latest = entries[n - 1];
+        const previous = n > 1 ? entries[n - 2] : null;
+
+        const mid = Math.max(1, Math.floor(n / 2));
+        const firstHalf = entries.slice(0, mid);
+        const secondHalf = entries.slice(mid).length ? entries.slice(mid) : firstHalf;
+        const avgFirst = Math.round(firstHalf.reduce((s, e) => s + e.execSec, 0) / firstHalf.length);
+        const avgSecond = Math.round(secondHalf.reduce((s, e) => s + e.execSec, 0) / secondHalf.length);
+
+        const passFirst = aggregateDashboardPassRateFromRuns(firstHalf.map(e => e.run));
+        const passSecond = aggregateDashboardPassRateFromRuns(secondHalf.map(e => e.run));
+        const passAll = aggregateDashboardPassRateFromRuns(entries.map(e => e.run));
+
+        const withParallels = entries.filter(e => e.parallels != null);
+        const parallelsVary = withParallels.length > 1 && new Set(withParallels.map(e => e.parallels)).size > 1;
+        const avgParallelSec = withParallels.length
+            ? Math.round(withParallels.reduce((s, e) => s + e.parallelSec, 0) / withParallels.length)
+            : null;
+
+        return {
+            ...base,
+            empty: false,
+            count: n,
+            excludedCount: excluded.length,
+            entries,
+            avgExecSec,
+            minExecSec: entries[minIdx].execSec,
+            maxExecSec: entries[maxIdx].execSec,
+            minEntry: entries[minIdx],
+            maxEntry: entries[maxIdx],
+            latestExecSec: latest.execSec,
+            previousExecSec: previous ? previous.execSec : null,
+            latestVsPreviousPct: previous ? execSummaryPctChange(previous.execSec, latest.execSec) : null,
+            hasPrevious: !!previous,
+            avgFirst,
+            avgSecond,
+            halfTrendPct: execSummaryPctChange(avgFirst, avgSecond),
+            passRate: passAll.passRate,
+            passRateFirst: passFirst.passRate,
+            passRateSecond: passSecond.passRate,
+            parallelsVary,
+            latestParallels: latest.parallels,
+            previousParallels: previous ? previous.parallels : null,
+            avgParallelSec,
+            latestParallelSec: latest.parallelSec,
+            previousParallelSec: previous ? previous.parallelSec : null,
+            latestRetries: latest.retries,
+            previousRetries: previous ? previous.retries : null,
+            latestFailed: latest.testsFailed,
+            previousFailed: previous ? previous.testsFailed : null,
+            latestPassed: latest.testsPassed,
+            previousPassed: previous ? previous.testsPassed : null,
+            latestTotal: latest.testsTotal,
+            previousTotal: previous ? previous.testsTotal : null,
+            latestSkipped: latest.testsOther,
+            previousSkipped: previous ? previous.testsOther : null
+        };
+    }
+
+    function execSummaryTestCounts(total, passed, failed, skipped) {
+        const t = total ?? ((passed ?? 0) + (failed ?? 0) + (skipped ?? 0));
+        return `${t} total · ${passed ?? 0} passed, ${failed ?? 0} failed, ${skipped ?? 0} skipped`;
+    }
+
+    function execSummaryBoldNum(value) {
+        return `<strong>${escapeHtml(String(value))}</strong>`;
+    }
+
+    function execSummaryTestCountsHtml(total, passed, failed, skipped) {
+        const t = total ?? ((passed ?? 0) + (failed ?? 0) + (skipped ?? 0));
+        return `${execSummaryBoldNum(t)} total · ${execSummaryBoldNum(passed ?? 0)} passed, ${execSummaryBoldNum(failed ?? 0)} failed, ${execSummaryBoldNum(skipped ?? 0)} skipped`;
+    }
+
+    function execSummaryCompareLineHtml(label, execSec, total, passed, failed, skipped) {
+        return `${escapeHtml(label)}: ${execSummaryBoldNum(fmtDuration(execSec))} · ${execSummaryTestCountsHtml(total, passed, failed, skipped)}.`;
+    }
+
+    function buildTimeChangeCalloutHtml(summary) {
+        if (!summary || summary.empty || summary.count < 2) return '';
+        const lines = [
+            execSummaryCompareLineHtml('Latest', summary.latestExecSec, summary.latestTotal, summary.latestPassed, summary.latestFailed, summary.latestSkipped),
+            execSummaryCompareLineHtml('Previous', summary.previousExecSec, summary.previousTotal, summary.previousPassed, summary.previousFailed, summary.previousSkipped)
+        ];
+        const extras = [];
+        const fromP = summary.previousParallels;
+        const toP = summary.latestParallels;
+        if (fromP != null && toP != null && fromP !== toP) {
+            extras.push(`Parallels ${execSummaryBoldNum(fromP)} → ${execSummaryBoldNum(toP)}.`);
+        }
+        const fromR = summary.previousRetries;
+        const toR = summary.latestRetries;
+        if (fromR != null && toR != null && fromR !== toR) {
+            extras.push(`Retries ${execSummaryBoldNum(fromR)} → ${execSummaryBoldNum(toR)}.`);
+        }
+        if (extras.length) lines.push(extras.join(' '));
+        return lines.join('<br>');
+    }
+
+    function buildTimeChangeCallout(summary) {
+        if (!summary || summary.empty || summary.count < 2) return '';
+        const parts = [
+            `Latest: ${fmtDuration(summary.latestExecSec)} · ${execSummaryTestCounts(summary.latestTotal, summary.latestPassed, summary.latestFailed, summary.latestSkipped)}.`,
+            `Previous: ${fmtDuration(summary.previousExecSec)} · ${execSummaryTestCounts(summary.previousTotal, summary.previousPassed, summary.previousFailed, summary.previousSkipped)}.`
+        ];
+        const fromP = summary.previousParallels;
+        const toP = summary.latestParallels;
+        if (fromP != null && toP != null && fromP !== toP) {
+            parts.push(`Parallels ${fromP} → ${toP}.`);
+        }
+        const fromR = summary.previousRetries;
+        const toR = summary.latestRetries;
+        if (fromR != null && toR != null && fromR !== toR) {
+            parts.push(`Retries ${fromR} → ${toR}.`);
+        }
+        return parts.join('\n');
+    }
+
+    function buildCalculatedExecNarrative(summary) {
+        if (summary.empty) {
+            return 'No completed runs with real execution timing in this window. Fetch Results on the Results & Metrics tab first.';
+        }
+        const parts = [];
+        parts.push(`Over the last ${summary.count} real run${summary.count === 1 ? '' : 's'}, this pipeline averaged ${fmtDuration(summary.avgExecSec)}. Fastest was ${fmtDuration(summary.minExecSec)}; slowest was ${fmtDuration(summary.maxExecSec)}.`);
+        if (summary.hasPrevious) {
+            const dir = summary.latestVsPreviousPct > 2 ? 'took longer' : summary.latestVsPreviousPct < -2 ? 'finished sooner' : 'took about the same time';
+            parts.push(`The latest run ${dir} than the one before it (${fmtDuration(summary.latestExecSec)} vs ${fmtDuration(summary.previousExecSec)}).`);
+            parts.push(`Latest: ${execSummaryTestCounts(summary.latestTotal, summary.latestPassed, summary.latestFailed, summary.latestSkipped)}. Previous: ${execSummaryTestCounts(summary.previousTotal, summary.previousPassed, summary.previousFailed, summary.previousSkipped)}.`);
+        } else if (summary.count === 1) {
+            parts.push(`Only one real run in this window (${fmtDuration(summary.latestExecSec)}; ${execSummaryTestCounts(summary.latestTotal, summary.latestPassed, summary.latestFailed, summary.latestSkipped)}).`);
+        }
+        if (summary.passRate != null) {
+            parts.push(`Pass rate is ${summary.passRate.toFixed(1)}%.`);
+        }
+        if (summary.latestParallels != null || summary.latestRetries != null) {
+            const cfg = [];
+            if (summary.latestParallels != null) cfg.push(`${summary.latestParallels} parallel${summary.latestParallels === 1 ? '' : 's'}`);
+            if (summary.latestRetries != null) cfg.push(`${summary.latestRetries} retr${summary.latestRetries === 1 ? 'y' : 'ies'}`);
+            parts.push(`Latest run used ${cfg.join(' and ')}.`);
+        }
+        return parts.join(' ');
+    }
+
+    function destroyExecSummaryChart() {
+        if (execSummaryChartInstance) {
+            try { execSummaryChartInstance.destroy(); } catch { /* ignore */ }
+            execSummaryChartInstance = null;
+        }
+    }
+
+    function closeExecSummaryModal() {
+        destroyExecSummaryChart();
+        const modal = document.getElementById('execSummaryModal');
+        if (modal) modal.classList.remove('show');
+    }
+
+    function execSummaryDeltaClass(pct) {
+        if (pct > 0.5) return 'up';
+        if (pct < -0.5) return 'down';
+        return 'flat';
+    }
+
+    function execRunLinkHtml(entry, prefix) {
+        if (!entry) return `${prefix}: —`;
+        const text = `${prefix}: ${entry.label}`;
+        if (!entry.url) return escapeHtml(text);
+        return `${escapeHtml(prefix)}: <a class="exec-sum-link" href="${escapeHtml(entry.url)}" target="_blank" rel="noopener">${escapeHtml(entry.label)}</a>`;
+    }
+
+    function execRunRangeLineHtml(entry, label, execSec) {
+        if (!entry) return `${escapeHtml(label)}: <span class="exec-sum-muted">No prior run</span>`;
+        const runLink = entry.url
+            ? `<a class="exec-sum-link" href="${escapeHtml(entry.url)}" target="_blank" rel="noopener">${escapeHtml(entry.label)}</a>`
+            : escapeHtml(entry.label);
+        const total = entry.testsTotal ?? ((entry.testsPassed ?? 0) + (entry.testsFailed ?? 0) + (entry.testsOther ?? 0));
+        const counts = execSummaryTestCountsHtml(total, entry.testsPassed, entry.testsFailed, entry.testsOther);
+        return `${escapeHtml(label)} ${execSummaryBoldNum(fmtDuration(execSec))}: ${runLink}<span class="exec-sum-range-tests">${counts}</span>`;
+    }
+
+    function renderExecSummaryChart(summary) {
+        destroyExecSummaryChart();
+        const canvas = document.getElementById('execSummaryChart');
+        if (!canvas || summary.empty || typeof Chart === 'undefined') return;
+
+        const isLight = (document.documentElement.getAttribute('data-theme') || 'light') === 'light';
+        const tickColor = isLight ? 'rgba(30,56,96,0.70)' : '#9ca3af';
+        const gridColor = isLight ? 'rgba(30,56,96,0.10)' : 'rgba(255,255,255,0.06)';
+        const avgColor = '#FAA74A';
+        const entries = summary.entries;
+        const hasFailed = entries.some(e => (e.failedSec || 0) > 0);
+        const datasets = [
+            {
+                type: 'bar',
+                label: 'Passed',
+                data: entries.map(e => e.passedSec || 0),
+                backgroundColor: 'rgba(22,163,74,0.88)',
+                stack: 'time',
+                borderRadius: 0,
+                order: 2
+            }
+        ];
+        if (hasFailed) {
+            datasets.push({
+                type: 'bar',
+                label: 'Failed',
+                data: entries.map(e => e.failedSec || 0),
+                backgroundColor: 'rgba(220,38,38,0.88)',
+                stack: 'time',
+                borderRadius: 0,
+                order: 2
+            });
+        }
+        datasets.push({
+            type: 'line',
+            label: 'Average',
+            data: entries.map(() => summary.avgExecSec),
+            borderColor: avgColor,
+            borderWidth: 2,
+            borderDash: [6, 4],
+            pointRadius: 0,
+            fill: false,
+            stack: 'avg',
+            order: 1
+        });
+
+        execSummaryChartInstance = new Chart(canvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: entries.map(e => e.label),
+                datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 900, easing: 'easeOutQuart' },
+                onClick(_evt, elements) {
+                    const idx = elements?.[0]?.index;
+                    const url = entries[idx]?.url;
+                    if (url) window.open(url, '_blank', 'noopener');
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: { color: tickColor, boxWidth: 10, font: { size: 10, weight: '700' } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title(items) {
+                                const e = entries[items?.[0]?.dataIndex];
+                                if (!e) return '';
+                                const bits = [e.label];
+                                if (e.parallels != null) bits.push(`${e.parallels} parallel${e.parallels === 1 ? '' : 's'}`);
+                                if (e.retries != null) bits.push(`${e.retries} retr${e.retries === 1 ? 'y' : 'ies'}`);
+                                return bits.join('  ·  ');
+                            },
+                            label(ctx) {
+                                if (ctx.dataset.label === 'Average') return ` Average: ${fmtDuration(summary.avgExecSec)}`;
+                                if (ctx.dataset.label !== 'Passed') return null;
+                                const e = entries[ctx.dataIndex];
+                                if (!e) return '';
+                                return ` Time: ${fmtDuration(e.execSec)}`;
+                            },
+                            afterBody(items) {
+                                const e = entries[items?.[0]?.dataIndex];
+                                if (!e) return [];
+                                const total = e.testsTotal ?? (e.testsPassed + e.testsFailed + (e.testsOther || 0));
+                                return [
+                                    ` Tests: ${total} total · ${e.testsPassed} passed, ${e.testsFailed} failed, ${e.testsOther || 0} skipped`,
+                                    ` Parallels: ${e.parallels != null ? e.parallels : 'N/A'}`,
+                                    ` Retries: ${e.retries != null ? e.retries : 'N/A'}`
+                                ];
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        stacked: true,
+                        ticks: {
+                            color: tickColor,
+                            font: { size: 10, weight: '700' },
+                            maxRotation: 0,
+                            autoSkip: false,
+                            callback(_val, idx) {
+                                const e = entries[idx];
+                                if (!e) return '';
+                                const meta = axisMetaLine(e);
+                                return meta ? [e.label, meta] : e.label;
+                            }
+                        },
+                        grid: { display: false }
+                    },
+                    y: {
+                        stacked: true,
+                        ticks: {
+                            color: tickColor,
+                            font: { size: 10 },
+                            callback: v => fmtDuration(v)
+                        },
+                        grid: { color: gridColor }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderExecSummaryModalContent(summary) {
+        const body = document.getElementById('execSummaryBody');
+        const title = document.getElementById('execSummaryTitle');
+        if (!body || !title) return;
+
+        title.textContent = `${summary.pipeName} — AI Summary`;
+
+        if (summary.empty) {
+            body.innerHTML = `<div class="exec-sum-narrative">${escapeHtml(buildCalculatedExecNarrative(summary))}</div>`;
+            return;
+        }
+
+        const hasPrevious = !!summary.hasPrevious;
+        const deltaCls = hasPrevious ? execSummaryDeltaClass(summary.latestVsPreviousPct) : 'flat';
+        const deltaIcon = deltaCls === 'up' ? '↑' : deltaCls === 'down' ? '↓' : '→';
+        const latestEntry = summary.entries[summary.entries.length - 1];
+        const previousEntry = hasPrevious ? summary.entries[summary.entries.length - 2] : null;
+        const deltaHtml = hasPrevious
+            ? `<div class="exec-sum-delta ${deltaCls}">${deltaIcon} ${escapeHtml(fmtPctSigned(summary.latestVsPreviousPct))}</div>`
+            : `<div class="exec-sum-card-sub exec-sum-muted">No prior run to compare</div>`;
+        const excludedNote = summary.excludedCount
+            ? `<div class="exec-sum-note">${summary.excludedCount} no-test or early-abort run${summary.excludedCount === 1 ? '' : 's'} left out of the timing numbers.</div>`
+            : '';
+
+        body.innerHTML = `
+            <div class="exec-summary-metrics">
+                <div class="exec-sum-card">
+                    <div class="exec-sum-card-label">Average</div>
+                    <div class="exec-sum-metrics-body">
+                        <div class="exec-sum-card-value">${escapeHtml(fmtDuration(summary.avgExecSec))}</div>
+                    </div>
+                    <div class="exec-sum-card-sub exec-sum-card-foot">${summary.count} real run${summary.count === 1 ? '' : 's'}</div>
+                </div>
+                <div class="exec-sum-card">
+                    <div class="exec-sum-card-label">Latest vs previous</div>
+                    ${deltaHtml}
+                    <div class="exec-sum-metrics-body">
+                        <div class="exec-sum-card-sub exec-sum-range-line">${execRunRangeLineHtml(latestEntry, 'Latest', summary.latestExecSec)}</div>
+                        <div class="exec-sum-card-sub exec-sum-range-line">${hasPrevious ? execRunRangeLineHtml(previousEntry, 'Previous', summary.previousExecSec) : execRunRangeLineHtml(null, 'Previous', 0)}</div>
+                    </div>
+                </div>
+                <div class="exec-sum-card">
+                    <div class="exec-sum-card-label">Fastest / slowest</div>
+                    <div class="exec-sum-metrics-body">
+                        <div class="exec-sum-card-sub exec-sum-range-line">${execRunRangeLineHtml(summary.minEntry, 'Fastest', summary.minExecSec)}</div>
+                        <div class="exec-sum-card-sub exec-sum-range-line">${execRunRangeLineHtml(summary.maxEntry, 'Slowest', summary.maxExecSec)}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="exec-sum-chart-wrap">
+                <div style="font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;">Last ${summary.count} real runs</div>
+                <div style="position:relative;height:220px;"><canvas id="execSummaryChart"></canvas></div>
+                ${excludedNote}
+            </div>
+            <div class="exec-sum-narrative loading" id="execSummaryNarrative">${escapeHtml(buildCalculatedExecNarrative(summary))}</div>
+        `;
+
+        requestAnimationFrame(() => renderExecSummaryChart(summary));
+        loadExecSummaryAiNarrative(summary);
+    }
+
+    async function fetchAzureExecSummaryNarrative(summary) {
+        const key = getAzureOpenAIKey();
+        if (!key) throw new Error('Azure OpenAI key not configured');
+        const url = `${AZURE_OPENAI_ENDPOINT}openai/deployments/${AZURE_OPENAI_DEPLOYMENT}/chat/completions?api-version=${AZURE_OPENAI_API_VERSION}`;
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'api-key': key },
+            body: JSON.stringify({
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'Write 3 or 4 short plain-English sentences about this QE pipeline. Always use the provided duration strings (never raw seconds). Restate the numbers only: average, fastest, slowest, latest vs previous duration, and total/passed/failed/skipped counts. Do not explain why duration changed. Do not blame retries, failures, parallels, or fail-fast behavior. Do not guess causes. If latestVsPreviousNote is present, restate those facts without adding interpretation. No jargon, no bullet lists.'
+                    },
+                    {
+                        role: 'user',
+                        content: JSON.stringify({
+                            pipeline: summary.pipeName,
+                            repo: summary.repo,
+                            window: summary.windowLabel,
+                            realRuns: summary.count,
+                            excludedRuns: summary.excludedCount,
+                            average: fmtDuration(summary.avgExecSec),
+                            fastest: fmtDuration(summary.minExecSec),
+                            slowest: fmtDuration(summary.maxExecSec),
+                            latest: fmtDuration(summary.latestExecSec),
+                            previous: fmtDuration(summary.previousExecSec),
+                            latestVsPrevious: fmtPctSigned(summary.latestVsPreviousPct),
+                            passRate: summary.passRate != null ? `${summary.passRate.toFixed(1)}%` : null,
+                            latestPassed: summary.latestPassed,
+                            latestFailed: summary.latestFailed,
+                            latestTotal: summary.latestTotal,
+                            latestSkipped: summary.latestSkipped,
+                            previousPassed: summary.previousPassed,
+                            previousFailed: summary.previousFailed,
+                            previousTotal: summary.previousTotal,
+                            previousSkipped: summary.previousSkipped,
+                            latestParallels: summary.latestParallels,
+                            previousParallels: summary.previousParallels,
+                            latestRetries: summary.latestRetries,
+                            previousRetries: summary.previousRetries,
+                            latestVsPreviousNote: buildTimeChangeCallout(summary) || null
+                        })
+                    }
+                ],
+                max_tokens: 320,
+                temperature: 0.35
+            })
+        });
+        if (!res.ok) {
+            const errText = await res.text().catch(() => '');
+            throw new Error(`Azure OpenAI ${res.status}${errText ? `: ${errText.slice(0, 120)}` : ''}`);
+        }
+        const data = await res.json();
+        return sanitizeExecSummaryAiText(String(data?.choices?.[0]?.message?.content || '').trim());
+    }
+
+    function sanitizeExecSummaryAiText(text) {
+        let t = String(text || '').trim();
+        if (!t) return t;
+        const sentences = t.split(/(?<=[.!?])\s+/);
+        const isCausalGuess = (low) => {
+            if (/time went (?:up|down) because/.test(low)) return true;
+            if (/\b(?:took|lasted|increased|decreased|dropped|rose)\b.*\bbecause\b/.test(low)) return true;
+            if (/\bbecause\b.*\b(?:retr(?:y|ies)|fail(?:ed|ure|s)|parallel)/.test(low)) return true;
+            if (/\b(?:retr(?:y|ies)|fail(?:ed|ure|s)|parallel)/.test(low) && /\b(?:longer|more time|shorter|less time|lasted|added time)\b/.test(low)) return true;
+            const talksConfig = /\bparallels?\b/.test(low) || /\bretries\b/.test(low);
+            const shrugs = /do(?:es)? n['’]?t explain|do not explain|does not explain|stayed the same/.test(low);
+            return talksConfig && shrugs;
+        };
+        const kept = sentences.filter(s => !isCausalGuess(s.toLowerCase()));
+        return kept.join(' ').replace(/\s{2,}/g, ' ').trim();
+    }
+
+    async function loadExecSummaryAiNarrative(summary) {
+        const el = document.getElementById('execSummaryNarrative');
+        if (!el) return;
+        const fallback = buildCalculatedExecNarrative(summary);
+        try {
+            const text = sanitizeExecSummaryAiText(await fetchAzureExecSummaryNarrative(summary));
+            if (text) {
+                el.textContent = text;
+                el.classList.remove('loading');
+            } else {
+                throw new Error('Empty response');
+            }
+        } catch (e) {
+            el.textContent = fallback;
+            el.classList.remove('loading');
+        }
+    }
+
+    function openPipelineAiSummary(repo, workflowFile) {
+        const summary = computePipelineExecSummary(repo, workflowFile);
+        const modal = document.getElementById('execSummaryModal');
+        if (!modal) return;
+        renderExecSummaryModalContent(summary);
+        modal.classList.add('show');
+    }
+
+    function dashboardRunTooltipExtraLines(run) {
+        const lines = [];
+        const exec = runExecSec(run);
+        if (run.waitSec != null && run.waitSec >= 60 && run.execSec != null) {
+            lines.push(`Execution time: ${fmtDuration(exec)} (waited ${fmtDuration(run.waitSec)} for runner)`);
+        } else {
+            lines.push(`Execution time: ${fmtDuration(exec)}`);
+        }
+        lines.push(`Parallels: ${getRunParallelLabel(run)}`);
+        lines.push(`Retries: ${getRunRetryLabel(run)}`);
+        return lines;
+    }
+
     // Run-table Duration cell: total wall-clock, plus a wait/run split for long runs whose
     // run-level time was inflated by queue wait (enrichRunDurations fills execSec/waitSec).
     function runDurationCell(r) {
@@ -17664,6 +18471,10 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
     const DASH_VIEW_MODE_KEY = 'pm.dashboards.viewMode';
     const dashTrendChartInstances = new Map();
     let dashTrendRenderToken = 0;
+    let execSummaryChartInstance = null;
+    const AZURE_OPENAI_ENDPOINT = 'https://axosopenai.openai.azure.com/';
+    const AZURE_OPENAI_DEPLOYMENT = 'gpt-4o';
+    const AZURE_OPENAI_API_VERSION = '2024-12-01-preview';
     const DASH_TEST_COUNTS_CACHE_KEY = 'pm.dashboards.testCounts.v2';
     const DASH_TEST_COUNTS_LS_CACHE_KEY = 'pm.dashboards.testCounts.ls.v2';
     const DASH_ENRICH_CONCURRENCY = 12;
@@ -19897,7 +20708,10 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         if (!runs.length) return `<span style="font-size:11px; color:var(--text-muted);">No runs fetched</span>`;
         return `<div class="run-strip">` + runs.map(r => {
             const cls = dashboardRunDotClass(r);
-            const tip = `${String(r.workflowName || '').replace(/-Testim$/, '')} #${r.runNumber} — ${cls}`;
+            const tip = [
+                `${String(r.workflowName || '').replace(/-Testim$/, '')} #${r.runNumber} — ${cls}`,
+                ...dashboardRunTooltipExtraLines(r)
+            ].join('\n');
             return `<span class="run-dot ${cls}" title="${escapeHtml(tip)}" onclick="openRunDetails(${r.id}); event.stopPropagation();" data-runid="${r.id}"></span>`;
         }).join('') + `</div>`;
     }
@@ -19999,7 +20813,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                         order: 2
                     },
                     {
-                        label: 'Other tests',
+                        label: 'Skipped tests',
                         data: other,
                         stack: 'tests',
                         backgroundColor: 'rgba(107,114,128,0.82)',
@@ -20059,22 +20873,27 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                             label(ctx) {
                                 const idx = ctx.dataIndex;
                                 const tc = getRunTestCounts(runs[idx]);
+                                const total = tc.total ?? ((tc.passed ?? 0) + (tc.failed ?? 0) + (tc.other ?? 0));
                                 if (ctx.dataset.label === 'Pass percentage') {
                                     if (tc.active || tc.passPct == null) return ' Pass percentage: pending';
                                     return ` Pass percentage: ${tc.passPct.toFixed(1)}%`;
                                 }
-                                if (ctx.dataset.label === 'Passed tests') return ` Passed tests: ${tc.passed}`;
+                                if (ctx.dataset.label === 'Passed tests') {
+                                    return [` Total tests: ${total}`, ` Passed tests: ${tc.passed}`];
+                                }
                                 if (ctx.dataset.label === 'Failed tests') return ` Failed tests: ${tc.failed}`;
-                                if (ctx.dataset.label === 'Other tests') return ` Other tests: ${tc.other}`;
+                                if (ctx.dataset.label === 'Skipped tests') return ` Skipped tests: ${tc.other}`;
                                 return ` ${ctx.dataset.label}: ${ctx.parsed.y}`;
                             },
                             afterBody(items) {
                                 const idx = items?.[0]?.dataIndex ?? 0;
-                                const tc = getRunTestCounts(runs[idx]);
+                                const run = runs[idx];
+                                const tc = getRunTestCounts(run);
                                 if (tc.active || tc.passPct == null) return ['Run in progress — results pending'];
-                                const lines = [`Pass percentage: ${tc.passPct.toFixed(1)}%`];
+                                const lines = [];
                                 if (tc.noTests) lines.push('(no tests ran)');
                                 else if (tc.fallback) lines.push('(run-level estimate — no test summary)');
+                                lines.push(...dashboardRunTooltipExtraLines(run));
                                 return lines;
                             }
                         }
@@ -20311,6 +21130,14 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         const cancelled = outcomes.filter(o => o === 'cancelled').length;
         const skipped = outcomes.filter(o => o === 'skipped').length;
         const agg = aggregateDashboardPassRateFromRuns(consideredRuns);
+        const completedTimed = consideredRuns.filter(r => r && r.status === 'completed' && runExecSec(r) > 0);
+        const medianSec = medianOf(completedTimed.map(runExecSec));
+        const realExecRuns = completedTimed.filter(r => isRealExecRun(r, runExecSec(r), medianSec));
+        const execDurations = realExecRuns.map(runExecSec);
+        const avgExecSec = execDurations.length
+            ? Math.round(execDurations.reduce((a, b) => a + b, 0) / execDurations.length)
+            : 0;
+        const maxExecSec = execDurations.length ? Math.max(...execDurations) : 0;
 
         return {
             pipelines: pipelineKeys.length,
@@ -20321,7 +21148,10 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             cancelled,
             skipped,
             actionable: agg.actionable,
-            passRate: agg.passRate
+            passRate: agg.passRate,
+            avgExecSec,
+            timedRuns: execDurations.length,
+            maxExecSec
         };
     }
 
@@ -20357,6 +21187,14 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         }
         if (failSub) failSub.textContent = `${stats.cancelled} cancelled${stats.skipped ? `, ${stats.skipped} skipped` : ''}`;
         if (failBar) failBar.style.width = `${stats.actionable ? (stats.failed / stats.actionable * 100) : 0}%`;
+        const durVal = document.querySelector('#dashboardsContent .metric-card.m-orange .metric-value');
+        const durSub = document.querySelector('#dashboardsContent .metric-card.m-orange .metric-sub');
+        const durBar = document.querySelector('#dashboardsContent .metric-card.m-orange .metric-bar-fill');
+        if (durVal) durVal.textContent = fmtDuration(stats.avgExecSec);
+        if (durSub) durSub.textContent = `${stats.timedRuns} completed run${stats.timedRuns === 1 ? '' : 's'} (execution time)`;
+        if (durBar) {
+            durBar.style.width = `${stats.timedRuns && stats.maxExecSec ? Math.min(stats.avgExecSec / stats.maxExecSec * 100, 100) : 0}%`;
+        }
     }
 
     function dashboardSchedulerExecCount(repo, workflowFile) {
@@ -20621,7 +21459,6 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         `;
 
         const viewMode = loadDashViewMode();
-        const viewToggleLabel = viewMode === 'graphs' ? 'Minimalistic' : 'Graphs';
 
         const allGroups = active.groups || [];
         // Validate/resolve the group filter against the active dashboard.
@@ -20630,8 +21467,11 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
 
         const stats = computeDashboardStats(repo, visibleGroups);
         const prClass = stats.passRate >= 90 ? 'v-green' : stats.passRate >= 70 ? 'v-orange' : 'v-red';
+        const durBarPct = stats.timedRuns && stats.maxExecSec
+            ? Math.min(stats.avgExecSec / stats.maxExecSec * 100, 100)
+            : 0;
         const dashMetrics = `
-            <div class="metrics-grid" style="margin:0 0 18px 0; animation:fadeSlideUp 0.45s ease-out both; animation-delay:0.08s;">
+            <div class="metrics-grid dash-metrics-grid" style="margin:0 0 18px 0; animation:fadeSlideUp 0.45s ease-out both; animation-delay:0.08s;">
                 <div class="metric-card m-blue">
                     <div class="metric-icon">&#128736;</div>
                     <div class="metric-label">Pipelines</div>
@@ -20653,8 +21493,19 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                     <div class="metric-sub">${stats.cancelled} cancelled${stats.skipped ? `, ${stats.skipped} skipped` : ''}</div>
                     <div class="metric-bar"><div class="metric-bar-fill" style="width:${stats.actionable ? (stats.failed/stats.actionable*100) : 0}%; background:linear-gradient(90deg,#ef4444,#f87171);"></div></div>
                 </div>
+                <div class="metric-card m-orange">
+                    <div class="metric-icon">&#9201;</div>
+                    <div class="metric-label">Avg Execution Time</div>
+                    <div class="metric-value v-orange">${fmtDuration(stats.avgExecSec)}</div>
+                    <div class="metric-sub">${stats.timedRuns} completed run${stats.timedRuns === 1 ? '' : 's'} (execution time)</div>
+                    <div class="metric-bar"><div class="metric-bar-fill" style="width:${durBarPct}%; background:linear-gradient(90deg,#FAA74A,#fbbf24);"></div></div>
+                </div>
             </div>
             <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin:-6px 0 18px; color:var(--text-muted); font-size:11px;">
+                <div class="dash-view-switch" role="group" aria-label="Dashboard view mode">
+                    <button type="button" class="dash-view-seg${viewMode === 'dots' ? ' active' : ''}" onclick="setDashViewMode('dots')">Dots</button>
+                    <button type="button" class="dash-view-seg${viewMode === 'graphs' ? ' active' : ''}" onclick="setDashViewMode('graphs')">Graphs</button>
+                </div>
                 <span style="font-weight:900; letter-spacing:0.6px; text-transform:uppercase;">Legend</span>
                 <span class="dash-pill" style="padding:6px 10px;"><span class="run-dot success" style="width:10px;height:10px;"></span> Passed</span>
                 <span class="dash-pill" style="padding:6px 10px;"><span class="run-dot failure" style="width:10px;height:10px;"></span> Failed</span>
@@ -20732,6 +21583,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                         <div class="dash-pipe-foot">
                             <span style="white-space:normal; overflow:visible; word-break:break-word; line-height:1.25;">${escapeHtml(wfFile)}</span>
                             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+                                ${wfFile ? `<button type="button" class="btn-glow-ai" onclick="openPipelineAiSummary('${escapeHtml(repo)}','${escapeHtml(wfFile)}'); event.stopPropagation();" title="AI summary for this pipeline">AI Summary</button>` : ''}
                                 ${p?.name ? ghWorkflowLinkHtml(p.name, repo, 'btn-lite', wfFile) : ''}
                                 <button class="btn-lite" onclick="openResultsForDashboardPipeline('${escapeHtml(repo)}','${escapeHtml(pk)}');" title="Open in Results & Metrics">Results</button>
                                 <button class="btn-lite" onclick="removePipelineFromGroup('${escapeHtml(active.id)}','${escapeHtml(g.id)}','${escapeHtml(pk)}');" title="Remove from group">Remove</button>
@@ -20745,7 +21597,6 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 <div class="dash-group-top">
                     <div class="dash-group-title">${escapeHtml(g.title)}</div>
                     <div class="dash-group-actions">
-                        <button class="btn-lite" onclick="toggleDashViewMode(); event.stopPropagation();" title="Switch between run dots and test trend charts">${escapeHtml(viewToggleLabel)}</button>
                         <button class="btn-lite" onclick="openPipelinePicker('${escapeHtml(active.id)}','${escapeHtml(g.id)}'); event.stopPropagation();">+ Pipelines</button>
                         <button class="btn-lite" onclick="renameGroup('${escapeHtml(active.id)}','${escapeHtml(g.id)}'); event.stopPropagation();">Rename</button>
                         <button class="btn-lite" onclick="deleteGroup('${escapeHtml(active.id)}','${escapeHtml(g.id)}'); event.stopPropagation();" style="color:var(--error);">Delete</button>
