@@ -4229,11 +4229,7 @@ const CORE_VISIBLE = new Set([
 ]);
 const SKIP_FIELDS = new Set([
     'sys_id', 'sys_tags', '__status', 'sys_domain', 'sys_domain_path',
-    'sys_mod_count', 'sys_class_name', 'sys_created_by', 'sys_updated_by',
-    'correlation_id', 'correlation_display', 'flow_context',
-    'comments_and_work_notes', 'work_notes_list', 'group_list',
-    'additional_assignee_list', 'watch_list', 'user_input', 'skills',
-    'approval_history', 'approval_set', 'order_guide', 'order',
+    'flow_context', 'comments_and_work_notes',
     'u_legacy_data', 'u_legacy_id', 'u_legacy_sys_id',
     'u_pbi_2', 'u_pbi_3', 'u_pbi_4', 'u_pbi_id',
     'u_bu_role_software_package', 'u_business_unit_role',
@@ -4242,41 +4238,63 @@ const SKIP_FIELDS = new Set([
     'u_emp_preferred_name', 'u_employee_name', 'u_employee_effective_date',
     'u_effective_date', 'u_off_boarding_date', 'u_separation_date_and_time',
     'u_start_date', 'u_start_date_for_employee', 'u_more',
-    'u_confidential', 'u_duplicate_task', 'u_request_type',
+    'u_confidential', 'u_duplicate_task',
     'recurring_frequency', 'recurring_price', 'price', 'quantity',
-    'backordered', 'billable', 'contract', 'service_offering',
-    'universal_request', 'route_reason', 'follow_up',
-    'task_effective_number', 'knowledge', 'configuration_item',
-    'sc_catalog', 'u_age', 'u_rpt_lead_time',
+    'backordered', 'billable', 'order_guide', 'sc_catalog',
+    'configuration_item',
 ]);
 const FRIENDLY_LABELS = {
     number: 'Number', short_description: 'Short Description', state: 'State',
-    opened_by: 'Reported By', opened_at: 'Opened', closed_at: 'Closed',
-    duration: 'Duration', assigned_to: 'Assigned To', assignment_group: 'Team',
-    close_notes: 'Solution', cat_item: 'Request Type', opened_by: 'Reported By',
+    opened_by: 'Opened by', opened_at: 'Opened Date', closed_at: 'Closed',
+    duration: 'Duration', assigned_to: 'Assigned to', assignment_group: 'Assignment group',
+    close_notes: 'Close notes', cat_item: 'Request Type',
     sys_created_on: 'Created', sys_updated_on: 'Updated', request_type: 'Request Type',
     stage: 'Stage', approval: 'Approval', priority: 'Priority', active: 'Active',
-    due_date: 'Due Date', work_notes: 'Work Notes', comments: 'Comments',
-    upon_approval: 'Upon Approval', upon_reject: 'Upon Reject',
+    due_date: 'Due date', work_notes: 'Work Notes', comments: 'Comments',
+    upon_approval: 'Upon approval', upon_reject: 'Upon reject',
     made_sla: 'Made SLA', u_environment: 'Environment',
-    impact: 'Impact', urgency: 'Urgency', contact_type: 'Contact Type',
+    impact: 'Impact', urgency: 'Urgency', contact_type: 'Contact type',
     escalation: 'Escalation', company: 'Company',
     location: 'Location', category: 'Category', subcategory: 'Subcategory',
-    cmdb_ci: 'Configuration Item', business_service: 'Business Service',
-    sc_catalog: 'Catalog', request: 'Parent Request', requested_for: 'Requested For',
+    cmdb_ci: 'Configuration item', business_service: 'Business service',
+    sc_catalog: 'Catalog', request: 'Parent', requested_for: 'Requested For',
     u_request_type: 'Request Type', u_close_code: 'Close Code',
-    u_reason_for_delay: 'Reason for Delay', u_jira_record_number: 'JIRA #',
+    u_reason_for_delay: 'Reason for Delay', u_jira_record_number: 'ADO ID',
     u_rpt_lead_time: 'Lead Time', u_vendor: 'Vendor', u_age: 'Age',
-    configuration_item: 'Configuration Item', parent: 'Parent Task',
-    closed_by: 'Closed By', reassignment_count: 'Reassignments',
-    estimated_delivery: 'Est. Delivery', sla_due: 'SLA Due',
-    activity_due: 'Activity Due', business_duration: 'Business Duration',
-    calendar_duration: 'Calendar Duration', time_worked: 'Time Worked',
-    expected_start: 'Expected Start', work_start: 'Work Start',
-    work_end: 'Work End', upon_approval: 'Upon Approval',
-    upon_reject: 'Upon Reject', sys_created_on: 'Created',
-    sys_updated_on: 'Updated',
+    parent: 'Parent', closed_by: 'Closed by', reassignment_count: 'Reassignment count',
+    estimated_delivery: 'Est. Delivery', sla_due: 'SLA due',
+    activity_due: 'Activity due', business_duration: 'Business duration',
+    calendar_duration: 'Duration', time_worked: 'Time worked',
+    expected_start: 'Expected start', work_start: 'Actual start',
+    work_end: 'Actual end', sys_created_by: 'Created by',
+    sys_updated_by: 'Updated by', sys_mod_count: 'Updates',
+    sys_class_name: 'Task type', additional_assignee_list: 'Additional assignee list',
+    approval_history: 'Approval history', approval_set: 'Approval set',
+    watch_list: 'Watch list', group_list: 'Group list', skills: 'Skills',
+    work_notes_list: 'Emails to Notify', user_input: 'User input',
+    correlation_id: 'Correlation ID', correlation_display: 'Correlation display',
+    order: 'Order', contract: 'Contract', service_offering: 'Service offering',
+    universal_request: 'Universal Request', route_reason: 'Transfer reason',
+    follow_up: 'Follow up', task_effective_number: 'Effective number',
+    knowledge: 'Knowledge', _source_table: 'Ticket type',
 };
+const COLUMN_ALIASES = {
+    assignment_group: ['Team'],
+    opened_by: ['Reported By'],
+    close_notes: ['Solution'],
+    cat_item: ['Request Type', 'Catalog Item'],
+    u_jira_record_number: ['JIRA #', 'ADO ID'],
+    _source_table: ['Source table', 'Table'],
+};
+
+function columnLabel(key) {
+    if (FRIENDLY_LABELS[key]) return FRIENDLY_LABELS[key];
+    try {
+        const opt = (getAdvFieldOptions() || []).find(o => o.value === key);
+        if (opt && opt.label) return opt.label;
+    } catch {}
+    return String(key || '').replace(/[_\.]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
 
 let TABLE_COLUMNS = [];
 
@@ -4313,22 +4331,23 @@ function buildDynamicColumns(tickets) {
 
     const added = new Set();
     coreOrder.forEach(key => {
-        if (key === 'duration' || (allKeys.has(key) && populatedKeys.has(key))) {
+        if (key === 'duration' || allKeys.has(key)) {
             ordered.push(key);
             added.add(key);
         }
     });
     [...allKeys].sort().forEach(key => {
-        if (!added.has(key) && !SKIP_FIELDS.has(key) && populatedKeys.has(key)) {
-            ordered.push(key);
-            added.add(key);
-        }
+        if (added.has(key) || SKIP_FIELDS.has(key)) return;
+        if (key.startsWith('_') && key !== '_source_table') return;
+        ordered.push(key);
+        added.add(key);
     });
     if (!added.has('duration')) { ordered.splice(6, 0, 'duration'); added.add('duration'); }
 
     TABLE_COLUMNS = ordered.map(key => ({
         key,
-        label: FRIENDLY_LABELS[key] || key.replace(/[_\.]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+        label: columnLabel(key),
+        aliases: COLUMN_ALIASES[key] || [],
         sortable: true,
         visible: CORE_VISIBLE.has(key),
     }));
@@ -4347,8 +4366,14 @@ function toggleColumnDropdown(event) {
 function renderColumnDropdown() {
     const dd = document.getElementById('colDropdown');
     const q = dd.dataset.search || '';
-    const filtered = q
-        ? TABLE_COLUMNS.filter(c => c.label.toLowerCase().includes(q) || c.key.toLowerCase().includes(q))
+    const nq = (typeof _searchableFieldText === 'function') ? _searchableFieldText(q) : String(q || '').toLowerCase();
+    const filtered = nq
+        ? TABLE_COLUMNS.filter(c => {
+            const hay = (typeof _searchableFieldText === 'function')
+                ? _searchableFieldText([c.label, c.key, ...((c.aliases) || [])].join(' '))
+                : `${(c.label || '').toLowerCase()} ${(c.key || '').toLowerCase()}`;
+            return hay.includes(nq);
+        })
         : TABLE_COLUMNS;
 
     dd.innerHTML = `
@@ -4987,11 +5012,11 @@ function showDetail(idx) {
         { key: '_duration', label: isOpen ? 'Duration (open)' : 'Duration' },
     ];
     const peopleSection = [
-        { key: 'opened_by', label: 'Reported By' },
+        { key: 'opened_by', label: 'Opened by' },
         { key: 'requested_for', label: 'Requested For' },
-        { key: 'assigned_to', label: 'Assigned To' },
-        { key: 'closed_by', label: 'Closed By' },
-        { key: 'assignment_group', label: 'Team' },
+        { key: 'assigned_to', label: 'Assigned to' },
+        { key: 'closed_by', label: 'Closed by' },
+        { key: 'assignment_group', label: 'Assignment group' },
     ];
     const timeSection = [
         { key: 'opened_at', label: 'Opened' },
@@ -5008,7 +5033,7 @@ function showDetail(idx) {
         { key: 'request', label: 'Parent Request' },
         { key: 'u_jira_record_number', label: 'JIRA #' },
         { key: 'u_close_code', label: 'Close Code' },
-        { key: 'reassignment_count', label: 'Reassignments' },
+        { key: 'reassignment_count', label: 'Reassignment count' },
     ];
     const longSection = [
         { key: 'description', label: 'Full Description' },
@@ -5080,7 +5105,7 @@ function showDetail(idx) {
     const extraItems = extraKeys.map(k => {
         const val = getVal(k);
         if (!val || val === 'UNKNOWN' || val === 'false' || val === '$0.00' || val === '0') return '';
-        const label = FRIENDLY_LABELS[k] || k.replace(/[_\.]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const label = columnLabel(k);
         if (val.length > 100) return '';
         return `<div class="detail-item"><label>${escapeHtml(label)}</label><div class="val" style="font-size:12px;color:var(--text-muted);">${escapeHtml(val)}</div></div>`;
     }).filter(Boolean);
