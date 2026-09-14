@@ -4857,16 +4857,24 @@ function getInitials(name) {
 }
 
 function getServiceNowRecordUrl(ticket, instance) {
+    const src = ticket && ticket._source_table ? String(ticket._source_table) : '';
+    const num = ticket && ticket.number ? String(ticket.number) : '';
     const table =
-        (ticket && ticket._source_table === 'incident') ? 'incident' :
-        (ticket && ticket._source_table === 'change_request') ? 'change_request' :
-        'sc_req_item';
+        src || (
+            num.startsWith('INC') ? 'incident' :
+            num.startsWith('CHG') ? 'change_request' :
+            num.startsWith('PTASK') ? 'problem_task' :
+            num.startsWith('PRB') ? 'problem' :
+            num.startsWith('SCTASK') ? 'sc_task' :
+            num.startsWith('CTASK') ? 'change_task' :
+            num.startsWith('TASK') ? 'incident_task' :
+            'sc_req_item'
+        );
     const sysId = (ticket && (ticket.sys_id || ticket.sysId || ticket.sysID)) ? String(ticket.sys_id || ticket.sysId || ticket.sysID) : '';
     if (sysId) {
         const uri = `${table}.do?sys_id=${encodeURIComponent(sysId)}`;
         return `https://${instance}/nav_to.do?uri=${encodeURIComponent(uri)}`;
     }
-    const num = ticket && ticket.number ? String(ticket.number) : '';
     const uri = `${table}.do?sysparm_query=number=${encodeURIComponent(num)}`;
     return `https://${instance}/nav_to.do?uri=${encodeURIComponent(uri)}`;
 }
