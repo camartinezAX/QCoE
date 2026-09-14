@@ -2375,11 +2375,15 @@ activity_due|Activity due
 work_end|Actual end
 work_start|Actual start
 additional_assignee_list|Additional assignee list
+u_affected_other_application|Affected 'Other' Application
+u_affected_application_s|Affected Application(s)
 u_age|Age
 u_appscan_attached|AppScan Attached?
 u_string_10|Application Owner
 approval|Approval
+approval_history|Approval history
 approval_set|Approval set
+u_who_caused|Attributed to
 u_artifact_attached|Artifact attached
 u_asset_to_decommission|Asset to Decommission
 assigned_to|Assigned to
@@ -2416,6 +2420,7 @@ correlation_id|Correlation ID
 correlation_display|Correlation display
 sys_created_on|Created
 sys_created_by|Created by
+u_customer_impact|Customer Impact
 delivery_plan|Delivery plan
 delivery_task|Delivery task
 u_dependencies|Dependencies
@@ -2438,13 +2443,16 @@ u_duration|Duration(u_duration)
 u_duration_period|Duration Period
 task_effective_number|Effective number
 work_notes_list|Emails to Notify
+u_environment|Environment
 escalation|Escalation
 expected_start|Expected start
 u_expedited_justification|Expedited justification
 u_external_documentation|External documentation
 follow_up|Follow up
 group_list|Group list
+u_how_was_the_issue_fixed|How was the issue fixed?
 impact|Impact
+u_impacted_bus|Impacted BUs
 implementation_plan|Implementation plan
 u_initial_incident|Initial incident
 justification|Justification
@@ -2454,6 +2462,7 @@ u_legacy_id|Legacy ID
 u_legacy_sys_id|Legacy Sys ID
 location|Location
 made_sla|Made SLA
+u_next_steps_with_etas|Next Steps with ETAs
 number|Number
 on_hold_task|On Hold Change Tasks
 on_hold|On hold
@@ -2466,6 +2475,8 @@ outside_maintenance_schedule|Outside maintenance schedule
 end_date|PROD Planned end date
 start_date|PROD Planned start date
 parent|Parent
+u_preventative_measures_taken|Preventative measures taken?
+problem|Problem
 phase|Phase
 phase_state|Phase state
 u_post_change_state|Post change state
@@ -2473,6 +2484,8 @@ u_post_implementation_support|Post-implementation support
 u_priority|Priority
 priority|Priority(priority)
 u_product|Product
+u_rca_owner|RCA Owner
+u_root_cause|Root Cause
 production_system|Production system
 u_project_id|Project ID
 u_protocol|Protocol
@@ -2490,13 +2503,15 @@ sys_tags|Tags
 sys_class_name|Task type
 test_plan|Test plan
 time_worked|Time worked
-short_description|Title
+short_description|Short Description|Title
+u_task_title|Task title
 type|Type(type)
 unauthorized|Unauthorized
 universal_request|Universal Request
 sys_updated_on|Updated
 sys_updated_by|Updated by
 sys_mod_count|Updates
+u_i_have_downloaded_completed|Uploaded 'ITN RCA Template'
 upon_approval|Upon approval
 upon_reject|Upon reject
 urgency|Urgency
@@ -2574,14 +2589,28 @@ const ADV_FIELD_OPTIONS_BUILTIN = (() => {
         const parts = line.split('|');
         const value = (parts[0] || '').trim();
         const label = (parts[1] || value).trim();
+        const aliases = (parts[2] || '').split(/[;,]/).map(s => s.trim()).filter(Boolean);
         if (!value || value.includes(' ') || !FIELD_RE.test(value)) continue;
         if (seen.has(value)) continue;
         seen.add(value);
-        out.push({ value, label });
+        out.push({ value, label, aliases });
     }
     out.sort((a, b) => (a.label || '').localeCompare(b.label || ''));
     return out;
 })();
+
+function _searchableFieldText(s) {
+    return (s || '').toString().toLowerCase()
+        .replace(/[_/]+/g, ' ')
+        .replace(/[^a-z0-9. ]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function _fieldOptionHaystack(opt) {
+    const bits = [opt?.label, opt?.value, opt?.key, ...((opt?.aliases) || [])];
+    return _searchableFieldText(bits.filter(Boolean).join(' '));
+}
 
 let _activeComboCloser = null;
 
@@ -2617,7 +2646,7 @@ function _createCombo({ inputClass, placeholder, options, initialValue, initialK
     wrap.appendChild(input);
     wrap.appendChild(menu);
 
-    const norm = (s) => (s || '').toString().trim().toLowerCase();
+    const norm = (s) => _searchableFieldText(s);
 
     let activeIdx = -1;
     let current = [];
@@ -2639,7 +2668,7 @@ function _createCombo({ inputClass, placeholder, options, initialValue, initialK
         const opts = (typeof options === 'function') ? (options() || []) : (options || []);
         const indexed = (opts || []).map(o => ({
             o,
-            hay: norm((o.label || '') + ' ' + (o.value || '') + ' ' + (o.key || ''))
+            hay: _fieldOptionHaystack(o)
         }));
         current = q
             ? indexed.filter(x => x.hay.includes(q)).slice(0, 80).map(x => x.o)
@@ -2688,7 +2717,10 @@ function _createCombo({ inputClass, placeholder, options, initialValue, initialK
         }
         const q = norm(raw);
         const opts = (typeof options === 'function') ? (options() || []) : (options || []);
-        const exact = (opts || []).find(o => norm(o.value) === q || norm(o.label) === q || norm(o.key) === q);
+        const exact = (opts || []).find(o => {
+            if (norm(o.value) === q || norm(o.label) === q || norm(o.key) === q) return true;
+            return (o.aliases || []).some(a => norm(a) === q);
+        });
         if (exact) {
             if (typeof onResolved === 'function') onResolved({ type: 'pick', opt: exact, input });
             return;
@@ -2812,7 +2844,7 @@ function addAdvFetchRule(seed) {
         options: getAdvFieldOptions,
         initialValue: field || '',
         allowCustom: true,
-        renderItem: (opt) => `<span>${escapeHtml(opt.label || opt.value)}</span>`,
+        renderItem: (opt) => `<span>${escapeHtml(opt.label || opt.value)}</span><span class="combo-value">${escapeHtml(opt.value || '')}</span>`,
         onResolved: (res) => {
             if (!res || !res.input) return;
             const FIELD_RE = /^[A-Za-z0-9_.]+$/;
@@ -2845,7 +2877,10 @@ function addAdvFetchRule(seed) {
     });
     // If initial value matches a known field, normalize to canonical value.
     const fNorm = (field || '').trim().toLowerCase();
-    const matchField = getAdvFieldOptions().find(o => (o.value || '').toLowerCase() === fNorm || (o.label || '').toLowerCase() === fNorm);
+    const matchField = getAdvFieldOptions().find(o => {
+        if ((o.value || '').toLowerCase() === fNorm || (o.label || '').toLowerCase() === fNorm) return true;
+        return (o.aliases || []).some(a => String(a).toLowerCase() === fNorm);
+    });
     if (matchField) {
         fieldCombo.input.value = matchField.label || matchField.value;
         fieldCombo.input.dataset.value = matchField.value;
