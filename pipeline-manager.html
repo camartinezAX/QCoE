@@ -1223,6 +1223,26 @@
         .run-dot.skipped{background:rgba(250,167,74,0.9);}
         .run-dot.unknown{background:rgba(59,130,246,0.9);}
         .run-dot.attn{box-shadow:0 0 0 2px rgba(250,167,74,0.40), 0 10px 24px rgba(250,167,74,0.14);}
+        .dash-run-tip{
+            position:fixed;z-index:10060;pointer-events:none;max-width:min(340px,calc(100vw - 16px));
+            padding:10px 12px;border-radius:8px;font-size:12px;font-weight:600;line-height:1.45;
+            opacity:0;transform:translateY(4px);transition:opacity .12s var(--ease),transform .12s var(--ease);
+            box-shadow:0 10px 28px rgba(0,0,0,0.22);
+        }
+        .dash-run-tip.show{opacity:1;transform:translateY(0);}
+        .dash-run-tip-dark{
+            background:rgba(10,14,26,0.96);border:1px solid rgba(255,255,255,0.08);color:#d1d5db;
+        }
+        .dash-run-tip-light{
+            background:rgba(255,255,255,0.98);border:1px solid rgba(30,56,96,0.18);color:#334155;
+        }
+        .dash-run-tip-title-line{font-size:12px;font-weight:800;color:var(--text-primary);margin-bottom:4px;}
+        [data-theme="light"] .dash-run-tip-light .dash-run-tip-title-line{color:#1E3860;}
+        [data-theme="dark"] .dash-run-tip-dark .dash-run-tip-title-line,
+        :root:not([data-theme="light"]) .dash-run-tip-dark .dash-run-tip-title-line{color:#e5e7eb;}
+        .dash-run-tip-row{margin-top:2px;}
+        .dash-run-tip-exec{margin-top:6px;margin-bottom:4px;}
+        .dash-run-exec-emphasis{font-weight:800;font-style:italic;}
         .dash-trend-wrap{
             position:relative;width:100%;height:240px;margin-top:4px;
             border-radius:10px;background:rgba(0,0,0,0.12);border:1px solid rgba(255,255,255,0.05);
@@ -14968,7 +14988,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         }
     }
 
-    function parseTestCountsFromText(text) {
+    function parseTestCountsFromText(text, opts = {}) {
         const raw = String(text || '');
         if (!raw.trim()) return null;
 
@@ -14981,11 +15001,25 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             .replace(/\s+/g, ' ')
             .trim();
 
+        // A short check-run summary blob only ever has one relevant number, so the first match
+        // is fine there (default). Full job logs are long and can contain many unrelated
+        // "N passed"/"N tests" mentions before the real final tally (retries, intermediate suite
+        // output, unrelated steps) -- pass { lastMatch: true } there so the LAST occurrence wins,
+        // same reasoning parseTestimCompletionLine already applies for its own log parsing.
+        const useLast = !!opts.lastMatch;
+        const pick = (re) => {
+            if (!useLast) return s.match(re);
+            const g = new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g');
+            let m, last = null;
+            while ((m = g.exec(s)) !== null) last = m;
+            return last;
+        };
+
         // Common dorny/test-reporter wording:
         // "9 passed, 0 failed and 0 skipped"
         // "9 passed, 0 failed, 0 skipped"
         // "9 passed, 0 failed, and 0 skipped"
-        const dorny = s.match(/(\d+)\s+passed,\s*(\d+)\s+failed(?:\s*,)?(?:\s*and\s*)?\s*(\d+)\s+skipped/i);
+        const dorny = pick(/(\d+)\s+passed,\s*(\d+)\s+failed(?:\s*,)?(?:\s*and\s*)?\s*(\d+)\s+skipped/i);
         if (dorny) {
             const passed = parseInt(dorny[1], 10);
             const failed = parseInt(dorny[2], 10);
@@ -14997,7 +15031,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         }
 
         const read = (re) => {
-            const m = s.match(re);
+            const m = pick(re);
             if (!m || m[1] == null) return null;
             const n = parseInt(String(m[1]), 10);
             return Number.isFinite(n) ? n : null;
@@ -15232,7 +15266,13 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         if (!job?.id) return null;
         const logs = await fetchJobLogsText(owner, repo, job.id);
         if (!logs) return null;
-        return parseTestimCompletionLine(logs);
+        const testim = parseTestimCompletionLine(logs);
+        if (testim) return testim;
+        // Non-Testim runners (Playwright's own "N passed, N failed, N skipped" summary line,
+        // etc.) print the same generic wording check-run summaries use. lastMatch: true because
+        // full job logs can contain many unrelated "N passed"/"N tests" mentions before the real
+        // final tally (retries, intermediate suite output) -- the earliest match isn't trustworthy.
+        return parseTestCountsFromText(logs, { lastMatch: true });
     }
 
     async function unzipFirstXmlFromArtifact(archiveUrl) {
@@ -15769,11 +15809,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         const strip = card.querySelector('.run-strip');
         if (strip) {
             const runs = getDashboardPipelineRuns(repo, wf);
-            strip.innerHTML = runs.map(r => {
-                const cls = dashboardRunDotClass(r);
-                const tip = `${String(r.workflowName || '').replace(/-Testim$/, '')} #${r.runNumber} — ${cls}`;
-                return `<span class="run-dot ${cls}" title="${escapeHtml(tip)}" onclick="openRunDetails(${r.id}); event.stopPropagation();" data-runid="${r.id}"></span>`;
-            }).join('');
+            strip.innerHTML = runs.map(r => dashboardRunDotSpanHtml(r)).join('');
         }
     }
 
@@ -18112,6 +18148,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
     }
 
     function closeExecSummaryModal() {
+        hideDashRunTip();
         destroyExecSummaryChart();
         const modal = document.getElementById('execSummaryModal');
         if (modal) modal.classList.remove('show');
@@ -18208,33 +18245,8 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                         labels: { color: tickColor, boxWidth: 10, font: { size: 10, weight: '700' } }
                     },
                     tooltip: {
-                        callbacks: {
-                            title(items) {
-                                const e = entries[items?.[0]?.dataIndex];
-                                if (!e) return '';
-                                const bits = [e.label];
-                                if (e.parallels != null) bits.push(`${e.parallels} parallel${e.parallels === 1 ? '' : 's'}`);
-                                if (e.retries != null) bits.push(`${e.retries} retr${e.retries === 1 ? 'y' : 'ies'}`);
-                                return bits.join('  ·  ');
-                            },
-                            label(ctx) {
-                                if (ctx.dataset.label === 'Average') return ` Average: ${fmtDuration(summary.avgExecSec)}`;
-                                if (ctx.dataset.label !== 'Passed') return null;
-                                const e = entries[ctx.dataIndex];
-                                if (!e) return '';
-                                return ` Time: ${fmtDuration(e.execSec)}`;
-                            },
-                            afterBody(items) {
-                                const e = entries[items?.[0]?.dataIndex];
-                                if (!e) return [];
-                                const total = e.testsTotal ?? (e.testsPassed + e.testsFailed + (e.testsOther || 0));
-                                return [
-                                    ` Tests: ${total} total · ${e.testsPassed} passed, ${e.testsFailed} failed, ${e.testsOther || 0} skipped`,
-                                    ` Parallels: ${e.parallels != null ? e.parallels : 'N/A'}`,
-                                    ` Retries: ${e.retries != null ? e.retries : 'N/A'}`
-                                ];
-                            }
-                        }
+                        enabled: false,
+                        external: makeDashChartExternalTooltip((idx) => buildExecSummaryChartTooltipHtml(idx, summary, entries))
                     }
                 },
                 scales: {
@@ -18325,7 +18337,10 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             <div class="exec-sum-narrative loading" id="execSummaryNarrative">${escapeHtml(buildCalculatedExecNarrative(summary))}</div>
         `;
 
-        requestAnimationFrame(() => renderExecSummaryChart(summary));
+        requestAnimationFrame(() => {
+            renderExecSummaryChart(summary);
+            void prefetchActorsForRuns(summary.entries.map(ent => ent.run));
+        });
         loadExecSummaryAiNarrative(summary);
     }
 
@@ -18426,6 +18441,301 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         if (!modal) return;
         renderExecSummaryModalContent(summary);
         modal.classList.add('show');
+    }
+
+    const DASH_RUN_DATE_TZ = 'America/Chicago';
+    const ghActorDisplayNameCache = new Map();
+
+    function getRunActorLogin(run) {
+        return String(run?.actor || '').trim();
+    }
+
+    function englishOrdinalSuffix(day) {
+        const n = day % 100;
+        if (n >= 11 && n <= 13) return 'th';
+        switch (day % 10) {
+            case 1: return 'st';
+            case 2: return 'nd';
+            case 3: return 'rd';
+            default: return 'th';
+        }
+    }
+
+    function fmtEnglishOrdinalDate(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        if (Number.isNaN(d.getTime())) return '';
+        const parts = new Intl.DateTimeFormat('en-US', {
+            timeZone: DASH_RUN_DATE_TZ,
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric'
+        }).formatToParts(d);
+        let month = '';
+        let day = 0;
+        let year = '';
+        for (const p of parts) {
+            if (p.type === 'month') month = p.value;
+            if (p.type === 'day') day = parseInt(p.value, 10);
+            if (p.type === 'year') year = p.value;
+        }
+        if (!month || !day || !year) return '';
+        return `${month} ${day}${englishOrdinalSuffix(day)} ${year}`;
+    }
+
+    function getRunExecutedByTooltipParts(run) {
+        if (!run) return null;
+        const login = getRunActorLogin(run);
+        const dateStr = fmtEnglishOrdinalDate(run.createdAt);
+        const name = login ? (ghActorDisplayNameCache.get(login) || login) : '';
+        if (!name && !dateStr) return null;
+        return { name, dateStr };
+    }
+
+    function runExecutedByTooltipHtml(run) {
+        const parts = getRunExecutedByTooltipParts(run);
+        if (!parts) return '';
+        const em = (s) => `<span class="dash-run-exec-emphasis">${escapeHtml(s)}</span>`;
+        if (parts.name && parts.dateStr) return `Executed by ${em(parts.name)} on ${em(parts.dateStr)}`;
+        if (parts.name) return `Executed by ${em(parts.name)}`;
+        return em(parts.dateStr);
+    }
+
+    function runExecutedByTooltipLine(run) {
+        const parts = getRunExecutedByTooltipParts(run);
+        if (!parts) return '';
+        if (parts.name && parts.dateStr) return `Executed by ${parts.name} on ${parts.dateStr}`;
+        if (parts.name) return `Executed by ${parts.name}`;
+        return parts.dateStr;
+    }
+
+    function runExecutedByTooltipLines(run) {
+        const line = runExecutedByTooltipLine(run);
+        return line ? [line] : [];
+    }
+
+    function dashRunTipIsLightTheme() {
+        return (document.documentElement.getAttribute('data-theme') || 'light') === 'light';
+    }
+
+    function dashRunTipThemeClass() {
+        return dashRunTipIsLightTheme() ? 'dash-run-tip-light' : 'dash-run-tip-dark';
+    }
+
+    let dashRunTipOwnerChart = null;
+
+    function ensureDashRunTipEl() {
+        let t = document.getElementById('dashRunTip');
+        if (!t) {
+            t = document.createElement('div');
+            t.id = 'dashRunTip';
+            t.className = 'dash-run-tip';
+            document.body.appendChild(t);
+        }
+        return t;
+    }
+
+    function hideDashRunTip() {
+        const t = document.getElementById('dashRunTip');
+        if (t) t.classList.remove('show');
+        dashRunTipOwnerChart = null;
+    }
+
+    function clampDashRunTipPosition(el, left, top) {
+        const pad = 8;
+        const w = el.offsetWidth;
+        const h = el.offsetHeight;
+        let x = Math.max(pad, Math.min(left, window.innerWidth - w - pad));
+        let y = Math.max(pad, Math.min(top, window.innerHeight - h - pad));
+        el.style.left = x + 'px';
+        el.style.top = y + 'px';
+    }
+
+    function showDashRunTipHtml(html, left, top) {
+        const el = ensureDashRunTipEl();
+        el.className = 'dash-run-tip show ' + dashRunTipThemeClass();
+        el.innerHTML = html;
+        clampDashRunTipPosition(el, left, top);
+    }
+
+    function showDashRunTipForAnchor(anchor, html) {
+        dashRunTipOwnerChart = null;
+        const el = ensureDashRunTipEl();
+        el.className = 'dash-run-tip show ' + dashRunTipThemeClass();
+        el.innerHTML = html;
+        const r = anchor.getBoundingClientRect();
+        const left = r.left + r.width / 2 - el.offsetWidth / 2;
+        const top = r.top - el.offsetHeight - 8;
+        clampDashRunTipPosition(el, left, top);
+    }
+
+    function dashRunTipTitleHtml(titleText) {
+        const lines = wrapTooltipLines(titleText, 34);
+        return lines.map(l => `<div class="dash-run-tip-title-line">${escapeHtml(l)}</div>`).join('');
+    }
+
+    function dashRunTipPlainRow(text) {
+        const t = String(text || '').trim();
+        if (!t) return '';
+        return `<div class="dash-run-tip-row">${escapeHtml(t)}</div>`;
+    }
+
+    function dashRunTipExecRow(run) {
+        const html = runExecutedByTooltipHtml(run);
+        if (!html) return '';
+        return `<div class="dash-run-tip-row dash-run-tip-exec">${html}</div>`;
+    }
+
+    function makeDashChartExternalTooltip(buildHtml) {
+        return (context) => {
+            const el = ensureDashRunTipEl();
+            const { chart, tooltip } = context;
+            if (!tooltip || tooltip.opacity === 0) {
+                if (dashRunTipOwnerChart === chart) {
+                    el.classList.remove('show');
+                    dashRunTipOwnerChart = null;
+                }
+                return;
+            }
+            dashRunTipOwnerChart = chart;
+            const idx = tooltip.dataPoints?.[0]?.dataIndex ?? 0;
+            el.className = 'dash-run-tip show ' + dashRunTipThemeClass();
+            el.innerHTML = buildHtml(idx);
+            const rect = chart.canvas.getBoundingClientRect();
+            const left = rect.left + tooltip.caretX - el.offsetWidth / 2;
+            const top = rect.top + tooltip.caretY - el.offsetHeight - 10;
+            clampDashRunTipPosition(el, left, top);
+        };
+    }
+
+    function buildDashboardTrendTooltipHtml(idx, runs) {
+        const run = runs[idx];
+        if (!run) return '';
+        const tc = getRunTestCounts(run);
+        const total = tc.total ?? ((tc.passed ?? 0) + (tc.failed ?? 0) + (tc.other ?? 0));
+        const rows = [dashRunTipTitleHtml(dashboardTrendTooltipTitle(run, runs)), dashRunTipExecRow(run)];
+        if (tc.active || tc.passPct == null) {
+            rows.push(dashRunTipPlainRow('Pass percentage: pending'));
+            rows.push(dashRunTipPlainRow('Run in progress — results pending'));
+        } else {
+            rows.push(dashRunTipPlainRow(`Pass percentage: ${tc.passPct.toFixed(1)}%`));
+            rows.push(dashRunTipPlainRow(`Total tests: ${total}`));
+            rows.push(dashRunTipPlainRow(`Passed tests: ${tc.passed}`));
+            rows.push(dashRunTipPlainRow(`Failed tests: ${tc.failed}`));
+            rows.push(dashRunTipPlainRow(`Skipped tests: ${tc.other}`));
+            if (run?.enrichmentNote === 'expired') {
+                rows.push(dashRunTipPlainRow('(execution data expired on GitHub — cannot be recovered)'));
+            } else if (tc.noTests) {
+                rows.push(dashRunTipPlainRow('(no tests ran)'));
+            } else if (tc.fallback) {
+                rows.push(dashRunTipPlainRow('(run-level estimate — no test summary)'));
+            }
+            for (const line of dashboardRunTooltipExtraLines(run)) rows.push(dashRunTipPlainRow(line));
+        }
+        return rows.filter(Boolean).join('');
+    }
+
+    function buildExecSummaryChartTooltipHtml(idx, summary, entries) {
+        const e = entries[idx];
+        if (!e) return '';
+        const total = e.testsTotal ?? (e.testsPassed + e.testsFailed + (e.testsOther || 0));
+        const bits = [e.label];
+        if (e.parallels != null) bits.push(`${e.parallels} parallel${e.parallels === 1 ? '' : 's'}`);
+        if (e.retries != null) bits.push(`${e.retries} retr${e.retries === 1 ? 'y' : 'ies'}`);
+        const rows = [
+            dashRunTipPlainRow(bits.join('  ·  ')),
+            dashRunTipPlainRow(`Time: ${fmtDuration(e.execSec)}`),
+            dashRunTipPlainRow(`Average: ${fmtDuration(summary.avgExecSec)}`),
+            dashRunTipExecRow(e.run),
+            dashRunTipPlainRow(`Tests: ${total} total · ${e.testsPassed} passed, ${e.testsFailed} failed, ${e.testsOther || 0} skipped`),
+            dashRunTipPlainRow(`Parallels: ${e.parallels != null ? e.parallels : 'N/A'}`),
+            dashRunTipPlainRow(`Retries: ${e.retries != null ? e.retries : 'N/A'}`)
+        ];
+        return rows.filter(Boolean).join('');
+    }
+
+    function dashboardRunDotTipHtml(run) {
+        if (!run) return '';
+        const cls = dashboardRunDotClass(run);
+        const title = `${String(run.workflowName || '').replace(/-Testim$/, '')} #${run.runNumber} — ${cls}`;
+        const rows = [
+            dashRunTipTitleHtml(title),
+            dashRunTipExecRow(run),
+            ...dashboardRunTooltipExtraLines(run).map(dashRunTipPlainRow)
+        ];
+        return rows.filter(Boolean).join('');
+    }
+
+    function bindDashboardRunDotTips() {
+        const root = document.getElementById('dashboardsContent');
+        if (!root || root._dashRunTipBound) return;
+        root._dashRunTipBound = true;
+        root.addEventListener('mouseover', (e) => {
+            const dot = e.target.closest('.run-dot[data-runid]');
+            if (!dot) {
+                hideDashRunTip();
+                return;
+            }
+            const id = Number(dot.getAttribute('data-runid'));
+            const run = (allRuns || []).find(r => r && r.id === id);
+            if (!run) return;
+            showDashRunTipForAnchor(dot, dashboardRunDotTipHtml(run));
+        });
+        document.addEventListener('scroll', hideDashRunTip, true);
+    }
+
+    async function prefetchGhActorDisplayNames(logins) {
+        const unique = [...new Set((logins || []).map(l => String(l || '').trim()).filter(Boolean))];
+        const pending = unique.filter(l => !ghActorDisplayNameCache.has(l));
+        if (!pending.length) return;
+        for (const login of pending) ghActorDisplayNameCache.set(login, login);
+        await Promise.all(pending.map(async (login) => {
+            try {
+                const data = await ghFetch(`/users/${encodeURIComponent(login)}`);
+                const display = String(data?.name || '').trim() || login;
+                ghActorDisplayNameCache.set(login, display);
+            } catch {
+                ghActorDisplayNameCache.set(login, login);
+            }
+        }));
+    }
+
+    function collectVisibleDashboardRuns() {
+        const cards = document.querySelectorAll('#dashboardsContent .dash-pipe-card[data-repo][data-wf]');
+        const seen = new Set();
+        const runs = [];
+        for (const card of cards) {
+            const repo = String(card.getAttribute('data-repo') || '').trim();
+            const wf = String(card.getAttribute('data-wf') || '').trim();
+            if (!repo || !wf) continue;
+            for (const r of getDashboardPipelineRuns(repo, wf)) {
+                if (r?.id && !seen.has(r.id)) { seen.add(r.id); runs.push(r); }
+            }
+        }
+        return runs;
+    }
+
+    function refreshDashboardRunActorTooltips() {
+        const tipEl = document.getElementById('dashRunTip');
+        const hoveredDot = document.querySelector('#dashboardsContent .run-dot[data-runid]:hover');
+        if (tipEl?.classList.contains('show') && hoveredDot) {
+            const id = Number(hoveredDot.getAttribute('data-runid'));
+            const run = (allRuns || []).find(r => r && r.id === id);
+            if (run) showDashRunTipForAnchor(hoveredDot, dashboardRunDotTipHtml(run));
+            return;
+        }
+        const owner = dashRunTipOwnerChart;
+        if (tipEl?.classList.contains('show') && owner) {
+            try {
+                const active = owner.getActiveElements?.() || [];
+                if (active.length) owner.update('none');
+            } catch { /* ignore */ }
+        }
+    }
+
+    async function prefetchActorsForRuns(runs) {
+        await prefetchGhActorDisplayNames((runs || []).map(getRunActorLogin));
+        refreshDashboardRunActorTooltips();
     }
 
     function dashboardRunTooltipExtraLines(run) {
@@ -20703,17 +21013,20 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         return runs.slice(0, limit).reverse();
     }
 
+    function dashboardRunDotSpanHtml(r) {
+        const cls = dashboardRunDotClass(r);
+        const plainTip = [
+            `${String(r.workflowName || '').replace(/-Testim$/, '')} #${r.runNumber} — ${cls}`,
+            ...runExecutedByTooltipLines(r),
+            ...dashboardRunTooltipExtraLines(r)
+        ].join('\n');
+        return `<span class="run-dot ${cls}" aria-label="${escapeHtml(plainTip)}" onclick="openRunDetails(${r.id}); event.stopPropagation();" data-runid="${r.id}"></span>`;
+    }
+
     function dashboardRunDots(repo, workflowFile) {
         const runs = getDashboardPipelineRuns(repo, workflowFile);
         if (!runs.length) return `<span style="font-size:11px; color:var(--text-muted);">No runs fetched</span>`;
-        return `<div class="run-strip">` + runs.map(r => {
-            const cls = dashboardRunDotClass(r);
-            const tip = [
-                `${String(r.workflowName || '').replace(/-Testim$/, '')} #${r.runNumber} — ${cls}`,
-                ...dashboardRunTooltipExtraLines(r)
-            ].join('\n');
-            return `<span class="run-dot ${cls}" title="${escapeHtml(tip)}" onclick="openRunDetails(${r.id}); event.stopPropagation();" data-runid="${r.id}"></span>`;
-        }).join('') + `</div>`;
+        return `<div class="run-strip">` + runs.map(r => dashboardRunDotSpanHtml(r)).join('') + `</div>`;
     }
 
     function dashboardRunTrendCanvas(repo, workflowFile, trendId) {
@@ -20858,45 +21171,8 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                         }
                     },
                     tooltip: {
-                        backgroundColor: isLight ? 'rgba(255,255,255,0.98)' : 'rgba(10,14,26,0.96)',
-                        titleColor: isLight ? '#1E3860' : '#e5e7eb',
-                        bodyColor: isLight ? '#334155' : '#d1d5db',
-                        borderColor: isLight ? 'rgba(30,56,96,0.18)' : 'rgba(255,255,255,0.08)',
-                        borderWidth: 1,
-                        padding: 10,
-                        cornerRadius: 8,
-                        callbacks: {
-                            title(items) {
-                                const idx = items?.[0]?.dataIndex ?? 0;
-                                return wrapTooltipLines(dashboardTrendTooltipTitle(runs[idx], runs), 34);
-                            },
-                            label(ctx) {
-                                const idx = ctx.dataIndex;
-                                const tc = getRunTestCounts(runs[idx]);
-                                const total = tc.total ?? ((tc.passed ?? 0) + (tc.failed ?? 0) + (tc.other ?? 0));
-                                if (ctx.dataset.label === 'Pass percentage') {
-                                    if (tc.active || tc.passPct == null) return ' Pass percentage: pending';
-                                    return ` Pass percentage: ${tc.passPct.toFixed(1)}%`;
-                                }
-                                if (ctx.dataset.label === 'Passed tests') {
-                                    return [` Total tests: ${total}`, ` Passed tests: ${tc.passed}`];
-                                }
-                                if (ctx.dataset.label === 'Failed tests') return ` Failed tests: ${tc.failed}`;
-                                if (ctx.dataset.label === 'Skipped tests') return ` Skipped tests: ${tc.other}`;
-                                return ` ${ctx.dataset.label}: ${ctx.parsed.y}`;
-                            },
-                            afterBody(items) {
-                                const idx = items?.[0]?.dataIndex ?? 0;
-                                const run = runs[idx];
-                                const tc = getRunTestCounts(run);
-                                if (tc.active || tc.passPct == null) return ['Run in progress — results pending'];
-                                const lines = [];
-                                if (tc.noTests) lines.push('(no tests ran)');
-                                else if (tc.fallback) lines.push('(run-level estimate — no test summary)');
-                                lines.push(...dashboardRunTooltipExtraLines(run));
-                                return lines;
-                            }
-                        }
+                        enabled: false,
+                        external: makeDashChartExternalTooltip((idx) => buildDashboardTrendTooltipHtml(idx, runs))
                     }
                 },
                 scales: {
@@ -20977,6 +21253,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             }
         }
         restoreDashTestCountsForRuns(uniqueRuns);
+        void prefetchActorsForRuns(uniqueRuns);
 
         const renderWrapChart = (meta, opts) => {
             const force = opts === true || opts?.force === true;
@@ -21351,6 +21628,8 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         const contentEl = document.getElementById('dashboardsContent');
         if (!listEl || !contentEl) return;
 
+        hideDashRunTip();
+        bindDashboardRunDotTips();
         invalidateDashboardTrendCharts();
 
         // Dashboards are usable without fetching — you can build groups and see schedules
@@ -21612,6 +21891,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         dashboardsRenderedRunCount = (allRuns || []).length;
         dashboardsRenderedSyncAt = resultsLastSyncedAt || 0;
         dashboardsRenderedFetchKey = getDashboardRenderFetchKey();
+        void prefetchActorsForRuns(collectVisibleDashboardRuns());
         if (viewMode === 'graphs') {
             renderDashboardTrendCharts().catch(() => { /* ignore */ });
         } else {
