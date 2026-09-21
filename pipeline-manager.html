@@ -986,19 +986,60 @@
         /* Dashboard view mode (Dots / Graphs) — legend row */
         .dash-view-switch{
             display:inline-flex;align-items:center;gap:0;padding:3px;border-radius:999px;
-            background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);
+            background:rgba(255,255,255,0.42);
+            border:1px solid rgba(255,255,255,0.62);
+            box-shadow:inset 0 1px 0 rgba(255,255,255,0.75), 0 8px 22px rgba(30,56,96,0.08);
+            backdrop-filter:blur(18px) saturate(180%);
+            -webkit-backdrop-filter:blur(18px) saturate(180%);
         }
-        [data-theme="light"] .dash-view-switch{background:rgba(30,56,96,0.06);border-color:rgba(30,56,96,0.12);}
+        [data-theme="dark"] .dash-view-switch{
+            background:rgba(21,28,44,0.45);
+            border-color:rgba(255,255,255,0.14);
+            box-shadow:inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 22px rgba(0,0,0,0.28);
+        }
         .dash-view-seg{
-            border:none;background:transparent;color:var(--text-muted);font-size:11px;font-weight:800;
+            border:none;background:transparent;color:#0f172a;font-size:11px;font-weight:600;
             letter-spacing:.4px;text-transform:uppercase;padding:6px 14px;border-radius:999px;cursor:pointer;
             transition:all .2s var(--ease);
         }
-        .dash-view-seg:hover{color:var(--text-primary);}
+        [data-theme="dark"] .dash-view-seg{color:#e4e9f0;}
+        .dash-view-seg:hover{color:#0f172a;}
+        [data-theme="dark"] .dash-view-seg:hover{color:#fff;}
         .dash-view-seg.active{
-            background:linear-gradient(135deg, rgba(250,167,74,0.35), rgba(37,99,235,0.22));
-            color:var(--text-primary);box-shadow:0 2px 10px rgba(250,167,74,0.18);
+            font-weight:800;
+            color:#0f172a;
+            background:rgba(255,255,255,0.72);
+            box-shadow:inset 0 1px 0 rgba(255,255,255,0.95), 0 1px 6px rgba(30,56,96,0.08);
+            backdrop-filter:blur(22px) saturate(180%);
+            -webkit-backdrop-filter:blur(22px) saturate(180%);
+            outline:2px solid var(--axos-orange);
+            outline-offset:1px;
         }
+        [data-theme="dark"] .dash-view-seg.active{
+            color:#fff;
+            background:rgba(255,255,255,0.12);
+            box-shadow:inset 0 1px 0 rgba(255,255,255,0.18), 0 1px 6px rgba(0,0,0,0.25);
+            outline:2px solid var(--axos-orange);
+            outline-offset:1px;
+        }
+        .dash-excl-cancel-btn{
+            border:1px solid rgba(30,56,96,0.18);background:#fff;color:#0f172a;
+            font-size:11px;font-weight:800;letter-spacing:.3px;padding:6px 12px;border-radius:999px;cursor:pointer;
+            transition:all .2s var(--ease);
+        }
+        [data-theme="dark"] .dash-excl-cancel-btn{
+            background:#151c2c;color:#e4e9f0;border-color:rgba(255,255,255,0.14);
+        }
+        .dash-excl-cancel-btn:hover{color:#0f172a;border-color:rgba(30,56,96,0.32);}
+        [data-theme="dark"] .dash-excl-cancel-btn:hover{color:#fff;border-color:rgba(255,255,255,0.26);}
+        .dash-excl-cancel-btn.active{
+            background:#fff4e5;color:#0f172a;border:2px solid var(--axos-orange);font-weight:800;
+        }
+        [data-theme="dark"] .dash-excl-cancel-btn.active{
+            background:rgba(250,167,74,0.28);color:#fff;border:2px solid var(--axos-orange);
+        }
+        .dash-controls-stack{display:flex;flex-direction:column;gap:10px;margin:-6px 0 18px;}
+        .dash-legend-row,.dash-controls-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;color:var(--text-muted);font-size:11px;}
 
         /* Glowing AI Summary button — Axos orange / navy loop */
         @property --glow-angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
@@ -1224,18 +1265,29 @@
         .run-dot.unknown{background:rgba(59,130,246,0.9);}
         .run-dot.attn{box-shadow:0 0 0 2px rgba(250,167,74,0.40), 0 10px 24px rgba(250,167,74,0.14);}
         .dash-run-tip{
-            position:fixed;z-index:10060;pointer-events:none;max-width:min(340px,calc(100vw - 16px));
-            padding:10px 12px;border-radius:8px;font-size:12px;font-weight:600;line-height:1.45;
+            position:fixed;z-index:10060;pointer-events:none;visibility:hidden;max-width:min(340px,calc(100vw - 16px));
+            padding:10px 14px;border-radius:12px;font-size:12px;font-weight:600;line-height:1.45;
             opacity:0;transform:translateY(4px);transition:opacity .12s var(--ease),transform .12s var(--ease);
-            box-shadow:0 10px 28px rgba(0,0,0,0.22);
+            border:2px solid transparent;--glow-angle:0deg;user-select:text;cursor:default;overflow:visible;
         }
-        .dash-run-tip.show{opacity:1;transform:translateY(0);}
+        .dash-run-tip.show{opacity:1;transform:translateY(0);pointer-events:auto;visibility:visible;animation:dashTipFlow 5.5s linear infinite;}
+        .dash-run-tip.show::after{
+            content:'';position:absolute;inset:-8px;border-radius:18px;z-index:-1;pointer-events:none;
+            background:conic-gradient(from var(--glow-angle), rgba(250,167,74,0.22), rgba(147,197,253,0.16), rgba(255,183,197,0.12), rgba(250,167,74,0.22));
+            filter:blur(12px);
+        }
         .dash-run-tip-dark{
-            background:rgba(10,14,26,0.96);border:1px solid rgba(255,255,255,0.08);color:#d1d5db;
+            color:#d1d5db;
+            background:linear-gradient(180deg, rgba(18,24,38,0.96), rgba(15,20,32,0.94)) padding-box,
+                conic-gradient(from var(--glow-angle), rgba(250,167,74,0.9), rgba(96,165,250,0.7), rgba(252,165,165,0.35), rgba(250,167,74,0.9)) border-box;
         }
         .dash-run-tip-light{
-            background:rgba(255,255,255,0.98);border:1px solid rgba(30,56,96,0.18);color:#334155;
+            color:#334155;
+            background:linear-gradient(180deg, rgba(255,252,248,0.96), rgba(255,246,238,0.94)) padding-box,
+                conic-gradient(from var(--glow-angle), rgba(250,167,74,0.95), rgba(147,197,253,0.8), rgba(255,183,197,0.5), rgba(191,219,254,0.75), rgba(250,167,74,0.95)) border-box;
+            box-shadow:0 10px 28px rgba(30,56,96,0.12);
         }
+        @keyframes dashTipFlow{to{--glow-angle:360deg;}}
         .dash-run-tip-title-line{font-size:12px;font-weight:800;color:var(--text-primary);margin-bottom:4px;}
         [data-theme="light"] .dash-run-tip-light .dash-run-tip-title-line{color:#1E3860;}
         [data-theme="dark"] .dash-run-tip-dark .dash-run-tip-title-line,
@@ -1259,6 +1311,28 @@
         .dash-trend-progress-label{font-size:10px;font-weight:800;color:var(--text-muted);text-align:center;line-height:1.3;}
         .dash-trend-progress-elapsed{font-size:9px;font-weight:600;color:var(--text-muted);opacity:0.85;}
         .dash-trend-wrap.ready .dash-trend-loading{display:none;}
+        .dash-trend-ghost{
+            position:absolute;inset:22px 14px 40px 40px;display:flex;align-items:flex-end;gap:7px;
+            filter:blur(3px);opacity:0.38;pointer-events:none;
+        }
+        .dash-trend-ghost i{
+            flex:1;display:block;border-radius:3px 3px 0 0;min-height:8px;
+            background:linear-gradient(180deg, rgba(16,185,129,0.55), rgba(16,185,129,0.12) 58%, rgba(148,163,184,0.18));
+            height:var(--h,45%);
+        }
+        .dash-trend-ghost i:nth-child(odd){--h:62%;}
+        .dash-trend-ghost i:nth-child(3n){--h:34%; background:linear-gradient(180deg, rgba(220,38,38,0.40), rgba(148,163,184,0.14));}
+        .dash-trend-ghost i:nth-child(5n){--h:78%;}
+        .dash-trend-empty-msg{
+            position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;
+            padding:18px 16px;text-align:center;font-size:12px;font-weight:800;line-height:1.4;
+            color:var(--text-primary);background:rgba(255,255,255,0.22);backdrop-filter:blur(1.5px);
+        }
+        [data-theme="dark"] .dash-trend-empty-msg{background:rgba(10,14,26,0.28);color:#e5e7eb;}
+        .dash-dots-empty{position:relative;min-height:28px;align-items:center;}
+        .dash-dots-empty .run-dot{opacity:0.18;pointer-events:none;}
+        .dash-empty-inline-msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+            font-size:11px;font-weight:800;color:var(--text-primary);pointer-events:none;}
         .results-enrich-status{
             align-items:center;gap:10px;width:fit-content;margin:0 0 14px;padding:8px 16px 6px;
             border-radius:10px;background:rgba(0,0,0,0.12);border:1px solid rgba(255,255,255,0.05);
@@ -4389,6 +4463,14 @@ ${os.map(n => `- ${n}`).join('\n')}
         const fn = String(p?.filename || '');
         const name = String(p?.name || fn.replace(/\.yml$/i, ''));
         return (p && p.testType === 'Orchestrator') || fn.includes('Orchestrator') || name.includes('Orchestrator');
+    }
+    function isOrchestratorRun(r) {
+        if (!r) return false;
+        return isOrchestratorPipeline({
+            filename: r.workflowFile || r.filename,
+            name: r.workflowName || r.name,
+            testType: r.testType
+        });
     }
     function isMobileForm() { return document.getElementById('fPlatform')?.value === '01 Mobile'; }
 
@@ -14191,7 +14273,9 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
 
     function hasCachedTestCounts(tc) {
         if (tc && tc.inferred) return false; // inferred clean-miss results are never persisted
-        return hasEnrichedTestCounts(tc) || !!(tc && tc.noTests && !tc.fallback);
+        return hasEnrichedTestCounts(tc)
+            || !!(tc && tc.noTests && !tc.fallback)
+            || !!(tc && tc.resultsMissing && !tc.fallback);
     }
 
     function trimRunForResultsCache(r) {
@@ -14441,14 +14525,64 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         }
     }
 
+    const PM_IDB_NAME = 'pm.cache';
+    const PM_IDB_STORE = 'kv';
+    const PM_IDB_RESULTS_KEY = 'results';
+    const PM_IDB_TEST_COUNTS_KEY = 'testCounts';
+
+    function openPmIdb() {
+        return new Promise((resolve, reject) => {
+            if (typeof indexedDB === 'undefined') {
+                reject(new Error('indexedDB unavailable'));
+                return;
+            }
+            const req = indexedDB.open(PM_IDB_NAME, 1);
+            req.onupgradeneeded = () => {
+                const db = req.result;
+                if (!db.objectStoreNames.contains(PM_IDB_STORE)) db.createObjectStore(PM_IDB_STORE);
+            };
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error || new Error('indexedDB open failed'));
+        });
+    }
+
+    async function pmIdbGet(key) {
+        const db = await openPmIdb();
+        try {
+            return await new Promise((resolve, reject) => {
+                const tx = db.transaction(PM_IDB_STORE, 'readonly');
+                const req = tx.objectStore(PM_IDB_STORE).get(key);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        } finally {
+            try { db.close(); } catch { /* ignore */ }
+        }
+    }
+
+    async function pmIdbSet(key, value) {
+        const db = await openPmIdb();
+        try {
+            await new Promise((resolve, reject) => {
+                const tx = db.transaction(PM_IDB_STORE, 'readwrite');
+                tx.objectStore(PM_IDB_STORE).put(value, key);
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            });
+        } finally {
+            try { db.close(); } catch { /* ignore */ }
+        }
+    }
+
     function saveResultsCache(meta) {
         const prevFilters = resultsLastFetchFilters;
         const prevSyncedAt = resultsLastSyncedAt;
+        let filters = prevFilters;
         try {
             const syncedAt = meta?.syncedAt || Date.now();
-            const filters = meta?.filters || buildResultsFetchFiltersSnapshot(meta);
-            let runs = (allRuns || []).map(trimRunForResultsCache).filter(Boolean);
-            const buildPayload = (runList) => ({
+            filters = meta?.filters || buildResultsFetchFiltersSnapshot(meta);
+            const runs = (allRuns || []).map(trimRunForResultsCache).filter(Boolean);
+            const payload = {
                 version: 1,
                 syncedAt,
                 mode: meta?.mode || loadResultsFetchModePref(),
@@ -14456,31 +14590,34 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 range: meta?.range || null,
                 repos: meta?.repos || [],
                 filters,
-                runs: runList
-            });
-            let payload = buildPayload(runs);
+                runs
+            };
+            resultsLastFetchFilters = filters;
+            resultsLastSyncedAt = syncedAt;
+            try { localStorage.setItem(RESULTS_SYNCED_AT_KEY, String(syncedAt)); } catch { /* ignore */ }
+            pmIdbSet(PM_IDB_RESULTS_KEY, payload).catch(() => { /* ignore */ });
+
             let json = JSON.stringify(payload);
+            let lsPayload = payload;
             if (json.length > 4 * 1024 * 1024) {
-                runs = runs.map(r => {
+                const slimRuns = runs.map(r => {
                     const o = { ...r };
                     delete o.testCounts;
                     return o;
                 });
-                payload = buildPayload(runs);
-                json = JSON.stringify(payload);
+                lsPayload = { ...payload, runs: slimRuns };
+                json = JSON.stringify(lsPayload);
             }
-            while (json.length > 4 * 1024 * 1024 && payload.runs.length > 100) {
-                payload.runs = payload.runs.slice(0, Math.max(100, Math.floor(payload.runs.length * 0.85)));
-                json = JSON.stringify(payload);
+            while (json.length > 4 * 1024 * 1024 && lsPayload.runs.length > 100) {
+                lsPayload = {
+                    ...lsPayload,
+                    runs: lsPayload.runs.slice(0, Math.max(100, Math.floor(lsPayload.runs.length * 0.85)))
+                };
+                json = JSON.stringify(lsPayload);
             }
-            if (json.length > 4 * 1024 * 1024) {
-                resultsLastFetchFilters = filters;
-                return false;
+            if (json.length <= 4 * 1024 * 1024) {
+                try { localStorage.setItem(RESULTS_CACHE_KEY, json); } catch { /* IndexedDB holds the full copy */ }
             }
-            resultsLastFetchFilters = filters;
-            localStorage.setItem(RESULTS_CACHE_KEY, json);
-            localStorage.setItem(RESULTS_SYNCED_AT_KEY, String(syncedAt));
-            resultsLastSyncedAt = syncedAt;
             return true;
         } catch {
             try { resultsLastFetchFilters = filters; } catch { resultsLastFetchFilters = prevFilters; }
@@ -14556,6 +14693,54 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             if (Array.isArray(payload.repos) && payload.repos.length && resultsLastFetchFilters) {
                 resultsLastFetchFilters.repos = payload.repos;
             }
+            missingWorkflows = [];
+            markDashboardsDirty();
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    function resultsCacheRichness(runs, syncedAt) {
+        const list = Array.isArray(runs) ? runs : [];
+        let withCounts = 0;
+        for (const r of list) {
+            if (hasCachedTestCounts(r?.testCounts)) withCounts++;
+        }
+        return { n: list.length, withCounts, synced: Number(syncedAt) || 0 };
+    }
+
+    function isRicherResultsCache(candidateRuns, candidateSyncedAt, currentRuns, currentSyncedAt) {
+        const next = resultsCacheRichness(candidateRuns, candidateSyncedAt);
+        const cur = resultsCacheRichness(currentRuns, currentSyncedAt);
+        if (next.synced !== cur.synced) return next.synced > cur.synced;
+        if (next.withCounts !== cur.withCounts) return next.withCounts > cur.withCounts;
+        return next.n > cur.n;
+    }
+
+    async function restoreResultsCacheFromIdb() {
+        try {
+            const payload = await pmIdbGet(PM_IDB_RESULTS_KEY);
+            if (!payload || !Array.isArray(payload.runs) || !payload.runs.length) return false;
+            if (Array.isArray(allRuns) && allRuns.length) {
+                const idbBetter = isRicherResultsCache(
+                    payload.runs, payload.syncedAt, allRuns, resultsLastSyncedAt
+                );
+                if (!idbBetter) return false;
+            }
+            allRuns = payload.runs;
+            for (const r of allRuns) {
+                if (hasEnrichedTestCounts(r?.testCounts)) r._testCountsDone = true;
+            }
+            const syncedRaw = payload.syncedAt
+                ?? parseInt(String(localStorage.getItem(RESULTS_SYNCED_AT_KEY) || ''), 10);
+            const syncedNum = Number(syncedRaw);
+            resultsLastSyncedAt = Number.isFinite(syncedNum) && syncedNum > 0 ? syncedNum : null;
+            if (payload.mode) saveResultsFetchModePref(payload.mode);
+            if (payload.perPage) {
+                try { localStorage.setItem(RESULTS_RUN_COUNT_KEY, String(payload.perPage)); } catch { /* ignore */ }
+            }
+            resultsLastFetchFilters = normalizeResultsFetchFilters(payload);
             missingWorkflows = [];
             markDashboardsDirty();
             return true;
@@ -14939,9 +15124,72 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         }
     }
 
+    let ghQuotaRemaining = null;
+    let ghQuotaResetUnix = null;
+    let ghQuotaStopped = false;
+
+    function ghQuotaResetLabel() {
+        const n = Number(ghQuotaResetUnix);
+        if (!Number.isFinite(n) || n <= 0) return '';
+        try {
+            return new Date(n * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        } catch {
+            return '';
+        }
+    }
+
+    function noteGhRateLimitHeaders(resp) {
+        if (!resp || !resp.headers) return;
+        const rem = resp.headers.get('x-ratelimit-remaining');
+        const reset = resp.headers.get('x-ratelimit-reset');
+        if (rem != null && rem !== '') {
+            const n = parseInt(rem, 10);
+            if (Number.isFinite(n)) {
+                ghQuotaRemaining = n;
+                if (n <= 0) ghQuotaStopped = true;
+            }
+        }
+        if (reset != null && reset !== '') {
+            const n = parseInt(reset, 10);
+            if (Number.isFinite(n)) ghQuotaResetUnix = n;
+        }
+    }
+
+    function showGhQuotaBanner() {
+        if (!ghQuotaStopped) return;
+        const reset = ghQuotaResetLabel();
+        const msg = reset
+            ? `GitHub API quota exhausted (0 remaining). Enrichment paused until ~${reset}.`
+            : 'GitHub API quota exhausted (0 remaining). Enrichment paused until the hourly reset.';
+        try { showToast(msg, true); } catch { /* ignore */ }
+    }
+
+    // GitHub's limit is hourly, so this gate is a pause and never a verdict. Latching it for
+    // the whole page session is what left recoverable runs stuck on "counts not recovered":
+    // the gate outlived the actual rate limit, so every run that had not been enriched before
+    // the limit hit could never be retried.
+    function clearGhQuotaGateIfReset() {
+        if (!ghQuotaStopped) return false;
+        const n = Number(ghQuotaResetUnix);
+        if (!Number.isFinite(n) || n <= 0) return false;
+        if (Date.now() < n * 1000) return false;
+        resetGhQuotaGate();
+        return true;
+    }
+
+    function resetGhQuotaGate() {
+        ghQuotaStopped = false;
+        ghQuotaRemaining = null;
+        ghQuotaResetUnix = null;
+    }
+
     async function ghFetch(path) {
         const pat = getGitHubToken();
         if (!pat) throw new Error('No GitHub token');
+        clearGhQuotaGateIfReset();
+        if (ghQuotaStopped) {
+            throw new Error('GitHub API quota paused (0 remaining)');
+        }
         const resp = await fetch(`https://api.github.com${path}`, {
             headers: {
                 Authorization: getGhAuthHeader(pat),
@@ -14949,8 +15197,35 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 'X-GitHub-Api-Version': '2022-11-28'
             }
         });
-        if (!resp.ok) throw new Error(`GitHub API ${resp.status}: ${resp.statusText}`);
+        noteGhRateLimitHeaders(resp);
+        if (!resp.ok) {
+            if (resp.status === 403 && (ghQuotaRemaining === 0 || /rate limit/i.test(resp.statusText || ''))) {
+                ghQuotaStopped = true;
+                showGhQuotaBanner();
+                throw new Error(`GitHub API quota exhausted (${resp.status})`);
+            }
+            throw new Error(`GitHub API ${resp.status}: ${resp.statusText}`);
+        }
         return resp.json();
+    }
+
+    async function ghFetchWithRetry(path, opts = {}) {
+        const maxAttempts = Math.max(1, opts.attempts || 4);
+        let lastErr;
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                return await ghFetch(path);
+            } catch (e) {
+                lastErr = e;
+                const msg = String(e?.message || '');
+                if (/quota (?:exhausted|paused)/i.test(msg)) throw e;
+                const retryable = /GitHub API (429|502|503)/.test(msg);
+                if (!retryable || attempt >= maxAttempts) throw e;
+                const wait = Math.min(8000, 350 * Math.pow(2, attempt - 1));
+                await new Promise(res => setTimeout(res, wait));
+            }
+        }
+        throw lastErr;
     }
 
     async function ghFetchAny(urlOrPath) {
@@ -15001,6 +15276,9 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             .replace(/\s+/g, ' ')
             .trim();
 
+        const grepEmptyHint = textLooksLikeGrepEmpty(s);
+        const allureEmptyHint = textLooksLikeAllureEmpty(s);
+
         // A short check-run summary blob only ever has one relevant number, so the first match
         // is fine there (default). Full job logs are long and can contain many unrelated
         // "N passed"/"N tests" mentions before the real final tally (retries, intermediate suite
@@ -15015,18 +15293,42 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             return last;
         };
 
+        // A count is a standalone number. Without the left guard the digits inside a token
+        // match too, and a job log line like "HEAD is now at ba67786 test(olb30-web): ..."
+        // reads as "67786 tests" — that is how a 19-test failing run was reported as 67,786
+        // tests with 67,770 of them passing.
+        const NUM = '(?<![\\w.,-])(\\d+)';
+        const countOf = (unit) => new RegExp(`${NUM}\\s+${unit}`, 'i');
+        // A labelled count is a field with its own number: "Tests: 19, Failures: 2, Errors: 0",
+        // or a summary box "│ TESTS: 19 │". These appear anywhere in a log, so the label only
+        // needs a word boundary — requiring a delimiter in front missed every field that was
+        // at the start of its own line before newlines were collapsed above.
+        const labelled = (label) => new RegExp(`\\b(?:${label}):\\s*(\\d+)\\b`, 'i');
+
+        const specFiles = pick(/Spec Files:\s*(\d+)\s+passed,\s*(\d+)\s+failed(?:,\s*(\d+)\s+skipped)?,\s*(\d+)\s+total/i);
+        if (specFiles) {
+            const passed = parseInt(specFiles[1], 10);
+            const failed = parseInt(specFiles[2], 10);
+            const skipped = specFiles[3] != null ? parseInt(specFiles[3], 10) : 0;
+            const total = parseInt(specFiles[4], 10) || (passed + failed + skipped);
+            if (Number.isFinite(total) && total > 0) {
+                return attachEmptyRunFlags({ passed, failed, skipped, total }, s, { grepEmptyHint, allureEmptyHint });
+            }
+        }
+
         // Common dorny/test-reporter wording:
         // "9 passed, 0 failed and 0 skipped"
         // "9 passed, 0 failed, 0 skipped"
         // "9 passed, 0 failed, and 0 skipped"
-        const dorny = pick(/(\d+)\s+passed,\s*(\d+)\s+failed(?:\s*,)?(?:\s*and\s*)?\s*(\d+)\s+skipped/i);
+        // JUnit check titles/summaries keep these numbers after artifacts expire.
+        const dorny = pick(new RegExp(`${NUM}\\s+passed,\\s*(\\d+)\\s+failed(?:\\s*,)?(?:\\s*and\\s*)?\\s*(\\d+)\\s+skipped`, 'i'));
         if (dorny) {
             const passed = parseInt(dorny[1], 10);
             const failed = parseInt(dorny[2], 10);
             const skipped = parseInt(dorny[3], 10);
             const total = passed + failed + skipped;
             if (Number.isFinite(total) && total > 0) {
-                return { passed, failed, skipped, total };
+                return attachEmptyRunFlags({ passed, failed, skipped, total }, s, { grepEmptyHint, allureEmptyHint });
             }
         }
 
@@ -15037,25 +15339,145 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             return Number.isFinite(n) ? n : null;
         };
 
-        const passed = read(/(\d+)\s+passed\b/i) ?? read(/\bpassed:\s*(\d+)\b/i);
-        const failed = read(/(\d+)\s+failed\b/i) ?? read(/\bfailures?:\s*(\d+)\b/i) ?? read(/\bfailed:\s*(\d+)\b/i);
-        const errors = read(/\berrors?:\s*(\d+)\b/i);
-        const skipped = read(/(\d+)\s+skipped\b/i) ?? read(/\bskipped:\s*(\d+)\b/i) ?? read(/\bskips?:\s*(\d+)\b/i);
-        const total = read(/(\d+)\s+tests?\b/i) ?? read(/\btests?:\s*(\d+)\b/i);
+        // The Playwright wrapper in these repos prints its own summary box:
+        //   │ TESTS: 19                                 │
+        //   │ PASS: 16   FAIL: 9   SKIP: 3   TIMEOUT: 0 │
+        // FAIL there counts attempts, so the parts do not always add up to TESTS. Take the box
+        // only when they reconcile; inventing a split from a box that disagrees with itself is
+        // how a failing run ends up reading as a clean one.
+        const box = pick(/PASS:\s*(\d+)\s+FAIL:\s*(\d+)\s+SKIP:\s*(\d+)(?:\s+TIMEOUT:\s*(\d+))?/i);
+        if (box) {
+            const boxPassed = parseInt(box[1], 10);
+            const boxFailed = parseInt(box[2], 10) + (box[4] != null ? parseInt(box[4], 10) : 0);
+            const boxSkipped = parseInt(box[3], 10);
+            const boxSum = boxPassed + boxFailed + boxSkipped;
+            const declared = read(labelled('tests'));
+            if (boxSum > 0 && (declared == null || declared === boxSum)) {
+                return attachEmptyRunFlags(
+                    { passed: boxPassed, failed: boxFailed, skipped: boxSkipped, total: boxSum },
+                    s, { grepEmptyHint, allureEmptyHint });
+            }
+        }
 
-        const f = (failed ?? 0) + (errors ?? 0);
+        const passed = read(countOf('passed\\b')) ?? read(labelled('passed'));
+        const failed = read(countOf('failed\\b')) ?? read(labelled('failures?')) ?? read(labelled('failed'));
+        // Only the plural. "Error in sendTestFrameworkEvent: Error: 13 INTERNAL: ..." is a gRPC
+        // status, not a failure count, and reading it as one is how a 16-passed/2-failed run
+        // picked up 13 failures it never had. Summaries that do report errors say "Errors: 0".
+        const errors = read(labelled('errors'));
+        const skipped = read(countOf('skipped\\b')) ?? read(labelled('skipped')) ?? read(labelled('skips?'));
+        const total = read(countOf('tests?\\b(?!\\s*\\()')) ?? read(labelled('tests?'));
+
+        const f = (failed != null || errors != null) ? ((failed ?? 0) + (errors ?? 0)) : null;
         const p = passed ?? null;
         const sk = skipped ?? 0;
-        const t = total ?? ((p != null) ? (p + f + sk) : null);
+        const t = total ?? ((p != null) ? (p + (f ?? 0) + sk) : null);
 
-        if (p == null && f === 0 && sk === 0) return null;
-        if (t == null) return null;
-        return {
-            passed: p ?? Math.max(0, t - f - sk),
-            failed: f,
+        const grepEmptyCounts = () => ({ passed: 0, failed: 0, skipped: sk, total: sk, noTests: true, grepEmpty: true });
+        if (p == null && !f && sk === 0) return grepEmptyHint ? grepEmptyCounts() : null;
+        if (t == null) return grepEmptyHint ? grepEmptyCounts() : null;
+        // Passes are only ever derived from a stated total minus stated failures. With neither
+        // number stated there is nothing to derive from, and assuming the remainder passed
+        // would turn a log we could not read into a perfect score.
+        if (p == null && f == null) return grepEmptyHint ? grepEmptyCounts() : null;
+        if (t > 0) {
+            return attachEmptyRunFlags({
+                passed: p ?? Math.max(0, t - (f ?? 0) - sk),
+                failed: f ?? 0,
+                skipped: sk,
+                total: t
+            }, s, { grepEmptyHint, allureEmptyHint });
+        }
+        return grepEmptyHint ? grepEmptyCounts() : {
+            passed: p ?? 0,
+            failed: f ?? 0,
             skipped: sk,
             total: t
         };
+    }
+
+    function textLooksLikeGrepEmpty(s) {
+        return /matched zero specs|no split specs generated|0 specs found|no tests found matching|no tests matched|GREP\/filter matched|matched nothing|Skipping WDIO run|no tests executed/i.test(String(s || ''));
+    }
+
+    function textLooksLikeAllureEmpty(s) {
+        return /No Allure results|tests may not have run or produced output/i.test(String(s || ''));
+    }
+
+    function attachEmptyRunFlags(parsed, s, hints = {}) {
+        if (!parsed) return parsed;
+        const grepEmptyHint = hints.grepEmptyHint != null ? hints.grepEmptyHint : textLooksLikeGrepEmpty(s);
+        const allureEmptyHint = hints.allureEmptyHint != null ? hints.allureEmptyHint : textLooksLikeAllureEmpty(s);
+        const passed = parsed.passed ?? 0;
+        const failed = parsed.failed ?? 0;
+        const hasRealTally = passed > 0 || failed > 0;
+        if (allureEmptyHint && !hasRealTally) {
+            return { ...parsed, resultsMissing: true, grepEmpty: false, noTests: false };
+        }
+        if (grepEmptyHint && passed === 0 && failed === 0) {
+            return { ...parsed, noTests: true, grepEmpty: true };
+        }
+        return parsed;
+    }
+
+    function junitCheckRunNameCandidates(run) {
+        const id = String(run?.id || '').trim();
+        if (!id) return [];
+        const strip = (n) => String(n || '')
+            .replace(/^UAT\s*-\s*\d+\s*-\s*/i, '')
+            .replace(/-Testim$/i, '')
+            .replace(/\.ya?ml$/i, '')
+            .trim();
+        const names = [];
+        const seen = new Set();
+        for (const raw of [run?.workflowName, run?.workflowFile]) {
+            const base = strip(raw);
+            if (!base || seen.has(base)) continue;
+            seen.add(base);
+            names.push(`${base} - JUnit (run ${id})`);
+        }
+        return names;
+    }
+
+    const JUNIT_PROBE_STORAGE_KEY = 'axos_junit_check_probe_v1';
+
+    function readJunitProbeStore() {
+        try {
+            const raw = localStorage.getItem(JUNIT_PROBE_STORAGE_KEY);
+            return raw ? JSON.parse(raw) : {};
+        } catch { return {}; }
+    }
+
+    function workflowCheckProbeKey(run) {
+        const repo = String(run?.repo || '').trim();
+        const wf = String(run?.workflowFile || '').trim();
+        if (!repo || !wf) return '';
+        return `probe::${repo}::${wf}`;
+    }
+
+    function shouldSkipJunitCheckProbe(key) {
+        if (!key) return false;
+        const memo = readJunitProbeStore()[key];
+        if (!memo || (memo.hits || 0) > 0 || (memo.misses || 0) < 8) return false;
+        const last = Date.parse(String(memo.lastProbedAt || ''));
+        if (!last) return true;
+        return (Date.now() - last) < (24 * 3600 * 1000);
+    }
+
+    function touchJunitProbeMemo(key, outcome, junitBase = '') {
+        if (!key) return;
+        const store = readJunitProbeStore();
+        const prev = store[key] || { hits: 0, misses: 0, junitBase: '' };
+        const memo = {
+            hits: prev.hits || 0,
+            misses: prev.misses || 0,
+            junitBase: junitBase || prev.junitBase || '',
+            lastProbedAt: new Date().toISOString()
+        };
+        if (outcome === 'hit') memo.hits += 1;
+        if (outcome === 'miss') memo.misses += 1;
+        store[key] = memo;
+        try { localStorage.setItem(JUNIT_PROBE_STORAGE_KEY, JSON.stringify(store)); } catch {}
     }
 
     async function fetchCheckRunsForSuite(owner, repo, suiteId) {
@@ -15068,6 +15490,97 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             if (batch.length < 100) break;
         }
         return all;
+    }
+
+    async function fetchCheckRunsForCommitMatchingRun(owner, repo, sha, run) {
+        const runObj = (run && typeof run === 'object') ? run : { id: run };
+        const idStr = String(runObj.id || '').trim();
+        const shaStr = String(sha || '').trim();
+        if (!idStr || !shaStr) return [];
+        const probeKey = workflowCheckProbeKey(runObj);
+        if (shouldSkipJunitCheckProbe(probeKey)) return [];
+        const store = readJunitProbeStore();
+        const memo = probeKey ? store[probeKey] : null;
+        let junitBase = memo?.junitBase ? String(memo.junitBase) : '';
+        let checkName = '';
+        if (junitBase) {
+            checkName = `${junitBase} - JUnit (run ${idStr})`;
+        } else {
+            const names = junitCheckRunNameCandidates(runObj);
+            if (names.length) {
+                checkName = names[0];
+                junitBase = checkName.replace(new RegExp(` - JUnit \\(run ${idStr}\\)$`), '');
+            }
+        }
+        if (checkName) {
+            const data = await ghFetch(`/repos/${owner}/${encodeURIComponent(repo)}/commits/${encodeURIComponent(shaStr)}/check-runs?check_name=${encodeURIComponent(checkName)}&per_page=100`);
+            const batch = Array.isArray(data?.check_runs) ? data.check_runs : [];
+            if (batch.length) {
+                touchJunitProbeMemo(probeKey, 'hit', junitBase);
+                return batch;
+            }
+        }
+        const matched = [];
+        const needle = `(run ${idStr})`;
+        for (let page = 1; page <= 2; page++) {
+            const data = await ghFetch(`/repos/${owner}/${encodeURIComponent(repo)}/commits/${encodeURIComponent(shaStr)}/check-runs?per_page=100&page=${page}`);
+            const batch = Array.isArray(data?.check_runs) ? data.check_runs : [];
+            if (!batch.length) break;
+            for (const cr of batch) {
+                if (String(cr?.name || '').includes(needle)) matched.push(cr);
+            }
+            if (matched.length || batch.length < 100) break;
+        }
+        if (matched.length) {
+            touchJunitProbeMemo(probeKey, 'hit', junitBase);
+            return matched;
+        }
+        touchJunitProbeMemo(probeKey, 'miss', junitBase);
+        return [];
+    }
+
+    async function ensureRunHeadSha(owner, repo, r) {
+        const existing = String(r?.headSha || r?.head_sha || '').trim();
+        if (existing) return existing;
+        if (!r?.id) return '';
+        try {
+            const data = await ghFetch(`/repos/${owner}/${encodeURIComponent(repo)}/actions/runs/${r.id}`);
+            const sha = String(data?.head_sha || '').trim();
+            if (sha) r.headSha = sha;
+            if (!r.checkSuiteId && data?.check_suite_id) r.checkSuiteId = data.check_suite_id;
+            return sha;
+        } catch {
+            return '';
+        }
+    }
+
+    function parseTestCountsFromCheckRunList(checks) {
+        const list = Array.isArray(checks) ? checks.slice() : [];
+        list.sort((a, b) => {
+            const score = (name) => {
+                const n = String(name || '');
+                if (/junit/i.test(n)) return 2;
+                if (/test results/i.test(n)) return 1;
+                return 0;
+            };
+            return score(b?.name) - score(a?.name);
+        });
+        // A GREP-empty blob is held back rather than returned: a later check run (or the job
+        // logs, once the caller falls through) may still carry the real tally, and reporting
+        // "no tests executed" over an available tally is the worse of the two mistakes.
+        let grepEmpty = null;
+        for (const cr of list) {
+            const out = cr?.output || {};
+            const blob = [out.summary, out.title, out.text, cr?.name].filter(Boolean).join('\n');
+            const parsed = parseTestCountsFromText(blob);
+            if (parsed && !parsed.grepEmpty) return parsed;
+            if (grepEmpty) continue;
+            if (parsed?.grepEmpty) grepEmpty = parsed;
+            else if (textLooksLikeGrepEmpty(blob) && !textLooksLikeAllureEmpty(blob)) {
+                grepEmpty = { passed: 0, failed: 0, skipped: 1, total: 1, noTests: true, grepEmpty: true };
+            }
+        }
+        return grepEmpty;
     }
 
     function parseTestimCompletionLine(text) {
@@ -15149,9 +15662,12 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         // Empty-run markers used by Mobile (and similar) when GREP matches nothing:
         // a single placeholder case and/or a "<skipped message=No tests matched…>" body.
         // These are "No tests", not workflow Skipped.
-        if (failed === 0 && (junitXmlHasNoTestsPlaceholderCase(raw) || junitXmlHasNoTestsSkipMessage(raw))) {
+        if (failed === 0 && (junitXmlHasNoTestsPlaceholderCase(raw) || junitXmlHasNoTestsSkipMessage(raw) || junitXmlHasAllureEmptySkipMessage(raw))) {
             if (tests === 1 || (passed === 0 && skipped > 0)) {
-                return { passed: 0, failed: 0, skipped: 0, total: Math.max(1, tests), noTests: true };
+                if (junitXmlHasNoTestsSkipMessage(raw)) {
+                    return { passed: 0, failed: 0, skipped, total: Math.max(1, tests), noTests: true, grepEmpty: true };
+                }
+                return { resultsMissing: true, passed: 0, failed: 0, skipped, total: Math.max(1, tests) };
             }
         }
         return { passed, failed, skipped, total: tests };
@@ -15169,13 +15685,37 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
     function junitXmlHasNoTestsSkipMessage(xml) {
         const raw = String(xml || '');
         if (!raw.trim()) return false;
-        return /<skipped\b[^>]*message="[^"]*no tests matched/i.test(raw)
-            || /<skipped\b[^>]*>[^<]*no tests matched/i.test(raw);
+        return /<skipped\b[^>]*message="[^"]*(?:no tests matched|GREP\/filter|matched zero specs)[^"]*"/i.test(raw)
+            || /<skipped\b[^>]*>[^<]*(?:no tests matched|GREP\/filter|matched zero specs)/i.test(raw);
+    }
+
+    function junitXmlHasAllureEmptySkipMessage(xml) {
+        const raw = String(xml || '');
+        if (!raw.trim()) return false;
+        return /No Allure results|tests may not have run or produced output/i.test(raw);
     }
 
     function applyParsedTestCounts(r, parsed, gen) {
         if (!parsed || (r._testCountsGen || 0) !== gen) return null;
+        if (parsed.resultsMissing) {
+            const skipped = parsed.skipped ?? 0;
+            const total = parsed.total ?? Math.max(1, skipped);
+            r.testCounts = {
+                passed: 0, failed: 0, skipped, total, passPct: 0,
+                fallback: false, noTests: false, resultsMissing: true
+            };
+            return r.testCounts;
+        }
         if (parsed.noTests || (parsed.total != null && parsed.total <= 0)) {
+            const skipped = parsed.skipped ?? 0;
+            const total = parsed.total ?? 0;
+            if (parsed.noTests && total > 0) {
+                r.testCounts = {
+                    passed: 0, failed: 0, skipped, total, passPct: 0,
+                    fallback: false, noTests: true, grepEmpty: !!parsed.grepEmpty
+                };
+                return r.testCounts;
+            }
             r.testCounts = { passed: 0, failed: 0, skipped: 0, total: 0, passPct: 0, fallback: false, noTests: true };
             return r.testCounts;
         }
@@ -15184,13 +15724,18 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         const skipped = parsed.skipped ?? 0;
         const total = parsed.total ?? (passed + failed + skipped);
         const actionable = Math.max(0, total - skipped);
-        // Nothing executed (only skips / empty): treat as no tests. Reserve "Skipped"
-        // for GitHub workflow/job skipped — not JUnit all-skipped empty GREP runs.
-        if (actionable === 0 && failed === 0) {
-            r.testCounts = { passed: 0, failed: 0, skipped, total, passPct: 0, fallback: false, noTests: true };
+        if (parsed.grepEmpty || parsed.noTests) {
+            r.testCounts = {
+                passed: 0, failed: 0, skipped, total, passPct: 0,
+                fallback: false, noTests: true, grepEmpty: !!parsed.grepEmpty
+            };
             return r.testCounts;
         }
-        const passPct = actionable > 0 ? (passed / actionable) * 100 : 0;
+        if (actionable === 0 && failed === 0) {
+            r.testCounts = { passed: 0, failed: 0, skipped, total, passPct: null, fallback: false, noTests: false };
+            return r.testCounts;
+        }
+        const passPct = actionable > 0 ? (passed / actionable) * 100 : null;
         r.testCounts = { passed, failed, skipped, total, passPct, fallback: false };
         return r.testCounts;
     }
@@ -15214,17 +15759,56 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         return null;
     }
 
+    function isNonExecutionJobName(name) {
+        return /preflight|runner check|resolve\s*\/\s*app version|publish\s*\/\s*junit|test results|email\s*\/\s*results|^dispatch$/i.test(String(name || ''));
+    }
+
+    function workflowJobMatchName(workflowName) {
+        return String(workflowName || '')
+            .replace(/^UAT\s*-\s*\d+\s*-\s*/i, '')
+            .replace(/-Testim$/i, '')
+            .trim();
+    }
+
     function pickTestimExecutionJob(jobs, workflowName) {
         const wf = String(workflowName || '').trim();
+        const base = workflowJobMatchName(wf);
         const list = (Array.isArray(jobs) ? jobs : []).filter(j => j && j.id);
-        const execJobs = list.filter(j => !/test results/i.test(String(j.name || '')));
+        const execJobs = list.filter(j => {
+            const n = String(j.name || '');
+            return n && !isNonExecutionJobName(n);
+        });
         if (!execJobs.length) return null;
         const byWf = execJobs.find(j => wf && String(j.name || '').includes(wf));
         if (byWf) return byWf;
+        const byBase = base && execJobs.find(j => String(j.name || '').includes(base));
+        if (byBase) return byBase;
+        const browserStack = execJobs.find(j => /BrowserStack/i.test(String(j.name || '')));
+        if (browserStack) return browserStack;
         const runSlash = execJobs.find(j => /run\s*\//i.test(String(j.name || '')));
         if (runSlash) return runSlash;
-        const completed = execJobs.filter(j => j.status === 'completed');
-        return (completed.length ? completed : execJobs)[0] || null;
+        const pool = execJobs.filter(j => j.status === 'completed');
+        const ranked = (pool.length ? pool : execJobs).slice().sort((a, b) => {
+            const da = (new Date(a.completed_at || 0) - new Date(a.started_at || 0)) || 0;
+            const db = (new Date(b.completed_at || 0) - new Date(b.started_at || 0)) || 0;
+            return db - da;
+        });
+        return ranked[0] || null;
+    }
+
+    // GitHub deletes run artifacts and job-log blobs after their retention window. Those
+    // downloads then answer 404/410 (the log redirect lands on storage, which returns
+    // BlobNotFound). That is a permanent answer, not a hiccup — treating it as a retryable
+    // fetch error pinned such runs behind a "click Fetch Results to retry" tooltip forever
+    // and kept them out of the no-execution filter.
+    function isDataGoneStatus(status) {
+        return status === 404 || status === 410;
+    }
+
+    function makeDataGoneError(what, status) {
+        const err = new Error(`${what} no longer available on GitHub (${status})`);
+        err.dataGone = true;
+        return err;
     }
 
     async function fetchJobLogsText(owner, repo, jobId) {
@@ -15238,7 +15822,10 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                     'X-GitHub-Api-Version': '2022-11-28'
                 }
             });
-            if (!resp.ok) throw new Error(`Job logs download failed (${resp.status})`);
+            if (!resp.ok) {
+                if (isDataGoneStatus(resp.status)) throw makeDataGoneError('Job logs', resp.status);
+                throw new Error(`Job logs download failed (${resp.status})`);
+            }
             const buf = new Uint8Array(await resp.arrayBuffer());
             if (buf.length >= 2 && buf[0] === 0x50 && buf[1] === 0x4B) {
                 if (typeof fflate === 'undefined') return null;
@@ -15254,25 +15841,66 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             }
             return new TextDecoder().decode(buf);
         } catch (err) {
+            if (err?.dataGone) throw err;
             if (String(err?.message || '').includes('download failed')) throw err;
             return null;
         }
     }
 
+    // The job that publishes the JUnit report. Its log carries the reporter's own tally
+    // ("16 passed, 2 failed and 1 skipped"), which reconciles with the JUnit XML, so once the
+    // artifact expires it is the most trustworthy source left — ahead of the runner console,
+    // which also prints attempt counts, commit subjects and error codes that read like counts.
+    function pickJUnitReportJobs(jobs) {
+        return (jobs || [])
+            .filter(j => j?.id
+                && /junit|test\s+report/i.test(String(j.name || ''))
+                // A publish job that did not succeed never wrote a report to read.
+                && (!j.conclusion || j.conclusion === 'success'))
+            .slice(0, 2);
+    }
+
     async function fetchRunTestCountsFromJobLogs(owner, repo, run) {
         if (!run?.id) return null;
         const data = await ghFetch(`/repos/${owner}/${encodeURIComponent(repo)}/actions/runs/${run.id}/jobs?per_page=100`);
-        const job = pickTestimExecutionJob(data?.jobs || [], run.workflowName);
-        if (!job?.id) return null;
+        const jobs = data?.jobs || [];
+        let deferredError = null;
+        let placeholder = null;
+        for (const reportJob of pickJUnitReportJobs(jobs)) {
+            try {
+                const reportLogs = await fetchJobLogsText(owner, repo, reportJob.id);
+                const reportParsed = reportLogs ? parseTestCountsFromText(reportLogs, { lastMatch: true }) : null;
+                if (!reportParsed) continue;
+                // Only a real tally ends the search. A placeholder — GREP-empty, missing Allure
+                // results, an all-skipped stub — means the report itself has nothing in it, so
+                // the runner console still gets its turn; the placeholder is only the answer if
+                // the console has nothing either.
+                if (!reportParsed.grepEmpty && !reportParsed.noTests && !reportParsed.resultsMissing
+                    && (reportParsed.total ?? 0) > 0) {
+                    return reportParsed;
+                }
+                placeholder = placeholder || reportParsed;
+            } catch (e) {
+                // Hold the failure: the execution job's log may still answer, and if it does
+                // not, the caller still needs to hear why this tier came back empty.
+                deferredError = deferredError || e;
+            }
+        }
+        const job = pickTestimExecutionJob(jobs, run.workflowName);
+        if (!job?.id) {
+            if (placeholder) return placeholder;
+            if (deferredError) throw deferredError;
+            return null;
+        }
         const logs = await fetchJobLogsText(owner, repo, job.id);
-        if (!logs) return null;
+        if (!logs) return placeholder;
         const testim = parseTestimCompletionLine(logs);
         if (testim) return testim;
         // Non-Testim runners (Playwright's own "N passed, N failed, N skipped" summary line,
         // etc.) print the same generic wording check-run summaries use. lastMatch: true because
         // full job logs can contain many unrelated "N passed"/"N tests" mentions before the real
         // final tally (retries, intermediate suite output) -- the earliest match isn't trustworthy.
-        return parseTestCountsFromText(logs, { lastMatch: true });
+        return parseTestCountsFromText(logs, { lastMatch: true }) || placeholder;
     }
 
     async function unzipFirstXmlFromArtifact(archiveUrl) {
@@ -15287,7 +15915,10 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                     'X-GitHub-Api-Version': '2022-11-28'
                 }
             });
-            if (!resp.ok) throw new Error(`Artifact download failed (${resp.status})`);
+            if (!resp.ok) {
+                if (isDataGoneStatus(resp.status)) throw makeDataGoneError('Artifact', resp.status);
+                throw new Error(`Artifact download failed (${resp.status})`);
+            }
             const buf = new Uint8Array(await resp.arrayBuffer());
             const files = await new Promise((resolve) => {
                 fflate.unzip(buf, (err, out) => resolve(err ? null : out));
@@ -15305,6 +15936,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             xmlEntries.sort((a, b) => xmlScore(b[0]) - xmlScore(a[0]) || a[0].localeCompare(b[0]));
             return new TextDecoder().decode(xmlEntries[0][1]);
         } catch (err) {
+            if (err?.dataGone) throw err;
             if (String(err?.message || '').includes('download failed')) throw err;
             return null;
         }
@@ -15380,26 +16012,43 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
 
     function shouldEnrichRunTestCounts(r) {
         if (!r || r._testCountsPromise) return false;
+        clearGhQuotaGateIfReset();
+        if (ghQuotaStopped) return false;
         if (r?.status && r.status !== 'completed') return false;
+        if (isOrchestratorRun(r)) return false;
         if (r.testCounts) {
+            if (r.testCounts.resultsMissing) return false;
+            // GitHub has deleted this run's artifact and logs; re-asking burns three calls
+            // per dashboard render to get the same empty answer.
+            if (r.enrichmentNote === 'expired') return false;
             if (isLegacyRunLevelEstimate(r.testCounts)) {
                 delete r.testCounts;
                 delete r._testCountsDone;
             } else if (r.testCounts.noTests) {
-                if (r.testCounts.fallback !== false) {
+                if (r.testCounts.inferred || r.testCounts.unknown || (r.testCounts.total ?? 0) === 0) {
+                    delete r.testCounts;
+                    delete r._testCountsDone;
+                } else if (r.testCounts.fallback !== false) {
                     delete r.testCounts;
                     delete r._testCountsDone;
                 } else {
                     return false;
                 }
             } else if ((r.testCounts.total ?? 0) > 0) {
-                // Upgrade legacy all-skipped counts (no noTests flag) so Mobile GREP
-                // empties stop showing as "Skipped" from stale cache.
+                // Upgrade legacy all-skipped counts that never got a noTests/grepEmpty flag.
+                // Settled real all-skipped (explicit noTests:false) must not re-enrich,
+                // except the 0/0/1 JUnit placeholder that is actually GREP-empty.
                 const skipped = r.testCounts.skipped ?? 0;
                 const failed = r.testCounts.failed ?? 0;
                 const passed = r.testCounts.passed ?? 0;
                 const actionable = Math.max(0, (r.testCounts.total ?? 0) - skipped);
-                if (actionable === 0 && failed === 0 && (skipped > 0 || passed === 0)) {
+                if (passed === 0 && failed === 0 && skipped === 1 && !r.testCounts.grepEmpty && !r.testCounts.resultsMissing) {
+                    if (r._grepEmptyUpgradeDone) return false;
+                    r._grepEmptyUpgradeDone = true;
+                    delete r.testCounts;
+                    delete r._testCountsDone;
+                } else if (actionable === 0 && failed === 0 && (skipped > 0 || passed === 0)) {
+                    if (r.testCounts.fallback === false && r.testCounts.noTests === false) return false;
                     delete r.testCounts;
                     delete r._testCountsDone;
                 } else {
@@ -15442,6 +16091,11 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             r._testCountsDone = true;
             return r.testCounts;
         }
+        if (isOrchestratorRun(r)) {
+            r.testCounts = getRunTestCounts(r);
+            r._testCountsDone = true;
+            return r.testCounts;
+        }
         if (r?.status && r.status !== 'completed') {
             r.testCounts = null;
             return null;
@@ -15450,40 +16104,65 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             const owner = getGhOwner();
             const repo = String(r.repo || '').trim();
             let hadError = !!r._testCountsHadError;
+            // Which tier failed, and why, is the difference between "GitHub would not answer
+            // us" and "GitHub has nothing left for this run". The UI must not present the
+            // first as the second.
+            const noteFetchFailure = (e) => {
+                // Data GitHub has already deleted is a final answer from this tier, not a
+                // failure to reach GitHub. Record it and keep going to the next tier.
+                if (e?.dataGone) {
+                    r._testCountsDataGone = true;
+                    return;
+                }
+                hadError = true;
+                const msg = String(e?.message || '');
+                r._testCountsBlocked = /quota (?:exhausted|paused)|rate limit/i.test(msg)
+                    ? 'quota'
+                    : 'error';
+            };
             if (!repo || !r.id) {
                 if ((r._testCountsGen || 0) === gen) r.testCounts = null;
                 return null;
             }
 
             const suiteId = r.checkSuiteId;
-            let artifactParsed = null;
+            let missingMarker = null;
+            let grepEmptyMarker = null;
 
             try {
-                // The JUnit artifact is the authoritative test-count source. Apply its
-                // result immediately whether it reports real counts or a confirmed empty
-                // (noTests) run; check-runs and job logs below are only fallbacks used
-                // when no parseable artifact exists, so they can never override it.
-                artifactParsed = await fetchRunTestCountsFromArtifact(owner, repo, r);
-                if (artifactParsed) return applyParsedTestCounts(r, artifactParsed, gen);
-            } catch { hadError = true; }
+                // JUnit artifact is authoritative for real counts and confirmed empty GREP runs.
+                // A "results missing" placeholder only marks uncertainty — keep trying check-runs
+                // and job logs before treating the run as unrecoverable.
+                const artifactParsed = await fetchRunTestCountsFromArtifact(owner, repo, r);
+                if (artifactParsed?.resultsMissing) missingMarker = artifactParsed;
+                else if (artifactParsed) return applyParsedTestCounts(r, artifactParsed, gen);
+            } catch (e) { noteFetchFailure(e); }
             if ((r._testCountsGen || 0) !== gen) return null;
 
             if (suiteId) {
                 try {
                     const checks = await fetchCheckRunsForSuite(owner, repo, suiteId);
                     if ((r._testCountsGen || 0) !== gen) return null;
-                    const sorted = checks.slice().sort((a, b) => {
-                        const aScore = /test results/i.test(String(a?.name || '')) ? 1 : 0;
-                        const bScore = /test results/i.test(String(b?.name || '')) ? 1 : 0;
-                        return bScore - aScore;
-                    });
-                    for (const cr of sorted) {
-                        const out = cr?.output || {};
-                        const blob = [out.summary, out.title, out.text].filter(Boolean).join('\n');
-                        const parsed = parseTestCountsFromText(blob);
-                        if (parsed) return applyParsedTestCounts(r, parsed, gen);
-                    }
-                } catch { hadError = true; }
+                    const parsed = parseTestCountsFromCheckRunList(checks);
+                    if (parsed?.grepEmpty) grepEmptyMarker = grepEmptyMarker || parsed;
+                    else if (parsed) return applyParsedTestCounts(r, parsed, gen);
+                } catch (e) { noteFetchFailure(e); }
+            }
+
+            if ((r._testCountsGen || 0) !== gen) return null;
+
+            let sha = r.headSha || r.head_sha;
+            if (!sha) {
+                try { sha = await ensureRunHeadSha(owner, repo, r); } catch (e) { noteFetchFailure(e); }
+            }
+            if (sha && r.id) {
+                try {
+                    const commitChecks = await fetchCheckRunsForCommitMatchingRun(owner, repo, sha, r);
+                    if ((r._testCountsGen || 0) !== gen) return null;
+                    const parsed = parseTestCountsFromCheckRunList(commitChecks);
+                    if (parsed?.grepEmpty) grepEmptyMarker = grepEmptyMarker || parsed;
+                    else if (parsed) return applyParsedTestCounts(r, parsed, gen);
+                } catch (e) { noteFetchFailure(e); }
             }
 
             if ((r._testCountsGen || 0) !== gen) return null;
@@ -15491,9 +16170,15 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             try {
                 const fromLogs = await fetchRunTestCountsFromJobLogs(owner, repo, r);
                 if (fromLogs) return applyParsedTestCounts(r, fromLogs, gen);
-            } catch { hadError = true; }
+            } catch (e) { noteFetchFailure(e); }
 
             if ((r._testCountsGen || 0) !== gen) return null;
+
+            // Nothing better turned up, so the deferred check-run verdicts stand. GREP-empty is
+            // the more specific of the two: it is the publisher stating the run matched no
+            // tests, where a results-missing placeholder only says the artifact was empty.
+            if (grepEmptyMarker) return applyParsedTestCounts(r, grepEmptyMarker, gen);
+            if (missingMarker) return applyParsedTestCounts(r, missingMarker, gen);
 
             if ((r._testCountsGen || 0) === gen) {
                 r.testCounts = null;
@@ -15516,6 +16201,9 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                     r._testCountsDone = true;
                     delete r._testCountsHadError;
                     delete r._testCountsAttemptedAt;
+                    delete r._testCountsBlocked;
+                    delete r._testCountsDataGone;
+                    delete r.enrichmentNote;
                     saveDashTestCountsCacheEntry(r);
                 } else if (r._testCountsHadError) {
                     // Transient fetch error: leave unsettled so it retries later.
@@ -15525,6 +16213,9 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                     // data. Mark an inferred "no tests" result so the UI does not show
                     // an unverified pass. It settles for this session but is never
                     // cached, so a future session re-attempts enrichment from scratch.
+                    // When the gap is GitHub's retention rather than an empty run, say so:
+                    // "no tests executed" would be a guess we can no longer verify.
+                    if (r._testCountsDataGone) r.enrichmentNote = 'expired';
                     r.testCounts = zeroRunTestCounts({ fallback: false, inferred: true });
                     r._testCountsDone = true;
                 }
@@ -15572,6 +16263,11 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             for (const r of list) {
                 const tc = r?.testCounts;
                 if (hasEnrichedTestCounts(tc)) {
+                    if (tc.resultsMissing) {
+                        actionable += 1;
+                        failed += 1;
+                        continue;
+                    }
                     const skipped = tc.skipped ?? 0;
                     const actionableRunTests = Math.max(0, (tc.total ?? 0) - skipped);
                     const workflowFailed = getRunOutcome(r) === 'failure';
@@ -15584,14 +16280,18 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                     actionable += actionableRunTests;
                     passed += tc.passed ?? 0;
                     failed += testFailed;
-                } else if (tc?.noTests && r._testCountsDone) {
-                    // Defer to the shared outcome: a no-tests run whose workflow failed
-                    // still counts as a failure, matching the Results view.
+                } else if (tc?.noTests || tc?.grepEmpty) {
                     const outcome = getDisplayOutcome(r);
                     if (outcome === 'no_tests' || outcome === 'skipped') continue;
                     actionable += 1;
                     if (outcome === 'success') passed += 1;
                     else failed += 1;
+                } else if (tc?.unknown || tc?.pending) {
+                    continue;
+                } else if (isOrchestratorRun(r)) {
+                    const outcome = getRunOutcome(r);
+                    if (outcome === 'success') { actionable += 1; passed += 1; }
+                    else if (outcome === 'failure') { actionable += 1; failed += 1; }
                 } else if (isDashboardActionableRun(r)) {
                     const outcome = getDisplayOutcome(r);
                     if (outcome === 'no_tests') continue;
@@ -15610,7 +16310,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             }
         }
 
-        let passRate = actionable > 0 ? (passed / actionable) * 100 : 0;
+        let passRate = actionable > 0 ? (passed / actionable) * 100 : null;
         let fromTestCounts = useTestLevel;
         if (useTestLevel && actionable === 0 && actionableRuns.length) {
             passed = 0;
@@ -15618,12 +16318,18 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             actionable = 0;
             for (const r of actionableRuns) {
                 const outcome = getDisplayOutcome(r);
-                if (outcome === 'no_tests') continue;
+                if (outcome === 'no_tests' || outcome === 'skipped') continue;
+                if (isNoExecRun(r) && outcome !== 'failure') continue;
+                const tc = r?.testCounts;
+                if (hasEnrichedTestCounts(tc) && (tc.failed ?? 0) === 0) {
+                    const skipped = tc.skipped ?? 0;
+                    if (Math.max(0, (tc.total ?? 0) - skipped) === 0) continue;
+                }
                 actionable += 1;
                 if (outcome === 'success') passed += 1;
                 else failed += 1;
             }
-            passRate = actionable > 0 ? (passed / actionable) * 100 : 0;
+            passRate = actionable > 0 ? (passed / actionable) * 100 : null;
             fromTestCounts = false;
         }
 
@@ -15634,6 +16340,16 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             actionable,
             total: list.length,
             fromTestCounts
+        };
+    }
+
+    function dashPassRateDisplay(passRate) {
+        const n = Number(passRate);
+        const ok = passRate != null && Number.isFinite(n);
+        return {
+            text: ok ? `${n.toFixed(1)}%` : '—',
+            cls: !ok ? '' : (n >= 90 ? 'v-green' : n >= 70 ? 'v-orange' : 'v-red'),
+            bar: ok ? Math.max(0, Math.min(100, n)) : 0
         };
     }
 
@@ -15672,6 +16388,81 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         if (inFlightWait.length) {
             await Promise.allSettled(inFlightWait);
         }
+    }
+
+    // Enrichment during a fetch is capped so a few slow runs can't hold the whole flow open,
+    // and the runs it abandons are left with no counts at all. Nothing used to pick them back
+    // up, so they rendered as a missing bar plus a "not enriched yet" tooltip forever, even
+    // though their JUnit check run still has the real tally. Finish those here — one attempt
+    // per run per session, so viewing a dashboard never turns into a second full refetch.
+    const dashBackfillAttempted = new Set();
+    // Passes are chained rather than skipped: a second render's runs used to be thrown away
+    // whenever a pass was already in flight, leaving those cards at zero until the next fetch.
+    let dashBackfillChain = Promise.resolve();
+
+    function resetDashTestCountsBackfill() {
+        dashBackfillAttempted.clear();
+    }
+
+    function dashRunsNeedingBackfill(runs) {
+        return (runs || []).filter(r =>
+            r && r.id
+            && (!r.status || r.status === 'completed')
+            && !dashBackfillAttempted.has(r.id)
+            && !hasCachedTestCounts(r.testCounts)
+            && shouldEnrichRunTestCounts(r));
+    }
+
+    // Kicks the backfill off in the background and repaints each trend card exactly once, when
+    // the last of its own unenriched runs settles.
+    function startDashboardTrendBackfill(runs, token, runToWraps, pipelineRuns, renderWrapChart) {
+        const needed = dashRunsNeedingBackfill(runs);
+        if (!needed.length) return;
+        const remaining = new Map();
+        for (const r of needed) {
+            for (const wrap of (runToWraps.get(r.id) || [])) {
+                remaining.set(wrap, (remaining.get(wrap) || 0) + 1);
+            }
+        }
+        void backfillDashboardTestCounts(needed, (run) => {
+            if (token !== dashTrendRenderToken) return;
+            for (const wrap of (runToWraps.get(run?.id) || [])) {
+                const left = (remaining.get(wrap) || 0) - 1;
+                remaining.set(wrap, left);
+                if (left > 0) continue;
+                const meta = pipelineRuns.find(m => m.wrap === wrap);
+                if (meta) renderWrapChart(meta, { force: true });
+            }
+        }).then(() => {
+            if (token !== dashTrendRenderToken) return;
+            // Runs an earlier queued pass already claimed never reach the callback above, so
+            // their cards' counters never hit zero. Repaint whatever is still outstanding.
+            for (const [wrap, left] of remaining) {
+                if (left <= 0) continue;
+                const meta = pipelineRuns.find(m => m.wrap === wrap);
+                if (meta) renderWrapChart(meta, { force: true });
+            }
+            updateDashboardHeaderPassRate();
+        }).catch(() => { /* cards keep whatever data did land */ });
+    }
+
+    async function runDashboardBackfillPass(runs, onRunDone) {
+        // Re-read what is still outstanding at the moment this pass actually starts — an
+        // earlier queued pass may already have covered some of these runs.
+        const needed = dashRunsNeedingBackfill(runs);
+        if (!needed.length) return false;
+        await mapLimit(needed, DASH_ENRICH_CONCURRENCY, async (r) => {
+            dashBackfillAttempted.add(r.id);
+            try { await enrichRunTestCounts(r); } catch { /* enrichRunTestCounts self-heals */ }
+            try { if (onRunDone) onRunDone(r); } catch { /* ignore */ }
+        });
+        return true;
+    }
+
+    function backfillDashboardTestCounts(runs, onRunDone) {
+        const task = dashBackfillChain.then(() => runDashboardBackfillPass(runs, onRunDone));
+        dashBackfillChain = task.catch(() => { /* keep the chain alive for later passes */ });
+        return task;
     }
 
     // Streaming counterpart to enrichDashboardTestCounts: instead of taking a fixed batch of
@@ -15794,8 +16585,8 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         const prTip = (pr.passRate == null)
             ? 'No runs fetched yet.'
             : pr.fromTestCounts
-                ? `${pr.passed} passed of ${pr.actionable} tests (JUnit-enriched runs)`
-                : `${pr.passed} passed of ${pr.actionable} actionable (last ${getDashboardRunCountLimit()})`;
+                ? `${pr.passed} passed of ${pr.actionable} tests (JUnit-enriched runs)${dashPipelinePassRateTipSuffix()}`
+                : `${pr.passed} passed of ${pr.actionable} actionable (last ${getDashboardRunCountLimit()})${dashPipelinePassRateTipSuffix()}`;
         const prCls = (pr.passRate == null) ? '' : (pr.passRate >= 90 ? 'v-green' : pr.passRate >= 70 ? 'v-orange' : 'v-red');
         const prVal = card.querySelector('.dash-pipe-pr-val');
         const prPill = card.querySelector('.dash-pipe-pr-pill');
@@ -15817,6 +16608,16 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         if (r?.status && r.status !== 'completed') {
             return { ...zeroRunTestCounts(), passPct: null, active: true, noTests: false };
         }
+        if (isOrchestratorRun(r)) {
+            const o = getRunOutcome(r);
+            if (o === 'success') {
+                return { passed: 0, failed: 0, other: 0, total: 0, passPct: 100, fallback: false, noTests: false, dispatchOnly: true };
+            }
+            if (o === 'failure') {
+                return { passed: 0, failed: 1, other: 0, total: 1, passPct: 0, fallback: false, noTests: false, dispatchOnly: true };
+            }
+            return zeroRunTestCounts({ fallback: false, dispatchOnly: true });
+        }
         if (r?.gateSkipped) {
             return zeroRunTestCounts({ fallback: false });
         }
@@ -15829,11 +16630,25 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             const failed = tc.failed ?? 0;
             const skipped = tc.skipped ?? 0;
             const total = tc.total ?? (passed + failed + skipped);
-            if (tc.noTests || total <= 0) {
-                return zeroRunTestCounts({ fallback: false, noTests: true });
+            if (tc.resultsMissing) {
+                const failN = total || 1;
+                return {
+                    passed: 0, failed: failN, other: 0, total: failN,
+                    passPct: 0, fallback: false, noTests: false, resultsMissing: true
+                };
+            }
+            if (tc.noTests || tc.grepEmpty) {
+                const skipped = tc.skipped ?? 0;
+                const total = tc.total ?? skipped;
+                return {
+                    passed: 0, failed: 0, other: skipped, total,
+                    passPct: null, fallback: false, noTests: true, grepEmpty: !!tc.grepEmpty
+                };
             }
             const actionable = Math.max(0, total - skipped);
-            const passPct = tc.passPct ?? (actionable > 0 ? (passed / actionable) * 100 : 0);
+            const passPct = actionable > 0
+                ? (typeof tc.passPct === 'number' ? tc.passPct : (passed / actionable) * 100)
+                : null;
             return {
                 passed,
                 failed,
@@ -15848,24 +16663,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         if (o === 'cancelled' || o === 'skipped') {
             return zeroRunTestCounts();
         }
-        // Run-level estimate so charts stay visible while JUnit enrichment runs (or if it misses).
-        if (o === 'success') {
-            return { passed: 1, failed: 0, other: 0, total: 1, passPct: 100, fallback: true, noTests: false };
-        }
-        if (o === 'failure') {
-            return { passed: 0, failed: 1, other: 0, total: 1, passPct: 0, fallback: true, noTests: false };
-        }
-        if (r?._testCountsDone && !r?.testCounts) {
-            const o = getRunOutcome(r);
-            if (o === 'success') {
-                return { passed: 1, failed: 0, other: 0, total: 1, passPct: 100, fallback: true, noTests: false };
-            }
-            if (o === 'failure') {
-                return { passed: 0, failed: 1, other: 0, total: 1, passPct: 0, fallback: true, noTests: false };
-            }
-            return zeroRunTestCounts();
-        }
-        return { passed: 0, failed: 0, other: 0, total: 0, passPct: null, fallback: true, noTests: false, pending: true };
+        return { passed: 0, failed: 0, other: 0, total: 0, passPct: null, fallback: false, noTests: false, unknown: true };
     }
 
     async function enrichRunArtifacts(run) {
@@ -15901,21 +16699,14 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         if (r?.status && r.status !== 'completed') return workflow;
 
         const tc = r?.testCounts;
-        // Settled noTests (parsed placeholder or inferred clean miss) — never treat as pass.
-        // Workflow failure still wins so failed empty runs stay in failure metrics.
-        if (tc?.noTests && r._testCountsDone) {
+        if (tc?.resultsMissing && r._testCountsDone) return 'failure';
+        if ((tc?.grepEmpty || tc?.noTests) && !tc?.resultsMissing) {
             return workflow === 'failure' ? 'failure' : 'no_tests';
         }
         if (hasEnrichedTestCounts(tc)) {
             if ((tc.failed ?? 0) > 0) return 'failure';
-            const actionable = Math.max(0, (tc.total ?? 0) - (tc.skipped ?? 0));
-            // JUnit all-skipped / zero actionable = no tests executed. Do not use
-            // "Skipped" here — that label is reserved for workflow/job skipped above.
-            if (actionable === 0 && (tc.skipped ?? 0) > 0) {
-                return workflow === 'failure' ? 'failure' : 'no_tests';
-            }
             if (workflow === 'failure') return 'failure';
-            if ((tc.passed ?? 0) > 0 && (tc.failed ?? 0) === 0) return 'success';
+            if ((tc.failed ?? 0) === 0) return 'success';
             return 'failure';
         }
         return workflow;
@@ -15924,11 +16715,20 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
     function getDisplayOutcomeTip(r) {
         const gh = getRunOutcome(r);
         const tc = r?.testCounts;
+        if (tc?.resultsMissing && r._testCountsDone) {
+            return `GitHub: ${gh} · test report missing — counted as a failure`;
+        }
         if (hasEnrichedTestCounts(tc) || (tc?.noTests && r._testCountsDone)) {
             const passed = tc.passed ?? 0;
             const failed = tc.failed ?? 0;
             const skipped = tc.skipped ?? 0;
             const total = tc.total ?? (passed + failed + skipped);
+            if (tc?.noTests) {
+                if (tc.grepEmpty) {
+                    return `GitHub: ${gh} · GREP/filter matched no tests — nothing executed`;
+                }
+                return `GitHub: ${gh} · no tests executed (${total} total${skipped ? `, ${skipped} skipped` : ''})`;
+            }
             return `GitHub: ${gh} · tests: ${passed} passed, ${failed} failed, ${skipped} skipped (${total} total)`;
         }
         return `GitHub: ${gh}`;
@@ -16280,7 +17080,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         const maxPages = 12; // safety cap
         const out = [];
         for (let page = 1; page <= maxPages; page++) {
-            const runsData = await ghFetch(`/repos/${owner}/${repo}/actions/workflows/${wfIdOrFile}/runs?per_page=${per}&page=${page}`);
+            const runsData = await ghFetchWithRetry(`/repos/${owner}/${repo}/actions/workflows/${wfIdOrFile}/runs?per_page=${per}&page=${page}`);
             const runs = runsData?.workflow_runs || [];
             if (!runs.length) break;
 
@@ -16309,6 +17109,11 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         resultsEnrichToken++;
         hideResultsEnrichProgress();
         resultsFetchActive = true;
+        // An explicit fetch is the user asking us to try again: never refuse it because an
+        // earlier fetch tripped the hourly rate limit, and let the dashboard backfill retry
+        // runs it already gave up on once this session.
+        resetGhQuotaGate();
+        resetDashTestCountsBackfill();
         const status = document.getElementById('patStatus');
         const btn = document.getElementById('fetchBtn');
         btn.disabled = true; btn.innerHTML = '<span style="display:inline-flex; align-items:center; gap:6px;"><span class="fetch-spinner"></span>Fetching...</span>';
@@ -16362,14 +17167,14 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
 
             let totalMatched = 0;
 
-            // Test-count enrichment (the expensive, per-run JUnit/artifact fetch) no longer
-            // waits for every pipeline to finish listing first — each run is submitted the
-            // moment its pipeline's list comes back, so enrichment runs concurrently with the
-            // remaining pipeline listings instead of as a separate phase afterward.
+            // List every workflow's runs first, then start JUnit enrichment. Starting enrichment
+            // while hundreds of list calls are still in flight routinely trips GitHub secondary
+            // rate limits and surfaces as "couldn't fetch runs" for pipelines that are fine.
             let enrichQueued = 0;
             let enrichCompleted = 0;
             const enricher = createStreamingTestCountEnricher(() => { enrichCompleted++; });
             const enrichHint = () => enrichQueued ? ` · refining metrics in background: ${enrichCompleted}/${enrichQueued}` : '';
+            const pendingEnrichRuns = [];
 
             for (const repo of repos) {
                 const repoPipes = resultsPipelines.filter(p => p.repo === repo);
@@ -16380,7 +17185,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                         const wfIdOrFile = encodeURIComponent(p.filename);
                         const list = (mode === 'range' && range)
                             ? await fetchWorkflowRunsInRange(owner, repo, p.filename, range.startMs, range.endMs)
-                            : (await ghFetch(`/repos/${owner}/${repo}/actions/workflows/${wfIdOrFile}/runs?per_page=${perPage}`))?.workflow_runs || [];
+                            : (await ghFetchWithRetry(`/repos/${owner}/${repo}/actions/workflows/${wfIdOrFile}/runs?per_page=${perPage}`))?.workflow_runs || [];
                         totalMatched++;
                         for (const r of (list || [])) {
                             const duration = r.updated_at && r.run_started_at
@@ -16425,18 +17230,26 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                                 inputs: (r.inputs && typeof r.inputs === 'object') ? { ...r.inputs } : {}
                             };
                             allRuns.push(built);
-                            enrichQueued++;
-                            enricher.submit(built);
+                            pendingEnrichRuns.push(built);
                         }
                     } catch (e) {
                         // If runs can't be fetched for this workflow, keep going, but surface it in the UI.
                         const msg = String(e?.message || '');
                         const isNotFound = msg.includes('GitHub API 404');
-                        missingWorkflows.push({ repo, filename: p.filename, name: p.name, reason: isNotFound ? 'not_found' : 'runs_error' });
+                        missingWorkflows.push({
+                            repo, filename: p.filename, name: p.name,
+                            reason: isNotFound ? 'not_found' : 'runs_error',
+                            detail: msg.slice(0, 240)
+                        });
                     }
                     doneSteps++;
                     updateFetchProgress(doneSteps, totalSteps, { phase: 'Fetching results', pipelineLabel: pipeLabel + enrichHint() });
                 }
+            }
+
+            for (const built of pendingEnrichRuns) {
+                enrichQueued++;
+                enricher.submit(built);
             }
 
             allRuns.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -16972,6 +17785,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
     function animateCounters() {
         document.querySelectorAll('.metric-value[data-count]').forEach(el => {
             const target = parseFloat(el.dataset.count);
+            if (!Number.isFinite(target)) return;
             const isPercent = el.textContent.includes('%');
             let current = 0;
             const step = target / 30;
@@ -17356,15 +18170,20 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             document.body.appendChild(m);
             m.addEventListener('click', (e) => { if (e.target === m) closeModal('missingWfModal'); });
         }
-        const reasonText = (r) => r === 'not_found'
+        const reasonText = (w) => w.reason === 'not_found'
             ? 'Workflow file not found in the repo — likely renamed or deleted in GitHub but still configured here.'
             : 'Couldn’t fetch its runs (GitHub API error or no access).';
+        const uniqueDetails = [...new Set((missingWorkflows || []).map(w => w.detail).filter(Boolean))];
+        const sharedErr = uniqueDetails.length === 1 ? uniqueDetails[0] : '';
+        const sharedHint = sharedErr
+            ? `<div style="padding:10px 12px; margin-bottom:12px; border-radius:10px; border:1px solid rgba(239,68,68,0.35); background:rgba(239,68,68,0.08); font-size:12px; color:var(--text-primary);"><strong>GitHub reported:</strong> ${escapeHtml(sharedErr)}${/401|403/.test(sharedErr) ? '<div style="margin-top:6px; color:var(--text-secondary);">Re-save your token in Settings (Pipelines sidebar) and confirm SSO authorization for the org if prompted.</div>' : ''}</div>`
+            : '';
         document.getElementById('missingWfBody').innerHTML =
-            `<div style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">These <b>${missingWorkflows.length}</b> configured pipeline(s) couldn’t be loaded from GitHub, so they aren’t in the results above:</div>` +
+            `${sharedHint}<div style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">These <b>${missingWorkflows.length}</b> configured pipeline(s) couldn’t be loaded from GitHub, so they aren’t in the results above:</div>` +
             missingWorkflows.map(w => `<div style="padding:9px 11px; border:1px solid var(--border-color); border-radius:10px; margin-bottom:8px;">
                 <div style="font-weight:800; color:var(--text-primary); font-size:13px;">${escapeHtml(String(w.name || w.filename || '').replace(/-Testim$/, ''))}</div>
                 <div style="font-size:11px; color:var(--text-muted); margin-top:3px;"><code>${escapeHtml(w.repo)}</code> &middot; <code>${escapeHtml(w.filename)}</code></div>
-                <div style="font-size:11px; color:var(--error); margin-top:4px;">${escapeHtml(reasonText(w.reason))}</div>
+                <div style="font-size:11px; color:var(--error); margin-top:4px;">${escapeHtml(reasonText(w))}${(!sharedErr && w.detail) ? `<div style="margin-top:3px; color:var(--text-muted); font-weight:600;">${escapeHtml(w.detail)}</div>` : ''}</div>
             </div>`).join('');
         m.classList.add('show');
     }
@@ -18523,6 +19342,8 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
     }
 
     let dashRunTipOwnerChart = null;
+    let dashRunTipHideTimer = null;
+    let dashRunTipHovered = false;
 
     function ensureDashRunTipEl() {
         let t = document.getElementById('dashRunTip');
@@ -18531,11 +19352,37 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             t.id = 'dashRunTip';
             t.className = 'dash-run-tip';
             document.body.appendChild(t);
+            t.addEventListener('mouseenter', () => {
+                dashRunTipHovered = true;
+                cancelHideDashRunTip();
+            });
+            t.addEventListener('mouseleave', () => {
+                dashRunTipHovered = false;
+                scheduleHideDashRunTip(0);
+            });
         }
         return t;
     }
 
+    function cancelHideDashRunTip() {
+        if (dashRunTipHideTimer != null) {
+            clearTimeout(dashRunTipHideTimer);
+            dashRunTipHideTimer = null;
+        }
+    }
+
+    function scheduleHideDashRunTip(delay = 180) {
+        cancelHideDashRunTip();
+        dashRunTipHideTimer = setTimeout(() => {
+            dashRunTipHideTimer = null;
+            if (dashRunTipHovered) return;
+            hideDashRunTip();
+        }, delay);
+    }
+
     function hideDashRunTip() {
+        cancelHideDashRunTip();
+        dashRunTipHovered = false;
         const t = document.getElementById('dashRunTip');
         if (t) t.classList.remove('show');
         dashRunTipOwnerChart = null;
@@ -18546,7 +19393,10 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         const w = el.offsetWidth;
         const h = el.offsetHeight;
         let x = Math.max(pad, Math.min(left, window.innerWidth - w - pad));
-        let y = Math.max(pad, Math.min(top, window.innerHeight - h - pad));
+        // Never pull the tip down onto the chart. If it would leave the viewport,
+        // pin it to the top of the window instead of covering the bars.
+        let y = Math.min(top, window.innerHeight - h - pad);
+        if (y < pad) y = pad;
         el.style.left = x + 'px';
         el.style.top = y + 'px';
     }
@@ -18591,21 +19441,42 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             const el = ensureDashRunTipEl();
             const { chart, tooltip } = context;
             if (!tooltip || tooltip.opacity === 0) {
-                if (dashRunTipOwnerChart === chart) {
-                    el.classList.remove('show');
-                    dashRunTipOwnerChart = null;
-                }
+                if (dashRunTipOwnerChart === chart) scheduleHideDashRunTip();
                 return;
             }
+            cancelHideDashRunTip();
             dashRunTipOwnerChart = chart;
             const idx = tooltip.dataPoints?.[0]?.dataIndex ?? 0;
-            el.className = 'dash-run-tip show ' + dashRunTipThemeClass();
-            el.innerHTML = buildHtml(idx);
+            if (!dashRunTipHovered) {
+                el.className = 'dash-run-tip show ' + dashRunTipThemeClass();
+                el.innerHTML = buildHtml(idx);
+            }
             const rect = chart.canvas.getBoundingClientRect();
-            const left = rect.left + tooltip.caretX - el.offsetWidth / 2;
-            const top = rect.top + tooltip.caretY - el.offsetHeight - 10;
-            clampDashRunTipPosition(el, left, top);
+            const card = chart.canvas.closest('.dash-pipe-card');
+            const plot = (card ? card.querySelector('.dash-trend-wrap') : null)?.getBoundingClientRect() || rect;
+            const anchor = card ? card.getBoundingClientRect() : plot;
+            const left = plot.left + tooltip.caretX - el.offsetWidth / 2;
+            const top = anchor.top - el.offsetHeight - 12;
+            if (!dashRunTipHovered) clampDashRunTipPosition(el, left, top);
         };
+    }
+
+    function dashUnknownCountsNote(r) {
+        if (r?._testCountsPromise) return '(test counts loading…)';
+        if (r?._testCountsBlocked === 'quota' || ghQuotaStopped) {
+            const at = ghQuotaResetLabel();
+            return at
+                ? `(counts pending — GitHub API hourly limit reached, resumes ~${at}; then click Fetch Results)`
+                : '(counts pending — GitHub API hourly limit reached; click Fetch Results once it resets)';
+        }
+        if (r?._testCountsBlocked === 'error' || r?._testCountsHadError) {
+            return '(counts pending — GitHub fetch failed; click Fetch Results to retry)';
+        }
+        if (r?.enrichmentNote === 'expired') {
+            return '(execution data expired on GitHub — counts cannot be recovered)';
+        }
+        if (!r?._testCountsDone) return '(counts pending — not enriched yet; click Fetch Results)';
+        return '(no counts available — no JUnit artifact and no JUnit check run for this run)';
     }
 
     function buildDashboardTrendTooltipHtml(idx, runs) {
@@ -18614,9 +19485,39 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         const tc = getRunTestCounts(run);
         const total = tc.total ?? ((tc.passed ?? 0) + (tc.failed ?? 0) + (tc.other ?? 0));
         const rows = [dashRunTipTitleHtml(dashboardTrendTooltipTitle(run, runs)), dashRunTipExecRow(run)];
-        if (tc.active || tc.passPct == null) {
+        if (tc.active) {
             rows.push(dashRunTipPlainRow('Pass percentage: pending'));
             rows.push(dashRunTipPlainRow('Run in progress — results pending'));
+        } else if (tc.dispatchOnly) {
+            const wf = getRunOutcome(run);
+            rows.push(dashRunTipPlainRow(`Pass percentage: ${tc.passPct == null ? 'n/a' : Number(tc.passPct).toFixed(1) + '%'}`));
+            rows.push(dashRunTipPlainRow(`Workflow: ${wf}`));
+            rows.push(dashRunTipPlainRow('(dispatch only — this run launches child pipelines; their tests are on those cards)'));
+            for (const line of dashboardRunTooltipExtraLines(run)) rows.push(dashRunTipPlainRow(line));
+        } else if (tc.noTests || tc.grepEmpty) {
+            rows.push(dashRunTipPlainRow('Pass percentage: n/a'));
+            rows.push(dashRunTipPlainRow(`Total tests: ${total}`));
+            rows.push(dashRunTipPlainRow(`Passed tests: ${tc.passed}`));
+            rows.push(dashRunTipPlainRow(`Failed tests: ${tc.failed}`));
+            rows.push(dashRunTipPlainRow(`Skipped tests: ${tc.other}`));
+            rows.push(dashRunTipPlainRow(tc.grepEmpty
+                ? '(GREP/filter matched no tests — nothing executed)'
+                : run?.enrichmentNote === 'expired'
+                    ? '(execution data expired on GitHub — counts cannot be recovered)'
+                    : '(no tests executed)'));
+            for (const line of dashboardRunTooltipExtraLines(run)) rows.push(dashRunTipPlainRow(line));
+        } else if (tc.unknown || (tc.passPct == null && !tc.active)) {
+            rows.push(dashRunTipPlainRow('Pass percentage: n/a'));
+            rows.push(dashRunTipPlainRow(`Total tests: ${total}`));
+            rows.push(dashRunTipPlainRow(`Passed tests: ${tc.passed}`));
+            rows.push(dashRunTipPlainRow(`Failed tests: ${tc.failed}`));
+            rows.push(dashRunTipPlainRow(`Skipped tests: ${tc.other}`));
+            if ((tc.failed ?? 0) === 0 && (tc.other ?? 0) > 0 && !tc.unknown) {
+                rows.push(dashRunTipPlainRow('(all tests skipped — not counted as a pass or fail)'));
+            } else if (tc.unknown) {
+                rows.push(dashRunTipPlainRow(dashUnknownCountsNote(run)));
+            }
+            for (const line of dashboardRunTooltipExtraLines(run)) rows.push(dashRunTipPlainRow(line));
         } else {
             rows.push(dashRunTipPlainRow(`Pass percentage: ${tc.passPct.toFixed(1)}%`));
             rows.push(dashRunTipPlainRow(`Total tests: ${total}`));
@@ -18625,8 +19526,14 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             rows.push(dashRunTipPlainRow(`Skipped tests: ${tc.other}`));
             if (run?.enrichmentNote === 'expired') {
                 rows.push(dashRunTipPlainRow('(execution data expired on GitHub — cannot be recovered)'));
+            } else if (tc.resultsMissing) {
+                rows.push(dashRunTipPlainRow('(test report missing — Allure produced no results; not a clean skip)'));
             } else if (tc.noTests) {
-                rows.push(dashRunTipPlainRow('(no tests ran)'));
+                rows.push(dashRunTipPlainRow(tc.grepEmpty
+                    ? '(GREP/filter matched no tests — nothing executed)'
+                    : '(no tests executed)'));
+            } else if (tc.unknown) {
+                rows.push(dashRunTipPlainRow('(not enriched yet)'));
             } else if (tc.fallback) {
                 rows.push(dashRunTipPlainRow('(run-level estimate — no test summary)'));
             }
@@ -18673,15 +19580,20 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         root.addEventListener('mouseover', (e) => {
             const dot = e.target.closest('.run-dot[data-runid]');
             if (!dot) {
-                hideDashRunTip();
+                scheduleHideDashRunTip();
                 return;
             }
+            cancelHideDashRunTip();
             const id = Number(dot.getAttribute('data-runid'));
             const run = (allRuns || []).find(r => r && r.id === id);
             if (!run) return;
             showDashRunTipForAnchor(dot, dashboardRunDotTipHtml(run));
         });
         document.addEventListener('scroll', hideDashRunTip, true);
+        window.addEventListener('blur', hideDashRunTip);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') hideDashRunTip();
+        });
     }
 
     async function prefetchGhActorDisplayNames(logins) {
@@ -18716,6 +19628,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
     }
 
     function refreshDashboardRunActorTooltips() {
+        if (dashRunTipHovered) return;
         const tipEl = document.getElementById('dashRunTip');
         const hoveredDot = document.querySelector('#dashboardsContent .run-dot[data-runid]:hover');
         if (tipEl?.classList.contains('show') && hoveredDot) {
@@ -18779,6 +19692,8 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
     let dashboardsView = 'dashboard'; // 'dashboard' | 'updates'
     let selectedDashboardUpdates = new Set();
     const DASH_VIEW_MODE_KEY = 'pm.dashboards.viewMode';
+    const DASH_EXCLUDE_CANCELLED_KEY = 'pm.dashboards.excludeCancelled';
+    const DASH_EXCLUDE_NO_EXEC_KEY = 'pm.dashboards.excludeNoExecutions';
     const dashTrendChartInstances = new Map();
     let dashTrendRenderToken = 0;
     let execSummaryChartInstance = null;
@@ -18852,6 +19767,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         const payload = JSON.stringify(cache);
         try { sessionStorage.setItem(DASH_TEST_COUNTS_CACHE_KEY, payload); } catch { /* ignore */ }
         try { localStorage.setItem(DASH_TEST_COUNTS_LS_CACHE_KEY, payload); } catch { /* ignore */ }
+        pmIdbSet(PM_IDB_TEST_COUNTS_KEY, cache).catch(() => { /* ignore */ });
     }
 
     function isMobileBrowserStackRun(r) {
@@ -18899,7 +19815,8 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             const cache = loadDashTestCountsCache();
             let changed = false;
             for (const [k, v] of Object.entries(cache)) {
-                if (!hasCachedTestCounts(v?.tc)) {
+                const tc = v?.tc;
+                if (!hasCachedTestCounts(tc) || isLegacyRunLevelEstimate(tc) || (tc?.noTests && !tc.grepEmpty && !tc.resultsMissing && (tc.total ?? 0) === 0 && tc.fallback)) {
                     delete cache[k];
                     changed = true;
                 }
@@ -18928,6 +19845,123 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
     function setDashViewMode(mode) {
         saveDashViewMode(mode);
         renderDashboards();
+    }
+
+    function loadDashExcludeCancelled() {
+        try {
+            return localStorage.getItem(DASH_EXCLUDE_CANCELLED_KEY) === '1';
+        } catch {
+            return false;
+        }
+    }
+
+    function saveDashExcludeCancelled(on) {
+        try { localStorage.setItem(DASH_EXCLUDE_CANCELLED_KEY, on ? '1' : '0'); } catch { /* ignore */ }
+    }
+
+    function setDashExcludeCancelled(on) {
+        saveDashExcludeCancelled(!!on);
+        renderDashboards();
+    }
+
+    function toggleDashExcludeCancelled() {
+        setDashExcludeCancelled(!loadDashExcludeCancelled());
+    }
+
+    function loadDashExcludeNoExec() {
+        try {
+            return localStorage.getItem(DASH_EXCLUDE_NO_EXEC_KEY) === '1';
+        } catch {
+            return false;
+        }
+    }
+
+    function saveDashExcludeNoExec(on) {
+        try { localStorage.setItem(DASH_EXCLUDE_NO_EXEC_KEY, on ? '1' : '0'); } catch { /* ignore */ }
+    }
+
+    function setDashExcludeNoExec(on) {
+        saveDashExcludeNoExec(!!on);
+        renderDashboards();
+    }
+
+    function toggleDashExcludeNoExec() {
+        setDashExcludeNoExec(!loadDashExcludeNoExec());
+    }
+
+    function dropCancelledRuns(runs) {
+        if (!loadDashExcludeCancelled()) return runs;
+        return (runs || []).filter(r => getDisplayOutcome(r) !== 'cancelled');
+    }
+
+    function isNoExecRun(r) {
+        const tc = r?.testCounts;
+        if (tc?.grepEmpty) return true;
+        if (tc?.noTests && !tc.resultsMissing) return true;
+        return false;
+    }
+
+    // Whether a run has anything meaningful to draw on a test/workflow trend chart (used by
+    // filters and empty-state logic). Kept separate from isNoExecRun because many repos leave
+    // runs unsettled with total=0 until backfill finishes — those still belong off the chart
+    // when "Exclude no executions" is on.
+    function runHasActionableTestChartData(r) {
+        if (hasEnrichedTestCounts(r?.testCounts)) return true;
+        const tc = getRunTestCounts(r);
+        if (tc.dispatchOnly) {
+            const outcome = getRunOutcome(r);
+            return outcome === 'success' || outcome === 'failure';
+        }
+        return (tc.total ?? 0) > 0 && tc.passPct != null && !tc.pending && !tc.unknown;
+    }
+
+    function isDashboardNoExecExcluded(r) {
+        if (!r) return false;
+        // Only runs we have actually established executed nothing. Anything unsettled stays
+        // visible — counts still pending, quota-blocked, errored, or the run is still going.
+        // Those are unknowns, not proven no-execution runs, and hiding them here would
+        // quietly take real failures out of the charts and out of the pass rate.
+        return isNoExecRun(r);
+    }
+
+    function dropNoExecRuns(runs) {
+        if (!loadDashExcludeNoExec()) return runs;
+        return (runs || []).filter(r => !isDashboardNoExecExcluded(r));
+    }
+
+    function dropDashboardFilterRuns(runs) {
+        return dropNoExecRuns(dropCancelledRuns(runs));
+    }
+
+    function dashPipelinePassRateTipSuffix() {
+        const bits = [];
+        if (loadDashExcludeCancelled()) bits.push('cancelled excluded');
+        if (loadDashExcludeNoExec()) bits.push('no-executions excluded');
+        return bits.length ? ` · ${bits.join(', ')}` : '';
+    }
+
+    function dashMetricsRunsSubLabel(stats) {
+        const windowLabel = getDashboardFetchWindowLabel();
+        const bits = [];
+        if (loadDashExcludeCancelled()) {
+            const excl = stats.cancelledExcluded ?? 0;
+            bits.push(excl > 0 ? `${excl} cancelled excluded` : 'cancelled excluded');
+        }
+        if (loadDashExcludeNoExec()) {
+            const excl = stats.noExecExcluded ?? 0;
+            bits.push(excl > 0 ? `${excl} no-exec excluded` : 'no-exec excluded');
+        }
+        if (!bits.length) return `${stats.runs} ${windowLabel}`;
+        return `${stats.runs} ${windowLabel} (${bits.join(', ')})`;
+    }
+
+    function dashMetricsFailuresSubLabel(stats) {
+        if (!loadDashExcludeCancelled()) {
+            return `${stats.cancelled} cancelled${stats.skipped ? `, ${stats.skipped} skipped` : ''}`;
+        }
+        const excl = stats.cancelledExcluded ?? stats.cancelled ?? 0;
+        if (excl > 0) return `${excl} cancelled excluded${stats.skipped ? `, ${stats.skipped} skipped` : ''}`;
+        return `0 cancelled excluded${stats.skipped ? `, ${stats.skipped} skipped` : ''}`;
     }
 
     function toggleDashViewMode() {
@@ -21009,6 +22043,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             .filter(r => r && String(r.repo || '').trim() === String(repo || '').trim() && String(r.workflowFile || '').trim() === String(workflowFile || '').trim())
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         runs = filterRunsForResultsWindow(runs);
+        runs = dropDashboardFilterRuns(runs);
         // We fetch newest-first but display oldest→latest (left→right).
         return runs.slice(0, limit).reverse();
     }
@@ -21023,15 +22058,69 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         return `<span class="run-dot ${cls}" aria-label="${escapeHtml(plainTip)}" onclick="openRunDetails(${r.id}); event.stopPropagation();" data-runid="${r.id}"></span>`;
     }
 
+    function dashEmptyChartMessage(repo, workflowFile) {
+        const any = (allRuns || []).some(r =>
+            r && String(r.repo || '').trim() === String(repo || '').trim()
+            && String(r.workflowFile || '').trim() === String(workflowFile || '').trim());
+        return any ? 'No executions captured in this window' : 'No runs fetched in this window';
+    }
+
+    // Orchestrator cards plot workflow outcomes, not test counts, so their bars are real data
+    // even though every run reports zero tests. Anything keyed off "has test counts" has to ask
+    // this instead, or a fully-populated orchestrator chart gets covered by an empty-state.
+    function runHasPlottableTrendData(r) {
+        return runHasActionableTestChartData(r);
+    }
+
+    // A chart whose runs all lack counts draws an empty grid, which reads as "zero tests".
+    // Say which of the several very different reasons actually applies instead.
+    function dashNoCountsChartMessage(runs) {
+        const list = (runs || []).filter(Boolean);
+        if (!list.length) return 'No runs fetched in this window';
+        if (list.every(r => getRunTestCounts(r).dispatchOnly)) {
+            return 'Dispatch-only pipeline — test counts live on the child pipeline cards';
+        }
+        if (list.every(r => r.enrichmentNote === 'expired')) {
+            return 'Execution data expired on GitHub — counts cannot be recovered';
+        }
+        if (list.some(r => r.status && r.status !== 'completed')) return 'Runs still in progress — results pending';
+        if (list.some(r => r._testCountsPromise)) return 'Test counts loading…';
+        if (ghQuotaStopped || list.some(r => r._testCountsBlocked === 'quota')) {
+            const at = ghQuotaResetLabel();
+            return at
+                ? `No test counts — GitHub API hourly limit reached, resumes ~${at}`
+                : 'No test counts — GitHub API hourly limit reached';
+        }
+        if (list.some(r => r._testCountsBlocked === 'error' || r._testCountsHadError)) {
+            return 'No test counts — GitHub fetch failed; click Fetch Results to retry';
+        }
+        if (list.every(r => isNoExecRun(r))) return 'No tests executed in this window';
+        if (list.some(r => !r._testCountsDone)) return 'No test counts yet — click Fetch Results';
+        return 'No test results published for these runs';
+    }
+
+    function dashEmptyTrendHtml(message) {
+        const bars = Array.from({ length: 10 }, () => '<i></i>').join('');
+        return `<div class="dash-trend-wrap dash-trend-empty" aria-label="${escapeHtml(message)}">
+            <div class="dash-trend-ghost" aria-hidden="true">${bars}</div>
+            <div class="dash-trend-empty-msg">${escapeHtml(message)}</div>
+        </div>`;
+    }
+
     function dashboardRunDots(repo, workflowFile) {
         const runs = getDashboardPipelineRuns(repo, workflowFile);
-        if (!runs.length) return `<span style="font-size:11px; color:var(--text-muted);">No runs fetched</span>`;
+        if (!runs.length) {
+            const msg = dashEmptyChartMessage(repo, workflowFile);
+            return `<div class="run-strip dash-dots-empty" title="${escapeHtml(msg)}">${
+                Array.from({ length: 10 }, () => '<span class="run-dot unknown"></span>').join('')
+            }<span class="dash-empty-inline-msg">${escapeHtml(msg)}</span></div>`;
+        }
         return `<div class="run-strip">` + runs.map(r => dashboardRunDotSpanHtml(r)).join('') + `</div>`;
     }
 
     function dashboardRunTrendCanvas(repo, workflowFile, trendId) {
         const runs = getDashboardPipelineRuns(repo, workflowFile);
-        if (!runs.length) return `<span style="font-size:11px; color:var(--text-muted);">No runs fetched</span>`;
+        if (!runs.length) return dashEmptyTrendHtml(dashEmptyChartMessage(repo, workflowFile));
         const key = String(trendId || `${String(repo || '').trim()}::${String(workflowFile || '').trim()}`).trim();
         return `<div class="dash-trend-wrap" data-trend-id="${escapeHtml(key)}" data-repo="${escapeHtml(repo)}" data-wf="${escapeHtml(workflowFile)}">
             <canvas class="dash-trend-canvas"></canvas>
@@ -21092,9 +22181,22 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         const tickColor = isLight ? 'rgba(30,56,96,0.65)' : '#9ca3af';
         const gridColor = isLight ? 'rgba(30,56,96,0.10)' : 'rgba(255,255,255,0.06)';
         const labels = runs.map(r => `#${r.runNumber}`);
-        const passed = runs.map(r => getRunTestCounts(r).passed);
-        const failed = runs.map(r => getRunTestCounts(r).failed);
-        const other = runs.map(r => getRunTestCounts(r).other);
+        const dispatchOnly = runs.length > 0 && runs.every(r => getRunTestCounts(r).dispatchOnly);
+        const passed = runs.map(r => {
+            const tc = getRunTestCounts(r);
+            if (tc.dispatchOnly) return getRunOutcome(r) === 'success' ? 1 : 0;
+            return tc.passed;
+        });
+        const failed = runs.map(r => {
+            const tc = getRunTestCounts(r);
+            if (tc.dispatchOnly) return getRunOutcome(r) === 'failure' ? 1 : 0;
+            return tc.failed;
+        });
+        const other = runs.map(r => {
+            const tc = getRunTestCounts(r);
+            if (tc.dispatchOnly) return 0;
+            return tc.other;
+        });
         const passPct = runs.map(r => {
             const tc = getRunTestCounts(r);
             return tc.active || tc.passPct == null ? null : Math.round(tc.passPct * 10) / 10;
@@ -21108,7 +22210,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 labels,
                 datasets: [
                     {
-                        label: 'Passed tests',
+                        label: dispatchOnly ? 'Passed workflows' : 'Passed tests',
                         data: passed,
                         stack: 'tests',
                         backgroundColor: 'rgba(22,163,74,0.88)',
@@ -21117,7 +22219,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                         order: 2
                     },
                     {
-                        label: 'Failed tests',
+                        label: dispatchOnly ? 'Failed workflows' : 'Failed tests',
                         data: failed,
                         stack: 'tests',
                         backgroundColor: 'rgba(220,38,38,0.88)',
@@ -21186,7 +22288,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                         position: 'left',
                         min: 0,
                         max: yMax,
-                        title: { display: true, text: 'Tests', color: tickColor, font: { size: 10, weight: '700' } },
+                        title: { display: true, text: dispatchOnly ? 'Workflows' : 'Tests', color: tickColor, font: { size: 10, weight: '700' } },
                         ticks: { color: tickColor, font: { size: 9 }, precision: 0 },
                         grid: { color: gridColor }
                     },
@@ -21257,20 +22359,29 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
 
         const renderWrapChart = (meta, opts) => {
             const force = opts === true || opts?.force === true;
-            const { wrap, repo, runs, trendId } = meta;
+            const { wrap, repo, wf, trendId } = meta;
             if (token !== dashTrendRenderToken || !wrap.isConnected) return;
+            // Re-read the run list instead of plotting the snapshot taken before enrichment.
+            // The exclude toggles are applied when the list is built, and enrichment can
+            // reclassify a run as a no-execution run after this render started — plotting the
+            // snapshot is what kept those runs on the chart with the toggle switched on.
+            const runs = getDashboardPipelineRuns(repo, wf);
             const canvas = wrap.querySelector('.dash-trend-canvas');
             const loading = wrap.querySelector('.dash-trend-loading');
             if (!canvas || !runs.length) {
-                if (loading) loading.innerHTML = dashTrendProgressRingHtml(100, 'No runs', (Date.now() - startedMs) / 1000);
-                wrap.classList.add('ready');
+                // Enrichment can empty this card's list after a chart was already drawn (every
+                // remaining run reclassified as a no-execution run). Tear the old chart down,
+                // or its bars stay on screen underneath the message.
+                const stale = dashTrendChartInstances.get(trendId || wrap);
+                if (stale) {
+                    try { stale.destroy(); } catch { /* ignore */ }
+                    dashTrendChartInstances.delete(trendId || wrap);
+                }
+                wrap.classList.remove('ready');
+                if (loading) loading.innerHTML = `<div class="dash-trend-empty-msg">${escapeHtml(dashEmptyChartMessage(repo, wf))}</div>`;
                 return;
             }
-            const hasAnyData = runs.some(r => {
-                if (hasEnrichedTestCounts(r?.testCounts)) return true;
-                const tc = getRunTestCounts(r);
-                return (tc.total ?? 0) > 0 && tc.passPct != null && !tc.pending;
-            });
+            const hasAnyData = runs.some(runHasPlottableTrendData);
             const prog = wrapProgress.get(wrap);
             const allDone = prog && prog.done >= prog.total;
             if (!force && !hasAnyData && !allDone) return;
@@ -21287,7 +22398,13 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 }
                 const chart = buildDashboardTrendChart(canvas, runs, repo);
                 dashTrendChartInstances.set(trendId || wrap, chart);
-                if (allDone || hasAnyData) wrap.classList.add('ready');
+                if (!hasAnyData && allDone) {
+                    // Leave the overlay up (no `ready`) so the message stays on top of the
+                    // empty grid instead of the grid implying every run scored zero.
+                    if (loading) loading.innerHTML = `<div class="dash-trend-empty-msg">${escapeHtml(dashNoCountsChartMessage(runs))}</div>`;
+                } else if (allDone || hasAnyData) {
+                    wrap.classList.add('ready');
+                }
                 const card = wrap.closest('.dash-pipe-card');
                 if (card) updateDashboardCardMetrics(card);
             } catch (err) {
@@ -21297,12 +22414,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
 
         // Paint immediately from cache / in-memory counts / run-level fallback before network enrichment.
         for (const meta of pipelineRuns) {
-            const canPaint = meta.runs.some(r => {
-                if (hasEnrichedTestCounts(r?.testCounts)) return true;
-                const tc = getRunTestCounts(r);
-                return (tc.total ?? 0) > 0 && tc.passPct != null && !tc.pending;
-            });
-            if (canPaint) renderWrapChart(meta, { force: true });
+            if (meta.runs.some(runHasPlottableTrendData)) renderWrapChart(meta, { force: true });
         }
 
         const onRunDone = (run) => {
@@ -21336,6 +22448,16 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             } catch { /* charts still render with available data */ }
         }
 
+        if (token !== dashTrendRenderToken) return;
+
+        // Anything the capped pass above skipped, or that a reload restored without counts,
+        // still has a recoverable JUnit check run on GitHub. Deliberately NOT awaited: waiting
+        // held the fetch's own render open until every unenriched run had been fetched, which
+        // is minutes on a repo whose artifacts have all expired. Each card repaints once, as
+        // soon as its own runs land — per-run repaints are the same destroy/rebuild flicker
+        // that onRunDone above deliberately avoids.
+        startDashboardTrendBackfill(uniqueRuns, token, runToWraps, pipelineRuns, renderWrapChart);
+
         if (token !== dashTrendRenderToken || loadDashViewMode() !== 'graphs') return;
 
         for (const meta of pipelineRuns) {
@@ -21368,6 +22490,15 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         // Same rule as the trend charts above: only enrich while an actual fetch is running,
         // and same straggler cap so a couple of stuck runs can't hold this open indefinitely.
         if (resultsFetchActive) await withTimeout(enrichDashboardTestCounts(runs), 6000);
+        // Background, for the same reason as the trend charts: this must not add an unbounded
+        // wait to whatever triggered the render. Cards refresh when it finishes.
+        void backfillDashboardTestCounts(runs).then((did) => {
+            if (!did) return;
+            for (const card of document.querySelectorAll('#dashboardsContent .dash-pipe-card')) {
+                updateDashboardCardMetrics(card);
+            }
+            updateDashboardHeaderPassRate();
+        }).catch(() => { /* cards still show cached data */ });
         for (const card of cards) updateDashboardCardMetrics(card);
         updateDashboardHeaderPassRate();
     }
@@ -21380,6 +22511,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         runs = filterRunsForResultsWindow(runs);
         runs = runs.slice(0, limit);
+        runs = dropDashboardFilterRuns(runs);
         if (!runs.length) return { passRate: null, passed: 0, actionable: 0, total: 0 };
         return aggregateDashboardPassRateFromRuns(runs);
     }
@@ -21403,11 +22535,19 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             consideredRuns.push(...rs.slice(0, limit));
         }
 
-        const outcomes = consideredRuns.map(getRunOutcome);
+        const cancelledExcluded = loadDashExcludeCancelled()
+            ? consideredRuns.filter(r => getDisplayOutcome(r) === 'cancelled').length
+            : 0;
+        const noExecExcluded = loadDashExcludeNoExec()
+            ? consideredRuns.filter(r => isDashboardNoExecExcluded(r)).length
+            : 0;
+        const metricsRuns = dropDashboardFilterRuns(consideredRuns);
+
+        const outcomes = metricsRuns.map(getRunOutcome);
         const cancelled = outcomes.filter(o => o === 'cancelled').length;
         const skipped = outcomes.filter(o => o === 'skipped').length;
-        const agg = aggregateDashboardPassRateFromRuns(consideredRuns);
-        const completedTimed = consideredRuns.filter(r => r && r.status === 'completed' && runExecSec(r) > 0);
+        const agg = aggregateDashboardPassRateFromRuns(metricsRuns);
+        const completedTimed = metricsRuns.filter(r => r && r.status === 'completed' && runExecSec(r) > 0);
         const medianSec = medianOf(completedTimed.map(runExecSec));
         const realExecRuns = completedTimed.filter(r => isRealExecRun(r, runExecSec(r), medianSec));
         const execDurations = realExecRuns.map(runExecSec);
@@ -21419,10 +22559,12 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         return {
             pipelines: pipelineKeys.length,
             workflows: uniqueFiles.length,
-            runs: consideredRuns.length,
+            runs: metricsRuns.length,
             passed: agg.passed,
             failed: agg.failed,
             cancelled,
+            cancelledExcluded,
+            noExecExcluded,
             skipped,
             actionable: agg.actionable,
             passRate: agg.passRate,
@@ -21444,17 +22586,23 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             ? allGroups.filter(g => g.id === dashSelectedGroupId)
             : allGroups;
         const stats = computeDashboardStats(repo, visibleGroups);
-        const prClass = stats.passRate >= 90 ? 'v-green' : stats.passRate >= 70 ? 'v-orange' : 'v-red';
+        const prDisp = dashPassRateDisplay(stats.passRate);
         const val = document.querySelector('#dashboardsContent .metric-card.m-green .metric-value');
         const sub = document.querySelector('#dashboardsContent .metric-card.m-green .metric-sub');
         const bar = document.querySelector('#dashboardsContent .metric-card.m-green .metric-bar-fill');
         if (val) {
-            val.textContent = stats.passRate.toFixed(1) + '%';
-            val.className = 'metric-value ' + prClass;
-            val.setAttribute('data-count', stats.passRate.toFixed(1));
+            val.textContent = prDisp.text;
+            val.className = 'metric-value ' + prDisp.cls;
+            const n = Number(stats.passRate);
+            if (stats.passRate != null && Number.isFinite(n)) val.setAttribute('data-count', String(n));
+            else val.removeAttribute('data-count');
         }
-        if (sub) sub.textContent = `${stats.passed} passed of ${stats.actionable} actionable`;
-        if (bar) bar.style.width = `${Math.max(0, Math.min(100, stats.passRate))}%`;
+        if (sub) sub.textContent = stats.passRate == null
+            ? 'No actionable tests in this window'
+            : `${stats.passed} passed of ${stats.actionable} actionable`;
+        if (bar) bar.style.width = `${prDisp.bar}%`;
+        const runsSub = document.querySelector('#dashboardsContent .metric-card.m-blue .metric-sub');
+        if (runsSub) runsSub.textContent = dashMetricsRunsSubLabel(stats);
         const failVal = document.querySelector('#dashboardsContent .metric-card.m-red .metric-value');
         const failSub = document.querySelector('#dashboardsContent .metric-card.m-red .metric-sub');
         const failBar = document.querySelector('#dashboardsContent .metric-card.m-red .metric-bar-fill');
@@ -21462,7 +22610,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             failVal.textContent = String(stats.failed);
             failVal.setAttribute('data-count', String(stats.failed));
         }
-        if (failSub) failSub.textContent = `${stats.cancelled} cancelled${stats.skipped ? `, ${stats.skipped} skipped` : ''}`;
+        if (failSub) failSub.textContent = dashMetricsFailuresSubLabel(stats);
         if (failBar) failBar.style.width = `${stats.actionable ? (stats.failed / stats.actionable * 100) : 0}%`;
         const durVal = document.querySelector('#dashboardsContent .metric-card.m-orange .metric-value');
         const durSub = document.querySelector('#dashboardsContent .metric-card.m-orange .metric-sub');
@@ -21738,6 +22886,8 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         `;
 
         const viewMode = loadDashViewMode();
+        const exclCancelled = loadDashExcludeCancelled();
+        const exclNoExec = loadDashExcludeNoExec();
 
         const allGroups = active.groups || [];
         // Validate/resolve the group filter against the active dashboard.
@@ -21745,7 +22895,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         const visibleGroups = dashSelectedGroupId ? allGroups.filter(g => g.id === dashSelectedGroupId) : allGroups;
 
         const stats = computeDashboardStats(repo, visibleGroups);
-        const prClass = stats.passRate >= 90 ? 'v-green' : stats.passRate >= 70 ? 'v-orange' : 'v-red';
+        const prDisp = dashPassRateDisplay(stats.passRate);
         const durBarPct = stats.timedRuns && stats.maxExecSec
             ? Math.min(stats.avgExecSec / stats.maxExecSec * 100, 100)
             : 0;
@@ -21755,21 +22905,21 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                     <div class="metric-icon">&#128736;</div>
                     <div class="metric-label">Pipelines</div>
                     <div class="metric-value" data-count="${stats.pipelines}">${stats.pipelines}</div>
-                    <div class="metric-sub">${stats.runs} ${escapeHtml(getDashboardFetchWindowLabel())}</div>
+                    <div class="metric-sub">${escapeHtml(dashMetricsRunsSubLabel(stats))}</div>
                     <div class="metric-bar"><div class="metric-bar-fill" style="width:100%; background:linear-gradient(90deg,#3b82f6,#60a5fa);"></div></div>
                 </div>
                 <div class="metric-card m-green">
                     <div class="metric-icon">&#127919;</div>
                     <div class="metric-label">Pass Rate</div>
-                    <div class="metric-value ${prClass}" data-count="${stats.passRate.toFixed(1)}">${stats.passRate.toFixed(1)}%</div>
-                    <div class="metric-sub">${stats.passed} passed of ${stats.actionable} actionable</div>
-                    <div class="metric-bar"><div class="metric-bar-fill" style="width:${Math.max(0, Math.min(100, stats.passRate))}%; background:linear-gradient(90deg,#10b981,#34d399);"></div></div>
+                    <div class="metric-value ${prDisp.cls}"${stats.passRate != null && Number.isFinite(Number(stats.passRate)) ? ` data-count="${Number(stats.passRate)}"` : ''}>${prDisp.text}</div>
+                    <div class="metric-sub">${stats.passRate == null ? 'No actionable tests in this window' : `${stats.passed} passed of ${stats.actionable} actionable`}</div>
+                    <div class="metric-bar"><div class="metric-bar-fill" style="width:${prDisp.bar}%; background:linear-gradient(90deg,#10b981,#34d399);"></div></div>
                 </div>
                 <div class="metric-card m-red">
                     <div class="metric-icon">&#9888;&#65039;</div>
                     <div class="metric-label">Failures</div>
                     <div class="metric-value v-red" data-count="${stats.failed}">${stats.failed}</div>
-                    <div class="metric-sub">${stats.cancelled} cancelled${stats.skipped ? `, ${stats.skipped} skipped` : ''}</div>
+                    <div class="metric-sub">${escapeHtml(dashMetricsFailuresSubLabel(stats))}</div>
                     <div class="metric-bar"><div class="metric-bar-fill" style="width:${stats.actionable ? (stats.failed/stats.actionable*100) : 0}%; background:linear-gradient(90deg,#ef4444,#f87171);"></div></div>
                 </div>
                 <div class="metric-card m-orange">
@@ -21780,18 +22930,24 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                     <div class="metric-bar"><div class="metric-bar-fill" style="width:${durBarPct}%; background:linear-gradient(90deg,#FAA74A,#fbbf24);"></div></div>
                 </div>
             </div>
-            <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin:-6px 0 18px; color:var(--text-muted); font-size:11px;">
-                <div class="dash-view-switch" role="group" aria-label="Dashboard view mode">
-                    <button type="button" class="dash-view-seg${viewMode === 'dots' ? ' active' : ''}" onclick="setDashViewMode('dots')">Dots</button>
-                    <button type="button" class="dash-view-seg${viewMode === 'graphs' ? ' active' : ''}" onclick="setDashViewMode('graphs')">Graphs</button>
+            <div class="dash-controls-stack">
+                <div class="dash-legend-row">
+                    <span style="font-weight:900; letter-spacing:0.6px; text-transform:uppercase;">Legend</span>
+                    <span class="dash-pill" style="padding:6px 10px;"><span class="run-dot success" style="width:10px;height:10px;"></span> Passed</span>
+                    <span class="dash-pill" style="padding:6px 10px;"><span class="run-dot failure" style="width:10px;height:10px;"></span> Failed</span>
+                    <span class="dash-pill" style="padding:6px 10px;"><span class="run-dot cancelled" style="width:10px;height:10px;"></span> Cancelled</span>
+                    <span class="dash-pill" style="padding:6px 10px;"><span class="run-dot skipped" style="width:10px;height:10px;"></span> Skipped</span>
+                    <span class="dash-pill" style="padding:6px 10px;"><span class="run-dot unknown" style="width:10px;height:10px;"></span> Other</span>
+                    <span style="margin-left:auto; font-size:11px;">${viewMode === 'graphs' ? 'Hover a column for run + test details. Click to open in GitHub.' : 'Click a dot to open that run in GitHub.'}</span>
                 </div>
-                <span style="font-weight:900; letter-spacing:0.6px; text-transform:uppercase;">Legend</span>
-                <span class="dash-pill" style="padding:6px 10px;"><span class="run-dot success" style="width:10px;height:10px;"></span> Passed</span>
-                <span class="dash-pill" style="padding:6px 10px;"><span class="run-dot failure" style="width:10px;height:10px;"></span> Failed</span>
-                <span class="dash-pill" style="padding:6px 10px;"><span class="run-dot cancelled" style="width:10px;height:10px;"></span> Cancelled</span>
-                <span class="dash-pill" style="padding:6px 10px;"><span class="run-dot skipped" style="width:10px;height:10px;"></span> Skipped</span>
-                <span class="dash-pill" style="padding:6px 10px;"><span class="run-dot unknown" style="width:10px;height:10px;"></span> Other</span>
-                <span style="margin-left:auto; font-size:11px;">${viewMode === 'graphs' ? 'Hover a column for run + test details. Click to open in GitHub.' : 'Click a dot to open that run in GitHub.'}</span>
+                <div class="dash-controls-row">
+                    <div class="dash-view-switch" role="group" aria-label="Dashboard view mode">
+                        <button type="button" class="dash-view-seg${viewMode === 'dots' ? ' active' : ''}" onclick="setDashViewMode('dots')">Dots</button>
+                        <button type="button" class="dash-view-seg${viewMode === 'graphs' ? ' active' : ''}" onclick="setDashViewMode('graphs')">Graphs</button>
+                    </div>
+                    <button type="button" class="dash-excl-cancel-btn${exclCancelled ? ' active' : ''}" onclick="toggleDashExcludeCancelled()" title="Exclude cancelled runs from dashboard metrics, charts, and AI Summary">Exclude cancelled</button>
+                    <button type="button" class="dash-excl-cancel-btn${exclNoExec ? ' active' : ''}" onclick="toggleDashExcludeNoExec()" title="Exclude runs where no tests executed from dashboard metrics, charts, and AI Summary">Exclude no executions</button>
+                </div>
             </div>
             ${allGroups.length > 1 ? `
             <div class="dash-group-filter">
@@ -21835,8 +22991,8 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                     const pr = wfFile ? dashboardPipelinePassRate(repo, wfFile) : { passRate: null, passed: 0, actionable: 0, total: 0 };
                     const prTxt = (pr.passRate == null) ? '—' : pr.passRate.toFixed(1) + '%';
                     const prTip = (pr.passRate == null) ? 'No runs fetched yet.' : (pr.fromTestCounts
-                        ? `${pr.passed} passed of ${pr.actionable} tests (JUnit-enriched runs)`
-                        : `${pr.passed} passed of ${pr.actionable} actionable (last ${getDashboardRunCountLimit()})`);
+                        ? `${pr.passed} passed of ${pr.actionable} tests (JUnit-enriched runs)${dashPipelinePassRateTipSuffix()}`
+                        : `${pr.passed} passed of ${pr.actionable} actionable (last ${getDashboardRunCountLimit()})${dashPipelinePassRateTipSuffix()}`);
                     const prCls = (pr.passRate == null) ? '' : (pr.passRate >= 90 ? 'v-green' : pr.passRate >= 70 ? 'v-orange' : 'v-red');
                     const schedEnabled = !!p?.scheduleEnabled;
                     const schedExec = (schedEnabled && wfFile) ? dashboardSchedulerExecCount(repo, wfFile) : 0;
@@ -22717,6 +23873,243 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
             assert(generatedEmailHtml.includes('A<span style="color:#FAA74A;">x</span>os Bank'), 'expected Axos Bank footer branding');
             assert(generatedEmailHtml.includes('Axos.QE.Web') && !generatedEmailHtml.includes('Axos.QE.TestIM'), 'expected only selected repo in email table');
 
+            const dashRuns = [mkRun(101, 'Pipe A', 'cancelled'), mkRun(102, 'Pipe A', 'success')];
+            dashRuns[1].testCounts = { passed: 2, failed: 0, skipped: 0, total: 2, fallback: false };
+            dashRuns[1]._testCountsDone = true;
+            saveDashExcludeCancelled(false);
+            assert(dropCancelledRuns(dashRuns).length === 2, 'expected exclude off to keep cancelled runs');
+            saveDashExcludeCancelled(true);
+            const filteredDash = dropCancelledRuns(dashRuns);
+            assert(filteredDash.length === 1, 'expected exclude on to drop cancelled runs');
+            assert(getDisplayOutcome(dashRuns[0]) === 'cancelled', 'expected cancelled display outcome');
+            const aggFiltered = aggregateDashboardPassRateFromRuns(filteredDash);
+            assert(aggFiltered.passRate === 100, `expected 100% pass after excluding cancelled, got ${aggFiltered.passRate}`);
+            saveDashExcludeCancelled(false);
+
+            const noExecRun = mkRun(201, 'Pipe A', 'success');
+            noExecRun.testCounts = { passed: 0, failed: 0, skipped: 1, total: 1, noTests: true, fallback: false };
+            noExecRun._testCountsDone = true;
+            saveDashExcludeNoExec(false);
+            assert(dropNoExecRuns([noExecRun, dashRuns[1]]).length === 2, 'expected no-exec exclude off to keep no-tests runs');
+            saveDashExcludeNoExec(true);
+            assert(dropNoExecRuns([noExecRun, dashRuns[1]]).length === 1, 'expected no-exec exclude on to drop no-tests runs');
+            const pendingZero = mkRun(5, 'Web_OutSystems_QA-AML_Sanity-Playwright', 'success');
+            pendingZero.repo = repo;
+            assert(isDashboardNoExecExcluded(pendingZero) === true,
+                'expected unsettled zero-count run to count as no-exec for the dashboard filter');
+            assert(dropNoExecRuns([pendingZero, dashRuns[1]]).length === 1,
+                'expected exclude no-exec to drop unsettled zero-count runs from charts');
+            saveDashExcludeNoExec(false);
+
+            const unknownTc = getRunTestCounts(mkRun(301, 'Pipe A', 'success'));
+            assert(unknownTc.unknown === true, 'expected unenriched run to be unknown, not a fake 1-test estimate');
+            assert(unknownTc.total === 0, 'expected unknown run total 0');
+
+            const specFiles = parseTestCountsFromText('Spec Files: 0 passed, 1 failed, 1 total (100% completed) in 00:16:00');
+            assert(specFiles?.passed === 0 && specFiles?.failed === 1 && specFiles?.total === 1,
+                'expected WDIO Spec Files line to parse a real failed test');
+
+            const allureThenSpec = parseTestCountsFromText(
+                'No Allure results — tests may not have run or produced output\nSpec Files: 9 passed, 0 failed, 9 total (100% completed) in 00:05:00'
+            );
+            assert(allureThenSpec?.passed === 9 && allureThenSpec?.total === 9 && !allureThenSpec?.resultsMissing,
+                'expected real WDIO tally to win over Allure-empty phrasing in the same blob');
+
+            const allureEmptyXml = `<?xml version="1.0"?><testsuites><testsuite tests="1" skipped="1"><testcase name="No tests executed"><skipped message="No Allure results — tests may not have run or produced output"/></testcase></testsuite></testsuites>`;
+            const allureParsed = parseTestCountsFromJUnitXml(allureEmptyXml);
+            assert(allureParsed?.resultsMissing === true, 'expected Allure-empty placeholder to be resultsMissing, not a real skip');
+            assert(!allureParsed?.grepEmpty, 'expected Allure-empty placeholder not to be GREP-empty');
+            const grepLog = parseTestCountsFromText('Spec filter matched zero specs');
+            assert(grepLog?.grepEmpty === true, 'expected log marker to classify GREP-empty');
+
+            const allSkipped = mkRun(401, 'Pipe A', 'success');
+            allSkipped.testCounts = { passed: 0, failed: 0, skipped: 3, total: 3, passPct: null, fallback: false, noTests: false };
+            allSkipped._testCountsDone = true;
+            assert(getDisplayOutcome(allSkipped) === 'success', 'expected real all-skipped to stay success, not failure');
+            assert(shouldEnrichRunTestCounts(allSkipped) === false, 'expected settled all-skipped not to re-enrich');
+
+            const failedEmpty = mkRun(402, 'Pipe A', 'failure');
+            failedEmpty.testCounts = { passed: 0, failed: 0, skipped: 0, total: 0, noTests: true, fallback: false };
+            failedEmpty._testCountsDone = true;
+            const aggFailEmpty = aggregateDashboardPassRateFromRuns([failedEmpty]);
+            assert(aggFailEmpty.failed === 1 && aggFailEmpty.actionable === 1,
+                `expected workflow-failed empty to count as a failure, got failed=${aggFailEmpty.failed} actionable=${aggFailEmpty.actionable}`);
+
+            const emptyAgg = aggregateDashboardPassRateFromRuns([]);
+            assert(emptyAgg.passRate == null, 'expected null passRate when nothing is actionable');
+            assert(dashPassRateDisplay(emptyAgg.passRate).text === '—', 'expected em dash instead of toFixed on null passRate');
+
+            const preflightJobs = [
+                { id: 1, name: 'test / preflight / runner check', status: 'completed', started_at: '2026-08-07T19:32:13Z', completed_at: '2026-08-07T19:32:20Z' },
+                { id: 2, name: 'test / resolve / app version', status: 'completed', started_at: '2026-08-07T19:32:21Z', completed_at: '2026-08-07T19:32:30Z' },
+                { id: 3, name: 'test / Mobile_Android_Invest_Regression-BrowserStack - v5.5.22', status: 'completed', started_at: '2026-08-07T19:32:31Z', completed_at: '2026-08-07T20:04:00Z' },
+                { id: 4, name: 'test / publish / junit', status: 'completed', started_at: '2026-08-07T20:04:01Z', completed_at: '2026-08-07T20:05:00Z' }
+            ];
+            const pickedJob = pickTestimExecutionJob(preflightJobs, 'UAT - 28 - Mobile_Android_Invest_Regression-BrowserStack');
+            assert(pickedJob?.id === 3, `expected real BrowserStack job over preflight, got ${pickedJob?.id}`);
+
+            const dornyTitle = parseTestCountsFromText('16 passed, 25 failed and 0 skipped');
+            assert(dornyTitle?.passed === 16 && dornyTitle?.failed === 25 && dornyTitle?.total === 41,
+                'expected commit JUnit title to parse Invest regression counts');
+
+            const orch = mkRun(25, 'Mobile_Android_UAT_Orchestrators_Regression-BrowserStack', 'success');
+            orch.workflowFile = 'Mobile_Android_UAT_Orchestrators_Regression-BrowserStack.yml';
+            orch.workflowName = 'Mobile_Android_UAT_Orchestrators_Regression-BrowserStack';
+            orch.testType = 'Orchestrator';
+            const orchTc = getRunTestCounts(orch);
+            assert(orchTc.dispatchOnly === true, 'expected orchestrator runs to be dispatch-only');
+            const orchTip = buildDashboardTrendTooltipHtml(0, [orch]);
+            assert(!/Run in progress/i.test(orchTip), 'expected orchestrator tooltip not to say in progress');
+            assert(/dispatch only/i.test(orchTip), 'expected orchestrator tooltip to explain dispatch-only');
+            assert(!/Total tests: 0/.test(orchTip), 'expected orchestrator tooltip not to list zero tests');
+
+            const emptyTrend = dashEmptyTrendHtml('No runs fetched in this window');
+            assert(/dash-trend-empty/.test(emptyTrend) && /dash-trend-ghost/.test(emptyTrend),
+                'expected empty cards to keep a ghost chart instead of deleting the graph');
+
+            const unenriched = mkRun(28, 'Mobile_Android_Invest_Regression-BrowserStack', 'failure');
+            assert(/click Fetch Results/i.test(dashNoCountsChartMessage([unenriched])),
+                'expected an empty chart to say counts are not fetched yet');
+            assert(dashRunsNeedingBackfill([unenriched]).length === 1,
+                'expected an unenriched completed run to be picked up by the dashboard backfill');
+            dashBackfillAttempted.add(unenriched.id);
+            assert(dashRunsNeedingBackfill([unenriched]).length === 0,
+                'expected the backfill to attempt each run only once per session');
+            resetDashTestCountsBackfill();
+            assert(dashRunsNeedingBackfill([unenriched]).length === 1,
+                'expected an explicit fetch to re-arm the dashboard backfill');
+            assert(runHasPlottableTrendData(orch) === true,
+                'expected a dispatch-only orchestrator run to count as chart data');
+            const orchCancelled = { ...orch, id: 26, conclusion: 'cancelled' };
+            assert(runHasPlottableTrendData(orchCancelled) === false,
+                'expected a cancelled orchestrator not to plot a 0% pass line');
+            assert(!/Fetch Results/i.test(dashNoCountsChartMessage([orch])),
+                'expected orchestrator charts not to ask for a Fetch Results');
+            assert(!/minBarLength/.test(buildDashboardTrendChart.toString()),
+                'expected trend bars not to use minBarLength: it pads zero-count runs into visible bars');
+
+            const goneRun = mkRun(104, 'Mobile_Android_PROD_SyntheticMonitoring_Sanity-BrowserStack', 'failure');
+            goneRun._testCountsDataGone = true;
+            goneRun.enrichmentNote = 'expired';
+            goneRun.testCounts = zeroRunTestCounts({ fallback: false, inferred: true });
+            goneRun._testCountsDone = true;
+            assert(isNoExecRun(goneRun) === true, 'expected a run with deleted execution data to be a no-execution run');
+            assert(shouldEnrichRunTestCounts(goneRun) === false,
+                'expected deleted execution data not to be refetched every render');
+            assert(/expired/i.test(dashUnknownCountsNote(goneRun)) && !/retry/i.test(dashUnknownCountsNote(goneRun)),
+                'expected expired data to say so instead of offering a retry');
+            assert(isDataGoneStatus(404) && isDataGoneStatus(410) && !isDataGoneStatus(403),
+                'expected only 404/410 to count as permanently deleted data');
+
+            const emptyChartRun = mkRun(30, 'Mobile_Android_EvoChat_Sanity-BrowserStack', 'success');
+            emptyChartRun.testCounts = { passed: 0, failed: 0, skipped: 1, total: 1, passPct: 0, fallback: false, noTests: true, grepEmpty: true };
+            assert(/No tests executed/i.test(dashNoCountsChartMessage([emptyChartRun])),
+                'expected an all-GREP-empty chart to say nothing executed');
+            const grepThenTally = parseTestCountsFromText('no tests matched GREP\n9 passed, 0 failed and 0 skipped');
+            assert(grepThenTally?.passed === 9 && grepThenTally?.total === 9 && !grepThenTally.grepEmpty,
+                'expected later tally to win over an earlier GREP-empty phrase');
+            const mkCheck = (name, summary) => ({ name, output: { title: name, summary, text: '' } });
+            const grepEmptyCheck = mkCheck('sanity / publish / junit', 'No tests executed — GREP/filter matched nothing');
+            const tallyCheck = mkCheck('Web_AML_Sanity - JUnit (run 1)', '19 tests, 3 passed, 13 failed, 3 skipped');
+            for (const order of [[grepEmptyCheck, tallyCheck], [tallyCheck, grepEmptyCheck]]) {
+                const fromChecks = parseTestCountsFromCheckRunList(order);
+                assert(fromChecks?.total === 19 && !fromChecks.grepEmpty,
+                    'expected a real tally in any check run to beat a GREP-empty placeholder');
+            }
+            const loneGrepEmpty = parseTestCountsFromCheckRunList([grepEmptyCheck]);
+            assert(loneGrepEmpty?.grepEmpty === true,
+                'expected a lone GREP-empty check run to still report, flagged so job logs run first');
+
+            // Every number below was read out of a real job log as a test count once, which is
+            // how a 19-test failing run was displayed as 67,770 passed of 67,789.
+            assert(parseTestCountsFromText('HEAD is now at ba67786 test(olb30-web): add Report Lost Card (#237)') === null,
+                'expected a commit subject not to be read as a test count');
+            assert(parseTestCountsFromText('error: Error in sendTestFrameworkEvent: Error: 13 INTERNAL: Request message larger than max') === null,
+                'expected a gRPC error code not to be read as a failure count');
+            assert(parseTestCountsFromText('- test-results-outsys (ID: 8361507839, Size: 693588095, Digest: sha256:246bab)') === null,
+                'expected an artifact byte size not to be read as a test count');
+            const okBox = parseTestCountsFromText('│ TESTS: 19 │ PASS: 16   FAIL: 2   SKIP: 1   TIMEOUT: 0 │');
+            assert(okBox?.passed === 16 && okBox?.failed === 2 && okBox?.skipped === 1 && okBox?.total === 19,
+                'expected a reconciling Playwright summary box to parse');
+            assert(parseTestCountsFromText('│ TESTS: 19 │ PASS: 16   FAIL: 9   SKIP: 3   TIMEOUT: 0 │') === null,
+                'expected a summary box that disagrees with its own total to be refused');
+            const junitAttrs = parseTestCountsFromText('Tests: 19, Failures: 2, Errors: 0, Skipped: 1');
+            assert(junitAttrs?.passed === 16 && junitAttrs?.total === 19,
+                'expected a labelled JUnit summary to still derive passes from the total');
+            // Newlines are collapsed before matching, so a labelled field is rarely at the
+            // start of anything — it still has to be found mid-blob.
+            const midLog = parseTestCountsFromText('Publishing report to check run Tests: 19, Failures: 2, Errors: 0, Skipped: 1 done');
+            assert(midLog?.passed === 16 && midLog?.total === 19,
+                'expected a labelled JUnit summary mid-log to still parse');
+            const strayError = parseTestCountsFromText('Tests: 19, Failures: 2, Skipped: 1 ... Error: 13 INTERNAL: Request too large');
+            assert(strayError?.failed === 2,
+                'expected a stray gRPC status not to be added to a real failure count');
+            assert(parseTestCountsFromText('Tests: 19, Failures: 1, Errors: 2, Skipped: 0')?.failed === 3,
+                'expected a real Errors field to still count toward failures');
+            assert(parseTestCountsFromText('Tests: 19, Skipped: 1') === null,
+                'expected a total with no stated failures to stay unknown instead of assuming passes');
+            assert(pickJUnitReportJobs([
+                { id: 1, name: 'regression / test', conclusion: 'failure' },
+                { id: 2, name: 'regression / publish / junit', conclusion: 'success' }
+            ]).map(j => j.id).join(',') === '2',
+                'expected the JUnit publish job to be read for counts, not the runner console');
+
+            const planSummary = parseTestCountsFromText('53 passed, 21 failed and 0 skipped ');
+            assert(planSummary?.passed === 53 && planSummary?.failed === 21 && planSummary?.total === 74,
+                'expected JUnit check title to parse Plan regression counts');
+            assert(!planSummary?.grepEmpty, 'expected real JUnit tally not to be GREP-empty');
+
+            const evoChatSummary = parseTestCountsFromText(
+                '0 passed, 0 failed and 1 skipped\n1 tests were completed in 0ms with 0 passed, 0 failed and 1 skipped.\nNo tests executed'
+            );
+            assert(evoChatSummary?.grepEmpty === true, 'expected JUnit "No tests executed" placeholder to be GREP-empty');
+            assert(evoChatSummary?.skipped === 1 && evoChatSummary?.total === 1,
+                'expected GREP-empty JUnit check to keep the skipped count for the graph');
+            const evoChatRun = mkRun(28, 'Mobile_Android_EvoChat_Regression-BrowserStack', 'success');
+            applyParsedTestCounts(evoChatRun, evoChatSummary, evoChatRun._testCountsGen || 0);
+            assert(isNoExecRun(evoChatRun) === true, 'expected GREP-empty EvoChat run to be no-exec');
+            saveDashExcludeNoExec(true);
+            assert(dropNoExecRuns([evoChatRun, dashRuns[1]]).length === 1, 'expected exclude no-exec to drop GREP-empty like cancelled');
+            saveDashExcludeNoExec(false);
+            const evoTc = getRunTestCounts(evoChatRun);
+            assert(evoTc.other === 1, 'expected GREP-empty skipped to show on the graph');
+
+            const junitNames = junitCheckRunNameCandidates({
+                id: 31214049909,
+                workflowName: 'UAT - 29 - Mobile_Android_Plan_Regression-BrowserStack',
+                workflowFile: 'Mobile_Android_Plan_Regression-BrowserStack.yml'
+            });
+            assert(junitNames.includes('Mobile_Android_Plan_Regression-BrowserStack - JUnit (run 31214049909)'),
+                'expected check_name candidate to match GitHub JUnit check');
+
+            const pendingRun = mkRun(29, 'Mobile_Android_Borrow_Regression-BrowserStack', 'failure');
+            ghQuotaStopped = true;
+            ghQuotaResetUnix = Math.floor(Date.now() / 1000) + 600;
+            assert(clearGhQuotaGateIfReset() === false, 'expected quota gate to hold until its reset time');
+            assert(shouldEnrichRunTestCounts(pendingRun) === false, 'expected no enrichment while rate limited');
+            assert(/hourly limit/i.test(dashUnknownCountsNote(pendingRun)),
+                'expected rate-limited run to say hourly limit, not artifact expired');
+            ghQuotaResetUnix = Math.floor(Date.now() / 1000) - 5;
+            assert(clearGhQuotaGateIfReset() === true, 'expected quota gate to lift once the hour rolled over');
+            assert(ghQuotaStopped === false, 'expected quota gate cleared after reset time');
+            assert(shouldEnrichRunTestCounts(pendingRun) === true, 'expected enrichment to resume after reset');
+            ghQuotaStopped = true;
+            resetGhQuotaGate();
+            assert(ghQuotaStopped === false, 'expected explicit fetch to clear the quota gate');
+            pendingRun._testCountsDone = true;
+            assert(/no JUnit artifact and no JUnit check run/i.test(dashUnknownCountsNote(pendingRun)),
+                'expected settled miss to state what was actually missing');
+
+            const grepEmptyXml = `<?xml version="1.0"?><testsuites><testsuite tests="1" skipped="1"><testcase name="No tests executed"><skipped message="No tests matched GREP/filter"/></testcase></testsuite></testsuites>`;
+            const missingXml = `<?xml version="1.0"?><testsuites><testsuite tests="1" skipped="1"><testcase name="No tests executed"><skipped message="No Allure results — tests may not have run or produced output"/></testcase></testsuite></testsuites>`;
+            const grepParsed = parseTestCountsFromJUnitXml(grepEmptyXml);
+            assert(grepParsed?.noTests === true, 'expected GREP placeholder to be noTests');
+            assert(grepParsed?.grepEmpty === true, 'expected GREP placeholder to set grepEmpty');
+            assert(grepParsed?.skipped === 1 && grepParsed?.total === 1, 'expected GREP placeholder to keep skipped/total');
+            const missParsed = parseTestCountsFromJUnitXml(missingXml);
+            assert(missParsed?.resultsMissing === true, 'expected missing Allure placeholder to be resultsMissing');
+            assert(missParsed?.total === 1, 'expected resultsMissing placeholder to keep total');
+
             const ok = document.createElement('div');
             ok.id = 'selftestBanner';
             ok.textContent = 'SELFTEST:PASS';
@@ -22778,6 +24171,28 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
             try { updateResultsEmptyStateForLocal(); } catch { /* ignore */ }
         }
     }
+    restoreResultsCacheFromIdb().then((fromIdb) => {
+        if (!fromIdb) return;
+        try { applyCachedRepoFilterFromLastFetch(); } catch { /* ignore */ }
+        try {
+            hydrateResultsPipelinesFromCatalog();
+            populateResultsRepoFilter();
+            renderResultsTree();
+            updateResultsEmptyStateForLocal();
+        } catch { /* ignore */ }
+        if (allRuns.length) {
+            hydrateAllRunsTestCountsFromCache();
+            try { revealDashboardsTab(); } catch { /* ignore */ }
+            try { revealQueueTab(); } catch { /* ignore */ }
+            try {
+                document.getElementById('emailNoData').style.display = 'none';
+                document.getElementById('emailReady').style.display = 'block';
+                populateEmailPipePicker();
+            } catch { /* ignore */ }
+            renderResults();
+            if (document.getElementById('panelDashboards')?.classList.contains('active')) renderDashboardsIfNeeded();
+        }
+    }).catch(() => { /* ignore */ });
     updateSaveStatus();
     updatePatDot();
     updateResultsTokenStatus();
