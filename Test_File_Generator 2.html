@@ -1,0 +1,1722 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test File Generator</title>
+<style>
+  :root[data-theme="light"] {
+    --bg: #f2f5fa; --card: #ffffff; --text: #14203a; --muted: #5d6a86; --border: #dde3ee;
+    --accent: #0b5fff; --accent-text: #ffffff; --accent-soft: #e8efff; --ok: #14804a; --warn: #b26a00; --err: #c62828;
+    --chip: #eef2f8; --shadow: 0 10px 30px rgba(20, 32, 58, .08); --preview-bg: #f6f8fc;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d1322; --card: #151d31; --text: #e8edf7; --muted: #9aa7c4; --border: #26314d;
+    --accent: #5b8dff; --accent-text: #0b1120; --accent-soft: #1b2a4d; --ok: #4cd08a; --warn: #ffb64d; --err: #ff7b7b;
+    --chip: #1c2640; --shadow: 0 10px 30px rgba(0, 0, 0, .45); --preview-bg: #0f1628;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; transition: background .2s, color .2s; }
+  header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 28px; background: var(--card); border-bottom: 1px solid var(--border); }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand .logo { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--accent), #ff7a1a); display: grid; place-items: center; color: #fff; font-weight: 800; }
+  .brand h1 { margin: 0; font-size: 18px; letter-spacing: .2px; }
+  .brand p { margin: 0; color: var(--muted); font-size: 12.5px; }
+  .theme-btn { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--border); background: var(--chip); color: var(--text); border-radius: 999px; padding: 8px 14px; cursor: pointer; font-weight: 600; }
+  .theme-btn:hover { border-color: var(--accent); }
+  main { max-width: 1120px; margin: 28px auto; padding: 0 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); padding: 22px; }
+  .card h2 { margin: 0 0 6px; font-size: 17px; }
+  .card .sub { margin: 0 0 18px; color: var(--muted); font-size: 13.5px; }
+  label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 6px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+  .row.single { grid-template-columns: 1fr; }
+  .row > div { min-width: 0; }
+  @media (max-width: 720px) { .row { grid-template-columns: 1fr; } }
+  .datefield { position: relative; display: grid; grid-template-columns: 1fr 44px; gap: 6px; }
+  .calbtn { border: 1px solid var(--border); background: var(--chip); color: var(--text); border-radius: 10px; font-size: 18px; cursor: pointer; }
+  .calbtn:hover { border-color: var(--accent); }
+  .datepick { position: absolute; right: 0; bottom: 0; width: 44px; height: 100%; opacity: 0; pointer-events: none; border: 0; padding: 0; }
+  input.invalid { border-color: var(--err); outline-color: var(--err); }
+  .size-hint.err { color: var(--err); }
+  input[type="date"] { color-scheme: light dark; }
+  select, input[type="number"], input[type="text"], input[type="date"] { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; }
+  select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+  .size-group { display: grid; grid-template-columns: 1fr 110px; gap: 8px; }
+  .size-hint { margin: 6px 0 0; color: var(--muted); font-size: 12.5px; min-height: 16px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: -6px 0 16px; }
+  .chip { border: 1px solid var(--border); background: var(--chip); color: var(--text); border-radius: 999px; padding: 5px 12px; font-size: 12.5px; cursor: pointer; }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .check { display: flex; align-items: center; gap: 10px; font-weight: 500; font-size: 13.5px; margin-bottom: 10px; color: var(--text); }
+  .check input { width: 16px; height: 16px; accent-color: var(--accent); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: none; border-radius: 12px; padding: 12px 18px; font: inherit; font-weight: 700; cursor: pointer; }
+  .btn.primary { background: var(--accent); color: var(--accent-text); width: 100%; font-size: 15.5px; margin-top: 6px; }
+  .btn.primary:disabled { opacity: .6; cursor: progress; }
+  .btn.secondary { background: var(--chip); color: var(--text); border: 1px solid var(--border); }
+  .btn.secondary:hover, .btn.primary:not(:disabled):hover { filter: brightness(1.06); }
+  .status { margin-top: 14px; min-height: 22px; font-size: 13.5px; color: var(--muted); display: flex; align-items: center; gap: 10px; }
+  .status.ok { color: var(--ok); } .status.err { color: var(--err); } .status.warn { color: var(--warn); }
+  .spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .preview { background: var(--preview-bg); border: 1px dashed var(--border); border-radius: 12px; min-height: 220px; display: grid; place-items: center; overflow: hidden; margin-bottom: 14px; }
+  .preview img { max-width: 100%; max-height: 320px; border-radius: 8px; display: block; }
+  .preview iframe { width: 100%; height: 320px; border: 0; background: #fff; }
+  .preview pre { margin: 0; padding: 14px; width: 100%; max-height: 320px; overflow: auto; font: 12px/1.45 Consolas, "Courier New", monospace; color: var(--text); white-space: pre; }
+  .preview .empty { color: var(--muted); text-align: center; padding: 30px; font-size: 14px; }
+  .paper { width: 100%; max-height: 340px; overflow: auto; background: #fff; color: #1c1c1c; text-align: left; padding: 16px 18px 20px; }
+  .paper { --accent: #222; border-top: 6px solid var(--accent); }
+  .paper h3 { margin: 0 0 2px; font-size: 16px; color: var(--accent); }
+  .paper .line { margin: 0 0 10px; color: #555; font-size: 11px; }
+  .paper table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .paper th { text-align: left; border-bottom: 2px solid var(--accent); padding: 4px 6px 4px 0; color: #111; }
+  .paper tbody tr:nth-child(even) td { background: #f3f5f8; }
+  .paper td { border-bottom: 1px solid #e4e4e4; padding: 3px 6px 3px 0; white-space: nowrap; }
+  .paper .more { margin: 8px 0 0; color: #666; font-size: 11px; }
+  .meta { display: grid; grid-template-columns: 130px 1fr; gap: 6px 12px; font-size: 13.5px; margin-bottom: 16px; }
+  .meta dt { color: var(--muted); } .meta dd { margin: 0; word-break: break-all; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+  .hint { font-size: 12.5px; color: var(--muted); margin-top: 12px; }
+  .history { grid-column: 1 / -1; }
+  .history table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .history th, .history td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); }
+  .history th { color: var(--muted); font-weight: 600; font-size: 12.5px; }
+  .history a { color: var(--accent); font-weight: 600; text-decoration: none; }
+  footer { max-width: 1120px; margin: 10px auto 40px; padding: 0 20px; color: var(--muted); font-size: 12.5px; }
+  footer code { background: var(--chip); padding: 1px 6px; border-radius: 6px; }
+  .banner { max-width: 1120px; margin: 18px auto -8px; padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--warn); border-radius: 12px; background: var(--card); color: var(--text); font-size: 13.5px; }
+  .banner strong { color: var(--warn); }
+  .banner .btn { padding: 8px 14px; text-decoration: none; }
+  .viewer { position: fixed; inset: 0; z-index: 40; background: rgba(8, 12, 20, .72); display: flex; flex-direction: column; padding: 16px; }
+  .viewer .bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; color: #fff; margin-bottom: 12px; }
+  .viewer .bar strong { font-size: 15px; }
+  .viewer .stage { flex: 1; min-height: 0; background: #fff; border-radius: 12px; overflow: auto; }
+  .viewer .stage .paper { max-height: none; }
+  .viewer .stage img { display: block; max-width: 100%; margin: 0 auto; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="logo">TF</div>
+    <div>
+      <h1>Test File Generator</h1>
+      <p>Byte-exact images and documents for upload testing, created entirely in your browser.</p>
+    </div>
+  </div>
+  <button class="theme-btn" id="themeBtn" type="button" aria-pressed="false" title="Toggle light / dark mode">
+    <span id="themeIcon" aria-hidden="true">&#9790;</span><span id="themeLabel">Dark mode</span>
+  </button>
+</header>
+
+<div class="banner" id="frameBanner" hidden>
+  <span><strong>SharePoint preview:</strong> this frame blocks new tabs. Open and Download load the file in the full window instead. Press Back to return here.</span>
+  <a class="btn secondary" id="openFullBtn" target="_top">Use the full page</a>
+</div>
+
+<main>
+  <section class="card">
+    <h2>1. Choose what to create</h2>
+    <p class="sub">Pick a file type and the exact size you need. Nothing is uploaded anywhere.</p>
+
+    <div class="row single">
+      <div>
+        <label for="fileType">File type</label>
+        <select id="fileType">
+          <optgroup label="Identity documents (sample cards, fictional people)">
+            <option value="dl">Driver's License (USA)</option>
+            <option value="stateid">State ID card (USA)</option>
+            <option value="passport">Passport</option>
+          </optgroup>
+          <optgroup label="Images (random nature scene)">
+            <option value="png">PNG image (.png)</option>
+            <option value="jpg">JPG image (.jpg)</option>
+            <option value="jpeg">JPEG image (.jpeg)</option>
+            <option value="webp">WebP image (.webp)</option>
+            <option value="svg">SVG vector image (.svg)</option>
+          </optgroup>
+          <optgroup label="Documents (random test data)">
+            <option value="pdf" selected>PDF document (.pdf)</option>
+            <option value="docx">Word document (.docx)</option>
+            <option value="doc">Word 97-2003 document (.doc)</option>
+            <option value="txt">Text file (.txt)</option>
+            <option value="csv">CSV spreadsheet (.csv)</option>
+            <option value="json">JSON data (.json)</option>
+          </optgroup>
+        </select>
+      </div>
+    </div>
+
+    <div id="idOptions" hidden>
+      <div class="row">
+        <div id="idStateWrap">
+          <label for="idState">State</label>
+          <select id="idState"></select>
+        </div>
+        <div id="idCountryWrap" hidden>
+          <label for="idCountry">Country</label>
+          <select id="idCountry"></select>
+        </div>
+        <div id="idSideWrap">
+          <label for="idSide">Side</label>
+          <select id="idSide">
+            <option value="front">Front (photo side)</option>
+            <option value="back">Back (barcode side)</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="idAge">Age <span style="color:var(--muted);font-weight:500">(optional)</span></label>
+          <input id="idAge" type="number" min="1" max="100" step="1" placeholder="Any" inputmode="numeric">
+          <p class="size-hint">Or enter the date of birth instead.</p>
+        </div>
+        <div>
+          <label for="idDob">Date of birth <span style="color:var(--muted);font-weight:500">(optional)</span></label>
+          <div class="datefield">
+            <input id="idDob" type="text" placeholder="mm/dd/yyyy" inputmode="numeric" maxlength="10" autocomplete="off">
+            <button class="calbtn" type="button" data-for="idDob" aria-label="Choose date of birth from a calendar">&#128197;</button>
+            <input class="datepick" type="date" tabindex="-1" aria-hidden="true">
+          </div>
+          <p class="size-hint" id="idDobHint"></p>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="idIssue">Issue date <span style="color:var(--muted);font-weight:500">(optional)</span></label>
+          <div class="datefield">
+            <input id="idIssue" type="text" placeholder="mm/dd/yyyy" inputmode="numeric" maxlength="10" autocomplete="off">
+            <button class="calbtn" type="button" data-for="idIssue" aria-label="Choose issue date from a calendar">&#128197;</button>
+            <input class="datepick" type="date" tabindex="-1" aria-hidden="true">
+          </div>
+          <p class="size-hint" id="idIssueHint"></p>
+        </div>
+        <div>
+          <label for="idExpiry">Expiration date <span style="color:var(--muted);font-weight:500">(optional)</span></label>
+          <div class="datefield">
+            <input id="idExpiry" type="text" placeholder="mm/dd/yyyy" inputmode="numeric" maxlength="10" autocomplete="off">
+            <button class="calbtn" type="button" data-for="idExpiry" aria-label="Choose expiration date from a calendar">&#128197;</button>
+            <input class="datepick" type="date" tabindex="-1" aria-hidden="true">
+          </div>
+          <p class="size-hint" id="idExpiryHint"></p>
+        </div>
+      </div>
+      <div class="row single">
+        <div>
+          <label for="idFormat">Save as</label>
+          <select id="idFormat">
+            <option value="jpg">JPG image (.jpg)</option>
+            <option value="png">PNG image (.png)</option>
+            <option value="pdf">PDF document (.pdf)</option>
+          </select>
+          <p class="size-hint">A new fictional person and photo every time. Leave age and the dates blank to have them chosen for you. Cards are marked SPECIMEN.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="sizeValue">Target size</label>
+        <div class="size-group">
+          <input id="sizeValue" type="text" inputmode="decimal" value="1" placeholder="4.9" autocomplete="off" spellcheck="false">
+          <select id="sizeUnit" aria-label="Size unit">
+            <option>KB</option>
+            <option selected>MB</option>
+            <option>GB</option>
+          </select>
+        </div>
+        <p class="size-hint" id="sizeHint">Decimals work, for example 4.9 MB or 5.2 KB.</p>
+      </div>
+      <div id="ratioWrap">
+        <label for="ratio">Aspect ratio <span style="color:var(--muted);font-weight:500">(optional)</span></label>
+        <select id="ratio">
+          <option value="">Any</option>
+          <option value="1:1">1:1 Square</option>
+          <option value="4:3">4:3</option>
+          <option value="3:2">3:2</option>
+          <option value="16:9">16:9</option>
+          <option value="16:10">16:10</option>
+          <option value="21:9">21:9 Ultrawide</option>
+          <option value="4:5">4:5 Portrait</option>
+          <option value="3:4">3:4 Portrait</option>
+          <option value="2:3">2:3 Portrait</option>
+          <option value="9:16">9:16 Portrait</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row single" id="pdfPagesWrap">
+      <div>
+        <label for="pdfPages">PDF pages</label>
+        <input id="pdfPages" type="number" min="1" max="200" step="1" value="2">
+      </div>
+    </div>
+
+    <div class="chips" id="presets">
+      <button class="chip" type="button" data-size="100" data-unit="KB">100 KB</button>
+      <button class="chip" type="button" data-size="500" data-unit="KB">500 KB</button>
+      <button class="chip" type="button" data-size="1" data-unit="MB">1 MB</button>
+      <button class="chip" type="button" data-size="5" data-unit="MB">5 MB</button>
+      <button class="chip" type="button" data-size="10" data-unit="MB">10 MB</button>
+      <button class="chip" type="button" data-size="25" data-unit="MB">25 MB</button>
+      <button class="chip" type="button" data-size="100" data-unit="MB">100 MB</button>
+      <button class="chip" type="button" data-size="1" data-unit="GB">1 GB</button>
+    </div>
+
+    <div class="row single">
+      <div>
+        <label for="fileName">File name <span style="color:var(--muted);font-weight:500">(optional)</span></label>
+        <input id="fileName" type="text" placeholder="Leave blank for an automatic name, e.g. TestFile_5MB.pdf">
+      </div>
+    </div>
+
+    <label class="check"><input id="decimalUnits" type="checkbox"> Use 1000-based units (1 MB = 1,000,000 bytes). Off = 1 MB = 1,048,576 bytes, like Windows Explorer.</label>
+    <label class="check"><input id="autoDownload" type="checkbox" checked> Download automatically when the file is ready</label>
+
+    <button class="btn primary" id="generateBtn" type="button">Generate file</button>
+    <div class="status" id="status">Ready.</div>
+  </section>
+
+  <section class="card">
+    <h2>2. Preview &amp; download</h2>
+    <p class="sub">The result appears here. Files are held in memory only until you close or refresh this page.</p>
+    <div class="preview" id="preview"><div class="empty">Nothing generated yet.</div></div>
+    <dl class="meta" id="meta" hidden></dl>
+    <div class="actions" id="actions" hidden>
+      <button class="btn primary" id="downloadBtn" type="button" style="width:auto">Download</button>
+      <button class="btn secondary" id="saveAsBtn" type="button" hidden>Save as…</button>
+      <button class="btn secondary" id="openBtn" type="button">Open in new tab</button>
+    </div>
+    <p class="hint" id="downloadHint" hidden></p>
+  </section>
+
+  <section class="card history" id="historyCard" hidden>
+    <h2>Generated this session</h2>
+    <table>
+      <thead><tr><th>File</th><th>Type</th><th>Exact size</th><th>Build time</th><th></th></tr></thead>
+      <tbody id="historyBody"></tbody>
+    </table>
+  </section>
+</main>
+
+<footer>
+  Images are a freshly drawn nature scene each time; documents contain synthetic sample records (no real customer data). Identity documents are sample cards for fictional people with drawn photos, clearly marked SPECIMEN, for testing upload and capture flows only. To hit the requested size exactly, padding is appended after the image data (PNG/JPEG), added as an extra RIFF chunk (WebP), placed in an XML comment (SVG), stored as an unused stream object (PDF), packed as an extra binary part inside the ZIP (DOCX), kept in an ignorable RTF group (DOC), or added as trailing whitespace (TXT/CSV/JSON) — every file stays valid and opens normally. Note: .doc files use Word's RTF format inside, which Word opens natively. Files above 1 GB take a few seconds and use temporary disk space; the browser limit is 4 GB.
+</footer>
+
+<script>
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const enc = new TextEncoder();
+  const CHUNK = 1 << 20;
+  const MAX_BYTES = 0xFFFFFFFF; // 4 GB minus one byte: browser Blob limit and the ZIP 32-bit size field
+  const NL = new Uint8Array([10]);
+
+  const TYPES = {
+    png:  { label: 'PNG image',  ext: 'png',  mime: 'image/png',        kind: 'image' },
+    jpg:  { label: 'JPG image',  ext: 'jpg',  mime: 'image/jpeg',       kind: 'image' },
+    jpeg: { label: 'JPEG image', ext: 'jpeg', mime: 'image/jpeg',       kind: 'image' },
+    webp: { label: 'WebP image', ext: 'webp', mime: 'image/webp',       kind: 'image' },
+    svg:  { label: 'SVG image',  ext: 'svg',  mime: 'image/svg+xml',    kind: 'image' },
+    pdf:  { label: 'PDF document', ext: 'pdf', mime: 'application/pdf', kind: 'doc' },
+    docx: { label: 'Word document', ext: 'docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', kind: 'doc' },
+    doc:  { label: 'Word 97-2003 document', ext: 'doc', mime: 'application/msword', kind: 'doc' },
+    txt:  { label: 'Text file',  ext: 'txt',  mime: 'text/plain',       kind: 'doc' },
+    csv:  { label: 'CSV file',   ext: 'csv',  mime: 'text/csv',         kind: 'doc' },
+    json: { label: 'JSON file',  ext: 'json', mime: 'application/json', kind: 'doc' },
+    dl:       { label: "Driver's License sample", kind: 'iddoc' },
+    stateid:  { label: 'State ID sample',         kind: 'iddoc' },
+    passport: { label: 'Passport sample',         kind: 'iddoc' },
+  };
+  const ID_FORMATS = { jpg: TYPES.jpg, png: TYPES.png, pdf: TYPES.pdf };
+
+  /* ---------- theme ---------- */
+  const storage = {
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch { /* sandboxed */ } },
+  };
+  function applyTheme(theme) {
+    document.documentElement.dataset.theme = theme;
+    const dark = theme === 'dark';
+    $('themeIcon').innerHTML = dark ? '&#9728;' : '&#9790;';
+    $('themeLabel').textContent = dark ? 'Light mode' : 'Dark mode';
+    $('themeBtn').setAttribute('aria-pressed', String(dark));
+    storage.set('tfg-theme', theme);
+  }
+  applyTheme(storage.get('tfg-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+  $('themeBtn').addEventListener('click', () => applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
+
+  /* ---------- fill chunks (built once, reused by reference — no per-file allocation) ---------- */
+  let RAND = null, SPACE = null;
+  function randChunk() {
+    if (!RAND) { RAND = new Uint8Array(CHUNK); for (let i = 0; i < CHUNK; i += 65536) crypto.getRandomValues(RAND.subarray(i, i + 65536)); }
+    return RAND;
+  }
+  function spaceChunk() { if (!SPACE) SPACE = new Uint8Array(CHUNK).fill(0x20); return SPACE; }
+  function pushFill(parts, n, chunk) {
+    if (n <= 0) return;
+    const full = Math.floor(n / CHUNK), rem = n % CHUNK;
+    for (let i = 0; i < full; i++) parts.push(chunk);
+    if (rem) parts.push(chunk.subarray(0, rem));
+  }
+
+  /* ---------- random sample data ---------- */
+  const FIRST = ['James','Mary','Robert','Patricia','John','Jennifer','Michael','Linda','David','Elizabeth','William','Barbara','Richard','Susan','Joseph','Jessica','Thomas','Sarah','Daniel','Karen','Matthew','Lisa','Anthony','Nancy','Mark','Betty','Steven','Sandra','Andrew','Ashley','Priya','Wei','Carlos','Fatima','Omar','Sofia','Aiden','Chloe','Mateo','Amara'];
+  const LAST = ['Smith','Johnson','Williams','Brown','Jones','Garcia','Miller','Davis','Rodriguez','Martinez','Hernandez','Lopez','Gonzalez','Wilson','Anderson','Thomas','Taylor','Moore','Jackson','Martin','Lee','Perez','Thompson','White','Harris','Sanchez','Clark','Ramirez','Lewis','Robinson','Walker','Young','Allen','King','Wright','Scott','Torres','Nguyen','Hill','Flores'];
+  const CITY = ['Austin','Denver','Seattle','Boston','Chicago','Phoenix','Atlanta','Dallas','Portland','Miami','San Diego','Nashville','Raleigh','Tampa','Columbus','Omaha','Tucson','Sacramento','Charlotte','Minneapolis'];
+  const STATUS = ['Active','Pending','Approved','Declined','In Review','Closed'];
+  const DOMAIN = ['example.com','test.org','qa-mail.net','sample.io'];
+  const rint = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const pick = (a) => a[Math.floor(Math.random() * a.length)];
+  function rec(i) {
+    const f = pick(FIRST), l = pick(LAST);
+    return {
+      id: i, f, l,
+      email: `${f.toLowerCase()}.${l.toLowerCase()}${i}@${pick(DOMAIN)}`,
+      phone: `${rint(200, 989)}-555-${String(rint(0, 9999)).padStart(4, '0')}`,
+      city: pick(CITY),
+      amount: (rint(1, 999999) / 100).toFixed(2),
+      date: `${rint(2020, 2026)}-${String(rint(1, 12)).padStart(2, '0')}-${String(rint(1, 28)).padStart(2, '0')}`,
+      status: pick(STATUS),
+    };
+  }
+  const stamp = () => new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+
+  /* Never hand out the same scene or document layout twice in a row (remembered across reloads). */
+  function pickFresh(list, slot, idOf = (x) => x) {
+    const last = storage.get('tfg-last-' + slot);
+    const pool = list.filter((x) => idOf(x) !== last);
+    const choice = pick(pool.length ? pool : list);
+    storage.set('tfg-last-' + slot, idOf(choice));
+    return choice;
+  }
+
+  /* ---------- document templates: each file gets a random layout, organization and accent color ---------- */
+  const COMPANY = ['Northwind Traders', 'Blue Ridge Supply Co', 'Summit Credit Union', 'Harbor Point Bank', 'Evergreen Outfitters', 'Cedar Lane Health', 'Pioneer Logistics', 'Silverline Retail', 'Maple & Main Market', 'Redwood Analytics', 'Lakeside Insurance', 'Granite Peak Financial', 'Sunrise Academy', 'Coastal Weather Network'];
+  const PRODUCTS = ['Wireless Mouse', 'USB-C Hub 7-port', '27in LED Monitor', 'Ergonomic Keyboard', 'Noise Cancelling Headset', 'Laptop Stand', 'Thermal Receipt Paper', 'LED Desk Lamp', 'Mesh Office Chair', 'Webcam 1080p', 'Surge Protector 8-outlet', 'Portable SSD 1TB', 'Label Printer', 'Standing Desk Frame', 'Whiteboard 48x36', 'Ballpoint Pens 12 pk', 'Coffee Beans 2 lb', 'Water Bottle 24 oz', 'Hiking Backpack 30L', 'Trail Running Shoes', 'Camping Lantern', 'Yoga Mat', 'Ceramic Mug Set', 'Bluetooth Speaker'];
+  const PRODUCT_CAT = ['Electronics', 'Office Supplies', 'Furniture', 'Outdoor', 'Kitchen', 'Apparel', 'Fitness'];
+  const MERCHANTS = ['Grocery Outlet', 'Shell Fuel', 'Online Marketplace', 'Corner Coffee', 'City Water Utility', 'Streaming Service', 'Home Improvement', 'Payroll Deposit', 'P2P Transfer', 'Airline Ticket', 'Organic Foods', 'Rideshare Trip', 'Cable & Internet', 'Department Store', 'Rent Payment', 'Interest Credit'];
+  const TXN_TYPES = ['Deposit', 'Withdrawal', 'Transfer', 'ACH Credit', 'ACH Debit', 'Wire Out', 'Bill Pay', 'Card Purchase'];
+  const DEPTS = ['Engineering', 'Finance', 'Operations', 'Marketing', 'Customer Care', 'Risk & Compliance', 'Human Resources', 'Sales', 'Legal', 'IT Support'];
+  const JOB_TITLES = ['Software Engineer', 'Senior Analyst', 'Operations Manager', 'Marketing Specialist', 'Support Representative', 'Compliance Officer', 'HR Generalist', 'Account Executive', 'Paralegal', 'Systems Administrator', 'Data Scientist', 'Product Manager', 'QA Engineer'];
+  const CITY_ST = ['Austin TX', 'Denver CO', 'Seattle WA', 'Boston MA', 'Chicago IL', 'Phoenix AZ', 'Atlanta GA', 'Portland OR', 'Miami FL', 'San Diego CA', 'Nashville TN', 'Raleigh NC', 'Omaha NE', 'Tucson AZ', 'Charlotte NC'];
+  const STATIONS = ['KSEA Seattle', 'KDEN Denver', 'KMIA Miami', 'KBOS Boston', 'KPHX Phoenix', 'KORD Chicago', 'KSAN San Diego', 'KATL Atlanta', 'KMSP Minneapolis'];
+  const CONDITIONS = ['Sunny', 'Partly Cloudy', 'Overcast', 'Light Rain', 'Thunderstorms', 'Fog', 'Snow Showers', 'Windy', 'Clear'];
+  const COURSES = ['BIO 101', 'CHEM 210', 'MATH 241', 'HIST 115', 'CS 150', 'ECON 201', 'PHYS 220', 'ENG 102', 'ART 130', 'PSY 100'];
+  const ACCENTS = [[0.12, 0.39, 0.80], [0.03, 0.52, 0.47], [0.52, 0.27, 0.70], [0.83, 0.40, 0.10], [0.20, 0.24, 0.31], [0.74, 0.18, 0.30], [0.10, 0.55, 0.25]];
+  const rdate = (y0 = 2024, y1 = 2026) => `${rint(y0, y1)}-${String(rint(1, 12)).padStart(2, '0')}-${String(rint(1, 28)).padStart(2, '0')}`;
+  const money = (a, b) => (rint(a * 100, b * 100) / 100).toFixed(2);
+  const person = () => `${pick(FIRST)} ${pick(LAST)}`;
+  const maskedAcct = () => '****' + String(rint(0, 9999)).padStart(4, '0');
+  const DOC_TEMPLATES = [
+    { title: 'Customer Account Summary', cols: [['ID', 30], ['Customer', 100], ['Email', 160], ['Phone', 70], ['City', 72], ['Balance', 56], ['Status', 44]],
+      row: (i) => { const r = rec(i); return [String(i), `${r.f} ${r.l}`, r.email, r.phone, r.city, r.amount, r.status]; } },
+    { title: 'Transaction Ledger', cols: [['Txn ID', 62], ['Date', 56], ['Account', 54], ['Type', 72], ['Description', 128], ['Amount', 56], ['Status', 50]],
+      row: (i) => [`TXN-${400000 + i}`, rdate(), maskedAcct(), pick(TXN_TYPES), pick(MERCHANTS), (Math.random() < 0.45 ? '-' : '') + money(3, 4800), pick(['Posted', 'Posted', 'Pending', 'Reversed'])] },
+    { title: 'Invoice Line Items', cols: [['Line', 28], ['SKU', 62], ['Description', 170], ['Qty', 34], ['Unit Price', 58], ['Tax', 50], ['Line Total', 62]],
+      row: (i) => { const q = rint(1, 24), u = Number(money(2, 650)), t = q * u * 0.0825; return [String(i), `SKU-${rint(10000, 99999)}`, pick(PRODUCTS), String(q), u.toFixed(2), t.toFixed(2), (q * u + t).toFixed(2)]; } },
+    { title: 'Employee Directory', cols: [['Emp ID', 46], ['Name', 104], ['Department', 92], ['Title', 118], ['Location', 70], ['Start Date', 56], ['Ext', 30]],
+      row: (i) => [`E${10000 + i}`, person(), pick(DEPTS), pick(JOB_TITLES), pick(CITY_ST), rdate(2012, 2026), `x${rint(1000, 9999)}`] },
+    { title: 'Loan Application Pipeline', cols: [['App ID', 58], ['Applicant', 104], ['Product', 78], ['Amount', 64], ['Term', 46], ['Rate', 40], ['Decision', 86]],
+      row: (i) => { const p = pick(['Auto Loan', 'Mortgage', 'Personal Loan', 'HELOC', 'Student Loan']); return [`LN-${200000 + i}`, person(), p, money(p === 'Mortgage' ? 90000 : 2000, p === 'Mortgage' ? 950000 : 85000), `${pick(p === 'Mortgage' ? [180, 360] : [24, 36, 48, 60, 72])} mo`, `${(rint(299, 1899) / 100).toFixed(2)}%`, pick(['Approved', 'Declined', 'Pending Docs', 'In Underwriting', 'Funded'])]; } },
+    { title: 'Warehouse Inventory', cols: [['SKU', 58], ['Product', 150], ['Category', 80], ['Warehouse', 70], ['On Hand', 46], ['Reorder', 46], ['Unit Cost', 54]],
+      row: () => [`SKU-${rint(10000, 99999)}`, pick(PRODUCTS), pick(PRODUCT_CAT), `WH-${pick(CITY).split(' ')[0]}`, String(rint(0, 2400)), String(rint(10, 300)), money(1, 480)] },
+    { title: 'Support Ticket Queue', cols: [['Ticket', 54], ['Opened', 56], ['Customer', 100], ['Channel', 60], ['Priority', 46], ['Category', 104], ['Status', 92]],
+      row: (i) => [`CS-${50000 + i}`, rdate(2025, 2026), person(), pick(['Phone', 'Email', 'Chat', 'Branch', 'Mobile App']), pick(['Low', 'Medium', 'High', 'Urgent']), pick(['Login issue', 'Card replacement', 'Transfer inquiry', 'Statement request', 'Address change', 'Dispute', 'Fraud alert', 'Mobile deposit']), pick(['Open', 'Resolved', 'Escalated', 'Waiting on Customer'])] },
+    { title: 'Sales Orders', cols: [['Order #', 62], ['Date', 56], ['Customer', 104], ['Items', 36], ['Ship To', 92], ['Total', 60], ['Status', 64]],
+      row: (i) => [`SO-${700000 + i}`, rdate(), person(), String(rint(1, 12)), pick(CITY_ST), money(9, 2400), pick(['Processing', 'Shipped', 'Delivered', 'Cancelled', 'Backordered'])] },
+    { title: 'Weather Observations', cols: [['Station', 96], ['Date', 56], ['High (F)', 50], ['Low (F)', 50], ['Precip (in)', 60], ['Wind (mph)', 60], ['Conditions', 96]],
+      row: () => { const hi = rint(18, 104); return [pick(STATIONS), rdate(), String(hi), String(hi - rint(6, 28)), (rint(0, 180) / 100).toFixed(2), String(rint(0, 38)), pick(CONDITIONS)]; } },
+    { title: 'Student Grade Report', cols: [['Student ID', 58], ['Student', 104], ['Course', 60], ['Section', 46], ['Credits', 44], ['Grade', 40], ['Term', 70]],
+      row: (i) => [`S${300000 + i}`, person(), pick(COURSES), String(rint(1, 6)).padStart(3, '0'), String(pick([1, 2, 3, 3, 4])), pick(['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'A', 'B+']), pick(['Fall 2025', 'Spring 2026', 'Summer 2026'])] },
+  ];
+  const toHex = (c) => c.map((v) => Math.round(v * 255).toString(16).padStart(2, '0')).join('').toUpperCase();
+  function docStyle() {
+    const tpl = pickFresh(DOC_TEMPLATES, 'doc', (t) => t.title);
+    const accent = pick(ACCENTS);
+    return { tpl, org: pick(COMPANY), accent, hex: toHex(accent), report: `RPT-${rint(10000, 99999)}`, heads: tpl.cols.map((c) => c[0]) };
+  }
+  const fitChars = (s, n) => (s.length > n ? s.slice(0, Math.max(1, n - 1)) + '.' : s);
+  const jsonKey = (h) => h.replace(/[^A-Za-z0-9 ]/g, '').trim().split(/\s+/).map((w, i) => (i ? w[0].toUpperCase() + w.slice(1).toLowerCase() : w.toLowerCase())).join('');
+
+  class TooSmall extends Error { constructor(min) { super(`Minimum size for this file type and settings is ${fmt(min)}. Increase the size or reduce pages.`); this.min = min; } }
+
+  /* Build ~256 KB blocks of rows; unique rows up to 16 MB, then blocks repeat (keeps GB files instant). */
+  function makeBlocks(rowFn, limitBytes) {
+    const blocks = []; let id = 1, total = 0;
+    while (total < limitBytes) {
+      let s = '';
+      while (s.length < 262144 && total + s.length < limitBytes) s += rowFn(id++);
+      if (!s) break;
+      const b = enc.encode(s); blocks.push(b); total += b.length;
+    }
+    return blocks;
+  }
+
+  function buildLines(target, headStr, rowFn) {
+    const head = enc.encode(headStr);
+    let remaining = target - head.length;
+    if (remaining < 0) throw new TooSmall(head.length);
+    const parts = [head];
+    const blocks = makeBlocks(rowFn, Math.min(remaining, 16 * CHUNK));
+    let bi = 0;
+    while (remaining > 0 && blocks.length) {
+      const blk = blocks[bi++ % blocks.length];
+      if (blk.length <= remaining) { parts.push(blk); remaining -= blk.length; continue; }
+      let k = remaining - 1; while (k >= 0 && blk[k] !== 10) k--;
+      if (k >= 0) { parts.push(blk.subarray(0, k + 1)); remaining -= k + 1; }
+      break;
+    }
+    if (remaining > 0) { pushFill(parts, remaining - 1, spaceChunk()); parts.push(NL); }
+    return parts;
+  }
+
+  const textMeta = (d, target) => `${d.tpl.title} for ${d.org}` + (target > 16 * CHUNK ? ' (rows repeat after 16 MB)' : '');
+  function buildTxt(target) {
+    const d = docStyle();
+    const cw = d.tpl.cols.map(([h, w]) => Math.max(h.length, Math.round(w / 4.6)));
+    const line = (cells) => cells.map((c, j) => fitChars(c, cw[j]).padEnd(cw[j])).join(' | ').trimEnd() + '\n';
+    const headRow = line(d.heads);
+    const head = `${d.tpl.title.toUpperCase()}\n${d.org}  |  ${d.report}\nGenerated: ${stamp()}\nSynthetic sample data for QA testing - not real customers.\nTarget size: ${target.toLocaleString()} bytes\n\n` +
+      headRow + '-'.repeat(headRow.length - 1) + '\n';
+    return { parts: buildLines(target, head, (i) => line(d.tpl.row(i))), meta: textMeta(d, target) };
+  }
+  function buildCsv(target) {
+    const d = docStyle();
+    const csv = (cells) => cells.map((c) => (/[",\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c)).join(',') + '\n';
+    return { parts: buildLines(target, csv(d.heads), (i) => csv(d.tpl.row(i))), meta: textMeta(d, target) };
+  }
+  function buildJson(target) {
+    const d = docStyle();
+    const keys = d.heads.map(jsonKey);
+    const head = enc.encode(`{"title":${JSON.stringify(d.tpl.title)},"organization":${JSON.stringify(d.org)},"generatedAt":"${stamp()}","generator":"Test File Generator","note":"Synthetic sample data for QA testing","records":[`);
+    const tail = enc.encode(']}');
+    let remaining = target - head.length - tail.length;
+    if (remaining < 0) throw new TooSmall(head.length + tail.length);
+    const parts = [head];
+    const blocks = makeBlocks((i) => {
+      const o = {};
+      d.tpl.row(i).forEach((v, j) => { o[keys[j]] = /^-?(0|[1-9]\d*)(\.\d+)?$/.test(v) ? Number(v) : v; });
+      return JSON.stringify(o) + ',';
+    }, Math.min(remaining, 16 * CHUNK));
+    let bi = 0, lastFull = -1;
+    while (remaining > 0 && blocks.length) {
+      const blk = blocks[bi++ % blocks.length];
+      if (blk.length <= remaining) { parts.push(blk); remaining -= blk.length; lastFull = parts.length - 1; continue; }
+      let j = -1;
+      for (let k = remaining - 1; k > 0; k--) { if (blk[k] === 44 && blk[k - 1] === 125) { j = k; break; } }
+      if (j > 0) { parts.push(blk.subarray(0, j)); remaining -= j; lastFull = -1; }
+      break;
+    }
+    if (lastFull >= 0) { const b = parts[lastFull]; parts[lastFull] = b.subarray(0, b.length - 1); remaining += 1; }
+    pushFill(parts, remaining, spaceChunk());
+    parts.push(tail);
+    return { parts, meta: textMeta(d, target) };
+  }
+
+  function docPreview(d, subtitle, rows, total) {
+    return { title: d.tpl.title, subtitle: `${d.org}  ·  ${subtitle}`, headers: d.heads, rows, total, accent: '#' + d.hex };
+  }
+
+  /* ---------- PDF (hand-built, exact xref offsets, padding as an unused stream object) ---------- */
+  const pdfEsc = (s) => s.replace(/[\\()]/g, (m) => '\\' + m);
+  function pageContent(d, k, pages, startId, iso, maxRows) {
+    const L = [];
+    const rgb = (c) => c.map((v) => v.toFixed(3)).join(' ');
+    const accent = rgb(d.accent), dark = rgb(d.accent.map((v) => v * 0.7)), tint = rgb(d.accent.map((v) => v + (1 - v) * 0.84));
+    const T = (font, size, x, y, txt, color = '0 0 0') => L.push(`BT ${color} rg /${font} ${size} Tf ${x} ${y} Td (${pdfEsc(txt)}) Tj ET`);
+    L.push(`${accent} rg 0 776 612 16 re f`);
+    T('F2', 18, 40, 743, d.tpl.title, accent);
+    T('F1', 9, 40, 728, `${d.org}   |   ${d.report}   |   Generated ${iso}   |   Page ${k + 1} of ${pages}`, '0.35 0.35 0.35');
+    L.push(`${accent} RG 0.8 w 40 720 m 572 720 l S`);
+    const xs = []; let x = 40;
+    for (const [, w] of d.tpl.cols) { xs.push(x); x += w; }
+    const tableW = x - 40 + 8;
+    L.push(`${tint} rg 36 700 ${tableW} 15 re f`);
+    d.tpl.cols.forEach(([h], i) => T('F2', 8.5, xs[i], 705, h, dark));
+    let y = 688, id = startId, rows = 0;
+    const preview = [];
+    while (y >= 60 && rows < maxRows) {
+      const cells = d.tpl.row(id++);
+      if (k === 0 && preview.length < 8) preview.push(cells);
+      if (rows % 2) L.push(`0.955 0.96 0.97 rg 36 ${y - 4} ${tableW} 14 re f`);
+      cells.forEach((c, i) => T('F1', 8, xs[i], y, fitChars(c, Math.floor(d.tpl.cols[i][1] / 4.4))));
+      rows++; y -= 15;
+    }
+    T('F1', 8, 40, 30, 'Test File Generator - synthetic data, not real customers.', '0.45 0.45 0.45');
+    return { text: L.join('\n'), nextId: id, preview };
+  }
+  /* Small targets get fewer rows per page; the absolute minimum is a PDF with headers only. */
+  function buildPdf(target, pages) {
+    const d = docStyle();
+    let lastErr = null;
+    for (const rows of [42, 25, 12, 5, 2, 0]) {
+      try { return buildPdfRows(d, target, pages, rows); } catch (e) { if (!(e instanceof TooSmall)) throw e; lastErr = e; }
+    }
+    throw lastErr;
+  }
+  function buildPdfRows(d, target, pages, maxRows) {
+    const iso = stamp();
+    const N = 5 + 2 * pages;
+    const obj = (n, body) => `${n} 0 obj\n${body}\nendobj\n`;
+    const objs = [];
+    const kids = []; for (let k = 0; k < pages; k++) kids.push(`${5 + 2 * k} 0 R`);
+    objs[1] = obj(1, '<< /Type /Catalog /Pages 2 0 R >>');
+    objs[2] = obj(2, `<< /Type /Pages /Kids [${kids.join(' ')}] /Count ${pages} >>`);
+    objs[3] = obj(3, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
+    objs[4] = obj(4, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>');
+    let id = 1, preview = [];
+    for (let k = 0; k < pages; k++) {
+      const page = pageContent(d, k, pages, id, iso, maxRows); id = page.nextId;
+      if (k === 0) preview = page.preview;
+      const { text } = page;
+      objs[5 + 2 * k] = obj(5 + 2 * k, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${6 + 2 * k} 0 R >>`);
+      objs[6 + 2 * k] = obj(6 + 2 * k, `<< /Length ${enc.encode(text).length} >>\nstream\n${text}\nendstream`);
+    }
+    const encoded = [];
+    for (let n = 1; n < N; n++) encoded[n] = enc.encode(objs[n]);
+    const { parts, L } = finishPdf(encoded, N, target);
+    return {
+      parts,
+      rows: maxRows,
+      preview: docPreview(d, `Generated ${iso}  ·  ${pages} page${pages > 1 ? 's' : ''}`, preview, maxRows),
+      meta: `${d.tpl.title}: ${pages} page${pages > 1 ? 's' : ''}, ${maxRows} record${maxRows === 1 ? '' : 's'} per page + ${fmt(L)} padding stream`,
+    };
+  }
+  /* Objects 1..N-1 are given; object N becomes the padding stream, then the xref table is written with exact offsets. */
+  function finishPdf(encoded, N, target) {
+    const header = new Uint8Array([0x25,0x50,0x44,0x46,0x2D,0x31,0x2E,0x34,0x0A,0x25,0xE2,0xE3,0xCF,0xD3,0x0A]);
+    const offsets = []; let pos = header.length;
+    for (let n = 1; n < N; n++) { offsets[n] = pos; pos += encoded[n].length; }
+    offsets[N] = pos;
+    const suffix = enc.encode('\nendstream\nendobj\n');
+    const layout = (L) => {
+      const prefix = enc.encode(`${N} 0 obj\n<< /Length ${L} >>\nstream\n`);
+      const xrefPos = pos + prefix.length + L + suffix.length;
+      let x = `xref\n0 ${N + 1}\n0000000000 65535 f \n`;
+      for (let n = 1; n <= N; n++) x += String(offsets[n]).padStart(10, '0') + ' 00000 n \n';
+      x += `trailer\n<< /Size ${N + 1} /Root 1 0 R >>\nstartxref\n${xrefPos}\n%%EOF\n`;
+      const xref = enc.encode(x);
+      return { prefix, xref, total: xrefPos + xref.length };
+    };
+    const minTotal = layout(0).total;
+    let L = target - minTotal, lay = L >= 0 ? layout(L) : null;
+    for (let i = 0; i < 8 && lay && lay.total !== target; i++) { L += target - lay.total; lay = L >= 0 ? layout(L) : null; }
+    if (!lay || lay.total !== target) throw new TooSmall(minTotal);
+    const parts = [header];
+    for (let n = 1; n < N; n++) parts.push(encoded[n]);
+    parts.push(lay.prefix); pushFill(parts, L, randChunk()); parts.push(suffix, lay.xref);
+    return { parts, L };
+  }
+
+  /* ---------- Word 97-2003 (.doc): RTF, which Word opens natively; padding sits in an ignorable group ---------- */
+  function buildDoc(target) {
+    const d = docStyle();
+    let lastErr = null;
+    for (const rows of [42, 20, 8, 2, 0]) {
+      try { return buildDocRows(d, target, rows); } catch (e) { if (!(e instanceof TooSmall)) throw e; lastErr = e; }
+    }
+    throw lastErr;
+  }
+  function buildDocRows(d, target, maxRows) {
+    const esc = (t) => t.replace(/[\\{}]/g, (c) => '\\' + c);
+    const [r, g, b] = d.accent.map((v) => Math.round(v * 255));
+    const sum = d.tpl.cols.reduce((a, c) => a + c[1], 0);
+    let cum = 0;
+    const tabs = d.tpl.cols.slice(0, -1).map(([, w]) => `\\tx${(cum += Math.round(w / sum * 9360))}`).join('');
+    let s = `{\\rtf1\\ansi\\ansicpg1252\\deff0{\\fonttbl{\\f0\\fswiss\\fcharset0 Arial;}}{\\colortbl;\\red${r}\\green${g}\\blue${b};\\red90\\green90\\blue90;}\\viewkind4\\uc1` +
+      `\\pard\\sa120\\f0\\fs32\\cf1\\b ${esc(d.tpl.title)}\\b0\\cf0\\par\n` +
+      `\\cf2\\fs18 ${esc(d.org)} | ${d.report} | Generated ${stamp()} | Synthetic sample data for QA testing\\cf0\\par\n\\par\n` +
+      `\\pard\\sa40${tabs}\\fs16\\cf1\\b ${d.heads.map(esc).join('\\tab ')}\\b0\\cf0\\par\n`;
+    const preview = [];
+    for (let i = 1; i <= maxRows; i++) {
+      const cells = d.tpl.row(i);
+      if (preview.length < 8) preview.push(cells);
+      s += `${cells.map(esc).join('\\tab ')}\\par\n`;
+    }
+    s += `\\pard\\par\\fs16 Test File Generator - synthetic data, not real customers.\\par\n{\\*\\tfgpad `;
+    const head = enc.encode(s), tail = enc.encode('}}');
+    const L = target - head.length - tail.length;
+    if (L < 0) throw new TooSmall(head.length + tail.length);
+    const parts = [head]; pushFill(parts, L, spaceChunk()); parts.push(tail);
+    return { parts, meta: `${d.tpl.title}: ${maxRows} record${maxRows === 1 ? '' : 's'} (RTF-based .doc) + ${fmt(L)} padding`, rows: maxRows, preview: docPreview(d, 'Word 97-2003 document', preview, maxRows) };
+  }
+
+  /* ---------- ZIP (store method) with CRC-32, incl. zlib-style crc32_combine so GB padding needs no full pass ---------- */
+  let CRC_T = null, CHUNK_CRC = null;
+  function crcTable() {
+    if (!CRC_T) { CRC_T = new Int32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; CRC_T[n] = c; } }
+    return CRC_T;
+  }
+  function crc32(bytes, crc = 0) {
+    const T = crcTable(); let c = ~crc;
+    for (let i = 0; i < bytes.length; i++) c = T[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+    return (~c) >>> 0;
+  }
+  function gf2Times(mat, vec) { let sum = 0, i = 0; while (vec) { if (vec & 1) sum ^= mat[i]; vec >>>= 1; i++; } return sum >>> 0; }
+  function gf2Square(sq, mat) { for (let n = 0; n < 32; n++) sq[n] = gf2Times(mat, mat[n]); }
+  function crc32Combine(crc1, crc2, len2) {
+    if (len2 <= 0) return crc1 >>> 0;
+    const even = new Uint32Array(32), odd = new Uint32Array(32);
+    odd[0] = 0xEDB88320; let row = 1;
+    for (let n = 1; n < 32; n++) { odd[n] = row; row = (row << 1) >>> 0; }
+    gf2Square(even, odd); gf2Square(odd, even);
+    do {
+      gf2Square(even, odd);
+      if (len2 % 2) crc1 = gf2Times(even, crc1);
+      len2 = Math.floor(len2 / 2);
+      if (len2 === 0) break;
+      gf2Square(odd, even);
+      if (len2 % 2) crc1 = gf2Times(odd, crc1);
+      len2 = Math.floor(len2 / 2);
+    } while (len2 !== 0);
+    return (crc1 ^ crc2) >>> 0;
+  }
+  function crcOfFill(L) {
+    const chunk = randChunk();
+    if (CHUNK_CRC === null) CHUNK_CRC = crc32(chunk);
+    let n = Math.floor(L / CHUNK), rem = L % CHUNK;
+    let result = 0, base = CHUNK_CRC, baseLen = CHUNK;
+    while (n > 0) {
+      if (n % 2) result = crc32Combine(result, base, baseLen);
+      n = Math.floor(n / 2);
+      if (n) { base = crc32Combine(base, base, baseLen); baseLen *= 2; }
+    }
+    if (rem) result = crc32Combine(result, crc32(chunk.subarray(0, rem)), rem);
+    return result;
+  }
+  const u16 = (v) => [v & 255, (v >>> 8) & 255];
+  const u32 = (v) => [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255];
+  function buildZip(entries) {
+    const now = new Date();
+    const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+    const dosDate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+    const parts = [], central = []; let offset = 0;
+    for (const e of entries) {
+      const name = enc.encode(e.name);
+      const lh = new Uint8Array([...u32(0x04034b50), ...u16(20), ...u16(0), ...u16(0), ...u16(dosTime), ...u16(dosDate), ...u32(e.crc), ...u32(e.size), ...u32(e.size), ...u16(name.length), ...u16(0)]);
+      parts.push(lh, name); for (const p of e.parts) parts.push(p);
+      central.push(new Uint8Array([...u32(0x02014b50), ...u16(20), ...u16(20), ...u16(0), ...u16(0), ...u16(dosTime), ...u16(dosDate), ...u32(e.crc), ...u32(e.size), ...u32(e.size), ...u16(name.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(offset)]), name);
+      offset += lh.length + name.length + e.size;
+    }
+    let cdSize = 0; for (const c of central) cdSize += c.length;
+    parts.push(...central, new Uint8Array([...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(entries.length), ...u16(entries.length), ...u32(cdSize), ...u32(offset), ...u16(0)]));
+    return parts;
+  }
+  const zipEntrySize = (name, size) => 30 + 46 + 2 * enc.encode(name).length + size;
+
+  /* ---------- Word (.docx): minimal OOXML package; padding is an extra binary part Word never parses ---------- */
+  const xmlEsc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const CONTENT_TYPES = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="bin" ContentType="application/octet-stream"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>';
+  const ROOT_RELS = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>';
+  function docxDocument(d, maxRows) {
+    const cell = (t, bold, w, fill, color) => `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${fill ? `<w:shd w:val="clear" w:color="auto" w:fill="${fill}"/>` : ''}</w:tcPr><w:p><w:pPr><w:spacing w:after="0"/></w:pPr><w:r><w:rPr>${bold ? '<w:b/>' : ''}${color ? `<w:color w:val="${color}"/>` : ''}<w:sz w:val="16"/></w:rPr><w:t xml:space="preserve">${xmlEsc(t)}</w:t></w:r></w:p></w:tc>`;
+    const sum = d.tpl.cols.reduce((a, c) => a + c[1], 0);
+    const widths = d.tpl.cols.map(([, w]) => Math.round(w / sum * 10080));
+    const border = ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map((b) => `<w:${b} w:val="single" w:sz="4" w:space="0" w:color="BBBBBB"/>`).join('');
+    let rows = `<w:tr>${d.heads.map((h, i) => cell(h, true, widths[i], d.hex, 'FFFFFF')).join('')}</w:tr>`;
+    const preview = [];
+    for (let i = 1; i <= maxRows; i++) {
+      const cells = d.tpl.row(i);
+      if (preview.length < 8) preview.push(cells);
+      rows += `<w:tr>${cells.map((v, j) => cell(v, false, widths[j], i % 2 ? '' : 'F3F5F8')).join('')}</w:tr>`;
+    }
+    return {
+      preview,
+      xml: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+      '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
+      `<w:p><w:r><w:rPr><w:b/><w:color w:val="${d.hex}"/><w:sz w:val="36"/></w:rPr><w:t>${xmlEsc(d.tpl.title)}</w:t></w:r></w:p>` +
+      `<w:p><w:r><w:rPr><w:color w:val="5A5A5A"/><w:sz w:val="18"/></w:rPr><w:t xml:space="preserve">${xmlEsc(d.org)}  |  ${d.report}  |  Generated ${stamp()}  |  Synthetic sample data for QA testing</w:t></w:r></w:p>` +
+      `<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/><w:tblBorders>${border}</w:tblBorders></w:tblPr><w:tblGrid>${widths.map((w) => `<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>${rows}</w:tbl>` +
+      '<w:p><w:r><w:rPr><w:sz w:val="16"/></w:rPr><w:t>Test File Generator - synthetic data, not real customers.</w:t></w:r></w:p>' +
+      '<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1080" w:right="1080" w:bottom="1080" w:left="1080" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>' +
+      '</w:body></w:document>',
+    };
+  }
+  function buildDocx(target) {
+    const d = docStyle();
+    let lastErr = null;
+    for (const rows of [40, 20, 8, 2, 0]) {
+      try { return buildDocxRows(d, target, rows); } catch (e) { if (!(e instanceof TooSmall)) throw e; lastErr = e; }
+    }
+    throw lastErr;
+  }
+  function buildDocxRows(d, target, maxRows) {
+    const doc = docxDocument(d, maxRows);
+    const files = [['[Content_Types].xml', CONTENT_TYPES], ['_rels/.rels', ROOT_RELS], ['word/document.xml', doc.xml]]
+      .map(([name, s]) => { const b = enc.encode(s); return { name, size: b.length, crc: crc32(b), parts: [b] }; });
+    const padName = 'word/media/padding.bin';
+    let fixed = 22 + zipEntrySize(padName, 0);
+    for (const f of files) fixed += zipEntrySize(f.name, f.size);
+    const L = target - fixed;
+    if (L < 0) throw new TooSmall(fixed);
+    const padParts = []; pushFill(padParts, L, randChunk());
+    files.push({ name: padName, size: L, crc: crcOfFill(L), parts: padParts });
+    return { parts: buildZip(files), meta: `${d.tpl.title}: ${maxRows} record${maxRows === 1 ? '' : 's'} in a table + ${fmt(L)} padding part`, rows: maxRows, preview: docPreview(d, 'Word document', doc.preview, maxRows) };
+  }
+
+  /* ---------- procedural nature scenes: one shape list, drawn on a canvas (PNG/JPG/WebP) or written as SVG ---------- */
+  const shade = (hex, f) => { const n = parseInt(hex.slice(1), 16); const c = (v) => Math.max(0, Math.min(255, Math.round(v * (1 + f)))); return `rgb(${c(n >> 16 & 255)},${c(n >> 8 & 255)},${c(n & 255)})`; };
+  const toRGB = (c) => { if (c[0] === '#') { const n = parseInt(c.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; } return c.match(/\d+/g).slice(0, 3).map(Number); };
+  const rgba = (c, a) => `rgba(${toRGB(c).join(',')},${a})`;
+  const THEMES = {
+    alpine:   { label: 'alpine lake', sky: ['#3f8fe0', '#8cc4f5', '#dff0ff'], sun: { kind: 'sun', color: '#fff6cf' }, clouds: [2, 5, '#ffffff'], birds: true, terrain: 'mountains', ridges: ['#9fb3cf', '#6f88a8', '#3f5a70'], snow: '#f5f9ff', water: { color: '#2f7fc4', chance: 1 }, ground: ['#5fa24b', '#2e6a2a'], trees: { kind: 'pine', colors: ['#1f5e2a', '#2b7a36', '#17472a'], count: [18, 30], size: [0.06, 0.15] } },
+    sunset:   { label: 'sunset lake', sky: ['#2a2b5e', '#c85a7a', '#ff9a5c', '#ffd58a'], sun: { kind: 'sun', color: '#ffb347', low: true }, clouds: [1, 4, '#ffd2b0'], birds: true, terrain: 'mountains', ridges: ['#6b5a80', '#4b3e60', '#2a2340'], water: { color: '#c9704a', chance: 1 }, ground: ['#3d4f2a', '#1d2a14'], trees: { kind: 'pine', colors: ['#1b2a1c', '#223322', '#141f14'], count: [12, 24], size: [0.06, 0.15] } },
+    night:    { label: 'starry night', sky: ['#04081a', '#0f1f45', '#1a2f5e'], sun: { kind: 'moon', color: '#f2f5ff' }, stars: true, terrain: 'mountains', ridges: ['#1a2846', '#131f38', '#0b1426'], water: { color: '#0f2446', chance: 0.6 }, ground: ['#12301c', '#081a10'], trees: { kind: 'pine', colors: ['#0b2213', '#0f2c18', '#07180d'], count: [14, 26], size: [0.06, 0.15] } },
+    meadow:   { label: 'dawn meadow', sky: ['#6d7fc0', '#c9a3c8', '#f7c6b3', '#ffe8cf'], sun: { kind: 'sun', color: '#fff1d0', low: true }, clouds: [2, 4, '#fff4ec'], birds: true, terrain: 'hills', ridges: ['#a7a3c4', '#8fae84', '#6d9a5c'], ground: ['#7bb35a', '#4a8a3a'], flowers: ['#ff6b8b', '#ffd23f', '#ffffff', '#b58cff', '#ff9f43'], trees: { kind: 'round', colors: ['#3f7f3a', '#4f9444', '#2f6a30'], count: [4, 9], size: [0.1, 0.2] } },
+    autumn:   { label: 'autumn forest', sky: ['#6aa6d8', '#b7d6ee', '#f1e7d6'], sun: { kind: 'sun', color: '#fff0c8' }, clouds: [2, 5, '#ffffff'], birds: true, terrain: 'hills', ridges: ['#b98a6a', '#a0603a', '#7a4a2a'], water: { color: '#5d86a8', chance: 0.5 }, ground: ['#a8893a', '#6b5220'], trees: { kind: 'round', colors: ['#d9541e', '#f08c24', '#c9352b', '#e8b923', '#8a4b1f'], count: [16, 28], size: [0.08, 0.18] } },
+    winter:   { label: 'snowy winter', sky: ['#8fb0cf', '#c9dbea', '#eef4f9'], sun: { kind: 'sun', color: '#ffffff', dim: true }, clouds: [3, 6, '#f4f7fa'], terrain: 'mountains', ridges: ['#c3cfdc', '#9fb0c3', '#7d8fa5'], snow: '#ffffff', water: { color: '#9fbad3', chance: 0.4 }, ground: ['#f5f8fb', '#d6e1ec'], trees: { kind: 'snowpine', colors: ['#2f4f3f', '#35574a', '#284437'], count: [14, 26], size: [0.06, 0.15] } },
+    desert:   { label: 'desert dunes', sky: ['#4f9be0', '#9fd0f0', '#f7e3c0'], sun: { kind: 'sun', color: '#fff3c4', big: true }, clouds: [0, 2, '#ffffff'], birds: true, terrain: 'dunes', ridges: ['#e0b27a', '#d19a5c', '#b87f45'], ground: ['#e9c58d', '#c99a5b'], trees: { kind: 'cactus', colors: ['#3f7d45', '#4d8f52', '#35683b'], count: [3, 8], size: [0.08, 0.16] } },
+    tropical: { label: 'tropical beach', sky: ['#2d9ce6', '#7fcff5', '#dcf6ff'], sun: { kind: 'sun', color: '#fffbe0' }, clouds: [2, 5, '#ffffff'], birds: true, terrain: 'islands', ridges: ['#5aa37a', '#3f8a62'], ocean: { color: '#35c6d4', deep: '#0c6f9a' }, beach: ['#f3dcaa', '#e0c18a'], trees: { kind: 'palm', colors: ['#2f8f3f', '#3aa34a', '#277a36'], count: [2, 5], size: [0.22, 0.34] } },
+    aurora:   { label: 'northern lights', sky: ['#030612', '#0b1a38', '#12305a'], sun: { kind: 'none' }, stars: true, aurora: ['#3dffb0', '#58e0ff', '#b86bff'], terrain: 'mountains', ridges: ['#1c2b44', '#142238', '#0c1628'], snow: '#9fb4d0', water: { color: '#0c2240', chance: 0.7 }, ground: ['#b9c8da', '#7f93ab'], trees: { kind: 'snowpine', colors: ['#0e2218', '#12291d', '#0a1a12'], count: [12, 22], size: [0.06, 0.15] } },
+    misty:    { label: 'misty valley', sky: ['#9fb6c8', '#c8d6e0', '#e8eef2'], sun: { kind: 'sun', color: '#ffffff', dim: true }, fog: true, terrain: 'mountains', ridges: ['#aab9c6', '#8499ac', '#5d7488'], water: { color: '#7f9bb3', chance: 0.5 }, ground: ['#4f6e56', '#2f4a36'], trees: { kind: 'pine', colors: ['#3a5446', '#2f4a3d', '#445e50'], count: [16, 28], size: [0.06, 0.15] } },
+    spring:   { label: 'spring hills', sky: ['#5bb4ff', '#a8dcff', '#eaf7ff'], sun: { kind: 'sun', color: '#fff8d6' }, clouds: [3, 6, '#ffffff'], birds: true, terrain: 'hills', ridges: ['#9fd18b', '#6fbf5a', '#4fa343'], ground: ['#6cc04f', '#3f8f33'], flowers: ['#ff5c8a', '#ffe14d', '#ffffff', '#7c5cff', '#ff8c42'], trees: { kind: 'round', colors: ['#f7a6c4', '#3f9a3f', '#58b04a', '#ffc6dc'], count: [5, 11], size: [0.1, 0.2] } },
+    golden:   { label: 'golden prairie', sky: ['#3d6db3', '#e8a86b', '#ffd79a', '#fff0cf'], sun: { kind: 'sun', color: '#ffd27a', low: true, big: true }, clouds: [1, 3, '#ffe2b8'], birds: true, terrain: 'hills', ridges: ['#c79a5a', '#b3843f', '#946a2c'], ground: ['#d9ad4f', '#9c7a2b'], trees: { kind: 'round', colors: ['#4b5d2a', '#5c6f30', '#3b4a22'], count: [2, 5], size: [0.12, 0.22] } },
+  };
+  const pickTheme = () => pickFresh(Object.keys(THEMES), 'scene');
+
+  /* detail 2 = full scene, 1 = lighter (fewer stars/trees), 0 = sky, sun, terrain and ground only (smallest SVG). */
+  function buildScene(W, H, detail, key) {
+    const th = THEMES[key], R = Math.random, U = Math.min(W, H);
+    const between = (a, b) => a + R() * (b - a);
+    const grads = [], shapes = [];
+    const lin = (y1, y2, stops) => { const id = 'g' + grads.length; grads.push({ type: 'linear', id, y1, y2, stops }); return 'grad:' + id; };
+    const rad = (cx, cy, r0, r, stops) => { const id = 'g' + grads.length; grads.push({ type: 'radial', id, cx, cy, r0, r, stops }); return 'grad:' + id; };
+    const add = (s) => shapes.push(s);
+    const poly = (pts, fill, op) => add({ t: 'poly', pts, fill, op });
+    const circ = (cx, cy, r, fill, op) => add({ t: 'circle', cx, cy, r, fill, op });
+    const rect = (x, y, w, h, fill, op) => add({ t: 'rect', x, y, w, h, fill, op });
+    const horizon = H * between(0.56, 0.66);
+
+    rect(0, 0, W, H, lin(0, horizon + H * 0.12, th.sky.map((c, i) => [i / (th.sky.length - 1), c, 1])));
+    if (th.stars && detail > 0) {
+      const n = Math.round(W * H / (detail === 2 ? 4000 : 14000));
+      for (let i = 0; i < n; i++) circ(R() * W, R() * horizon * 0.95, U * between(0.0006, 0.0018), '#ffffff', between(0.3, 1));
+    }
+    if (th.aurora && detail > 0) {
+      for (const c of th.aurora) {
+        const top = H * between(0.05, 0.2), band = H * between(0.12, 0.22), amp = H * between(0.03, 0.08), ph = R() * 6, fq = between(1.5, 3.5);
+        const up = [], dn = [];
+        for (let i = 0; i <= 24; i++) {
+          const x = i / 24 * W, y = top + amp * Math.sin(ph + i / 24 * fq * Math.PI) + H * 0.05 * (i / 24);
+          up.push(x, y); dn.unshift(x, y + band * between(0.8, 1.2));
+        }
+        poly(up.concat(dn), lin(top - amp, top + amp + band * 1.3 + H * 0.05, [[0, c, 0], [0.45, c, 0.55], [1, c, 0]]), 0.85);
+      }
+    }
+    const sx = W * between(0.15, 0.85);
+    let sr = 0;
+    if (th.sun.kind !== 'none') {
+      sr = U * (th.sun.big ? between(0.07, 0.1) : between(0.04, 0.065));
+      const sy = th.sun.low ? horizon - H * between(0.04, 0.14) : H * between(0.1, 0.28);
+      rect(0, 0, W, H, rad(sx, sy, sr * 0.4, sr * 4.5, [[0, th.sun.color, th.sun.dim ? 0.35 : 0.6], [1, th.sun.color, 0]]));
+      circ(sx, sy, sr, th.sun.color, th.sun.dim ? 0.85 : 1);
+      if (th.sun.kind === 'moon') for (let i = 0; i < 4; i++) circ(sx + sr * between(-0.5, 0.5), sy + sr * between(-0.5, 0.5), sr * between(0.08, 0.2), '#9aa3b8', 0.35);
+    }
+    if (th.clouds && detail > 0) {
+      const n = rint(th.clouds[0], th.clouds[1]);
+      for (let c = 0; c < n; c++) {
+        const cx = R() * W, cy = H * between(0.07, 0.32), r = W * between(0.03, 0.06), op = between(0.55, 0.9);
+        for (let i = 0; i < 6; i++) circ(cx + (i - 2.5) * r * 0.55, cy + (i % 2 ? -r * 0.18 : 0), r * between(0.5, 0.9), th.clouds[2], op);
+      }
+    }
+    if (th.birds && detail > 0) {
+      for (let i = rint(3, 8); i > 0; i--) {
+        const bx = R() * W, by = H * between(0.1, 0.35), bw = W * between(0.006, 0.011);
+        add({ t: 'line', pts: [bx - bw, by - bw * 0.45, bx, by, bx + bw, by - bw * 0.45], stroke: '#1e1e28', width: Math.max(1, W / 900), op: 0.7 });
+      }
+    }
+
+    th.ridges.forEach((color, l) => {
+      const base = horizon + H * (l * 0.055 - 0.01);
+      if (th.terrain === 'mountains') {
+        const amp = H * [0.3, 0.22, 0.15][l] * between(0.75, 1.2), segs = rint(5, 9) + l * 2;
+        const v = [];
+        for (let i = 0; i <= segs; i++) {
+          const x = i * W / segs;
+          v.push([x, base - amp * between(0.2, 0.6)]);
+          if (i < segs) v.push([x + W / segs * between(0.3, 0.7), base - amp * between(0.6, 1.1)]);
+        }
+        poly([0, H, ...v.flat(), W, H], color);
+        if (th.snow && l < 2) {
+          for (let i = 1; i < v.length - 1; i++) {
+            const [px, py] = v[i], [lx, ly] = v[i - 1], [rx, ry] = v[i + 1];
+            if (py >= ly || py >= ry || base - py < amp * 0.6) continue;
+            const capH = (base - py) * between(0.22, 0.34);
+            const tl = Math.min(1, capH / (ly - py)), tr = Math.min(1, capH / (ry - py));
+            const ax = px + (lx - px) * tl, ay = py + (ly - py) * tl, bx = px + (rx - px) * tr, by = py + (ry - py) * tr;
+            poly([px, py, ax, ay, ax + (bx - ax) * 0.33, ay + (by - ay) * 0.33 - capH * 0.25, ax + (bx - ax) * 0.66, ay + (by - ay) * 0.66 + capH * 0.08, bx, by], th.snow, 0.95);
+          }
+        }
+      } else if (th.terrain === 'islands') {
+        for (let n = rint(1, 2); n > 0; n--) {
+          const cx = W * between(0.1, 0.9), hw = W * between(0.08, 0.18), hh = H * between(0.03, 0.08) * (l ? 0.7 : 1), pts = [];
+          for (let i = 0; i <= 16; i++) { const t = i / 16; pts.push(cx - hw + 2 * hw * t, horizon - hh * Math.pow(Math.sin(Math.PI * t), 0.7)); }
+          poly([cx - hw, horizon + 2, ...pts, cx + hw, horizon + 2], color);
+        }
+      } else {
+        const dunes = th.terrain === 'dunes';
+        const amp = H * [0.16, 0.12, 0.09][l] * between(0.8, 1.2), f1 = between(1, 2.5), f2 = between(3, 6), p1 = R() * 6, p2 = R() * 6, pts = [];
+        for (let i = 0; i <= 48; i++) {
+          const t = i / 48;
+          const k = dunes ? 0.5 + 0.5 * Math.pow(Math.abs(Math.sin(p1 + t * f1 * Math.PI)), 0.8) : 0.55 + 0.3 * Math.sin(p1 + t * f1 * 2 * Math.PI) + 0.15 * Math.sin(p2 + t * f2 * 2 * Math.PI);
+          pts.push(t * W, base - amp * k);
+        }
+        poly([0, H, ...pts, W, H], dunes ? lin(base - amp, base + H * 0.06, [[0, shade(color, 0.12), 1], [1, shade(color, -0.1), 1]]) : color);
+      }
+      if (th.fog && detail > 0) {
+        const top = base - H * 0.12;
+        rect(0, top, W, H * 0.2, lin(top, top + H * 0.2, [[0, '#ffffff', 0], [0.6, '#ffffff', 0.5], [1, '#ffffff', 0.15]]));
+      }
+    });
+
+    const glints = (top, bottom) => {
+      if (!sr || detail === 0) return;
+      const n = detail === 2 ? 40 : 14;
+      for (let i = 0; i < n; i++) { const t = i / n, w = sr * (1 + t * 2.5) * between(0.4, 1.2); rect(sx - w / 2, top + (bottom - top) * t, w, Math.max(1, H / 500), th.sun.color, 0.22); }
+    };
+    let groundY;
+    if (th.ocean) {
+      rect(0, horizon, W, H - horizon, lin(horizon, H, [[0, th.ocean.deep, 1], [1, th.ocean.color, 1]]));
+      glints(horizon, H * 0.82);
+      const shore = H * between(0.78, 0.86), ph = R() * 6, fq = between(1, 3), line = [];
+      for (let i = 0; i <= 32; i++) { const t = i / 32; line.push(t * W, shore + H * 0.02 * Math.sin(ph + t * fq * 2 * Math.PI)); }
+      poly([0, H, ...line, W, H], lin(shore - H * 0.03, H, [[0, th.beach[0], 1], [1, th.beach[1], 1]]));
+      add({ t: 'line', pts: line.map((v, i) => (i % 2 ? v - 1 : v)), stroke: '#ffffff', width: Math.max(1.5, H / 300), op: 0.8 });
+      groundY = (x) => { const i = Math.min(31, Math.floor(x / W * 32)), t = x / W * 32 - i; return line[i * 2 + 1] + (line[i * 2 + 3] - line[i * 2 + 1]) * t; };
+    } else {
+      if (th.water && R() < th.water.chance) {
+        const top = horizon + (H - horizon) * between(0.38, 0.5);
+        rect(0, top, W, H - top, lin(top, H, [[0, th.water.color, 1], [1, shade(th.water.color, -0.35), 1]]));
+        glints(top, H);
+      }
+      const mounds = [];
+      for (let n = rint(1, 3); n > 0; n--) mounds.push([W * between(-0.05, 1.05), H * between(0.97, 1.03), W * between(0.3, 0.55), H * between(0.14, 0.24)]);
+      mounds.forEach(([cx, cy, rx, ry]) => add({ t: 'ellipse', cx, cy, rx, ry, fill: lin(cy - ry, cy, [[0, th.ground[0], 1], [1, th.ground[1], 1]]) }));
+      groundY = (x) => { let best = null; for (const [cx, cy, rx, ry] of mounds) { const t = (x - cx) / rx; if (Math.abs(t) < 1) { const y = cy - ry * Math.sqrt(1 - t * t); if (best === null || y < best) best = y; } } return best; };
+    }
+
+    const drawTree = (kind, x, y, h, color) => {
+      if (kind === 'pine' || kind === 'snowpine') {
+        rect(x - h * 0.04, y - h * 0.16, h * 0.08, h * 0.16, '#3a2718');
+        for (let k = 0; k < 3; k++) {
+          const ty = y - h * 0.16 - k * h * 0.24, w = h * (0.55 - k * 0.13), tip = h * 0.42;
+          poly([x - w / 2, ty, x, ty - tip, x + w / 2, ty], color);
+          if (kind === 'snowpine') poly([x - w * 0.2, ty - tip * 0.6, x, ty - tip, x + w * 0.2, ty - tip * 0.6], '#f4f8fc', 0.95);
+        }
+      } else if (kind === 'round') {
+        rect(x - h * 0.035, y - h * 0.4, h * 0.07, h * 0.4, '#4a3220');
+        const cy = y - h * 0.62, r = h * 0.26;
+        circ(x - r * 0.55, cy + r * 0.2, r * 0.75, shade(color, -0.15));
+        circ(x + r * 0.55, cy + r * 0.2, r * 0.75, shade(color, -0.1));
+        circ(x, cy - r * 0.25, r * 0.85, color);
+        circ(x - r * 0.2, cy - r * 0.4, r * 0.35, shade(color, 0.15), 0.8);
+      } else if (kind === 'palm') {
+        const lean = h * between(-0.25, 0.25), w0 = h * 0.05, w1 = h * 0.025, left = [], right = [];
+        for (let i = 0; i <= 8; i++) { const t = i / 8, cx = x + lean * t * t, cy = y - h * t, w = w0 + (w1 - w0) * t; left.push(cx - w / 2, cy); right.unshift(cx + w / 2, cy); }
+        poly(left.concat(right), '#8a6a45');
+        const tx = x + lean, ty = y - h, L = h * 0.42, n = rint(6, 8);
+        for (let i = 0; i < n; i++) {
+          const a = -Math.PI + (i / (n - 1)) * Math.PI + between(-0.15, 0.15);
+          const P = (t) => [tx + Math.cos(a) * L * t, ty + Math.sin(a) * L * t + L * 0.55 * t * t];
+          const [mx, my] = P(0.5), [ex, ey] = P(1), nx = -Math.sin(a) * L * 0.09, ny = Math.cos(a) * L * 0.09;
+          poly([tx, ty, mx + nx, my + ny, ex, ey, mx - nx, my - ny], shade(color, between(-0.15, 0.1)));
+        }
+        for (let i = 0; i < 3; i++) circ(tx + between(-1, 1) * h * 0.03, ty + h * 0.03, h * 0.025, '#5a3b1e');
+      } else if (kind === 'cactus') {
+        const w = h * 0.16;
+        rect(x - w / 2, y - h, w, h, color); circ(x, y - h, w / 2, color);
+        for (const side of [-1, 1]) {
+          if (R() > 0.8) continue;
+          const ay = y - h * between(0.35, 0.6), aw = w * 0.8, reach = w * between(1.1, 1.6), up = h * between(0.2, 0.35), cx = x + side * (reach - aw / 2);
+          rect(side < 0 ? x - reach : x, ay - aw, reach, aw, color);
+          rect(cx - aw / 2, ay - aw - up, aw, up + aw, color); circ(cx, ay - aw - up, aw / 2, color);
+        }
+        rect(x - w * 0.08, y - h, w * 0.16, h, shade(color, -0.2), 0.5);
+      }
+    };
+    const items = [];
+    const treeN = detail === 0 ? 0 : Math.round(rint(th.trees.count[0], th.trees.count[1]) * (detail === 2 ? 1 : 0.45));
+    for (let tries = 0; tries < treeN * 4 && items.length < treeN; tries++) {
+      const x = R() * W, g = groundY(x);
+      if (g === null || g >= H * 0.99) continue;
+      const y = th.ocean ? g + (H - g) * between(0.1, 0.6) : g + H * 0.01, h = H * between(th.trees.size[0], th.trees.size[1]), color = pick(th.trees.colors);
+      items.push({ y, draw: () => drawTree(th.trees.kind, x, y, h, color) });
+    }
+    if (th.flowers && detail > 0) {
+      for (let i = detail === 2 ? 160 : 40; i > 0; i--) {
+        const x = R() * W, g = groundY(x);
+        if (g === null) continue;
+        const y = g + (H - g) * R() * 0.9, r = U * between(0.004, 0.008), color = pick(th.flowers);
+        items.push({ y, draw: () => { circ(x, y, r, color); if (detail === 2) circ(x, y, r * 0.35, '#ffcf33'); } });
+      }
+    }
+    items.sort((a, b) => a.y - b.y).forEach((it) => it.draw());
+    return { W, H, label: th.label, grads, shapes };
+  }
+
+  function drawScene(ctx, S) {
+    const g = {};
+    for (const d of S.grads) {
+      const cg = d.type === 'linear' ? ctx.createLinearGradient(0, d.y1, 0, d.y2) : ctx.createRadialGradient(d.cx, d.cy, d.r0, d.cx, d.cy, d.r);
+      d.stops.forEach(([o, c, a]) => cg.addColorStop(o, rgba(c, a)));
+      g[d.id] = cg;
+    }
+    for (const s of S.shapes) {
+      ctx.globalAlpha = s.op ?? 1;
+      if (s.t === 'line') {
+        ctx.strokeStyle = s.stroke; ctx.lineWidth = s.width; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(s.pts[0], s.pts[1]);
+        for (let i = 2; i < s.pts.length; i += 2) ctx.lineTo(s.pts[i], s.pts[i + 1]);
+        ctx.stroke(); continue;
+      }
+      ctx.fillStyle = s.fill.startsWith('grad:') ? g[s.fill.slice(5)] : s.fill;
+      ctx.beginPath();
+      if (s.t === 'rect') ctx.rect(s.x, s.y, s.w, s.h);
+      else if (s.t === 'circle') ctx.arc(s.cx, s.cy, s.r, 0, Math.PI * 2);
+      else if (s.t === 'ellipse') ctx.ellipse(s.cx, s.cy, s.rx, s.ry, 0, 0, Math.PI * 2);
+      else { ctx.moveTo(s.pts[0], s.pts[1]); for (let i = 2; i < s.pts.length; i += 2) ctx.lineTo(s.pts[i], s.pts[i + 1]); ctx.closePath(); }
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function sceneSvg(S) {
+    const f = (n) => Math.round(n * 10) / 10, a2 = (n) => Math.round(n * 100) / 100;
+    const o = [`<svg xmlns="http://www.w3.org/2000/svg" width="${S.W}" height="${S.H}" viewBox="0 0 ${S.W} ${S.H}">`, '<defs>'];
+    for (const d of S.grads) {
+      const k = d.type === 'radial' ? d.r0 / d.r : 0;
+      const stops = d.stops.map(([s, c, a]) => `<stop offset="${f((k + s * (1 - k)) * 100)}%" stop-color="${c}" stop-opacity="${a2(a)}"/>`).join('');
+      o.push(d.type === 'linear'
+        ? `<linearGradient id="${d.id}" gradientUnits="userSpaceOnUse" x1="0" y1="${f(d.y1)}" x2="0" y2="${f(d.y2)}">${stops}</linearGradient>`
+        : `<radialGradient id="${d.id}" gradientUnits="userSpaceOnUse" cx="${f(d.cx)}" cy="${f(d.cy)}" r="${f(d.r)}">${stops}</radialGradient>`);
+    }
+    o.push('</defs>');
+    const pts = (p) => { const r = []; for (let i = 0; i < p.length; i += 2) r.push(`${f(p[i])},${f(p[i + 1])}`); return r.join(' '); };
+    const paint = (s) => ` fill="${s.fill.startsWith('grad:') ? `url(#${s.fill.slice(5)})` : s.fill}"${s.op != null && s.op !== 1 ? ` fill-opacity="${a2(s.op)}"` : ''}`;
+    for (const s of S.shapes) {
+      if (s.t === 'rect') o.push(`<rect x="${f(s.x)}" y="${f(s.y)}" width="${f(s.w)}" height="${f(s.h)}"${paint(s)}/>`);
+      else if (s.t === 'circle') o.push(`<circle cx="${f(s.cx)}" cy="${f(s.cy)}" r="${f(s.r)}"${paint(s)}/>`);
+      else if (s.t === 'ellipse') o.push(`<ellipse cx="${f(s.cx)}" cy="${f(s.cy)}" rx="${f(s.rx)}" ry="${f(s.ry)}"${paint(s)}/>`);
+      else if (s.t === 'poly') o.push(`<polygon points="${pts(s.pts)}"${paint(s)}/>`);
+      else o.push(`<polyline points="${pts(s.pts)}" fill="none" stroke="${s.stroke}" stroke-width="${f(s.width)}" stroke-opacity="${a2(s.op)}" stroke-linecap="round"/>`);
+    }
+    return o.join('');
+  }
+
+  /* ---------- SVG: the scene as vectors; padding lives in an XML comment ---------- */
+  function buildSvg(target, ratio) {
+    let W = 1600, H = 1000;
+    if (ratio) {
+      const scale = Math.floor(1600 / Math.max(ratio[0], ratio[1]));
+      W = scale * ratio[0];
+      H = scale * ratio[1];
+    }
+    const key = pickTheme();
+    let lastErr = null;
+    for (const detail of [2, 1, 0]) {
+      const S = buildScene(W, H, detail, key);
+      const body = enc.encode(sceneSvg(S) + '<!--'), tail = enc.encode('-->\n</svg>\n');
+      const L = target - body.length - tail.length;
+      if (L < 0) { lastErr = new TooSmall(body.length + tail.length); continue; }
+      const parts = [body]; pushFill(parts, L, spaceChunk()); parts.push(tail);
+      return { parts, meta: `${W}×${H}${ratio ? ` (${ratio[0]}:${ratio[1]})` : ''} ${S.label} vector scene, ${fmt(body.length)} SVG + ${fmt(L)} padding comment` };
+    }
+    throw lastErr;
+  }
+
+  const DIMS = [[1920,1200],[1600,1000],[1280,800],[1024,640],[800,500],[640,400],[480,300],[320,200],[240,150],[160,100],[96,60],[64,40],[32,20],[16,10]];
+  const BPP = { png: 1.4, jpg: 0.25, jpeg: 0.25, webp: 0.14 };
+  const canvasBlob = (c, mime, q) => new Promise((res, rej) => c.toBlob((b) => b ? res(b) : rej(new Error('Image encoding failed.')), mime, q));
+  function ratioDims(rw, rh) {
+    const dims = [];
+    let scale = Math.floor(1920 / Math.max(rw, rh));
+    while (scale >= 1) {
+      const w = scale * rw, h = scale * rh;
+      if (w >= 8 && h >= 8) dims.push([w, h]);
+      scale = scale > 8 ? Math.floor(scale * 0.8) : scale - 1;
+    }
+    return dims;
+  }
+  async function buildImage(key, type, target, ratio) {
+    const dims = ratio ? ratioDims(ratio[0], ratio[1]) : DIMS;
+    const [mw, mh] = dims[0];
+    const master = document.createElement('canvas'); master.width = mw; master.height = mh;
+    const S = buildScene(mw, mh, 2, pickTheme());
+    drawScene(master.getContext('2d'), S);
+    const r = await encodeAndPad(master, dims, key, type, target, 0.86);
+    const ratioLabel = ratio ? ` (${ratio[0]}:${ratio[1]})` : '';
+    return { parts: r.parts, meta: `${r.picked[0]}×${r.picked[1]} px${ratioLabel} ${S.label} scene, ${fmt(r.blob.size)} image + ${fmt(r.padN)} padding` };
+  }
+  /* Encode the master canvas at the largest listed size that fits, then pad to the exact target. */
+  async function encodeAndPad(master, dims, key, type, target, quality) {
+    let start = dims.findIndex(([w, h]) => w * h * BPP[key] <= target * 0.9); if (start < 0) start = dims.length - 1;
+    let blob = null, picked = null, minSeen = Infinity;
+    for (let i = start; i < dims.length; i++) {
+      const [w, h] = dims[i];
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const cx = c.getContext('2d'); cx.imageSmoothingQuality = 'high'; cx.drawImage(master, 0, 0, w, h);
+      const b = await canvasBlob(c, type.mime, key === 'png' ? undefined : quality);
+      if (b.type !== type.mime) throw new Error(`${type.label} is not supported by this browser. Try PNG or JPEG.`);
+      minSeen = Math.min(minSeen, b.size);
+      if (b.size <= target) { blob = b; picked = [w, h]; break; }
+    }
+    if (!blob) throw new TooSmall(minSeen);
+    const padN = target - blob.size, parts = [];
+    if (key === 'webp' && padN >= 8) {
+      const hdr = new Uint8Array(await blob.slice(0, 12).arrayBuffer());
+      new DataView(hdr.buffer).setUint32(4, target - 8, true);
+      const dataLen = padN - 8, ch = new Uint8Array(8); ch.set([0x50, 0x41, 0x44, 0x20]);
+      new DataView(ch.buffer).setUint32(4, dataLen % 2 ? dataLen - 1 : dataLen, true);
+      parts.push(hdr, blob.slice(12), ch); pushFill(parts, dataLen, randChunk());
+    } else { parts.push(blob); pushFill(parts, padN, randChunk()); }
+    return { parts, blob, picked, padN };
+  }
+  /* A JPEG placed on a US Letter page; padding is the unused stream object, as with the table PDFs. */
+  async function buildImagePdf(master, dims, target) {
+    let lastErr = null;
+    for (const [w, h] of dims) {
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const cx = c.getContext('2d'); cx.imageSmoothingQuality = 'high'; cx.drawImage(master, 0, 0, w, h);
+      const jpeg = await canvasBlob(c, 'image/jpeg', 0.9), bytes = new Uint8Array(await jpeg.arrayBuffer());
+      const dw = 468, dh = Math.round(468 * h / w);
+      const content = `q ${dw} 0 0 ${dh} 72 ${792 - 72 - dh} cm /Im1 Do Q`;
+      const encoded = [];
+      encoded[1] = enc.encode('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
+      encoded[2] = enc.encode('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n');
+      encoded[3] = enc.encode('3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /XObject << /Im1 5 0 R >> >> /Contents 4 0 R >>\nendobj\n');
+      encoded[4] = enc.encode(`4 0 obj\n<< /Length ${content.length} >>\nstream\n${content}\nendstream\nendobj\n`);
+      const head = enc.encode(`5 0 obj\n<< /Type /XObject /Subtype /Image /Width ${w} /Height ${h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${bytes.length} >>\nstream\n`);
+      const tail = enc.encode('\nendstream\nendobj\n');
+      const img = new Uint8Array(head.length + bytes.length + tail.length); img.set(head); img.set(bytes, head.length); img.set(tail, head.length + bytes.length);
+      encoded[5] = img;
+      try { const r = finishPdf(encoded, 6, target); return { parts: r.parts, L: r.L, w, h, jpeg }; } catch (e) { if (!(e instanceof TooSmall)) throw e; lastErr = e; }
+    }
+    throw lastErr;
+  }
+
+  /* ---------- sample identity documents: fictional people, procedural photos, marked SPECIMEN ---------- */
+  const US_STATES = [['AL','Alabama'],['AK','Alaska'],['AZ','Arizona'],['AR','Arkansas'],['CA','California'],['CO','Colorado'],['CT','Connecticut'],['DE','Delaware'],['DC','District of Columbia'],['FL','Florida'],['GA','Georgia'],['HI','Hawaii'],['ID','Idaho'],['IL','Illinois'],['IN','Indiana'],['IA','Iowa'],['KS','Kansas'],['KY','Kentucky'],['LA','Louisiana'],['ME','Maine'],['MD','Maryland'],['MA','Massachusetts'],['MI','Michigan'],['MN','Minnesota'],['MS','Mississippi'],['MO','Missouri'],['MT','Montana'],['NE','Nebraska'],['NV','Nevada'],['NH','New Hampshire'],['NJ','New Jersey'],['NM','New Mexico'],['NY','New York'],['NC','North Carolina'],['ND','North Dakota'],['OH','Ohio'],['OK','Oklahoma'],['OR','Oregon'],['PA','Pennsylvania'],['RI','Rhode Island'],['SC','South Carolina'],['SD','South Dakota'],['TN','Tennessee'],['TX','Texas'],['UT','Utah'],['VT','Vermont'],['VA','Virginia'],['WA','Washington'],['WV','West Virginia'],['WI','Wisconsin'],['WY','Wyoming']];
+  const STATE_CITIES = {
+    CA: ['LOS ANGELES','SAN DIEGO','SACRAMENTO','FRESNO','SAN JOSE'], TX: ['HOUSTON','DALLAS','AUSTIN','SAN ANTONIO','EL PASO'], NY: ['BROOKLYN','ALBANY','BUFFALO','ROCHESTER','QUEENS'],
+    FL: ['MIAMI','TAMPA','ORLANDO','JACKSONVILLE','TALLAHASSEE'], IL: ['CHICAGO','SPRINGFIELD','NAPERVILLE','PEORIA'], PA: ['PHILADELPHIA','PITTSBURGH','HARRISBURG','ALLENTOWN'],
+    OH: ['COLUMBUS','CLEVELAND','CINCINNATI','DAYTON'], GA: ['ATLANTA','SAVANNAH','AUGUSTA','MACON'], NC: ['CHARLOTTE','RALEIGH','DURHAM','GREENSBORO'], MI: ['DETROIT','LANSING','GRAND RAPIDS','ANN ARBOR'],
+    NJ: ['NEWARK','JERSEY CITY','TRENTON','EDISON'], VA: ['RICHMOND','NORFOLK','ARLINGTON','ROANOKE'], WA: ['SEATTLE','SPOKANE','TACOMA','OLYMPIA'], AZ: ['PHOENIX','TUCSON','MESA','SCOTTSDALE'],
+    MA: ['BOSTON','WORCESTER','SPRINGFIELD','CAMBRIDGE'], TN: ['NASHVILLE','MEMPHIS','KNOXVILLE','CHATTANOOGA'], IN: ['INDIANAPOLIS','FORT WAYNE','EVANSVILLE'], MO: ['KANSAS CITY','ST LOUIS','SPRINGFIELD'],
+    MD: ['BALTIMORE','ANNAPOLIS','ROCKVILLE'], WI: ['MILWAUKEE','MADISON','GREEN BAY'], CO: ['DENVER','BOULDER','COLORADO SPRINGS'], MN: ['MINNEAPOLIS','ST PAUL','DULUTH'], OR: ['PORTLAND','SALEM','EUGENE'],
+    NV: ['LAS VEGAS','RENO','HENDERSON'], UT: ['SALT LAKE CITY','PROVO','OGDEN'], DC: ['WASHINGTON'], HI: ['HONOLULU','HILO'], AK: ['ANCHORAGE','JUNEAU','FAIRBANKS'],
+  };
+  const GENERIC_CITIES = ['SPRINGFIELD','RIVERSIDE','FRANKLIN','GREENVILLE','FAIRVIEW','MADISON','GEORGETOWN','CLINTON','SALEM','BRISTOL','LEXINGTON','DOVER'];
+  const STREETS = ['MAPLE','OAK','CEDAR','PINE','WASHINGTON','LAKE','HILL','PARK','SUNSET','RIVER','ELM','WALNUT','HIGHLAND','MEADOW','CHERRY','MAIN','LINCOLN','SPRING'];
+  const CARD_THEMES = [
+    { a: '#1d3f7a', b: '#6f9bd8', c: '#eef3fb' }, { a: '#7a1d2e', b: '#d87f8f', c: '#fbeff1' }, { a: '#1f5c3a', b: '#7fc39a', c: '#eef8f2' }, { a: '#5a3d8a', b: '#a98ad6', c: '#f4f0fb' },
+    { a: '#8a5a1d', b: '#d6a86f', c: '#fbf5ec' }, { a: '#1d6f7a', b: '#7fc6d0', c: '#edf8f9' }, { a: '#3a3a3a', b: '#9a9a9a', c: '#f3f3f3' }, { a: '#8a1d5a', b: '#d67fb0', c: '#fbeff6' },
+  ];
+  /* [ISO-3, country, nationality, issuing authority, cover color, capital] */
+  const COUNTRIES = [
+    ['USA','United States of America','UNITED STATES OF AMERICA','UNITED STATES DEPARTMENT OF STATE','#1d2c5e','WASHINGTON, D.C.'], ['CAN','Canada','CANADIAN / CANADIENNE','PASSPORT PROGRAM','#1d2c5e','OTTAWA'],
+    ['MEX','Mexico','MEXICANA','SECRETARIA DE RELACIONES EXTERIORES','#1f5c3a','CIUDAD DE MEXICO'], ['GBR','United Kingdom','BRITISH CITIZEN','HM PASSPORT OFFICE','#1d2c5e','LONDON'], ['IRL','Ireland','IRISH / EIREANNACH','PASSPORT OFFICE','#6b1e2e','DUBLIN'],
+    ['DEU','Germany','DEUTSCH','STADT BERLIN','#6b1e2e','BERLIN'], ['FRA','France','FRANCAISE','PREFECTURE DE PARIS','#6b1e2e','PARIS'], ['ESP','Spain','ESPANOLA','DGP MADRID','#6b1e2e','MADRID'], ['ITA','Italy','ITALIANA','QUESTURA DI ROMA','#6b1e2e','ROMA'],
+    ['PRT','Portugal','PORTUGUESA','SEF LISBOA','#6b1e2e','LISBOA'], ['NLD','Netherlands','NEDERLANDSE','BURG. VAN AMSTERDAM','#6b1e2e','AMSTERDAM'], ['BEL','Belgium','BELGE','BRUXELLES','#6b1e2e','BRUXELLES'], ['CHE','Switzerland','SCHWEIZ / SUISSE','BERN','#8b1a1a','BERN'],
+    ['AUT','Austria','OSTERREICH','MAGISTRAT WIEN','#6b1e2e','WIEN'], ['SWE','Sweden','SVENSK','POLISMYNDIGHETEN','#6b1e2e','STOCKHOLM'], ['NOR','Norway','NORSK','POLITIET','#6b1e2e','OSLO'], ['DNK','Denmark','DANSK','KOBENHAVN','#6b1e2e','KOBENHAVN'],
+    ['FIN','Finland','SUOMI','POLIISI','#6b1e2e','HELSINKI'], ['POL','Poland','POLSKIE','WOJEWODA MAZOWIECKI','#6b1e2e','WARSZAWA'], ['CZE','Czechia','CESKA REPUBLIKA','PRAHA','#6b1e2e','PRAHA'], ['GRC','Greece','HELLENIC','N.P.C. ATHENS','#6b1e2e','ATHINA'],
+    ['TUR','Turkey','TURK','ANKARA','#6b1e2e','ANKARA'], ['ISR','Israel','ISRAELI','MINISTRY OF INTERIOR','#1d2c5e','JERUSALEM'], ['ARE','United Arab Emirates','EMIRATI','ABU DHABI','#1d2c5e','ABU DHABI'], ['SAU','Saudi Arabia','SAUDI ARABIAN','RIYADH','#1f5c3a','RIYADH'],
+    ['IND','India','INDIAN','PASSPORT OFFICE NEW DELHI','#1d2c5e','NEW DELHI'], ['PAK','Pakistan','PAKISTANI','ISLAMABAD','#1f5c3a','ISLAMABAD'], ['BGD','Bangladesh','BANGLADESHI','DIP DHAKA','#1f5c3a','DHAKA'], ['CHN','China','CHINESE','EXIT & ENTRY ADMINISTRATION','#6b1e2e','BEIJING'],
+    ['JPN','Japan','JAPANESE','MINISTRY OF FOREIGN AFFAIRS','#6b1e2e','TOKYO'], ['KOR','South Korea','REPUBLIC OF KOREA','MINISTRY OF FOREIGN AFFAIRS','#1d2c5e','SEOUL'], ['TWN','Taiwan','REPUBLIC OF CHINA','MINISTRY OF FOREIGN AFFAIRS','#1f5c3a','TAIPEI'], ['PHL','Philippines','FILIPINO','DFA MANILA','#6b1e2e','MANILA'],
+    ['VNM','Vietnam','VIETNAMESE','IMMIGRATION DEPARTMENT','#1f5c3a','HANOI'], ['THA','Thailand','THAI','MINISTRY OF FOREIGN AFFAIRS','#6b1e2e','BANGKOK'], ['IDN','Indonesia','INDONESIAN','JAKARTA','#1f5c3a','JAKARTA'], ['MYS','Malaysia','MALAYSIAN','JIM PUTRAJAYA','#6b1e2e','KUALA LUMPUR'],
+    ['SGP','Singapore','SINGAPORE CITIZEN','ICA SINGAPORE','#8b1a1a','SINGAPORE'], ['AUS','Australia','AUSTRALIAN','AUSTRALIAN PASSPORT OFFICE','#1d2c5e','CANBERRA'], ['NZL','New Zealand','NEW ZEALAND','DIA WELLINGTON','#222222','WELLINGTON'], ['ZAF','South Africa','SOUTH AFRICAN','DEPARTMENT OF HOME AFFAIRS','#1f5c3a','PRETORIA'],
+    ['NGA','Nigeria','NIGERIAN','NIGERIA IMMIGRATION SERVICE','#1f5c3a','ABUJA'], ['KEN','Kenya','KENYAN','NAIROBI','#1d2c5e','NAIROBI'], ['EGY','Egypt','EGYPTIAN','CAIRO','#1f5c3a','CAIRO'], ['BRA','Brazil','BRASILEIRO(A)','POLICIA FEDERAL','#1d2c5e','BRASILIA'],
+    ['ARG','Argentina','ARGENTINA','RENAPER','#1d2c5e','BUENOS AIRES'], ['CHL','Chile','CHILENA','REGISTRO CIVIL','#6b1e2e','SANTIAGO'], ['COL','Colombia','COLOMBIANA','CANCILLERIA BOGOTA','#6b1e2e','BOGOTA'], ['PER','Peru','PERUANA','MIGRACIONES LIMA','#6b1e2e','LIMA'],
+    ['VEN','Venezuela','VENEZOLANA','SAIME','#6b1e2e','CARACAS'], ['JAM','Jamaica','JAMAICAN','PICA KINGSTON','#1d2c5e','KINGSTON'], ['DOM','Dominican Republic','DOMINICANA','DGP SANTO DOMINGO','#1d2c5e','SANTO DOMINGO'], ['GTM','Guatemala','GUATEMALTECA','IGM GUATEMALA','#1d2c5e','GUATEMALA'],
+    ['HND','Honduras','HONDURENA','INM TEGUCIGALPA','#1d2c5e','TEGUCIGALPA'], ['SLV','El Salvador','SALVADORENA','DGME SAN SALVADOR','#1d2c5e','SAN SALVADOR'], ['UKR','Ukraine','UKRAINIAN','KYIV','#1d2c5e','KYIV'], ['ROU','Romania','ROMANA','BUCURESTI','#6b1e2e','BUCURESTI'], ['HUN','Hungary','MAGYAR','BUDAPEST','#6b1e2e','BUDAPEST'],
+  ];
+  const SKIN = ['#f5d5b8', '#e8b998', '#d9a077', '#b87a4f', '#8d5a3b', '#6b4128', '#f1c7a8', '#c68b5b'];
+  const HAIR = ['#1b1b1b', '#3b2a1a', '#5a3b1e', '#8a5a2b', '#b8863b', '#d9b56a', '#6e6e6e', '#a52a2a', '#2a2a2a'];
+  const SHIRTS = ['#2c3e50', '#7f8c8d', '#34495e', '#8e44ad', '#16a085', '#c0392b', '#2980b9', '#27ae60', '#f39c12', '#ffffff', '#1a1a1a', '#d35400'];
+  const PHOTO_BG = [['#dfe7f1', '#b9c7d9'], ['#e9e9e9', '#c9c9c9'], ['#dbe9f5', '#a9c4dd'], ['#f0ece4', '#d5cfc2']];
+  const EYE_HEX = { BRO: '#5a3a1e', BLU: '#3b6fb6', GRN: '#4a7d4a', HAZ: '#8a6a2b', GRY: '#7a7f88' };
+  const ID_MALE = ['James', 'Robert', 'John', 'Michael', 'David', 'William', 'Richard', 'Joseph', 'Thomas', 'Daniel', 'Matthew', 'Anthony', 'Mark', 'Steven', 'Andrew', 'Wei', 'Carlos', 'Omar', 'Aiden', 'Mateo', 'Kevin', 'Brian', 'Jose', 'Ethan'];
+  const ID_FEMALE = ['Mary', 'Patricia', 'Jennifer', 'Linda', 'Elizabeth', 'Barbara', 'Susan', 'Jessica', 'Sarah', 'Karen', 'Lisa', 'Nancy', 'Betty', 'Sandra', 'Ashley', 'Priya', 'Fatima', 'Sofia', 'Chloe', 'Amara', 'Emily', 'Maria', 'Olivia', 'Grace'];
+  const MON = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const addYears = (d, y) => new Date(d.getFullYear() + y, d.getMonth(), d.getDate());
+  const fmtUS = (d) => `${pad2(d.getMonth() + 1)}/${pad2(d.getDate())}/${d.getFullYear()}`;
+  const fmtPass = (d) => `${pad2(d.getDate())} ${MON[d.getMonth()]} ${d.getFullYear()}`;
+  const fmtMrz = (d) => `${String(d.getFullYear()).slice(2)}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}`;
+  const randDate = (from, to) => new Date(from.getTime() + Math.random() * (to.getTime() - from.getTime()));
+  /* Accepts mm/dd/yyyy (also m/d/yyyy, mm-dd-yyyy, yyyy-mm-dd). Returns a Date, null when blank, or undefined when invalid. */
+  function parseUSDate(v) {
+    const s = String(v || '').trim();
+    if (!s) return null;
+    let y, mo, d, m = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/);
+    if (m) { mo = +m[1]; d = +m[2]; y = +m[3]; } else if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) { y = +m[1]; mo = +m[2]; d = +m[3]; } else return undefined;
+    const dt = new Date(y, mo - 1, d);
+    return dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d && y >= 1900 && y <= 2100 ? dt : undefined;
+  }
+  const isoDate = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  function readIdDate(id, label) {
+    const d = parseUSDate($(id).value);
+    if (d === undefined) throw new Error(`${label}: enter a real date as mm/dd/yyyy, or pick one from the calendar.`);
+    return d;
+  }
+  const chars = (n, set) => Array.from({ length: n }, () => pick(set)).join('');
+
+  const ageOn = (dob, on) => { let a = on.getFullYear() - dob.getFullYear(); const md = on.getMonth() - dob.getMonth(); if (md < 0 || (md === 0 && on.getDate() < dob.getDate())) a--; return a; };
+  function idPerson(key, opts) {
+    const today = new Date();
+    let dob = opts.dob || null;
+    if (!dob && opts.age != null) {
+      const turned = new Date(today.getFullYear() - opts.age, today.getMonth(), today.getDate());
+      const earliest = new Date(turned); earliest.setDate(earliest.getDate() - 364);
+      dob = randDate(earliest, turned);
+    }
+    const minIssue = dob ? addYears(dob, key === 'dl' ? 16 : 0) : addYears(today, -4);
+    let issue = opts.issue;
+    if (!issue) {
+      const from = new Date(Math.max(minIssue.getTime(), addYears(today, -4).getTime()));
+      issue = from > today ? today : randDate(from, today);
+    }
+    if (dob && issue < dob) throw new Error('The issue date is before this person was born. Raise the age or move the issue date.');
+    if (key === 'dl' && dob && issue < addYears(dob, 16)) throw new Error('The issue date is before this person turned 16. Raise the age or move the issue date.');
+    const expiry = opts.expiry || addYears(issue, key === 'passport' ? 10 : pick([4, 5, 6, 8]));
+    if (!dob) dob = randDate(addYears(issue, -70), addYears(issue, -21));
+    const age = ageOn(dob, today);
+    const eyesCode = pick(['BRO', 'BRO', 'BLU', 'GRN', 'HAZ', 'GRY']);
+    const feet = rint(age < 16 ? 4 : 5, 6), inches = feet === 4 ? rint(8, 11) : feet === 6 ? rint(0, 4) : rint(0, 11);
+    const L = 'ABCDEFGHJKLMNPRSTUVWXYZ', sex = pick(['M', 'F']);
+    const hair = age >= 65 ? pick(['#d9d9d9', '#eeeeee', '#9a9a9a', '#6e6e6e']) : age >= 50 ? pick(['#6e6e6e', '#3b2a1a', '#1b1b1b', '#b0b0b0']) : pick(HAIR);
+    const style = sex === 'F' ? pick(['long', 'long', 'bun', 'short', 'curly']) : (age >= 60 ? pick(['short', 'bald', 'bald']) : pick(['short', 'short', 'curly', 'bald']));
+    return {
+      sex, first: pick(sex === 'M' ? ID_MALE : ID_FEMALE).toUpperCase(), last: pick(LAST).toUpperCase(), middle: pick(L),
+      dob, issue, expiry, age, eyesCode, hgt: `${feet}'-${pad2(inches)}"`, wgt: `${rint(age < 18 ? 90 : 120, age < 18 ? 160 : 240)} lb`,
+      addr1: `${rint(100, 9999)} ${pick(STREETS)} ${pick(['ST', 'AVE', 'DR', 'LN', 'BLVD', 'WAY', 'CT'])}`,
+      city: pick(STATE_CITIES[opts.state] || GENERIC_CITIES), zip: String(rint(10000, 99999)),
+      dlNo: pick([() => pick(L) + String(rint(1000000, 9999999)), () => String(rint(10000000, 99999999)), () => chars(2, L) + String(rint(100000, 999999)), () => String(rint(100, 999)) + ' ' + String(rint(100, 999)) + ' ' + String(rint(100, 999))])(),
+      cls: pick(['C', 'C', 'C', 'D', 'M']), end: 'NONE', rest: pick(['NONE', 'NONE', 'B', 'A']), donor: Math.random() < 0.5,
+      dd: chars(14, '0123456789ABCDEFGHJKLMNPRSTUVWXYZ'), icn: chars(12, '0123456789'),
+      passNo: pick(L) + String(rint(10000000, 99999999)),
+      portrait: { skin: pick(SKIN), hair, shirt: pick(SHIRTS), bg: pick(PHOTO_BG), eyes: EYE_HEX[eyesCode], style, glasses: Math.random() < (age >= 45 ? 0.55 : 0.2), beard: sex === 'M' && age >= 18 && Math.random() < 0.3 },
+    };
+  }
+
+  const txt = (ctx, s, x, y, size, o = {}) => {
+    const setFont = (z) => { ctx.font = `${o.italic ? 'italic ' : ''}${o.bold ? 'bold ' : ''}${z}px ${o.font || 'Arial, Helvetica, sans-serif'}`; };
+    setFont(size);
+    if (o.fit) while (size > 10 && ctx.measureText(s).width > o.fit) setFont(--size);
+    ctx.fillStyle = o.color || '#111'; ctx.textAlign = o.align || 'left'; ctx.textBaseline = 'alphabetic';
+    if (o.maxWidth) ctx.fillText(s, x, y, o.maxWidth); else ctx.fillText(s, x, y);
+    return ctx.measureText(s).width;
+  };
+  function rrect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+  function guilloche(ctx, x0, y0, W, H, color, alpha) {
+    ctx.save(); ctx.globalAlpha = alpha; ctx.strokeStyle = color; ctx.lineWidth = 1;
+    for (let i = 0; i < 30; i++) {
+      ctx.beginPath(); const ph = i * 0.37, amp = H * 0.07, base = y0 + H * (i / 29);
+      for (let x = x0; x <= x0 + W; x += 6) ctx.lineTo(x, base + Math.sin(x / 95 + ph) * amp + Math.sin(x / 41 + ph * 2) * amp * 0.35);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  function drawPortrait(ctx, x, y, w, h, p) {
+    ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+    const bg = ctx.createLinearGradient(x, y, x, y + h); bg.addColorStop(0, p.bg[0]); bg.addColorStop(1, p.bg[1]); ctx.fillStyle = bg; ctx.fillRect(x, y, w, h);
+    const cx = x + w / 2, R = w * 0.21, cy = y + h * 0.40, PI2 = Math.PI * 2;
+    const el = (ex, ey, rx, ry, fill, rot = 0) => { ctx.fillStyle = fill; ctx.beginPath(); ctx.ellipse(ex, ey, rx, ry, rot, 0, PI2); ctx.fill(); };
+    if (p.style === 'long') { ctx.fillStyle = p.hair; ctx.beginPath(); ctx.moveTo(cx - R * 1.05, cy - R * 0.2); ctx.quadraticCurveTo(cx - R * 1.35, cy + R * 1.4, cx - R * 1.1, cy + R * 2.3); ctx.lineTo(cx + R * 1.1, cy + R * 2.3); ctx.quadraticCurveTo(cx + R * 1.35, cy + R * 1.4, cx + R * 1.05, cy - R * 0.2); ctx.closePath(); ctx.fill(); }
+    ctx.fillStyle = p.shirt; ctx.beginPath(); ctx.moveTo(x + w * 0.02, y + h); ctx.quadraticCurveTo(x + w * 0.06, y + h * 0.74, cx - w * 0.2, y + h * 0.70); ctx.lineTo(cx + w * 0.2, y + h * 0.70); ctx.quadraticCurveTo(x + w * 0.94, y + h * 0.74, x + w * 0.98, y + h); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = shade(p.shirt === '#ffffff' ? '#dddddd' : p.shirt, -0.25); ctx.beginPath(); ctx.moveTo(cx - w * 0.09, y + h * 0.70); ctx.lineTo(cx, y + h * 0.80); ctx.lineTo(cx + w * 0.09, y + h * 0.70); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = shade(p.skin, -0.12); ctx.fillRect(cx - R * 0.4, cy + R * 0.7, R * 0.8, R * 0.85);
+    el(cx - R * 0.92, cy + R * 0.08, R * 0.16, R * 0.2, p.skin); el(cx + R * 0.92, cy + R * 0.08, R * 0.16, R * 0.2, p.skin);
+    el(cx, cy, R * 0.92, R * 1.12, p.skin);
+    if (p.beard) { ctx.fillStyle = p.hair; ctx.globalAlpha = 0.75; ctx.beginPath(); ctx.ellipse(cx, cy + R * 0.62, R * 0.72, R * 0.55, 0, 0, Math.PI); ctx.fill(); ctx.globalAlpha = 1; }
+    ctx.fillStyle = p.hair;
+    if (p.style === 'short' || p.style === 'long' || p.style === 'bun') { ctx.beginPath(); ctx.ellipse(cx, cy - R * 0.5, R * 0.98, R * 0.68, 0, Math.PI, PI2); ctx.fill(); ctx.fillRect(cx - R * 0.98, cy - R * 0.5, R * 0.14, R * 0.7); ctx.fillRect(cx + R * 0.84, cy - R * 0.5, R * 0.14, R * 0.7); }
+    if (p.style === 'bun') el(cx, cy - R * 1.25, R * 0.36, R * 0.3, p.hair);
+    if (p.style === 'curly') for (let i = 0; i < 9; i++) { const a = Math.PI + (i / 8) * Math.PI; el(cx + Math.cos(a) * R * 0.95, cy - R * 0.35 + Math.sin(a) * R * 0.95, R * 0.28, R * 0.28, p.hair); }
+    const eyeY = cy - R * 0.08;
+    for (const dx of [-0.38, 0.38]) {
+      el(cx + dx * R, eyeY, R * 0.17, R * 0.1, '#fff'); el(cx + dx * R, eyeY, R * 0.085, R * 0.085, p.eyes); el(cx + dx * R, eyeY, R * 0.04, R * 0.04, '#111'); el(cx + dx * R - R * 0.025, eyeY - R * 0.03, R * 0.015, R * 0.015, '#fff');
+      ctx.strokeStyle = p.hair === '#d9b56a' ? '#8a6a3b' : p.hair; ctx.lineWidth = R * 0.05; ctx.beginPath(); ctx.moveTo(cx + dx * R - R * 0.2, eyeY - R * 0.26); ctx.quadraticCurveTo(cx + dx * R, eyeY - R * 0.34, cx + dx * R + R * 0.2, eyeY - R * 0.26); ctx.stroke();
+    }
+    ctx.strokeStyle = shade(p.skin, -0.28); ctx.lineWidth = R * 0.035; ctx.beginPath(); ctx.moveTo(cx - R * 0.02, cy + R * 0.02); ctx.lineTo(cx - R * 0.12, cy + R * 0.36); ctx.quadraticCurveTo(cx, cy + R * 0.46, cx + R * 0.1, cy + R * 0.36); ctx.stroke();
+    ctx.strokeStyle = '#a0524d'; ctx.lineWidth = R * 0.045; ctx.beginPath(); ctx.moveTo(cx - R * 0.26, cy + R * 0.66); ctx.quadraticCurveTo(cx, cy + R * 0.84, cx + R * 0.26, cy + R * 0.66); ctx.stroke();
+    if (p.glasses) { ctx.strokeStyle = '#222'; ctx.lineWidth = R * 0.04; for (const dx of [-0.38, 0.38]) { ctx.beginPath(); ctx.ellipse(cx + dx * R, eyeY, R * 0.27, R * 0.22, 0, 0, PI2); ctx.stroke(); } ctx.beginPath(); ctx.moveTo(cx - R * 0.11, eyeY); ctx.lineTo(cx + R * 0.11, eyeY); ctx.stroke(); }
+    ctx.restore();
+  }
+  function signature(ctx, first, last, x, y, w, color) {
+    const cap = (s) => s[0] + s.slice(1).toLowerCase();
+    ctx.save(); ctx.fillStyle = color; ctx.strokeStyle = color; ctx.textAlign = 'left';
+    ctx.font = `italic ${Math.round(w * 0.15)}px "Segoe Script", "Brush Script MT", "Lucida Handwriting", cursive`;
+    ctx.fillText(`${cap(first)} ${cap(last)}`, x, y, w);
+    ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y + 12); ctx.bezierCurveTo(x + w * 0.3, y + 24, x + w * 0.6, y - 2, x + w * 0.95, y + 10); ctx.stroke();
+    ctx.restore();
+  }
+  function star(ctx, cx, cy, r, color) {
+    ctx.save(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(cx, cy, r * 1.35, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = color; ctx.beginPath();
+    for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r; ctx.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); }
+    ctx.closePath(); ctx.fill(); ctx.restore();
+  }
+  function pdf417(ctx, x, y, w, h) {
+    const mod = 4, rowH = 12; ctx.fillStyle = '#111';
+    ctx.fillRect(x, y, mod * 4, h); ctx.fillRect(x + mod * 5, y, mod, h); ctx.fillRect(x + mod * 7, y, mod, h);
+    ctx.fillRect(x + w - mod * 4, y, mod * 4, h); ctx.fillRect(x + w - mod * 6, y, mod, h); ctx.fillRect(x + w - mod * 8, y, mod, h);
+    for (let ry = y; ry + rowH <= y + h; ry += rowH) { let cx = x + mod * 10; while (cx < x + w - mod * 13) { const bw = mod * rint(1, 4); if (Math.random() < 0.5) ctx.fillRect(cx, ry, bw, rowH - 1); cx += bw; } }
+  }
+  function barcode1d(ctx, x, y, w, h) { ctx.fillStyle = '#111'; let cx = x; while (cx < x + w) { const bw = rint(2, 6); if (Math.random() < 0.55) ctx.fillRect(cx, y, bw, h); cx += bw; } }
+  function specimen(ctx, W, H) {
+    ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(-0.42); ctx.globalAlpha = 0.13;
+    txt(ctx, 'SPECIMEN', 0, H * 0.1, Math.round(W * 0.15), { bold: true, color: '#c0392b', align: 'center' }); ctx.restore();
+    txt(ctx, 'SAMPLE DOCUMENT FOR SOFTWARE TESTING  -  NOT A GOVERNMENT ID', W / 2, H - 11, 14, { bold: true, color: '#8a2a2a', align: 'center' });
+  }
+  function cardBase(ctx, W, H, theme) {
+    const m = 30, cw = W - 2 * m, ch = H - 2 * m;
+    ctx.fillStyle = '#d6dae0'; ctx.fillRect(0, 0, W, H);
+    ctx.save(); rrect(ctx, m, m, cw, ch, 44); ctx.clip();
+    const bg = ctx.createLinearGradient(m, m, m + cw, m + ch); bg.addColorStop(0, '#ffffff'); bg.addColorStop(1, theme.c); ctx.fillStyle = bg; ctx.fillRect(m, m, cw, ch);
+    guilloche(ctx, m, m, cw, ch, theme.b, 0.28);
+    return { m, cw, ch };
+  }
+  function paintCardFront(ctx, W, H, key, p, st, theme) {
+    const [code, stateName] = st, { m, cw } = cardBase(ctx, W, H, theme);
+    const hb = ctx.createLinearGradient(m, m, m + cw, m); hb.addColorStop(0, theme.a); hb.addColorStop(1, theme.b); ctx.fillStyle = hb; ctx.fillRect(m, m, cw, 118);
+    const right = m + cw - 40, docTitle = key === 'dl' ? 'DRIVER LICENSE' : 'IDENTIFICATION CARD';
+    const titleW = txt(ctx, docTitle, right, m + 62, 34, { bold: true, color: '#fff', align: 'right' });
+    txt(ctx, 'USA', right, m + 102, 26, { bold: true, color: '#ffe08a', align: 'right' });
+    const starX = right - titleW - 46;
+    star(ctx, starX, m + 60, 24, '#f4c542');
+    txt(ctx, stateName.toUpperCase(), m + 40, m + 80, 60, { bold: true, color: '#fff', fit: starX - 50 - (m + 40) });
+
+    const px = m + 40, py = m + 150, pw = 330, ph = 410;
+    ctx.fillStyle = '#fff'; ctx.fillRect(px - 6, py - 6, pw + 12, ph + 12);
+    drawPortrait(ctx, px, py, pw, ph, p.portrait);
+    signature(ctx, p.first, p.last, px, py + ph + 78, pw, '#1c2a4a');
+
+    const ghostX = right - 130, ghostY = m + 505;
+    const A = px + pw + 50, B = A + 290, C = A + 500, END = ghostX - 20;
+    const field = (lbl, val, x, y, size, maxRight, color = '#111') => {
+      const lw = txt(ctx, lbl, x, y, 15, { bold: true, color: theme.a });
+      txt(ctx, val, x + lw + 8, y, size, { bold: true, color, fit: maxRight - (x + lw + 8) });
+    };
+    let y = m + 192;
+    field(key === 'dl' ? '4d DLN' : '4d ID', p.dlNo, A, y, 40, right); y += 54;
+    field('3 DOB', fmtUS(p.dob), A, y, 30, B - 20); field('15 SEX', p.sex, B, y, 30, right); y += 46;
+    field('4a ISS', fmtUS(p.issue), A, y, 27, B - 20); field('4b EXP', fmtUS(p.expiry), B, y, 27, right, '#b3261e'); y += 58;
+    field('1', p.last, A, y, 32, right); y += 42;
+    field('2', `${p.first} ${p.middle}`, A, y, 32, right); y += 50;
+    field('8', p.addr1, A, y, 25, right); y += 33;
+    txt(ctx, `${p.city}, ${code} ${p.zip}`, A + 18, y, 25, { bold: true, fit: right - (A + 18) }); y += 54;
+    if (key === 'dl') { field('9 CLASS', p.cls, A, y, 27, B - 20); field('9a END', p.end, B, y, 27, C - 20); field('12 REST', p.rest, C, y, 27, END); y += 44; }
+    field('16 HGT', p.hgt, A, y, 27, B - 20); field('18 EYES', p.eyesCode, B, y, 27, C - 20); field('17 WGT', p.wgt, C, y, 27, END); y += 44;
+    if (p.donor) txt(ctx, 'ORGAN DONOR', A, y, 20, { bold: true, color: '#b3261e' });
+    ctx.save(); ctx.globalAlpha = 0.45; drawPortrait(ctx, ghostX, ghostY, 130, 165, p.portrait); ctx.restore();
+    txt(ctx, `5 DD ${p.dd}`, right, ghostY + 192, 16, { color: '#333', align: 'right' });
+    txt(ctx, `ISS ${fmtUS(p.issue)}`, right, ghostY + 214, 14, { color: '#555', align: 'right' });
+    ctx.restore();
+    specimen(ctx, W, H);
+  }
+  function paintCardBack(ctx, W, H, key, p, st, theme) {
+    const [code, stateName] = st, { m, cw, ch } = cardBase(ctx, W, H, theme);
+    ctx.fillStyle = theme.a; ctx.fillRect(m, m, cw, 26);
+    pdf417(ctx, m + 40, m + 60, cw - 80, 240);
+    let y = m + 350;
+    txt(ctx, `${stateName.toUpperCase()}  ${key === 'dl' ? 'DRIVER LICENSE' : 'IDENTIFICATION CARD'}`, m + 40, y, 22, { bold: true, color: theme.a }); y += 36;
+    txt(ctx, `${key === 'dl' ? 'DLN' : 'ID'} ${p.dlNo}    ICN ${p.icn}    EXP ${fmtUS(p.expiry)}`, m + 40, y, 20, { bold: true }); y += 44;
+    const lines = key === 'dl'
+      ? ['CLASS C: Any single vehicle with a GVWR of 26,000 lbs or less, or any such vehicle towing a vehicle not in excess of 10,000 lbs GVWR.', 'CLASS D: Passenger vehicles and light trucks.    CLASS M: Motorcycles.', 'RESTRICTIONS: A - Corrective lenses    B - Outside mirror    C - Daylight driving only    D - Automatic transmission', 'ENDORSEMENTS: H - Hazardous materials    N - Tank vehicle    P - Passenger transport    S - School bus']
+      : ['This card is issued for identification purposes only and does not grant driving privileges.', 'Report a lost or stolen card to the issuing office. Alteration or misuse is prohibited by law.', 'Replacement cards may be requested online, by mail, or in person at any customer service center.'];
+    for (const l of lines) { txt(ctx, l, m + 40, y, 17, { color: '#222', maxWidth: cw - 80 }); y += 28; }
+    y += 10;
+    txt(ctx, `${p.donor ? 'ORGAN DONOR' : 'DONOR STATUS NOT INDICATED'}    VETERAN: ${Math.random() < 0.2 ? 'YES' : 'NO'}`, m + 40, y, 17, { bold: true, color: '#333' }); y += 26;
+    txt(ctx, `Visit dmv.${code.toLowerCase()}.gov or call 1-800-555-01${rint(10, 99)} for information.`, m + 40, y, 16, { color: '#444' });
+    barcode1d(ctx, m + 40, m + ch - 150, 520, 70);
+    txt(ctx, p.icn, m + 40, m + ch - 60, 18, { color: '#333', font: 'Consolas, "Courier New", monospace' });
+    ctx.save(); ctx.globalAlpha = 0.35; drawPortrait(ctx, m + cw - 190, m + ch - 260, 140, 175, p.portrait); ctx.restore();
+    txt(ctx, `${p.last}, ${p.first}`, m + cw - 40, m + ch - 60, 18, { bold: true, color: '#333', align: 'right' });
+    ctx.restore();
+    specimen(ctx, W, H);
+  }
+  function mrzLines(p, iso) {
+    const clean = (s) => s.toUpperCase().replace(/[^A-Z]/g, '<');
+    const val = (ch) => (ch === '<' ? 0 : ch >= 'A' ? ch.charCodeAt(0) - 55 : Number(ch));
+    const chk = (s) => { const w = [7, 3, 1]; let t = 0; for (let i = 0; i < s.length; i++) t += val(s[i]) * w[i % 3]; return String(t % 10); };
+    const padR = (s, n) => (s + '<'.repeat(n)).slice(0, n);
+    const l1 = padR(`P<${iso}${clean(p.last)}<<${clean(p.first)}<${p.middle}`, 44);
+    const no = padR(p.passNo, 9), dob = fmtMrz(p.dob), exp = fmtMrz(p.expiry), pers = '<'.repeat(14);
+    const body = `${no}${chk(no)}${iso}${dob}${chk(dob)}${p.sex}${exp}${chk(exp)}${pers}${chk(pers)}`;
+    return [l1, body + chk(body.slice(0, 10) + body.slice(13, 20) + body.slice(21, 43))];
+  }
+  function paintPassport(ctx, W, H, p, c) {
+    const [iso, country, nationality, authority, color, capital] = c;
+    const m = 30, pw = W - 2 * m, ph = H - 2 * m;
+    ctx.fillStyle = '#e6e3dc'; ctx.fillRect(0, 0, W, H);
+    ctx.save(); rrect(ctx, m, m, pw, ph, 22); ctx.clip();
+    const bg = ctx.createLinearGradient(m, m, m + pw, m + ph); bg.addColorStop(0, '#fdfcf8'); bg.addColorStop(1, '#f1efe6'); ctx.fillStyle = bg; ctx.fillRect(m, m, pw, ph);
+    guilloche(ctx, m, m, pw, ph, color, 0.16);
+    ctx.fillStyle = color; ctx.beginPath(); ctx.arc(m + 100, m + 100, 62, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(m + 100, m + 100, 50, 0, Math.PI * 2); ctx.stroke();
+    txt(ctx, iso, m + 100, m + 112, 34, { bold: true, color: '#fff', align: 'center' });
+    const lbl = (l, x, y) => txt(ctx, l, x, y, 14, { color: '#666' });
+    const rx = m + pw - 40, colType = rx - 560, colCode = rx - 440, colNo = rx - 300;
+    txt(ctx, country.toUpperCase(), m + 190, m + 82, 44, { bold: true, color, fit: colType - 30 - (m + 190) });
+    const passW = txt(ctx, 'PASSPORT', m + 190, m + 132, 32, { bold: true, color: '#333' });
+    txt(ctx, 'PASSEPORT  ·  PASAPORTE', m + 190 + passW + 18, m + 132, 18, { color: '#666', fit: colType - 30 - (m + 190 + passW + 18) });
+    lbl('Type / Type', colType, m + 62); txt(ctx, 'P', colType, m + 100, 30, { bold: true });
+    lbl('Code / Code', colCode, m + 62); txt(ctx, iso, colCode, m + 100, 30, { bold: true });
+    lbl('Passport No. / No du passeport', colNo, m + 62); txt(ctx, p.passNo, colNo, m + 100, 36, { bold: true, color: '#8a1a1a', fit: rx - colNo });
+    const px = m + 60, py = m + 200, pwid = 330, phei = 420;
+    ctx.fillStyle = '#fff'; ctx.fillRect(px - 6, py - 6, pwid + 12, phei + 12);
+    drawPortrait(ctx, px, py, pwid, phei, p.portrait);
+    const c1 = px + pwid + 60, c2 = c1 + 470;
+    const F = (label, value, x, y, maxRight, size = 28) => { lbl(label, x, y); txt(ctx, value, x, y + 34, size, { bold: true, fit: maxRight - x }); };
+    let y = m + 200;
+    F('Surname / Nom', p.last, c1, y, c2 - 30); F('Sex / Sexe', p.sex, c2, y, rx); y += 84;
+    F('Given Names / Prenoms', `${p.first} ${p.middle}`, c1, y, c2 - 30); F('Date of expiration / Date d\'expiration', fmtPass(p.expiry), c2, y, rx); y += 84;
+    F('Nationality / Nationalite', nationality, c1, y, c2 - 30); y += 84;
+    F('Date of birth / Date de naissance', fmtPass(p.dob), c1, y, c2 - 30); F('Date of issue / Date de delivrance', fmtPass(p.issue), c2, y, rx); y += 84;
+    F('Place of birth / Lieu de naissance', iso === 'USA' ? `${p.city}, ${pick(US_STATES)[1].toUpperCase()}, U.S.A.` : `${capital}, ${country.toUpperCase()}`, c1, y, rx, 26); y += 84;
+    F('Authority / Autorite', authority, c1, y, rx, 24);
+    lbl('Holder\'s signature / Signature du titulaire', px, py + phei + 40);
+    signature(ctx, p.first, p.last, px, py + phei + 100, pwid, '#1c2a4a');
+    const [l1, l2] = mrzLines(p, iso), pitch = (pw - 80) / 44, my = m + ph - 96;
+    ctx.fillStyle = '#fff'; ctx.fillRect(m, my - 48, pw, 130);
+    ctx.font = '38px "OCR A Extended", "OCR B", Consolas, "Courier New", monospace'; ctx.fillStyle = '#111'; ctx.textAlign = 'left';
+    for (let i = 0; i < 44; i++) { ctx.fillText(l1[i], m + 40 + i * pitch, my); ctx.fillText(l2[i], m + 40 + i * pitch, my + 52); }
+    ctx.restore();
+    specimen(ctx, W, H);
+  }
+
+  async function buildIdDocument(key, target) {
+    const fmtKey = $('idFormat').value;
+    const issue = readIdDate('idIssue', 'Issue date'), expiry = readIdDate('idExpiry', 'Expiration date'), dob = readIdDate('idDob', 'Date of birth');
+    if (issue && expiry && expiry <= issue) throw new Error('The expiration date must be after the issue date.');
+    if (dob && dob > new Date()) throw new Error('The date of birth cannot be in the future.');
+    const ageRaw = $('idAge').value.trim();
+    const age = dob ? ageOn(dob, new Date()) : ageRaw === '' ? null : parseInt(ageRaw, 10);
+    if (!dob && ageRaw !== '' && !(age >= 1 && age <= 100)) throw new Error('Enter an age from 1 to 100, or leave it blank.');
+    if (key === 'dl' && age !== null && age < 16) throw new Error("A driver's license needs age 16 or older. Use a State ID for a younger person.");
+    const st = key === 'passport' ? null : (US_STATES.find((s) => s[0] === $('idState').value) || US_STATES[4]);
+    const country = key === 'passport' ? (COUNTRIES.find((c) => c[0] === $('idCountry').value) || COUNTRIES[0]) : null;
+    const side = key === 'passport' ? 'front' : $('idSide').value;
+    const p = idPerson(key, { issue, expiry, age: dob ? null : age, dob, state: st && st[0] });
+    const [mw, mh] = key === 'passport' ? [1400, 985] : [1350, 850];
+    const master = document.createElement('canvas'); master.width = mw; master.height = mh;
+    const ctx = master.getContext('2d');
+    if (key === 'passport') paintPassport(ctx, mw, mh, p, country);
+    else if (side === 'back') paintCardBack(ctx, mw, mh, key, p, st, CARD_THEMES[US_STATES.indexOf(st) % CARD_THEMES.length]);
+    else paintCardFront(ctx, mw, mh, key, p, st, CARD_THEMES[US_STATES.indexOf(st) % CARD_THEMES.length]);
+    const dims = []; for (let s = 1; s >= 0.12; s *= 0.8) dims.push([Math.round(mw * s), Math.round(mh * s)]);
+    const what = key === 'passport' ? `${country[1]} passport data page` : `${st[1]} ${key === 'dl' ? "driver's license" : 'state ID'}, ${side}`;
+    const who = `${p.first} ${p.last}, age ${p.age}, born ${fmtUS(p.dob)}, issued ${fmtUS(p.issue)}, expires ${fmtUS(p.expiry)}`;
+    if (fmtKey === 'pdf') {
+      const r = await buildImagePdf(master, dims, target);
+      return { parts: r.parts, meta: `${what} — ${who} — ${r.w}×${r.h} JPEG on a Letter page + ${fmt(r.L)} padding`, previewBlob: r.jpeg };
+    }
+    const r = await encodeAndPad(master, dims, fmtKey, ID_FORMATS[fmtKey], target, 0.9);
+    return { parts: r.parts, meta: `${what} — ${who} — ${r.picked[0]}×${r.picked[1]} px, ${fmt(r.blob.size)} image + ${fmt(r.padN)} padding` };
+  }
+  const idFileTag = (key) => (key === 'passport' ? `Passport_${$('idCountry').value}` : `${key === 'dl' ? 'DriverLicense' : 'StateID'}_${$('idState').value}_${$('idSide').value}`);
+
+  /* ---------- UI ---------- */
+  function fmt(n) {
+    const u = ['bytes', 'KB', 'MB', 'GB']; let i = 0, v = n;
+    while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+    return i === 0 ? `${n.toLocaleString()} bytes` : `${v.toFixed(v >= 100 ? 0 : 2)} ${u[i]}`;
+  }
+  function sizeLabel(value, unit) {
+    let s = String(value);
+    if (s.includes('.')) s = s.replace(/0+$/, '').replace(/\.$/, '');
+    return `${s.replace('.', 'p')}${unit}`;
+  }
+  /* "4.9", "4.9 MB", "5.2kb" and "5,2 KB" are all accepted. A unit typed in the box overrides the dropdown. */
+  function readSize() {
+    const typed = $('sizeValue').value.trim();
+    const raw = typed.includes(',') && !typed.includes('.') ? typed.replace(',', '.') : typed.replace(/,/g, '');
+    const m = raw.match(/^(\d*\.?\d+)\s*(bytes|byte|kb|mb|gb|b)?$/i);
+    if (!m) return null;
+    const value = parseFloat(m[1]);
+    if (!(value > 0)) return null;
+    let unit = $('sizeUnit').value;
+    if (m[2]) {
+      const u = m[2].toLowerCase();
+      unit = u === 'gb' ? 'GB' : u === 'mb' ? 'MB' : u === 'kb' ? 'KB' : 'B';
+    }
+    return { value, unit };
+  }
+  function bytesFor(value, unit) {
+    if (unit === 'B') return Math.round(value);
+    const k = $('decimalUnits').checked ? 1000 : 1024;
+    const factor = unit === 'KB' ? k : unit === 'MB' ? k * k : k * k * k;
+    return Math.round(value * factor);
+  }
+  function refreshSizeHint() {
+    const s = readSize();
+    $('sizeHint').textContent = s
+      ? `${sizeLabel(s.value, '').replace('p', '.')} ${s.unit === 'B' ? 'bytes' : s.unit} = ${bytesFor(s.value, s.unit).toLocaleString()} bytes`
+      : 'Enter a size such as 4.9 or 5.2 KB.';
+  }
+  function setStatus(text, cls, busy) {
+    const s = $('status'); s.className = 'status' + (cls ? ' ' + cls : '');
+    s.innerHTML = (busy ? '<span class="spinner"></span>' : '') + `<span>${text}</span>`;
+  }
+  const nextFrame = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
+
+  const history = [];
+  let current = null;
+
+  /* Running inside a preview frame (SharePoint / OneDrive viewer)? That frame blocks plugins, popups, and downloads. */
+  const framed = (() => { try { return window.self !== window.top; } catch { return true; } })();
+  const canOpenSelf = /^https?:/.test(location.href);
+  if (framed) {
+    $('frameBanner').hidden = false;
+    if (canOpenSelf) $('openFullBtn').href = location.href;
+    else $('openFullBtn').hidden = true;
+  }
+
+  const hasSavePicker = typeof window.showSaveFilePicker === 'function';
+  if (hasSavePicker && !framed) $('saveAsBtn').hidden = false;
+
+  function clickAnchor(doc, url, name, target) {
+    const a = doc.createElement('a');
+    a.href = url;
+    if (target) a.target = target;
+    else a.download = name;
+    doc.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+  function clickFromParent(url, name, target) {
+    if (!framed) return false;
+    try { clickAnchor(window.top.document, url, name, target); return true; }
+    catch { return false; }
+  }
+  function loadInFullWindow(url, name) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_top';
+    if (name) a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+  function showViewer(blob, name, mime) {
+    let overlay = $('viewer');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'viewer';
+      overlay.className = 'viewer';
+      overlay.innerHTML = '<div class="bar"><strong id="viewerTitle"></strong><span><button type="button" class="btn primary" id="viewerDownload">Download</button> <button type="button" class="btn secondary" id="viewerClose">Close</button></span></div><div class="stage" id="viewerStage"></div>';
+      document.body.appendChild(overlay);
+      $('viewerClose').addEventListener('click', () => overlay.remove());
+      $('viewerDownload').addEventListener('click', () => current && downloadFile(current.blob, current.name, current.type.mime));
+    }
+    $('viewerTitle').textContent = name;
+    const stage = $('viewerStage');
+    stage.innerHTML = '';
+    if (mime.startsWith('image/')) {
+      const img = new Image();
+      img.src = URL.createObjectURL(blob);
+      img.alt = name;
+      stage.appendChild(img);
+    } else if (current && current.preview) {
+      renderPaper(stage, current.preview);
+    } else {
+      blob.slice(0, 12000).text().then((text) => {
+        const pre = document.createElement('pre');
+        pre.style.margin = '16px';
+        pre.textContent = text;
+        stage.appendChild(pre);
+      });
+    }
+  }
+  function downloadFile(blob, name, mime) {
+    const url = URL.createObjectURL(blob);
+    if (clickFromParent(url, name, '')) { setStatus('Download started: ' + name, 'ok'); return; }
+    try { clickAnchor(document, url, name, ''); } catch { /* sandbox */ }
+    if (!framed) { setStatus('Download started: ' + name, 'ok'); return; }
+    loadInFullWindow(url, name);
+    showViewer(blob, name, mime);
+    setStatus('SharePoint blocked the download in this preview. The file is open in the full window — press Ctrl+S to save it, then Back to return. It is also shown over this page.', 'ok');
+  }
+  function openFile(blob, name, mime) {
+    const url = URL.createObjectURL(blob);
+    if (clickFromParent(url, name, '_blank')) return;
+    const child = window.open(url, '_blank');
+    if (child) return;
+    try { clickAnchor(document, url, name, '_blank'); } catch { /* sandbox */ }
+    if (!framed) return;
+    // This preview frame refuses new tabs. Load the file as the whole browser window instead.
+    loadInFullWindow(url, '');
+    showViewer(blob, name, mime);
+    setStatus('SharePoint will not open a new tab here, so the file is shown over this page. If it also replaced the window, press Back to return.', 'ok');
+  }
+  async function saveWithPicker(blob, name, type) {
+    try {
+      const handle = await window.showSaveFilePicker({ suggestedName: name, types: [{ description: type.label, accept: { [type.mime]: ['.' + type.ext] } }] });
+      const writable = await handle.createWritable(); await writable.write(blob); await writable.close();
+      setStatus(`Saved ${name}.`, 'ok');
+    } catch (err) {
+      if (err && err.name === 'AbortError') return;
+      downloadFile(blob, name, type.mime);
+    }
+  }
+  function renderPaper(box, preview) {
+    const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+    const head = preview.headers.map((h) => `<th>${esc(h)}</th>`).join('');
+    const body = preview.rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('');
+    const extra = preview.total > preview.rows.length ? `<p class="more">Showing the first ${preview.rows.length} of ${preview.total} records. The downloaded file contains the full document.</p>` : '';
+    box.innerHTML = `<div class="paper" style="--accent:${/^#[0-9A-F]{6}$/i.test(preview.accent || '') ? preview.accent : '#222'}"><h3>${esc(preview.title)}</h3><p class="line">${esc(preview.subtitle)}</p><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>${extra}</div>`;
+  }
+  async function showPreview(blob, type) {
+    const box = $('preview'); box.innerHTML = '';
+    const url = current.url;
+    if (current.previewBlob) { const img = new Image(); img.src = URL.createObjectURL(current.previewBlob); img.alt = 'Generated document preview'; box.appendChild(img); return; }
+    if (type.kind === 'image') {
+      if (type.ext === 'svg' && blob.size > 20 * CHUNK) { box.innerHTML = '<div class="empty">SVG is too large to preview inline — download it to open.</div>'; return; }
+      const img = new Image(); img.src = url; img.alt = 'Generated image preview'; box.appendChild(img); return;
+    }
+    if (current.preview) { renderPaper(box, current.preview); return; }
+    const text = await blob.slice(0, 1800).text();
+    const pre = document.createElement('pre'); pre.textContent = text + (blob.size > 1800 ? '\n…' : ''); box.appendChild(pre);
+  }
+  function renderHistory() {
+    $('historyCard').hidden = history.length === 0;
+    $('historyBody').innerHTML = history.map((h, i) => `
+      <tr><td>${h.name}</td><td>${h.type}</td><td>${h.size.toLocaleString()} bytes (${fmt(h.size)})</td><td>${h.ms} ms</td>
+      <td><a href="#" data-i="${i}">Download again</a></td></tr>`).join('');
+  }
+  $('historyBody').addEventListener('click', (e) => {
+    const a = e.target.closest('a[data-i]'); if (!a) return;
+    e.preventDefault(); const h = history[Number(a.dataset.i)]; downloadFile(h.blob, h.name, h.mime);
+  });
+
+  async function generate() {
+    const key = $('fileType').value, baseType = TYPES[key];
+    const isId = baseType.kind === 'iddoc';
+    const type = isId ? { ...ID_FORMATS[$('idFormat').value], label: `${baseType.label} (${$('idFormat').value.toUpperCase()})` } : baseType;
+    const size = readSize();
+    if (!size) { setStatus('Enter a size such as 4.9 MB or 5.2 KB.', 'err'); return; }
+    const { value, unit } = size;
+    if (unit !== 'B') $('sizeUnit').value = unit;
+    const target = bytesFor(value, unit);
+    if (target > MAX_BYTES) { setStatus('Browsers cannot build files above 4 GB. Choose a smaller size.', 'err'); return; }
+    const pages = Math.min(200, Math.max(1, parseInt($('pdfPages').value, 10) || 1));
+    let name = $('fileName').value.trim() || (isId ? `Sample_${idFileTag(key)}_${sizeLabel(value, unit)}` : `TestFile_${sizeLabel(value, unit)}_${type.ext.toUpperCase()}`);
+    name = name.replace(/[\\/:*?"<>|]+/g, '_');
+    if (!name.toLowerCase().endsWith('.' + type.ext)) name += '.' + type.ext;
+
+    $('generateBtn').disabled = true;
+    setStatus(target > 512 * CHUNK ? `Building ${fmt(target)} — large files take a few seconds…` : `Building ${fmt(target)} ${type.label}…`, '', true);
+    await nextFrame();
+    const t0 = performance.now();
+    try {
+      const ratio = (key === 'svg' || type.kind === 'image') ? parseRatio($('ratio').value) : null;
+      let built;
+      if (isId) built = await buildIdDocument(key, target);
+      else if (key === 'svg') built = buildSvg(target, ratio);
+      else if (type.kind === 'image') built = await buildImage(key, type, target, ratio);
+      else if (key === 'pdf') built = buildPdf(target, pages);
+      else if (key === 'docx') built = buildDocx(target);
+      else if (key === 'doc') built = buildDoc(target);
+      else built = key === 'txt' ? buildTxt(target) : key === 'csv' ? buildCsv(target) : buildJson(target);
+      setStatus('Assembling file…', '', true); await nextFrame();
+      const blob = new Blob(built.parts, { type: type.mime });
+      const ms = Math.round(performance.now() - t0);
+      if (current) URL.revokeObjectURL(current.url);
+      current = { url: URL.createObjectURL(blob), blob, name, type, rows: built.rows, preview: built.preview, previewBlob: built.previewBlob };
+      window.__tfgLast = current;
+      const exact = blob.size === target;
+      $('meta').hidden = false;
+      $('meta').innerHTML = `
+        <dt>File name</dt><dd>${name}</dd>
+        <dt>Type</dt><dd>${type.label} (${type.mime})</dd>
+        <dt>Exact size</dt><dd>${blob.size.toLocaleString()} bytes = ${sizeLabel(value, ' ' + (unit === 'B' ? 'bytes' : unit)).replace('p', '.')}${exact ? '' : ` <span style="color:var(--warn)">(requested ${target.toLocaleString()})</span>`}</dd>
+        <dt>Contents</dt><dd>${built.meta}</dd>
+        <dt>Build time</dt><dd>${ms} ms</dd>`;
+      $('actions').hidden = false;
+      await showPreview(blob, type);
+      history.unshift({ name, type: type.label, size: blob.size, ms, url: current.url, blob, mime: type.mime });
+      if (history.length > 12) history.pop();
+      renderHistory();
+      setStatus(exact ? `Ready: ${name} (${blob.size.toLocaleString()} bytes) in ${ms} ms.` : `Built ${blob.size.toLocaleString()} bytes (requested ${target.toLocaleString()}).`, exact ? 'ok' : 'warn');
+      if ($('autoDownload').checked) downloadFile(blob, name, type.mime);
+    } catch (err) {
+      console.error(err);
+      setStatus(err.message || 'Something went wrong while generating the file.', 'err');
+    } finally {
+      $('generateBtn').disabled = false;
+    }
+  }
+
+  $('generateBtn').addEventListener('click', generate);
+  $('downloadBtn').addEventListener('click', () => current && downloadFile(current.blob, current.name, current.type.mime));
+  $('saveAsBtn').addEventListener('click', () => current && saveWithPicker(current.blob, current.name, current.type));
+  $('openBtn').addEventListener('click', () => current && openFile(current.blob, current.name, current.type.mime));
+  $('presets').addEventListener('click', (e) => { const b = e.target.closest('.chip'); if (!b) return; $('sizeValue').value = b.dataset.size; $('sizeUnit').value = b.dataset.unit; refreshSizeHint(); });
+  $('sizeValue').addEventListener('input', refreshSizeHint);
+  $('sizeUnit').addEventListener('change', refreshSizeHint);
+  $('decimalUnits').addEventListener('change', refreshSizeHint);
+  refreshSizeHint();
+  function parseRatio(value) {
+    if (!value) return null;
+    const [w, h] = value.split(':').map(Number);
+    return w > 0 && h > 0 ? [w, h] : null;
+  }
+  US_STATES.forEach(([c, n]) => $('idState').add(new Option(`${n} (${c})`, c))); $('idState').value = 'CA';
+  COUNTRIES.slice().sort((a, b) => a[1].localeCompare(b[1])).forEach(([c, n]) => $('idCountry').add(new Option(n, c))); $('idCountry').value = 'USA';
+  const toggleOptions = () => {
+    const key = $('fileType').value, isId = TYPES[key].kind === 'iddoc';
+    $('pdfPagesWrap').hidden = key !== 'pdf';
+    $('idOptions').hidden = !isId;
+    $('ratioWrap').hidden = isId;
+    $('idStateWrap').hidden = key === 'passport';
+    $('idSideWrap').hidden = key === 'passport';
+    $('idCountryWrap').hidden = key !== 'passport';
+  };
+  $('fileType').addEventListener('change', toggleOptions); toggleOptions();
+
+  function checkIdDate(id) {
+    const el = $(id), hint = $(id + 'Hint'), d = parseUSDate(el.value);
+    el.classList.toggle('invalid', d === undefined);
+    hint.classList.toggle('err', d === undefined);
+    if (d === undefined) hint.textContent = el.value.replace(/\D/g, '').length < 8 ? 'Keep typing: mm/dd/yyyy' : 'Not a real date. Use mm/dd/yyyy.';
+    else if (!d) hint.textContent = id === 'idDob' ? 'Leave blank to use Age, or a random age.' : 'Leave blank for a realistic random date.';
+    else hint.textContent = id === 'idDob' ? `Age ${ageOn(d, new Date())} today` : d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    return d;
+  }
+  document.querySelectorAll('.datefield').forEach((wrap) => {
+    const text = wrap.querySelector('input[type="text"]'), picker = wrap.querySelector('.datepick'), btn = wrap.querySelector('.calbtn');
+    text.addEventListener('input', (e) => {
+      if (e.inputType && e.inputType.startsWith('delete')) { checkIdDate(text.id); return; }
+      const digits = text.value.replace(/\D/g, '').slice(0, 8);
+      if (/^\d{4}-/.test(text.value)) { checkIdDate(text.id); return; }
+      text.value = digits.length > 4 ? `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}` : digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits;
+      checkIdDate(text.id);
+    });
+    text.addEventListener('blur', () => { const d = parseUSDate(text.value); if (d) text.value = fmtUS(d); checkIdDate(text.id); });
+    btn.addEventListener('click', () => {
+      const d = parseUSDate(text.value);
+      picker.value = d ? isoDate(d) : '';
+      if (text.id === 'idDob') picker.max = isoDate(new Date());
+      try { picker.showPicker(); } catch { picker.style.pointerEvents = 'auto'; picker.focus(); picker.click(); }
+    });
+    picker.addEventListener('change', () => {
+      picker.style.pointerEvents = 'none';
+      const d = parseUSDate(picker.value);
+      if (d) { text.value = fmtUS(d); text.dispatchEvent(new Event('change')); }
+      checkIdDate(text.id);
+    });
+    checkIdDate(text.id);
+  });
+  const syncAgeFromDob = () => { const d = parseUSDate($('idDob').value); if (d) $('idAge').value = String(ageOn(d, new Date())); };
+  $('idDob').addEventListener('input', syncAgeFromDob);
+  $('idDob').addEventListener('change', syncAgeFromDob);
+  $('idAge').addEventListener('input', () => {
+    const d = parseUSDate($('idDob').value);
+    if (d && String(ageOn(d, new Date())) !== $('idAge').value.trim()) { $('idDob').value = ''; checkIdDate('idDob'); }
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches('input')) generate(); });
+})();
+</script>
+</body>
+</html>
