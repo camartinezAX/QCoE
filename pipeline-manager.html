@@ -3144,7 +3144,8 @@
             'Enrollment': null,
             'OutSystems': null,
             'UFB Direct': null,
-            'ULP': null
+            'ULP': null,
+            'Other': null
         },
         '03 API': {
             'OLB API': null,
@@ -3727,7 +3728,9 @@
         const env = String(p.env || '').trim();
         const testType = String(p.testType || '').trim() || 'Regression';
         const feature = String(p.feature || '').trim();
-        if (!repoName || !platform || !brand || !env || !testType || !feature) return '';
+        const isOtherWebBrand = String(brand).toLowerCase() === 'other';
+        if (!repoName || !platform || !brand || !testType || !feature) return '';
+        if (!isOtherWebBrand && !env) return '';
 
         // Skip orchestrators (feature catalog actions are not intended to rename orchestrator workflows)
         if (testType === 'Orchestrator' || feature === 'Orchestrators') return '';
@@ -3747,13 +3750,16 @@
 
         // Monorepo Playwright (Axos.QE.Web)
         if (repoName === 'Axos.QE.Web' || isWebMonorepoPipeline(p)) {
-            const teamKey = (brand === 'OLB 3.0') ? 'OLB3' : brand;
             const fKey = feature.replace(/\s+/g, '');
             const suffix = suffixFromFeatureDetail(p.featureDetail);
             const sKey = suffix ? suffix.replace(/\s+/g, '') : '';
             const tKey = testType.replace(/\s+/g, '');
-            const includeOlbPrefix = /^Web_[^_]+_(DEV|QA|STG|UAT|PROD)-OLB_/i.test(String(p.name || '').trim());
             const featureBase = sKey ? `${fKey}_${sKey}` : `${fKey}`;
+            if (isOtherWebBrand) {
+                return `Web_Other_${featureBase}_${tKey}-Playwright`;
+            }
+            const teamKey = (brand === 'OLB 3.0') ? 'OLB3' : brand;
+            const includeOlbPrefix = /^Web_[^_]+_(DEV|QA|STG|UAT|PROD)-OLB_/i.test(String(p.name || '').trim());
             const featureStr = includeOlbPrefix ? `OLB_${featureBase}` : featureBase;
             return `Web_${teamKey}_${env}-${featureStr}_${tKey}-Playwright`;
         }
@@ -4045,11 +4051,98 @@ ${os.map(n => `- ${n}`).join('\n')}
 
     const TEST_TYPES = ['Regression', 'Sanity', 'Smoke', 'Health Check', 'Orchestrator'];
 
-    const WEB_MONOREPO_TEAMS = ['Enrollment', 'OutSystems', 'OLB 3.0'];
+    const WEB_MONOREPO_TEAMS = ['Enrollment', 'OutSystems', 'OLB 3.0', 'Other'];
+    const WEB_OTHER_MONOREPO_PROJECT_DIR = 'projects';
+    const WEB_MONOREPO_OTHER_TEST_TYPES = ['OnDemand', 'Smoke', 'Sanity', 'Regression'];
+
+    function isWebOtherMonorepoBrand(brand) {
+        return String(brand || '').trim().toLowerCase() === 'other';
+    }
+
+    function isWebOtherMonorepoFormActive() {
+        if (String(document.getElementById('fRepo')?.value || '').trim() !== 'Axos.QE.Web') return false;
+        if (isWebOtherMonorepoBrand(document.getElementById('fBrand')?.value)) return true;
+        const generated = String(getGeneratedName() || '').trim();
+        return /^Web_Other_/i.test(generated);
+    }
+
+    function isWebOtherMonorepoProjectDir(projectDir) {
+        return String(projectDir || '').trim().replace(/\/+$/, '') === WEB_OTHER_MONOREPO_PROJECT_DIR;
+    }
+
+    function webMonorepoOtherTestTypeOptions(selected) {
+        const sel = String(selected || 'OnDemand');
+        return WEB_MONOREPO_OTHER_TEST_TYPES.map(t => `<option value="${t}" ${sel === t ? 'selected' : ''}>${t}</option>`).join('');
+    }
+
+    function syncWebMonorepoTeamDependentFields(brand, featureHint) {
+        if (String(document.getElementById('fRepo')?.value || '').trim() !== 'Axos.QE.Web') return;
+        const isOther = isWebOtherMonorepoBrand(brand);
+        const envEl = document.getElementById('fEnv');
+        const testTypeEl = document.getElementById('fTestType');
+        const featureEl = document.getElementById('fFeature');
+        const projectDirEl = document.getElementById('fProjectDir');
+
+        if (envEl) {
+            if (isOther) {
+                envEl.innerHTML = '<option value="ANY" selected>ANY</option>';
+                envEl.value = 'ANY';
+                envEl.disabled = true;
+            } else {
+                envEl.disabled = false;
+                const cur = String(envEl.value || '').trim();
+                envEl.innerHTML = '<option value="">Select...</option>' +
+                    ENVIRONMENTS.map(e => `<option value="${e}" ${cur === e ? 'selected' : ''}>${e}</option>`).join('');
+                if (cur === 'ANY') envEl.value = '';
+            }
+        }
+
+        if (testTypeEl) {
+            const cur = String(testTypeEl.value || '').trim();
+            if (isOther) {
+                const pick = WEB_MONOREPO_OTHER_TEST_TYPES.includes(cur) ? cur : 'OnDemand';
+                testTypeEl.innerHTML = '<option value="">Select...</option>' + webMonorepoOtherTestTypeOptions(pick);
+            } else {
+                const pick = ['Regression', 'Sanity', 'Smoke', 'Orchestrator'].includes(cur) ? cur : '';
+                testTypeEl.innerHTML = '<option value="">Select...</option>' +
+                    ['Regression', 'Sanity', 'Smoke', 'Orchestrator'].map(t =>
+                        `<option value="${t}" ${pick === t ? 'selected' : ''}>${t}</option>`
+                    ).join('');
+            }
+        }
+
+        if (featureEl) {
+            const hint = typeof featureHint === 'string' ? featureHint : String(featureEl.value || '').trim();
+            if (isOther) {
+                const feat = hint || 'Testomatio';
+                featureEl.innerHTML = `<option value="${escapeHtml(feat)}" selected>${escapeHtml(feat)}</option>`;
+            } else {
+                featureEl.innerHTML = '<option value="">Select...</option>' + renderWebFeatureOptions(brand, hint || 'Login');
+            }
+        }
+
+        if (projectDirEl) {
+            if (isOther) {
+                projectDirEl.value = WEB_OTHER_MONOREPO_PROJECT_DIR;
+                projectDirEl.dataset.autoComputed = '1';
+                projectDirEl.dataset.lastComputed = WEB_OTHER_MONOREPO_PROJECT_DIR;
+                delete projectDirEl.dataset.userEdited;
+            } else if (isWebOtherMonorepoProjectDir(projectDirEl.value)) {
+                const feat = typeof featureHint === 'string' ? featureHint : String(featureEl?.value || 'Login').trim();
+                const computed = computeWebMonorepoProjectDir(brand, feat || 'Login');
+                projectDirEl.value = computed;
+                projectDirEl.dataset.autoComputed = '1';
+                projectDirEl.dataset.lastComputed = computed;
+                delete projectDirEl.dataset.userEdited;
+            }
+        }
+    }
 
     function computeWebMonorepoProjectDir(team, feature) {
         const t = String(team || '').trim();
         const f = String(feature || '').trim();
+
+        if (t === 'Other') return WEB_OTHER_MONOREPO_PROJECT_DIR;
 
         if (t === 'Enrollment') return 'projects/Axos.Enr.Web';
         if (t === 'Crypto') return 'projects/Axos.Crypto.Web';
@@ -4073,7 +4166,7 @@ ${os.map(n => `- ${n}`).join('\n')}
     }
 
     function webMonoProjectLabelFromDir(projectDir) {
-        const dir = String(projectDir || '').toLowerCase();
+        const dir = String(projectDir || '').trim().replace(/\/+$/, '').toLowerCase();
         if (dir.includes('axos.olb_3.0.web')) return 'OLB 3.0';
         if (dir.includes('axos.enr.web')) return 'Enrollment';
         if (dir.includes('axos.outsys.web')) return 'OutSystems';
@@ -4081,6 +4174,7 @@ ${os.map(n => `- ${n}`).join('\n')}
     }
 
     function isValidWebMonorepoProjectDir(projectDir) {
+        if (isWebOtherMonorepoProjectDir(projectDir)) return isWebOtherMonorepoFormActive();
         return !!webMonoProjectLabelFromDir(projectDir);
     }
 
@@ -4113,13 +4207,14 @@ ${os.map(n => `- ${n}`).join('\n')}
     }
 
     function getWebMonorepoTeamFromFilename(filename) {
-        const m = String(filename || '').match(/^Web_(Enrollment|OutSystems|Crypto|OLB3)_/i);
+        const m = String(filename || '').match(/^Web_(Enrollment|OutSystems|Crypto|OLB3|Other)_/i);
         if (!m) return '';
         const raw = m[1].toLowerCase();
         if (raw === 'enrollment') return 'Enrollment';
         if (raw === 'outsystems') return 'OutSystems';
         if (raw === 'crypto') return 'Crypto';
         if (raw === 'olb3') return 'OLB 3.0';
+        if (raw === 'other') return 'Other';
         return '';
     }
 
@@ -4136,8 +4231,12 @@ ${os.map(n => `- ${n}`).join('\n')}
 
     function resolveWebMonorepoBsTeam(p) {
         if (!p) return '';
-        const fnTeam = getWebMonorepoTeamFromFilename(String(p?.filename || ''));
+        const fn = String(p?.filename || '');
+        if (/^web_other_/i.test(fn) || isWebOtherMonorepoBrand(p?.brand)) return 'Other';
+        const fnTeam = getWebMonorepoTeamFromFilename(fn);
         const dirTeam = webMonoProjectLabelFromDir(String(p?.projectDir || ''));
+        if (fnTeam === 'Other') return 'Other';
+        if (isWebOtherMonorepoProjectDir(p?.projectDir) && isWebOtherMonorepoBrand(p?.brand)) return 'Other';
         if (fnTeam && dirTeam) return fnTeam === dirTeam ? fnTeam : '';
         if (fnTeam) return fnTeam;
         if (dirTeam) return dirTeam;
@@ -4146,10 +4245,12 @@ ${os.map(n => `- ${n}`).join('\n')}
 
     function getWebMonorepoProjectDirTeamMismatch() {
         if (String(document.getElementById('fRepo')?.value || '').trim() !== 'Axos.QE.Web') return '';
+        if (isWebOtherMonorepoBrand(document.getElementById('fBrand')?.value)) return '';
         const projectDir = String(document.getElementById('fProjectDir')?.value || '').trim();
         const dirTeam = webMonoProjectLabelFromDir(projectDir);
         const ctx = getWebMonorepoFormBsCtx();
         const fnTeam = getWebMonorepoTeamFromFilename(ctx.filename || '');
+        if (fnTeam === 'Other') return '';
         if (!dirTeam || !fnTeam || dirTeam === fnTeam) return '';
         return `Project Directory (${dirTeam}) does not match workflow name (${fnTeam})`;
     }
@@ -4389,7 +4490,7 @@ ${os.map(n => `- ${n}`).join('\n')}
     function isWebMonorepoPipeline(p) {
         if (!p) return false;
         const fn = String(p.filename || '').toLowerCase();
-        return /^web_(enrollment|outsystems|crypto|olb3)_/.test(fn) && fn.includes('-playwright');
+        return /^web_(enrollment|outsystems|crypto|olb3|other)_/.test(fn) && fn.includes('-playwright');
     }
     function getWebMonorepoTeam(p) {
         if (!p) return null;
@@ -4398,16 +4499,18 @@ ${os.map(n => `- ${n}`).join('\n')}
         if (dir.includes('axos.enr.web')) return 'Enrollment';
         if (dir.includes('axos.outsys.web')) return 'OutSystems';
         const fn = String(p.filename || '');
-        const m = fn.match(/^Web_(Enrollment|OutSystems|Crypto|OLB3)_/i);
+        const m = fn.match(/^Web_(Enrollment|OutSystems|Crypto|OLB3|Other)_/i);
         if (m) {
             const raw = m[1].toLowerCase();
             if (raw === 'enrollment') return 'Enrollment';
             if (raw === 'outsystems') return 'OutSystems';
             if (raw === 'crypto') return 'Crypto';
             if (raw === 'olb3') return 'OLB 3.0';
+            if (raw === 'other') return 'Other';
         }
         if (p.brand) {
             const b = String(p.brand).toLowerCase();
+            if (b === 'other') return 'Other';
             if (b.includes('enr') || b.includes('enrollment')) return 'Enrollment';
             if (b.includes('outsys') || b.includes('outsystems')) return 'OutSystems';
             if (b.includes('crypto')) return 'Crypto';
@@ -5206,6 +5309,68 @@ ${os.map(n => `- ${n}`).join('\n')}
                         }
                     }
                 };
+                // Auto-heal Web_Other_*-Playwright.yml entries that may have been cached by an
+                // older parser (which fell through to the legacy Testim branch, stripping -Playwright,
+                // setting testType='Regression', runTarget='local', tunnel='false', and leaving
+                // env/feature/projectDir blank).
+                let healedWebOther = false;
+                const backfillWebOtherPipelines = (p) => {
+                    if (!p) return;
+                    const fnRaw = String(p.filename || p.name || '').trim();
+                    if (!/^Web_Other_(.+)-Playwright(?:\.yml)?$/i.test(fnRaw)) return;
+                    const ensureYml = /\.yml$/i.test(fnRaw) ? fnRaw : `${fnRaw}.yml`;
+                    try {
+                        const parsed = parseFilename(ensureYml);
+                        if (!parsed) return;
+                        const wasLegacyParse =
+                            p.name !== parsed.name ||
+                            p.brand !== 'Other' ||
+                            p.env !== 'ANY' ||
+                            !p.feature ||
+                            !p.projectDir ||
+                            p.testType !== parsed.testType ||
+                            Boolean(p.grid) ||
+                            p.branch === 'UDB - API and Web';
+                        p.filename = parsed.filename;
+                        p.name = parsed.name;
+                        p.repo = 'Axos.QE.Web';
+                        p.platform = '02 Web';
+                        p.brand = 'Other';
+                        p.env = 'ANY';
+                        p.feature = parsed.feature;
+                        p.featureDetail = parsed.featureDetail;
+                        p.testType = parsed.testType;
+                        if (!p.projectDir) p.projectDir = parsed.projectDir || 'projects';
+                        if (p.grep === '@T00000000') {
+                            p.grep = '';
+                            healedWebOther = true;
+                        }
+                        if (wasLegacyParse) {
+                            healedWebOther = true;
+                            p.runTarget = 'browserstack';
+                            p.localBrowser = p.localBrowser || 'chromium';
+                            p.parallel = '1';
+                            p.retries = '1';
+                            p.tunnel = 'true';
+                            p.bsRandomBrowser = 'true';
+                            p.pwVideo = '1';
+                            p.pwHeadless = '1';
+                            p.runnerStrategy = 'group';
+                            p.runnerGroup = 'axos-gh-qe-testim';
+                            p.runnerLabel = 'AUTO';
+                            p.runnerLabelLinux = 'AUTO';
+                            p.runnerLabelWindows = 'AUTO';
+                            delete p.grid;
+                            delete p.branch;
+                            delete p.testSuite;
+                            delete p.baseUrl;
+                            delete p.project;
+                            delete p.token;
+                            delete p.timeoutMin;
+                            delete p.browserTimeout;
+                        }
+                    } catch { /* ignore */ }
+                };
                 // Auto-heal missing Web monorepo fields from filename conventions (best-effort).
                 const backfillWebMonorepoDefaults = (p) => {
                     if (!p) return;
@@ -5218,8 +5383,10 @@ ${os.map(n => `- ${n}`).join('\n')}
                         const keys = [
                             'brand', 'env', 'feature', 'featureDetail', 'testType',
                             'grep', 'parallel', 'retries', 'runTarget', 'localBrowser',
+                            'tunnel', 'bsRandomBrowser',
                             'pwVideo', 'pwHeadless',
                             'projectDir',
+                            'runnerStrategy', 'runnerGroup',
                             'runnerLabel', 'customRunnerLabel',
                             'runnerLabelLinux', 'customRunnerLabelLinux',
                             'runnerLabelWindows', 'customRunnerLabelWindows',
@@ -5278,6 +5445,9 @@ ${os.map(n => `- ${n}`).join('\n')}
                 (pipelines || []).forEach(backfillWebMonorepoWorkflowRenames);
                 (savedSnapshot || []).forEach(backfillWebMonorepoWorkflowRenames);
                 (yamlBaselineSnapshot || []).forEach(backfillWebMonorepoWorkflowRenames);
+                (pipelines || []).forEach(backfillWebOtherPipelines);
+                (savedSnapshot || []).forEach(backfillWebOtherPipelines);
+                (yamlBaselineSnapshot || []).forEach(backfillWebOtherPipelines);
                 (pipelines || []).forEach(backfillWebMonorepoDefaults);
                 (savedSnapshot || []).forEach(backfillWebMonorepoDefaults);
                 (yamlBaselineSnapshot || []).forEach(backfillWebMonorepoDefaults);
@@ -5294,7 +5464,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                 (pipelines || []).forEach(migrateRetiredMobileWindowsRunners);
                 (savedSnapshot || []).forEach(migrateRetiredMobileWindowsRunners);
                 (yamlBaselineSnapshot || []).forEach(migrateRetiredMobileWindowsRunners);
-                if (migratedMobileWindowsRunners) {
+                if (migratedMobileWindowsRunners || healedWebOther) {
                     try {
                         localStorage.setItem(STORAGE_KEY, JSON.stringify(pipelines));
                         savedSnapshot = JSON.parse(JSON.stringify(pipelines || []));
@@ -5855,6 +6025,33 @@ ${os.map(n => `- ${n}`).join('\n')}
                         for (const pp of noSuitePipelines) { html += pipelineTreeNode(pp, 52); }
 
                         html += `</div></div>`;
+                    } else if (brandLower === 'other') {
+                        html += `<div class="tree-node">
+                        <div class="tree-row" onclick="toggleTree(this, '${brandKey}')" style="padding-left:32px;">
+                            <span class="tree-arrow${brandOpen ? ' expanded' : ''}" id="arrow-${brandKey}">&#9654;</span>
+                            <span class="tree-icon">&#128193;</span>
+                            <span class="tree-label">${brandName}</span>
+                            ${brandPipelines.length ? `<span class="tree-count">${brandPipelines.length}</span>` : ''}
+                        </div>
+                        <div class="tree-children${brandOpen ? ' open' : ''}" id="children-${brandKey}">`;
+
+                        const otherFeatures = [...new Set(brandPipelines.map(p => p.feature).filter(Boolean))];
+                        for (const ef of otherFeatures) {
+                            const efPipelines = brandPipelines.filter(p => p.feature === ef);
+                            const efKey = `${brandKey}__${ef}`;
+                            html += `<div class="tree-node">
+                                <div class="tree-row${selectedFolder === efKey ? ' selected' : ''}" onclick="selectFolder('${efKey}')" style="padding-left:52px;">
+                                    <span class="tree-arrow hidden">&#9654;</span>
+                                    <span class="tree-icon">&#128196;</span>
+                                    <span class="tree-label">${escapeHtml(formatFeatureLabelForUi(ef))}</span>
+                                    <span class="tree-count">${efPipelines.length}</span>
+                                </div>
+                            </div>`;
+                        }
+                        const noFeatOther = brandPipelines.filter(p => !p.feature);
+                        for (const pp of noFeatOther) { html += pipelineTreeNode(pp, 52); }
+
+                        html += `</div></div>`;
                     } else {
                         html += `<div class="tree-node">
                         <div class="tree-row" onclick="toggleTree(this, '${brandKey}')" style="padding-left:32px;">
@@ -6251,9 +6448,11 @@ ${os.map(n => `- ${n}`).join('\n')}
             }
 
             const isMobileFolder = parts[0] === '01 Mobile';
-            if (isMobileFolder) {
+            const isOtherBrand = String(parts[1] || '').toLowerCase() === 'other';
+            if (isMobileFolder || isOtherBrand) {
                 if (parts[1]) {
-                    filtered = filtered.filter(p => p.brand === parts[1]);
+                    const bLower = parts[1].toLowerCase();
+                    filtered = filtered.filter(p => (p.brand || '').toLowerCase() === bLower);
                     breadcrumbKeys.push(parts[1]);
                     breadcrumbLabels.push(parts[1]);
                 }
@@ -8685,6 +8884,11 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         } else if (repoName === 'Axos.QE.Web') {
         // Web Monorepo (Playwright) form
         const webMonoTeamBrand = p.brand || 'Enrollment';
+        const webMonoIsOtherBrand = String(webMonoTeamBrand).toLowerCase() === 'other';
+        const webMonoEnvOptions = webMonoIsOtherBrand ? ['ANY', ...ENVIRONMENTS] : ENVIRONMENTS;
+        const webMonoTestTypes = webMonoIsOtherBrand
+            ? ['OnDemand', 'Smoke', 'Sanity', 'Regression']
+            : ['Regression', 'Sanity', 'Smoke', 'Orchestrator'];
         const webMonoFormRunTarget = getWebMonorepoRunTargetForForm(p);
         const webMonoInitialDir = resolveWebMonorepoProjectDirForForm(p);
         const webMonoBsCtx = { projectDir: webMonoInitialDir, filename: p.filename, bsCredentialSet: p.bsCredentialSet };
@@ -8714,10 +8918,11 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     </div>
                     <div class="form-group">
                         <label class="form-label">Environment <span class="req">*</span></label>
-                        <select id="fEnv" onchange="updateNamePreview();" ${isView ? 'disabled' : ''}>
+                        <select id="fEnv" onchange="updateNamePreview();" ${isView ? 'disabled' : (webMonoIsOtherBrand ? 'disabled' : '')}>
                             <option value="">Select...</option>
-                            ${ENVIRONMENTS.map(e => `<option value="${e}" ${p.env === e ? 'selected' : ''}>${e}</option>`).join('')}
+                            ${webMonoEnvOptions.map(e => `<option value="${e}" ${(p.env === e || (webMonoIsOtherBrand && e === 'ANY' && !p.env)) ? 'selected' : ''}>${e}</option>`).join('')}
                         </select>
+                        ${webMonoIsOtherBrand ? '<span class="field-help">Cross-project on-demand workflows choose environment per dispatch (not in the filename).</span>' : ''}
                     </div>
                 </div>
                 <div class="form-row">
@@ -8725,7 +8930,9 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                         <label class="form-label">Feature <span class="req">*</span></label>
                         <select id="fFeature" onchange="toggleOrchestratorSections(); updateNamePreview()" ${isView ? 'disabled' : ''}>
                             <option value="">Select...</option>
-                            ${renderWebFeatureOptions(webMonoTeamBrand, p.feature || 'Login')}
+                            ${webMonoIsOtherBrand
+                                ? `<option value="${escapeHtml(p.feature || 'Testomatio')}" selected>${escapeHtml(p.feature || 'Testomatio')}</option>`
+                                : renderWebFeatureOptions(webMonoTeamBrand, p.feature || 'Login')}
                         </select>
                         <span class="field-help">Suite/area used to build the workflow name</span>
                     </div>
@@ -8733,7 +8940,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                         <label class="form-label">Test Type <span class="req">*</span></label>
                         <select id="fTestType" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
                             <option value="">Select...</option>
-                            ${['Regression','Sanity','Smoke','Orchestrator'].map(t => `<option value="${t}" ${p.testType === t ? 'selected' : ''}>${t}</option>`).join('')}
+                            ${webMonoTestTypes.map(t => `<option value="${t}" ${p.testType === t ? 'selected' : ''}>${t}</option>`).join('')}
                         </select>
                     </div>
                 </div>
@@ -10306,6 +10513,19 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             }
         }
 
+        if (repo === 'Axos.QE.Web') {
+            const featureSelect = document.getElementById('fFeature');
+            const selected = typeof initialSelectedFeature === 'string'
+                ? initialSelectedFeature
+                : (featureSelect?.value || '');
+            syncWebMonorepoTeamDependentFields(brand, selected);
+            toggleOrchestratorSections();
+            updateNamePreview();
+            updateWebMonorepoBsInfo();
+            updateFormStatus();
+            return;
+        }
+
         const featureSelect = document.getElementById('fFeature');
         if (!featureSelect) return;
 
@@ -10620,7 +10840,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             const brand = document.getElementById('fBrand')?.value;
             const suffix = document.getElementById('fCustomSuffix')?.value?.trim();
             const feature = document.getElementById('fFeature')?.value?.trim();
-            if (!brand || !env || !testType || !feature) {
+            const isOtherWebBrand = String(brand || '').toLowerCase() === 'other';
+            if (!brand || !testType || !feature || (!isOtherWebBrand && !env)) {
                 setNamePreviewPlaceholder(NAME_PREVIEW_PLACEHOLDERS.required);
                 updateFormStatus();
                 return;
@@ -10636,6 +10857,14 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             const sKey = effSuffix ? effSuffix.replace(/\s+/g, isOrch ? '_' : '') : '';
             const tKey = testType.replace(/\s+/g, '');
             const featureBase = sKey ? `${fKey}_${sKey}` : `${fKey}`;
+            if (isOtherWebBrand) {
+                const name = `Web_Other_${featureBase}_${tKey}-Playwright`;
+                const duplicate = !viewOnlyMode && pipelines.some(p => pipeNamesEqual(p.name, name) && normRepoForPipeline(p) === 'Axos.QE.Web' && pipelineKey(p) !== editingPipeline);
+                setNamePreviewName(name, { duplicate });
+                updateWebMonorepoBsInfo();
+                updateFormStatus();
+                return;
+            }
             const includeOlbPrefix = (() => {
                 // Default OFF: do not auto-insert legacy "OLB_" prefix for new workflows.
                 const b = String(brand || '').trim().toLowerCase();
@@ -10966,8 +11195,9 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         }
 
         if (repo === 'Axos.QE.Web') {
+            const isOtherWeb = isWebOtherMonorepoFormActive();
             need('fBrand', 'Brand');
-            need('fEnv', 'Environment');
+            if (!isOtherWeb) need('fEnv', 'Environment');
             need('fTestType', 'Test Type');
             if (isOrch) {
                 if (!val('fOrchSetName')) missing.push('Team / Set Name');
@@ -10977,8 +11207,10 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 if (!isLegacyCryptoFormActive()) {
                     if (!val('fProjectDir')) missing.push('Project Directory');
                     else if (!isValidWebMonorepoProjectDir(val('fProjectDir'))) {
-                        missing.push('Project Directory (must include OLB 3.0, Enrollment, or OutSystems path)');
-                    } else if (!isWebMonorepoParallelValid()) {
+                        missing.push(isOtherWeb
+                            ? 'Project Directory (use projects for cross-project Web_Other workflows)'
+                            : 'Project Directory (must include OLB 3.0, Enrollment, or OutSystems path)');
+                    } else if (!isOtherWeb && !isWebMonorepoParallelValid()) {
                         const ctx = getWebMonorepoFormBsCtx();
                         const label = resolveWebMonorepoBsTeam(ctx) || webMonoProjectLabelFromDir(val('fProjectDir'));
                         const maxPar = webMonoParallelMax(ctx);
@@ -11064,12 +11296,19 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                         el('fBrand')?.value && el('fEnv')?.value && el('fTestType')?.value &&
                         team && (el('fOrchTargetRefs')?.value || '').trim();
                 } else {
+                    const isOtherWeb = isWebOtherMonorepoFormActive();
                     const projectDir = (el('fProjectDir')?.value || '').trim();
                     const needsProjectDir = !isLegacyCryptoFormActive();
+                    const envOk = isOtherWeb ? (String(el('fEnv')?.value || '').trim() === 'ANY') : !!el('fEnv')?.value;
+                    const projectOk = !needsProjectDir || (
+                        projectDir &&
+                        isValidWebMonorepoProjectDir(projectDir) &&
+                        (isOtherWeb || (isWebMonorepoParallelValid() && !getWebMonorepoProjectDirTeamMismatch()))
+                    );
                     fieldsOk =
-                        el('fBrand')?.value && el('fEnv')?.value &&
+                        el('fBrand')?.value && envOk &&
                         el('fFeature')?.value && el('fTestType')?.value &&
-                        (!needsProjectDir || (projectDir && isValidWebMonorepoProjectDir(projectDir) && isWebMonorepoParallelValid() && !getWebMonorepoProjectDirTeamMismatch()));
+                        projectOk;
                 }
                 return fieldsOk && !isNameDuplicate() && !isOrchSetNameDuplicate();
             }
@@ -11370,8 +11609,13 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                     base.projectDir = (v('fProjectDir') || '').trim();
                 }
                 {
-                    const bsCtx = { projectDir: base.projectDir, filename: base.filename };
-                    if (!resolveWebMonorepoBsTeam(bsCtx)) {
+                    const isOtherWeb = isWebOtherMonorepoBrand(base.brand) || /^web_other_/i.test(String(base.filename || ''));
+                    if (isOtherWeb) {
+                        base.env = base.env || 'ANY';
+                        base.projectDir = (base.projectDir || WEB_OTHER_MONOREPO_PROJECT_DIR).trim() || WEB_OTHER_MONOREPO_PROJECT_DIR;
+                    }
+                    const bsCtx = { projectDir: base.projectDir, filename: base.filename, brand: base.brand };
+                    if (!isOtherWeb && !resolveWebMonorepoBsTeam(bsCtx)) {
                         showToast(getWebMonorepoProjectDirTeamMismatch() || 'Project Directory does not match workflow team');
                         return;
                     }
@@ -12368,7 +12612,11 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
 
                 if (currentInput) {
                     const mDef = line.match(/^\s*default\s*:\s*(.+)\s*$/);
-                    if (mDef) inputs[currentInput] = stripYamlScalarQuotes(mDef[1]);
+                    if (mDef) {
+                        const defVal = stripYamlScalarQuotes(mDef[1]);
+                        inputs[currentInput] = defVal;
+                        inputs[currentInput.toUpperCase()] = defVal;
+                    }
                 }
             }
 
@@ -12406,11 +12654,15 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 const mWith = line.match(/^\s*([A-Za-z0-9_]+)\s*:\s*(.+)\s*$/);
                 if (mWith) {
                     let val = stripYamlScalarQuotes(mWith[2]);
-                    const exprMatch = val.match(/\$\{\{\s*inputs\.(\w+)\s*\|\|\s*(.+?)\s*\}\}/);
+                    const exprMatch = val.match(/\$\{\{\s*(?:inputs|matrix)\.(\w+)\s*\|\|\s*(.+?)\s*\}\}/);
                     if (exprMatch) val = stripYamlScalarQuotes(exprMatch[2]);
                     else {
                         const exprDispatch = val.match(/\$\{\{\s*github\.event_name\s*==\s*'workflow_dispatch'\s*&&\s*(?:fromJSON\(inputs\.(\w+)\)|inputs\.(\w+))\s*\|\|\s*(.+?)\s*\}\}/);
                         if (exprDispatch) val = stripYamlScalarQuotes(exprDispatch[3]);
+                        else {
+                            const exprTunnel = val.match(/\$\{\{\s*(?:inputs|matrix)\.run_target\s*==\s*'local'\s*&&\s*'false'\s*\|\|\s*'true'\s*\}\}/);
+                            if (exprTunnel) val = 'true';
+                        }
                     }
                     if (val && !val.startsWith('${{')) withValues[mWith[1].toUpperCase()] = val;
                 }
@@ -12479,6 +12731,8 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             PW_HEADLESS: 'pwHeadless',
             JOB_TIMEOUT: 'jobTimeout',
             RUNNER_LABEL: 'runnerLabel',
+            RUNNER_LABEL_LINUX: 'runnerLabelLinux',
+            RUNNER_LABEL_WINDOWS: 'runnerLabelWindows',
             BROWSERSTACK_USERNAME: 'bsUsername',
             BROWSERSTACK_ACCESS_KEY: 'bsAccessKey'
         };
@@ -13112,12 +13366,17 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 if (entry.runnerStrategy) parsed.runnerStrategy = entry.runnerStrategy;
                 if (entry.runnerGroup) parsed.runnerGroup = entry.runnerGroup;
                 if (entry.runnerLabel) parsed.runnerLabel = entry.runnerLabel;
+                if (entry.runnerLabelLinux) parsed.runnerLabelLinux = entry.runnerLabelLinux;
+                if (entry.runnerLabelWindows) parsed.runnerLabelWindows = entry.runnerLabelWindows;
                 if (entry.customRunnerLabel !== undefined) parsed.customRunnerLabel = entry.customRunnerLabel;
                 // TEST_ENV is 'inherit' for orchestrators (a runtime directive meaning "use each
                 // downstream suite's own env"), which is NOT a real environment folder. Never let it
                 // clobber the categorical env parsed from the filename (e.g. QA in
                 // Web_OutSystems_QA-Orchestrators_..._Orchestrator-Playwright).
-                if (entry.env && String(entry.env).trim().toLowerCase() !== 'inherit') parsed.env = entry.env;
+                // Likewise, 'auto' is used by cross-project Web_Other workflows and must keep ANY.
+                if (entry.env && !['inherit', 'auto'].includes(String(entry.env).trim().toLowerCase()) && !isWebOtherMonorepoBrand(parsed.brand)) {
+                    parsed.env = entry.env;
+                }
                 if (entry.grep !== undefined) parsed.grep = entry.grep;
                 if (entry.suite !== undefined) parsed.suite = entry.suite;
                 if (entry.spec !== undefined) parsed.spec = entry.spec;
@@ -13650,6 +13909,56 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 customRunnerLabel: '',
                 jobTimeout: 120,
                 schedule: '', scheduleEnabled: false
+            };
+        }
+
+        // Cross-project / on-demand Web pipelines (Axos.QE.Web): Web_Other_{Feature}[_{TestType}]-Playwright
+        // e.g. Web_Other_Testomatio_OnDemand-Playwright → brand=Other, env=ANY, feature=Testomatio, testType=OnDemand
+        const webOtherMatch = name.match(/^Web_Other_(.+)-Playwright$/i);
+        if (webOtherMatch) {
+            const restSegs = String(webOtherMatch[1] || '').split('_').filter(Boolean);
+            let testType = 'OnDemand';
+            let featureSegs = restSegs;
+            if (restSegs.length >= 2) {
+                const lastSeg = restSegs[restSegs.length - 1];
+                if (/^(ondemand|smoke|sanity|regression|healthcheck|health)$/i.test(lastSeg)) {
+                    const ttMap = { ondemand: 'OnDemand', smoke: 'Smoke', sanity: 'Sanity', regression: 'Regression', healthcheck: 'Health Check', health: 'Health Check' };
+                    testType = ttMap[lastSeg.toLowerCase()] || 'OnDemand';
+                    featureSegs = restSegs.slice(0, -1);
+                }
+            }
+            const feature = featureSegs.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ') || 'Other';
+            return {
+                filename,
+                name,
+                repo: 'Axos.QE.Web',
+                platform: '02 Web',
+                brand: 'Other',
+                env: 'ANY',
+                feature,
+                featureDetail: featureSegs.join('_') || 'Other',
+                testType,
+                projectDir: 'projects',
+                grep: '',
+                parallel: '1',
+                retries: '1',
+                runTarget: 'browserstack',
+                localBrowser: 'chromium',
+                tunnel: 'true',
+                bsRandomBrowser: 'true',
+                pwVideo: '1',
+                pwHeadless: '1',
+                runnerStrategy: 'group',
+                runnerGroup: 'axos-gh-qe-testim',
+                runnerLabel: 'AUTO',
+                runnerLabelLinux: 'AUTO',
+                runnerLabelWindows: 'AUTO',
+                customRunnerLabel: '',
+                customRunnerLabelLinux: '',
+                customRunnerLabelWindows: '',
+                jobTimeout: 120,
+                schedule: '',
+                scheduleEnabled: false
             };
         }
 
