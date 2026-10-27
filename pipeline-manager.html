@@ -3145,13 +3145,15 @@
             'OutSystems': null,
             'UFB Direct': null,
             'ULP': null,
-            'Other': null
+            'Other': null,
+            'PR Test Gates': null
         },
         '03 API': {
             'OLB API': null,
             'UDB API': null,
             'CS API': null,
-            'WFO API': null
+            'WFO API': null,
+            'PR Test Gates': null
         },
         '04 Performance': {
             'JMeter': null,
@@ -4052,6 +4054,102 @@ ${os.map(n => `- ${n}`).join('\n')}
     const TEST_TYPES = ['Regression', 'Sanity', 'Smoke', 'Health Check', 'Orchestrator'];
 
     const WEB_MONOREPO_TEAMS = ['Enrollment', 'OutSystems', 'OLB 3.0', 'Other'];
+    const WEB_TEAM_DISPLAY = { 'Other': 'TCMS' };
+    const PR_GATE_FILENAME = 'pr-changed-tests-gate.yml';
+    const PR_GATE_REPO_MAP = {
+        'Axos.QE.Web': { platform: '02 Web', label: 'Web' },
+        'Axos.QE.API_CS': { platform: '03 API', label: 'CS' },
+        'Axos.QE.API_OLB': { platform: '03 API', label: 'OLB' },
+        'Axos.QE.API_UDB': { platform: '03 API', label: 'UDB' },
+    };
+
+    function webTeamDisplayLabel(team) {
+        const t = String(team || '').trim();
+        return WEB_TEAM_DISPLAY[t] || t;
+    }
+
+    function displayWebBrandLabel(platform, brandName) {
+        if (platform === '02 Web' && brandName === 'Other') return 'TCMS';
+        return brandName;
+    }
+
+    const READ_ONLY_TREE_BRANDS = new Set(['PR Test Gates']);
+
+    function creatableFolderBrands(platform) {
+        const brands = FOLDER_STRUCTURE[platform];
+        if (!brands) return [];
+        return Object.keys(brands).filter(b => !READ_ONLY_TREE_BRANDS.has(b));
+    }
+
+    function folderBrandOptionLabel(platform, brand) {
+        return platform === '02 Web' ? displayWebBrandLabel(platform, brand) : brand;
+    }
+
+    function brandDropdownBrands(platform, pipeline, viewMode) {
+        const list = creatableFolderBrands(platform);
+        if (!viewMode) return list;
+        const b = String(pipeline?.brand || '').trim();
+        if (!b) return list;
+        if (list.some(x => String(x).toLowerCase() === b.toLowerCase())) return list;
+        return list.concat([b]);
+    }
+
+    function folderBrandOptionsHtml(platform, pipeline, viewMode) {
+        const plat = String(platform || pipeline?.platform || '').trim();
+        if (!plat || !FOLDER_STRUCTURE[plat]) return '';
+        return brandDropdownBrands(plat, pipeline, viewMode).map(b =>
+            `<option value="${escapeHtml(b)}" ${String(pipeline?.brand || '').toLowerCase() === String(b).toLowerCase() ? 'selected' : ''}>${escapeHtml(folderBrandOptionLabel(plat, b))}</option>`
+        ).join('');
+    }
+
+    function isPrGateFilename(filename) {
+        const f = String(filename || '').trim().toLowerCase();
+        return f === PR_GATE_FILENAME || f === PR_GATE_FILENAME.replace(/\.yml$/, '');
+    }
+
+    function isPrGatePipeline(p) {
+        return !!(p && (p.prGate || isPrGateFilename(p.filename)));
+    }
+
+    function isPrGateRun(r) {
+        if (!r) return false;
+        if (isPrGateFilename(String(r.workflowFile || '').trim())) return true;
+        const p = findPipeline(pipelineKeyFrom(r.repo, r.workflowFile));
+        return isPrGatePipeline(p);
+    }
+
+    function applyPrGateRepo(parsed, repo) {
+        const cfg = PR_GATE_REPO_MAP[String(repo || '').trim()];
+        if (!cfg || !parsed) return false;
+        parsed.platform = cfg.platform;
+        parsed.brand = 'PR Test Gates';
+        parsed.name = `PR Test Gate - ${cfg.label}`;
+        parsed.feature = cfg.label;
+        parsed.env = 'ANY';
+        parsed.testType = 'PR Gate';
+        parsed.prGate = true;
+        parsed.readOnly = true;
+        parsed.scheduleEnabled = false;
+        parsed.repo = repo;
+        return true;
+    }
+
+    function getGhWorkflowFileUrl(repoName, filename) {
+        const owner = 'axos-financial';
+        const repo = repoName || 'Axos.QE.TestIM';
+        const file = String(filename || '').trim();
+        if (!file) return '';
+        const ref = String(getStoredSyncRef() || 'main').trim() || 'main';
+        return `https://github.com/${owner}/${repo}/blob/${encodeURIComponent(ref)}/.github/workflows/${encodeURIComponent(file)}`;
+    }
+
+    function isTestimStylePipeline(p) {
+        if (!p || isPrGatePipeline(p)) return false;
+        const fn = String(p.filename || '').toLowerCase();
+        if (fn.endsWith('-testim.yml')) return true;
+        const repo = normRepoForPipeline(p);
+        return repo === 'Axos.QE.TestIM' && !isOrchestratorPipeline(p) && !isMobilePipeline(p) && !isPerfPipeline(p);
+    }
     const WEB_OTHER_MONOREPO_PROJECT_DIR = 'projects';
     const WEB_MONOREPO_OTHER_TEST_TYPES = ['OnDemand', 'Smoke', 'Sanity', 'Regression'];
 
@@ -5597,6 +5695,7 @@ ${os.map(n => `- ${n}`).join('\n')}
         const changes = [];
 
         for (const p of pipelines) {
+            if (isPrGatePipeline(p)) continue;
             const k = pipelineKey(p);
             if (!savedMap.has(k)) {
                 changes.push({ type: 'added', pipeline: p });
@@ -5605,6 +5704,7 @@ ${os.map(n => `- ${n}`).join('\n')}
             }
         }
         for (const p of savedSnapshot) {
+            if (isPrGatePipeline(p)) continue;
             if (!currentMap.has(pipelineKey(p))) {
                 changes.push({ type: 'removed', pipeline: p });
             }
@@ -5892,6 +5992,14 @@ ${os.map(n => `- ${n}`).join('\n')}
         const checkboxes = document.querySelectorAll('#saveChangesList input[type=checkbox]:checked');
         if (checkboxes.length === 0) { showToast('Select at least one change to save.'); return; }
 
+        for (const cb of checkboxes) {
+            const p = pipelines.find(pp => pipelineKey(pp) === cb.dataset.saveKey);
+            if (isPrGatePipeline(p) || isPrGateFilename(p?.filename)) {
+                showToast('Cannot save changes to pr-changed-tests-gate.yml from Pipeline Manager.');
+                return;
+            }
+        }
+
         const selectedKeys = new Set();
         const selectedTypes = new Map();
         checkboxes.forEach(cb => {
@@ -6025,12 +6133,21 @@ ${os.map(n => `- ${n}`).join('\n')}
                         for (const pp of noSuitePipelines) { html += pipelineTreeNode(pp, 52); }
 
                         html += `</div></div>`;
+                    } else if (brandLower === 'pr test gates') {
+                        html += `<div class="tree-node">
+                            <div class="tree-row${selectedFolder === brandKey ? ' selected' : ''}" onclick="selectFolder('${brandKey}')" style="padding-left:32px;">
+                                <span class="tree-arrow hidden">&#9654;</span>
+                                <span class="tree-icon">&#128274;</span>
+                                <span class="tree-label">${escapeHtml(brandName)}</span>
+                                ${brandPipelines.length ? `<span class="tree-count">${brandPipelines.length}</span>` : ''}
+                            </div>
+                        </div>`;
                     } else if (brandLower === 'other') {
                         html += `<div class="tree-node">
                         <div class="tree-row" onclick="toggleTree(this, '${brandKey}')" style="padding-left:32px;">
                             <span class="tree-arrow${brandOpen ? ' expanded' : ''}" id="arrow-${brandKey}">&#9654;</span>
                             <span class="tree-icon">&#128193;</span>
-                            <span class="tree-label">${brandName}</span>
+                            <span class="tree-label">${escapeHtml(displayWebBrandLabel(platformKey, brandName))}</span>
                             ${brandPipelines.length ? `<span class="tree-count">${brandPipelines.length}</span>` : ''}
                         </div>
                         <div class="tree-children${brandOpen ? ' open' : ''}" id="children-${brandKey}">`;
@@ -6057,7 +6174,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                         <div class="tree-row" onclick="toggleTree(this, '${brandKey}')" style="padding-left:32px;">
                             <span class="tree-arrow${brandOpen ? ' expanded' : ''}" id="arrow-${brandKey}">&#9654;</span>
                             <span class="tree-icon">&#128193;</span>
-                            <span class="tree-label">${brandName}</span>
+                            <span class="tree-label">${escapeHtml(displayWebBrandLabel(platformKey, brandName))}</span>
                             ${brandPipelines.length ? `<span class="tree-count">${brandPipelines.length}</span>` : ''}
                         </div>
                         <div class="tree-children${brandOpen ? ' open' : ''}" id="children-${brandKey}">`;
@@ -6449,12 +6566,13 @@ ${os.map(n => `- ${n}`).join('\n')}
 
             const isMobileFolder = parts[0] === '01 Mobile';
             const isOtherBrand = String(parts[1] || '').toLowerCase() === 'other';
-            if (isMobileFolder || isOtherBrand) {
+            const isPrGateBrand = String(parts[1] || '').toLowerCase() === 'pr test gates';
+            if (isMobileFolder || isOtherBrand || isPrGateBrand) {
                 if (parts[1]) {
                     const bLower = parts[1].toLowerCase();
                     filtered = filtered.filter(p => (p.brand || '').toLowerCase() === bLower);
                     breadcrumbKeys.push(parts[1]);
-                    breadcrumbLabels.push(parts[1]);
+                    breadcrumbLabels.push(parts[0] === '02 Web' ? displayWebBrandLabel(parts[0], parts[1]) : parts[1]);
                 }
                 if (parts[2]) {
                     const suite = parts[2];
@@ -6467,7 +6585,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                     const bLower = parts[1].toLowerCase();
                     filtered = filtered.filter(p => (p.brand || '').toLowerCase() === bLower);
                     breadcrumbKeys.push(parts[1]);
-                    breadcrumbLabels.push(parts[1]);
+                    breadcrumbLabels.push(parts[0] === '02 Web' ? displayWebBrandLabel(parts[0], parts[1]) : parts[1]);
                 }
                 if (parts[2]) {
                     filtered = filtered.filter(p => p.env === parts[2]);
@@ -6486,16 +6604,17 @@ ${os.map(n => `- ${n}`).join('\n')}
             ? `<span onclick="selectFolder('${breadcrumbKeys.slice(1, i+1).join('__') || null}')">${escapeHtml(label)}</span><span class="sep">/</span>`
             : `<span style="color:var(--text-primary);font-weight:600;">${escapeHtml(label)}</span>`
         ).join('')}</div>`;
+        const folderIsPrGate = folderKey && String(folderKey.split('__')[1] || '').toLowerCase() === 'pr test gates';
         html += `<div class="view-header">
             <h2>${escapeHtml(breadcrumbLabels[breadcrumbLabels.length - 1])} <span style="color:var(--text-muted);font-weight:400;font-size:16px;">(${filtered.length})</span></h2>
-            <button class="btn btn-orange" onclick="showCreateForm()">+ New Pipeline</button>
+            ${folderIsPrGate ? '' : '<button class="btn btn-orange" onclick="showCreateForm()">+ New Pipeline</button>'}
         </div>`;
 
         if (filtered.length === 0) {
             html += `<div class="empty-state">
                 <div class="empty-icon">&#128270;</div>
-                <h3>No pipelines here yet</h3>
-                <p>Click "New Pipeline" to create one in this category.</p>
+                <h3>${folderIsPrGate ? 'No PR test gates synced yet' : 'No pipelines here yet'}</h3>
+                <p>${folderIsPrGate ? 'Sync from GitHub to load pr-changed-tests-gate.yml workflows for this repo.' : 'Click "New Pipeline" to create one in this category.'}</p>
             </div>`;
         } else {
             html += selectionToolbar(filtered);
@@ -6900,8 +7019,10 @@ ${os.map(n => `- ${n}`).join('\n')}
             p.testType === 'Sanity' ? 'badge-sanity' :
             p.testType === 'Smoke' ? 'badge-smoke' :
             p.testType === 'Orchestrator' ? 'badge-orchestrator' :
+            p.testType === 'PR Gate' ? 'badge-health' :
             'badge-health';
         const badgeLabel = isOrch ? 'Orchestrator' : (p.testType || '');
+        const prGate = isPrGatePipeline(p);
         let suiteOrFeature = isOrchestratorPipeline(p)
             ? orchestratorDisplayLabel(p)
             : (p.testSuite || p.feature || '');
@@ -6928,6 +7049,10 @@ ${os.map(n => `- ${n}`).join('\n')}
                 </div>
                 <div class="pipeline-card-actions">
                     ${ghRepoPill}
+                    ${prGate ? `
+                    <a class="card-btn" href="${escapeHtml(getGhWorkflowFileUrl(ghRepo, p.filename))}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Open workflow file in GitHub">&#128196;</a>
+                    <a class="card-btn" href="${escapeHtml(getGhWorkflowUrl(p.name, ghRepo, p.filename))}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Runs (GitHub Actions)">&#9654;</a>
+                    ` : `
                     <a class="card-btn" href="${getGhWorkflowUrl(p.name, ghRepo, p.filename)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Open in GitHub">
                         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:middle">
                             <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
@@ -6935,6 +7060,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                     </a>
                     <button class="card-btn" onclick="event.stopPropagation(); clonePipeline('${pKey}')" title="Clone"><img src="${HELMET_ICON}" alt="Clone" style="width:18px;height:18px;object-fit:contain;display:block;" onerror="this.outerHTML='&#128203;'" /></button>
                     <button class="card-btn" onclick="event.stopPropagation(); editPipeline('${pKey}')" title="Edit">&#9998;</button>
+                    `}
                 </div>
             </div>
             <div class="pipeline-card-meta">
@@ -7003,6 +7129,13 @@ ${os.map(n => `- ${n}`).join('\n')}
 
     function showDeleteConfirm() {
         if (selectedPipelines.size === 0) return;
+        for (const k of selectedPipelines) {
+            const p = findPipeline(k);
+            if (isPrGatePipeline(p)) {
+                showToast('PR test gate workflows cannot be deleted from Pipeline Manager.');
+                return;
+            }
+        }
         const list = Array.from(selectedPipelines).map(k => {
             const p = findPipeline(k);
             return p ? p.name : String(k);
@@ -7460,6 +7593,7 @@ ${os.map(n => `- ${n}`).join('\n')}
     }
 
     function buildPromptForPipeline(p, opts = {}) {
+        if (isPrGatePipeline(p)) return null;
         const prev = opts.prev !== undefined ? opts.prev : pipelinePrevSnapshot(p);
         const isMobile = isMobilePipeline(p);
         const repoName = String(
@@ -7877,7 +8011,8 @@ ${os.map(n => `- ${n}`).join('\n')}
         if (selectedPipelines.size === 0 && !allowCatalogOnly) { showToast('Select at least one pipeline first.'); return; }
         const selected = Array.from(selectedPipelines)
             .map(k => findPipeline(k))
-            .filter(Boolean);
+            .filter(Boolean)
+            .filter(p => !isPrGatePipeline(p));
         if (selected.length === 0 && !allowCatalogOnly) { showToast('No selected pipelines found.'); return; }
 
         const prompts = selected
@@ -7956,6 +8091,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
     function editPipeline(keyOrFilename) {
         const p = findPipeline(keyOrFilename);
         if (!p) return;
+        if (isPrGatePipeline(p)) { showToast('PR test gate workflows are read-only.'); return; }
         editingPipeline = pipelineKey(p);
         viewOnlyMode = false;
         showCreateForm(p, true);
@@ -7964,6 +8100,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
     function clonePipeline(keyOrFilename) {
         const p = findPipeline(keyOrFilename);
         if (!p) return;
+        if (isPrGatePipeline(p)) { showToast('PR test gate workflows are read-only.'); return; }
         editingPipeline = null;
         viewOnlyMode = false;
         const clone = { ...p, filename: '', name: '' };
@@ -7995,9 +8132,10 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
     function showCreateForm(prefill = null, editable = true) {
         calReturnPending = false; // opening the form normally clears any pending Calendar return
         if (!prefill && editable) { editingPipeline = null; viewOnlyMode = false; }
+        if (prefill && isPrGatePipeline(prefill)) editable = false;
         document.getElementById('actionBar').style.display = editable ? 'block' : 'none';
-        const isEdit = !!editingPipeline;
-        const isClone = prefill && !isEdit && prefill.filename === '';
+        const isEdit = !!editingPipeline && editable;
+        const isClone = prefill && !isEdit && prefill.filename === '' && editable;
         const isView = !editable;
         const title = isEdit ? 'Edit Pipeline' : isClone ? 'Clone Pipeline' : isView ? 'Pipeline Details' : 'Create New Pipeline';
 
@@ -8064,7 +8202,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                 </div>
                 <div style="display:flex; gap:8px; flex-shrink:0;">
                     <button class="btn btn-secondary" onclick="returnToPipelineList()" style="padding:6px 16px;">&#9664; Back</button>
-                    ${isView && p.filename ? `<button class="btn btn-orange" onclick="editPipeline('${p.filename}')" style="padding:6px 16px;">&#9998; Edit</button>` : ''}
+                    ${isView && p.filename && !isPrGatePipeline(p) ? `<button class="btn btn-orange" onclick="editPipeline('${pipelineKeyFrom(repoName, p.filename)}')" style="padding:6px 16px;">&#9998; Edit</button>` : ''}
                 </div>
             </div>
         </div>`;
@@ -8319,7 +8457,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                         <label class="form-label">Domain <span class="req">*</span></label>
                         <select id="fBrand" onchange="updateApiFeatureSuggestions(); updateNamePreview()" ${isView ? 'disabled' : ''}>
                             <option value="">Select...</option>
-                            ${Object.keys(FOLDER_STRUCTURE['03 API'] || {}).map(b => `<option value="${b}" ${String(p.brand || '').toLowerCase() === String(b).toLowerCase() ? 'selected' : ''}>${b}</option>`).join('')}
+                            ${brandDropdownBrands('03 API', p, isView).map(b => `<option value="${b}" ${String(p.brand || '').toLowerCase() === String(b).toLowerCase() ? 'selected' : ''}>${escapeHtml(b)}</option>`).join('')}
                         </select>
                     </div>
                     <div class="form-group">
@@ -8473,7 +8611,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                         <label class="form-label">Brand <span class="req">*</span></label>
                         <select id="fBrand" onchange="updateNamePreview()" ${isView ? 'disabled' : ''}>
                             <option value="">Select...</option>
-                            ${p.platform === '02 Web' ? Object.keys(FOLDER_STRUCTURE['02 Web']).map(b => `<option value="${b}" ${String(p.brand || '').toLowerCase() === String(b).toLowerCase() ? 'selected' : ''}>${b}</option>`).join('') : ''}
+                            ${folderBrandOptionsHtml(p.platform, p, isView)}
                         </select>
                     </div>
                     <div class="form-group">
@@ -8911,7 +9049,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                         <label class="form-label">Team <span class="req">*</span></label>
                         <select id="fBrand" onchange="onBrandChange(); updateNamePreview()" ${isView ? 'disabled' : ''}>
                             <option value="">Select...</option>
-                            ${WEB_MONOREPO_TEAMS.map(t => `<option value="${t}" ${webMonoTeamBrand === t ? 'selected' : ''}>${t}</option>`).join('')}
+                            ${WEB_MONOREPO_TEAMS.map(t => `<option value="${t}" ${webMonoTeamBrand === t ? 'selected' : ''}>${escapeHtml(webTeamDisplayLabel(t))}</option>`).join('')}
                             ${webMonoTeamBrand && !WEB_MONOREPO_TEAMS.includes(webMonoTeamBrand) ? `<option value="${webMonoTeamBrand}" selected>${webMonoTeamBrand}</option>` : ''}
                             <option value="__custom__">+ Add new...</option>
                         </select>
@@ -9265,8 +9403,8 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
                         <label class="form-label">Brand <span class="req">*</span></label>
                         <select id="fBrand" onchange="onBrandChange(); updateNamePreview()" ${isView ? 'disabled' : ''}>
                             <option value="">Select...</option>
-                            ${p.platform === '02 Web' ? Object.keys(FOLDER_STRUCTURE['02 Web']).map(b => `<option value="${b}" ${String(p.brand || '').toLowerCase() === String(b).toLowerCase() ? 'selected' : ''}>${b}</option>`).join('') : ''}
-                            <option value="__custom__">+ Add new...</option>
+                            ${folderBrandOptionsHtml(p.platform, p, isView)}
+                            ${isView || isPrGatePipeline(p) ? '' : '<option value="__custom__">+ Add new...</option>'}
                         </select>
                     </div>
                     <div class="form-group">
@@ -10476,11 +10614,9 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         if (!nowMobile) {
             const brandSelect = document.getElementById('fBrand');
             brandSelect.innerHTML = '<option value="">Select...</option>';
-            const brands = FOLDER_STRUCTURE[platform];
-            if (brands) {
-                for (const b of Object.keys(brands)) {
-                    brandSelect.innerHTML += `<option value="${b}">${b}</option>`;
-                }
+            for (const b of creatableFolderBrands(platform)) {
+                const label = folderBrandOptionLabel(platform, b);
+                brandSelect.innerHTML += `<option value="${escapeHtml(b)}">${escapeHtml(label)}</option>`;
             }
         }
     }
@@ -11345,9 +11481,24 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
     function savePipelineFromForm() {
         if (!isFormValid()) { showToast('Fill all required fields first'); return; }
 
+        if (editingPipeline) {
+            const editing = findPipeline(editingPipeline);
+            if (isPrGatePipeline(editing)) { showToast('PR test gate workflows are read-only.'); return; }
+        }
+
         const name = getGeneratedName();
         if (!name) { showToast('Unable to generate a valid pipeline name'); return; }
         const filename = `${name}.yml`;
+
+        if (isPrGateFilename(filename)) {
+            showToast('Cannot save changes to pr-changed-tests-gate.yml from Pipeline Manager.');
+            return;
+        }
+        const formBrand = String(document.getElementById('fBrand')?.value || '').trim();
+        if (READ_ONLY_TREE_BRANDS.has(formBrand)) {
+            showToast('PR Test Gates is read-only — pipelines cannot be created in that folder.');
+            return;
+        }
 
         const base = parseFilename(filename);
         if (!base) { showToast('Pipeline name does not match expected naming convention'); return; }
@@ -13352,6 +13503,16 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 // Preserve repo source for Results/Metrics and for multi-repo workflows.
                 if (entry.repo) parsed.repo = entry.repo;
 
+                if (isPrGateFilename(entry.filename)) {
+                    if (!applyPrGateRepo(parsed, entry.repo)) {
+                        skippedEntries.push({
+                            repo: String(entry?.repo || '').trim() || '(unknown repo)',
+                            filename: String(entry?.filename || '').trim() || '(unknown filename)'
+                        });
+                        continue;
+                    }
+                }
+
                 if (entry.testSuite) parsed.testSuite = entry.testSuite;
                 if (entry.baseUrl) parsed.baseUrl = entry.baseUrl;
                 if (entry.project !== undefined) parsed.project = entry.project;
@@ -13762,6 +13923,22 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
     function parseFilenameInner(filename) {
         const name = filename.replace('.yml', '');
         const lower = name.toLowerCase();
+
+        if (lower === 'pr-changed-tests-gate') {
+            const fn = filename.endsWith('.yml') ? filename : `${filename}.yml`;
+            return {
+                filename: fn,
+                name: 'PR Test Gate',
+                platform: '02 Web',
+                brand: 'PR Test Gates',
+                env: 'ANY',
+                testType: 'PR Gate',
+                feature: 'PR Gate',
+                prGate: true,
+                readOnly: true,
+                scheduleEnabled: false,
+            };
+        }
 
         // API (Newman) pipelines (Axos.QE.API_OLB):
         // API_{Domain}_{Env}_{Feature}[_{Suffix}]_{TestType}-Newman
@@ -16004,6 +16181,23 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         return /No Allure results|tests may not have run or produced output/i.test(raw);
     }
 
+    function noTestsTestCountsFromParsed(parsed) {
+        const skipped = parsed.skipped ?? 0;
+        const total = parsed.total ?? 0;
+        const tc = {
+            passed: 0,
+            failed: 0,
+            skipped,
+            total,
+            passPct: 0,
+            fallback: false,
+            noTests: true
+        };
+        if (parsed.grepEmpty) tc.grepEmpty = true;
+        if (parsed.gateNoop) tc.gateNoop = true;
+        return tc;
+    }
+
     function applyParsedTestCounts(r, parsed, gen) {
         if (!parsed || (r._testCountsGen || 0) !== gen) return null;
         if (parsed.resultsMissing) {
@@ -16019,13 +16213,10 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             const skipped = parsed.skipped ?? 0;
             const total = parsed.total ?? 0;
             if (parsed.noTests && total > 0) {
-                r.testCounts = {
-                    passed: 0, failed: 0, skipped, total, passPct: 0,
-                    fallback: false, noTests: true, grepEmpty: !!parsed.grepEmpty
-                };
+                r.testCounts = noTestsTestCountsFromParsed({ ...parsed, total, skipped });
                 return r.testCounts;
             }
-            r.testCounts = { passed: 0, failed: 0, skipped: 0, total: 0, passPct: 0, fallback: false, noTests: true };
+            r.testCounts = noTestsTestCountsFromParsed(parsed);
             return r.testCounts;
         }
         const passed = parsed.passed ?? 0;
@@ -16034,10 +16225,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         const total = parsed.total ?? (passed + failed + skipped);
         const actionable = Math.max(0, total - skipped);
         if (parsed.grepEmpty || parsed.noTests) {
-            r.testCounts = {
-                passed: 0, failed: 0, skipped, total, passPct: 0,
-                fallback: false, noTests: true, grepEmpty: !!parsed.grepEmpty
-            };
+            r.testCounts = noTestsTestCountsFromParsed({ ...parsed, skipped, total });
             return r.testCounts;
         }
         if (actionable === 0 && failed === 0) {
@@ -16169,10 +16357,130 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             .slice(0, 2);
     }
 
+    function formatGateNumericRange(nums) {
+        const arr = [...new Set((nums || []).filter(n => Number.isFinite(n)))].sort((a, b) => a - b);
+        if (!arr.length) return null;
+        if (arr.length === 1) return String(arr[0]);
+        return `${arr[0]}-${arr[arr.length - 1]}`;
+    }
+
+    function parseGateMatrixFromDetectLog(text) {
+        if (!text) return null;
+        const m = String(text).match(/Matrix:\s*(\[[\s\S]*?\])\s*(?:\r?\n|$)/);
+        if (!m) return null;
+        try {
+            const rows = JSON.parse(m[1]);
+            return Array.isArray(rows) && rows.length ? rows : null;
+        } catch {
+            return null;
+        }
+    }
+
+    function applyGateLaneInfoFromMatrix(rows, run) {
+        if (!run || !rows?.length) return;
+        const parallels = [];
+        const retries = [];
+        for (const row of rows) {
+            if (row?.parallels != null) parallels.push(Number(row.parallels));
+            if (row?.retries != null) retries.push(Number(row.retries));
+        }
+        const pRange = formatGateNumericRange(parallels);
+        const rRange = formatGateNumericRange(retries);
+        if (pRange) run.gateParallels = pRange;
+        if (rRange) run.gateRetries = rRange;
+    }
+
+    function inferGateLaneInfoFromJobs(jobs, repo) {
+        if (isApiRepo(repo)) return { parallels: '1', retries: 'N/A' };
+        const parallels = [];
+        const retries = [];
+        for (const j of jobs || []) {
+            const n = String(j?.name || '');
+            const c = j?.conclusion;
+            if (!c || c === 'skipped') continue;
+            if (/^Bank Functional Execution$/i.test(n)) {
+                parallels.push(1);
+                retries.push(0);
+            }
+            if (/run\s*\/.+\s*\/\s*test$/i.test(n)) {
+                parallels.push(3);
+                retries.push(1);
+            }
+        }
+        return {
+            parallels: formatGateNumericRange(parallels),
+            retries: formatGateNumericRange(retries)
+        };
+    }
+
+    function hasGateJUnitPublishJob(jobs) {
+        return (jobs || []).some(j =>
+            /publish\s*\/\s*junit/i.test(String(j?.name || '')) && j.conclusion === 'success');
+    }
+
+    function isPrGateTestExecutionJob(j, repo) {
+        const n = String(j?.name || '');
+        const c = j?.conclusion;
+        if (!c || c === 'skipped') return false;
+        if (isApiRepo(repo)) {
+            return /run-changed|newman|scenario/i.test(n) && !/detect/i.test(n);
+        }
+        return /^Bank Functional Execution$/i.test(n) || /run\s*\/.+\s*\/\s*test$/i.test(n);
+    }
+
+    function isPrGateNoopFromJobs(jobs, repo) {
+        const detect = (jobs || []).find(j => /detect/i.test(String(j?.name || '')));
+        if (!detect || detect.conclusion !== 'success') return false;
+        if (hasGateJUnitPublishJob(jobs)) return false;
+        return !(jobs || []).some(j => isPrGateTestExecutionJob(j, repo));
+    }
+
+    function prGateNoopTestCounts() {
+        return {
+            passed: 0,
+            failed: 0,
+            skipped: 0,
+            total: 0,
+            noTests: true,
+            gateNoop: true,
+            fallback: false
+        };
+    }
+
+    async function enrichGateRunLaneInfo(owner, repo, run, jobs) {
+        if (!isPrGateRun(run)) return;
+        if (isApiRepo(repo)) {
+            run.gateParallels = '1';
+            run.gateRetries = 'N/A';
+            return;
+        }
+        const detectJob = (jobs || []).find(j => /detect\s*\/\s*changed tests/i.test(String(j?.name || '')));
+        if (detectJob?.id) {
+            try {
+                const logs = await fetchJobLogsText(owner, repo, detectJob.id);
+                const rows = parseGateMatrixFromDetectLog(logs);
+                if (rows) applyGateLaneInfoFromMatrix(rows, run);
+            } catch { /* fallback below */ }
+        }
+        if (!run.gateParallels || !run.gateRetries) {
+            const inferred = inferGateLaneInfoFromJobs(jobs, repo);
+            if (!run.gateParallels && inferred.parallels) run.gateParallels = inferred.parallels;
+            if (!run.gateRetries && inferred.retries) run.gateRetries = inferred.retries;
+        }
+    }
+
     async function fetchRunTestCountsFromJobLogs(owner, repo, run) {
         if (!run?.id) return null;
-        const data = await ghFetch(`/repos/${owner}/${encodeURIComponent(repo)}/actions/runs/${run.id}/jobs?per_page=100`);
-        const jobs = data?.jobs || [];
+        let jobs = run._gateJobsCache;
+        if (!jobs) {
+            const data = await ghFetch(`/repos/${owner}/${encodeURIComponent(repo)}/actions/runs/${run.id}/jobs?per_page=100`);
+            jobs = data?.jobs || [];
+            if (isPrGateRun(run)) run._gateJobsCache = jobs;
+        }
+        if (isPrGateRun(run)) {
+            const laneSum = await sumGateTestCountsFromJobLogs(owner, repo, jobs, run);
+            if (laneSum) return laneSum;
+        }
         let deferredError = null;
         let placeholder = null;
         for (const reportJob of pickJUnitReportJobs(jobs)) {
@@ -16298,6 +16606,143 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         return ranked[0]?.a || null;
     }
 
+    function pickAllGateLaneArtifacts(arts, runId) {
+        const runIdStr = String(runId || '').trim();
+        if (!runIdStr) return [];
+        return (Array.isArray(arts) ? arts : []).filter(a => {
+            if (!a || a.expired || !a.url || !a.name) return false;
+            if (isJunitArtifactNoiseName(a.name)) return false;
+            const n = String(a.name || '');
+            if (/^newman-reports_/i.test(n) && artifactNameMatchesRunId(n, runIdStr)) return true;
+            if (/^test-results/i.test(n) && artifactNameMatchesRunId(n, runIdStr)) return true;
+            return false;
+        });
+    }
+
+    function sumParsedTestCountParts(parts) {
+        let passed = 0;
+        let failed = 0;
+        let skipped = 0;
+        let lanes = 0;
+        for (const p of parts || []) {
+            if (!p || p.grepEmpty || p.noTests || p.resultsMissing) continue;
+            const pPassed = p.passed ?? 0;
+            const pFailed = p.failed ?? 0;
+            const pSkipped = p.skipped ?? 0;
+            const pTotal = p.total ?? (pPassed + pFailed + pSkipped);
+            if (pTotal <= 0) continue;
+            passed += pPassed;
+            failed += pFailed;
+            skipped += pSkipped;
+            lanes += 1;
+        }
+        const total = passed + failed + skipped;
+        if (total <= 0 || lanes <= 0) return null;
+        return { passed, failed, skipped, total, lanes, fallback: false, noTests: false };
+    }
+
+    async function fetchGateRunTestCountsFromArtifacts(owner, repo, run) {
+        if (!run?.id) return null;
+        let arts = run.artifacts;
+        if (!arts) {
+            arts = await enrichRunArtifacts(run);
+            if (arts === null) throw new Error('Failed to list run artifacts');
+        }
+        const laneArts = pickAllGateLaneArtifacts(arts, run.id);
+        if (!laneArts.length) return null;
+        const parsed = [];
+        for (const art of laneArts) {
+            const xml = await unzipFirstXmlFromArtifact(art.url);
+            if (!xml) return null;
+            const tc = parseTestCountsFromJUnitXml(xml);
+            if (!tc || tc.resultsMissing || tc.grepEmpty || tc.noTests) return null;
+            parsed.push(tc);
+        }
+        return sumParsedTestCountParts(parsed);
+    }
+
+    function parseTestCountsFromCheckRunListForGate(checks, runId) {
+        const runIdStr = String(runId || '').trim();
+        const list = Array.isArray(checks) ? checks : [];
+        const laneChecks = list.filter(cr => {
+            const n = String(cr?.name || '');
+            if (!runIdStr) return / - JUnit \(run /i.test(n);
+            return new RegExp(` - JUnit \\(run ${runIdStr}\\)`, 'i').test(n);
+        });
+        if (!laneChecks.length) return null;
+        const parts = [];
+        for (const cr of laneChecks) {
+            const out = cr?.output || {};
+            const blob = [out.summary, out.title, out.text, cr?.name].filter(Boolean).join('\n');
+            const parsed = parseTestCountsFromText(blob);
+            if (parsed && !parsed.grepEmpty && !parsed.noTests && !parsed.resultsMissing
+                && (parsed.total ?? 0) > 0) {
+                parts.push(parsed);
+            } else {
+                return null;
+            }
+        }
+        return sumParsedTestCountParts(parts);
+    }
+
+    async function sumGateTestCountsFromJobLogs(owner, repo, jobs, run) {
+        if (!isPrGateRun(run)) return null;
+        const execJobs = (jobs || []).filter(j => isPrGateTestExecutionJob(j, repo) && j?.id);
+        if (!execJobs.length) return null;
+        const parts = [];
+        for (const j of execJobs) {
+            try {
+                const logs = await fetchJobLogsText(owner, repo, j.id);
+                if (!logs) return null;
+                const testim = parseTestimCompletionLine(logs);
+                const parsed = testim || parseTestCountsFromText(logs, { lastMatch: true });
+                if (parsed && !parsed.grepEmpty && !parsed.noTests && !parsed.resultsMissing
+                    && (parsed.total ?? 0) > 0) {
+                    parts.push(parsed);
+                } else {
+                    return null;
+                }
+            } catch {
+                return null;
+            }
+        }
+        return sumParsedTestCountParts(parts);
+    }
+
+    function applyGateLaneDefaults(run, repo) {
+        if (!isPrGateRun(run)) return;
+        if (isApiRepo(repo)) {
+            if (!run.gateParallels) run.gateParallels = '1';
+            if (!run.gateRetries) run.gateRetries = 'N/A';
+        }
+    }
+
+    async function ensureGateRunLaneInfo(owner, repo, run) {
+        if (!isPrGateRun(run)) return;
+        applyGateLaneDefaults(run, repo);
+        if (isApiRepo(repo)) return;
+        if (run.gateParallels && run.gateRetries) return;
+        let jobs = run._gateJobsCache;
+        if (!jobs) {
+            try {
+                const jobData = await ghFetch(`/repos/${owner}/${encodeURIComponent(repo)}/actions/runs/${run.id}/jobs?per_page=100`);
+                jobs = jobData?.jobs || [];
+                run._gateJobsCache = jobs;
+            } catch { return; }
+        }
+        try { await enrichGateRunLaneInfo(owner, repo, run, jobs); } catch { /* best-effort */ }
+    }
+
+    async function fetchPrGateJobsForNoop(owner, repo, run) {
+        let jobs = run._gateJobsCache;
+        if (!jobs) {
+            const jobData = await ghFetch(`/repos/${owner}/${encodeURIComponent(repo)}/actions/runs/${run.id}/jobs?per_page=100`);
+            jobs = jobData?.jobs || [];
+            run._gateJobsCache = jobs;
+        }
+        return jobs;
+    }
+
     async function fetchRunTestCountsFromArtifact(owner, repo, run) {
         if (!run?.id) return null;
         let arts = run.artifacts;
@@ -16306,6 +16751,14 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             if (arts === null) throw new Error('Failed to list run artifacts');
         }
         if (!Array.isArray(arts) || !arts.length) return null;
+        if (isPrGateRun(run)) {
+            const laneArts = pickAllGateLaneArtifacts(arts, run.id);
+            if (laneArts.length) {
+                const summed = await fetchGateRunTestCountsFromArtifacts(owner, repo, run);
+                if (summed) return summed;
+                return null;
+            }
+        }
         const xmlArt = pickJunitArtifactForRun(arts, run.id);
         if (!xmlArt?.url) return null;
         const xml = await unzipFirstXmlFromArtifact(xmlArt.url);
@@ -16334,6 +16787,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 delete r.testCounts;
                 delete r._testCountsDone;
             } else if (r.testCounts.noTests) {
+                if (r.testCounts.gateNoop) return false;
                 if (r.testCounts.inferred || r.testCounts.unknown || (r.testCounts.total ?? 0) === 0) {
                     delete r.testCounts;
                     delete r._testCountsDone;
@@ -16444,17 +16898,43 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 // and job logs before treating the run as unrecoverable.
                 const artifactParsed = await fetchRunTestCountsFromArtifact(owner, repo, r);
                 if (artifactParsed?.resultsMissing) missingMarker = artifactParsed;
-                else if (artifactParsed) return applyParsedTestCounts(r, artifactParsed, gen);
+                else if (artifactParsed) {
+                    const applied = applyParsedTestCounts(r, artifactParsed, gen);
+                    if (applied) {
+                        try { await ensureGateRunLaneInfo(owner, repo, r); } catch { /* lane info best-effort */ }
+                    }
+                    return applied;
+                }
             } catch (e) { noteFetchFailure(e); }
             if ((r._testCountsGen || 0) !== gen) return null;
+
+            if (isPrGateRun(r)) {
+                try {
+                    const gateJobs = await fetchPrGateJobsForNoop(owner, repo, r);
+                    if ((r._testCountsGen || 0) !== gen) return null;
+                    if (isPrGateNoopFromJobs(gateJobs, repo)) {
+                        applyGateLaneDefaults(r, repo);
+                        return applyParsedTestCounts(r, prGateNoopTestCounts(), gen);
+                    }
+                } catch (e) { noteFetchFailure(e); }
+                if ((r._testCountsGen || 0) !== gen) return null;
+            }
 
             if (suiteId) {
                 try {
                     const checks = await fetchCheckRunsForSuite(owner, repo, suiteId);
                     if ((r._testCountsGen || 0) !== gen) return null;
-                    const parsed = parseTestCountsFromCheckRunList(checks);
+                    const parsed = isPrGateRun(r)
+                        ? parseTestCountsFromCheckRunListForGate(checks, r.id)
+                        : parseTestCountsFromCheckRunList(checks);
                     if (parsed?.grepEmpty) grepEmptyMarker = grepEmptyMarker || parsed;
-                    else if (parsed) return applyParsedTestCounts(r, parsed, gen);
+                    else if (parsed) {
+                        const applied = applyParsedTestCounts(r, parsed, gen);
+                        if (applied) {
+                            try { await ensureGateRunLaneInfo(owner, repo, r); } catch { /* ignore */ }
+                        }
+                        return applied;
+                    }
                 } catch (e) { noteFetchFailure(e); }
             }
 
@@ -16468,9 +16948,17 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 try {
                     const commitChecks = await fetchCheckRunsForCommitMatchingRun(owner, repo, sha, r);
                     if ((r._testCountsGen || 0) !== gen) return null;
-                    const parsed = parseTestCountsFromCheckRunList(commitChecks);
+                    const parsed = isPrGateRun(r)
+                        ? parseTestCountsFromCheckRunListForGate(commitChecks, r.id)
+                        : parseTestCountsFromCheckRunList(commitChecks);
                     if (parsed?.grepEmpty) grepEmptyMarker = grepEmptyMarker || parsed;
-                    else if (parsed) return applyParsedTestCounts(r, parsed, gen);
+                    else if (parsed) {
+                        const applied = applyParsedTestCounts(r, parsed, gen);
+                        if (applied) {
+                            try { await ensureGateRunLaneInfo(owner, repo, r); } catch { /* ignore */ }
+                        }
+                        return applied;
+                    }
                 } catch (e) { noteFetchFailure(e); }
             }
 
@@ -16478,7 +16966,13 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
 
             try {
                 const fromLogs = await fetchRunTestCountsFromJobLogs(owner, repo, r);
-                if (fromLogs) return applyParsedTestCounts(r, fromLogs, gen);
+                if (fromLogs) {
+                    const applied = applyParsedTestCounts(r, fromLogs, gen);
+                    if (applied) {
+                        try { await ensureGateRunLaneInfo(owner, repo, r); } catch { /* ignore */ }
+                    }
+                    return applied;
+                }
             } catch (e) { noteFetchFailure(e); }
 
             if ((r._testCountsGen || 0) !== gen) return null;
@@ -16711,6 +17205,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
 
     function resetDashTestCountsBackfill() {
         dashBackfillAttempted.clear();
+        dashRunStatusRefreshed.clear();
     }
 
     function dashRunsNeedingBackfill(runs) {
@@ -16758,6 +17253,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
     async function runDashboardBackfillPass(runs, onRunDone) {
         // Re-read what is still outstanding at the moment this pass actually starts — an
         // earlier queued pass may already have covered some of these runs.
+        try { await refreshStaleDashboardRunStatuses(runs); } catch { /* ignore */ }
         const needed = dashRunsNeedingBackfill(runs);
         if (!needed.length) return false;
         await mapLimit(needed, DASH_ENRICH_CONCURRENCY, async (r) => {
@@ -16951,7 +17447,8 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 const total = tc.total ?? skipped;
                 return {
                     passed: 0, failed: 0, other: skipped, total,
-                    passPct: null, fallback: false, noTests: true, grepEmpty: !!tc.grepEmpty
+                    passPct: null, fallback: false, noTests: true, grepEmpty: !!tc.grepEmpty,
+                    gateNoop: !!tc.gateNoop
                 };
             }
             const actionable = Math.max(0, total - skipped);
@@ -18949,6 +19446,12 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
 
     function getRunParallelLabel(run) {
         if (!run) return 'N/A';
+        if (run.gateParallels != null && String(run.gateParallels).trim() !== '') {
+            return String(run.gateParallels).trim();
+        }
+        if (isPrGateRun(run)) {
+            return isApiRepo(run.repo) ? '1' : 'N/A';
+        }
         const fromInputs = getRunParallelFromInputs(run.inputs);
         if (fromInputs != null) return String(fromInputs);
 
@@ -18969,6 +19472,12 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
     }
 
     function getRunParallelCount(run) {
+        if (run?.gateParallels != null && String(run.gateParallels).trim() !== '') {
+            const g = String(run.gateParallels).trim();
+            if (g.includes('-')) return null;
+            const n = parseInt(g, 10);
+            if (Number.isFinite(n) && n > 0) return n;
+        }
         const label = getRunParallelLabel(run);
         if (label === 'N/A') return null;
         const n = parseInt(label, 10);
@@ -18985,6 +19494,14 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
 
     function getRunRetryCount(run) {
         if (!run) return null;
+        if (run.gateRetries != null && String(run.gateRetries).trim() !== '') {
+            const g = String(run.gateRetries).trim();
+            if (g === 'N/A') return null;
+            if (g.includes('-')) return null;
+            const n = parseInt(g, 10);
+            if (Number.isFinite(n) && n >= 0) return n;
+        }
+        if (isPrGateRun(run)) return null;
         const inputs = run.inputs;
         if (inputs && typeof inputs === 'object') {
             for (const k of ['RETRIES', 'retries', 'MAX_RETRIES', 'maxRetries']) {
@@ -18999,6 +19516,10 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
     }
 
     function getRunRetryLabel(run) {
+        if (run?.gateRetries != null && String(run.gateRetries).trim() !== '') {
+            const g = String(run.gateRetries).trim();
+            if (g === 'N/A' || g.includes('-')) return g;
+        }
         const n = getRunRetryCount(run);
         return n == null ? 'N/A' : String(n);
     }
@@ -19809,11 +20330,13 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             rows.push(dashRunTipPlainRow(`Passed tests: ${tc.passed}`));
             rows.push(dashRunTipPlainRow(`Failed tests: ${tc.failed}`));
             rows.push(dashRunTipPlainRow(`Skipped tests: ${tc.other}`));
-            rows.push(dashRunTipPlainRow(tc.grepEmpty
-                ? '(GREP/filter matched no tests — nothing executed)'
-                : run?.enrichmentNote === 'expired'
-                    ? '(execution data expired on GitHub — counts cannot be recovered)'
-                    : '(no tests executed)'));
+            rows.push(dashRunTipPlainRow(tc.gateNoop
+                ? 'No changed tests in this PR'
+                : (tc.grepEmpty
+                    ? '(GREP/filter matched no tests — nothing executed)'
+                    : run?.enrichmentNote === 'expired'
+                        ? '(execution data expired on GitHub — counts cannot be recovered)'
+                        : '(no tests executed)')));
             for (const line of dashboardRunTooltipExtraLines(run)) rows.push(dashRunTipPlainRow(line));
         } else if (tc.unknown || (tc.passPct == null && !tc.active)) {
             rows.push(dashRunTipPlainRow('Pass percentage: n/a'));
@@ -19838,9 +20361,11 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             } else if (tc.resultsMissing) {
                 rows.push(dashRunTipPlainRow('(test report missing — Allure produced no results; not a clean skip)'));
             } else if (tc.noTests) {
-                rows.push(dashRunTipPlainRow(tc.grepEmpty
-                    ? '(GREP/filter matched no tests — nothing executed)'
-                    : '(no tests executed)'));
+                rows.push(dashRunTipPlainRow(tc.gateNoop
+                    ? 'No changed tests in this PR'
+                    : (tc.grepEmpty
+                        ? '(GREP/filter matched no tests — nothing executed)'
+                        : '(no tests executed)')));
             } else if (tc.unknown) {
                 rows.push(dashRunTipPlainRow('(not enriched yet)'));
             } else if (tc.fallback) {
@@ -20101,7 +20626,14 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         if (isLegacyRunLevelEstimate(tc)) return;
         try {
             const cache = loadTestCountsCacheMerged();
-            cache[key] = { tc, at: Date.now() };
+            const entry = { tc, at: Date.now() };
+            if (r.gateParallels != null && String(r.gateParallels).trim() !== '') {
+                entry.gateParallels = String(r.gateParallels).trim();
+            }
+            if (r.gateRetries != null && String(r.gateRetries).trim() !== '') {
+                entry.gateRetries = String(r.gateRetries).trim();
+            }
+            cache[key] = entry;
             writeTestCountsCache(cache);
         } catch { /* ignore */ }
     }
@@ -20116,7 +20648,32 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             if (!hasCachedTestCounts(tc)) return;
             r.testCounts = tc;
             r._testCountsDone = true;
+            if (hit.gateParallels) r.gateParallels = hit.gateParallels;
+            if (hit.gateRetries) r.gateRetries = hit.gateRetries;
+            if (isPrGateRun(r)) applyGateLaneDefaults(r, r.repo);
         } catch { /* ignore */ }
+    }
+
+    const dashRunStatusRefreshed = new Set();
+
+    async function refreshStaleDashboardRunStatuses(runs) {
+        const owner = getGhOwner();
+        const pending = (runs || []).filter(r =>
+            r?.id && !dashRunStatusRefreshed.has(r.id)
+            && r.status && r.status !== 'completed');
+        if (!pending.length) return;
+        await mapLimit(pending, 4, async (r) => {
+            const repo = String(r.repo || '').trim();
+            if (!repo) return;
+            try {
+                const data = await ghFetch(`/repos/${owner}/${encodeURIComponent(repo)}/actions/runs/${r.id}`);
+                if (!data) return;
+                if (data.status) r.status = data.status;
+                if (data.conclusion) r.conclusion = data.conclusion;
+                if (data.updated_at) r.updatedAt = data.updated_at;
+                if (data.status === 'completed') dashRunStatusRefreshed.add(r.id);
+            } catch { /* ignore — leave out of set so the next backfill pass retries */ }
+        });
     }
 
     function purgeBadDashTestCountsCache() {
@@ -20224,6 +20781,10 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         return (tc.total ?? 0) > 0 && tc.passPct != null && !tc.pending && !tc.unknown;
     }
 
+    function isGateNoopRun(r) {
+        return isPrGateRun(r) && !!r?.testCounts?.gateNoop;
+    }
+
     function isDashboardNoExecExcluded(r) {
         if (!r) return false;
         // Only runs we have actually established executed nothing. Anything unsettled stays
@@ -20233,13 +20794,17 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         return isNoExecRun(r);
     }
 
+    function dropGateNoopRuns(runs) {
+        return (runs || []).filter(r => !isGateNoopRun(r));
+    }
+
     function dropNoExecRuns(runs) {
         if (!loadDashExcludeNoExec()) return runs;
         return (runs || []).filter(r => !isDashboardNoExecExcluded(r));
     }
 
     function dropDashboardFilterRuns(runs) {
-        return dropNoExecRuns(dropCancelledRuns(runs));
+        return dropNoExecRuns(dropGateNoopRuns(dropCancelledRuns(runs)));
     }
 
     function dashPipelinePassRateTipSuffix() {
@@ -20259,6 +20824,9 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         if (loadDashExcludeNoExec()) {
             const excl = stats.noExecExcluded ?? 0;
             bits.push(excl > 0 ? `${excl} no-exec excluded` : 'no-exec excluded');
+        }
+        if ((stats.gateNoopExcluded ?? 0) > 0) {
+            bits.push(`${stats.gateNoopExcluded} PRs with no changed tests hidden`);
         }
         if (!bits.length) return `${stats.runs} ${windowLabel}`;
         return `${stats.runs} ${windowLabel} (${bits.join(', ')})`;
@@ -21393,6 +21961,15 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         </div>`;
     }
 
+    function calInfoRowHint(icon, label, value, hint) {
+        const hintHtml = hint ? `<div style="font-size:11px;color:var(--text-muted);line-height:1.35;margin-top:3px;">${escapeHtml(hint)}</div>` : '';
+        return `<div class="cal-info-row" style="align-items:flex-start;">
+            <span class="cal-info-ico">${icon}</span>
+            <span class="cal-info-label">${label}</span>
+            <span class="cal-info-val"><div>${value}</div>${hintHtml}</span>
+        </div>`;
+    }
+
     function calOpenScheduleModal(cid, fromDateKey) {
         const o = calOcc[cid];
         if (!o) return;
@@ -21405,6 +21982,30 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         const repeatRow = o.repeatEvery > 1
             ? calInfoRow('&#128260;', 'Repeat', escapeHtml(`Every ${o.repeatEvery} ${o.repeatUnit || 'weeks'}`))
             : '';
+
+        const calPipe = o.key ? findPipeline(o.key) : null;
+        let execRows = '';
+        if (calPipe) {
+            if (calPipe.jobTimeout) {
+                execRows += calInfoRowHint('&#9203;', 'Pipeline timeout', escapeHtml(`${calPipe.jobTimeout} min`), 'Max time for the whole run before GitHub stops it');
+            }
+            if (isTestimStylePipeline(calPipe) && calPipe.timeoutMin) {
+                execRows += calInfoRowHint('&#9201;', 'Per-test timeout', escapeHtml(`${calPipe.timeoutMin} min`), 'Max time for each single test');
+            }
+            if (calPipe.parallel !== undefined && calPipe.parallel !== null && calPipe.parallel !== '') {
+                execRows += calInfoRowHint('&#128640;', 'Parallels', escapeHtml(String(calPipe.parallel)), '');
+            }
+            if (calPipe.retries !== undefined && calPipe.retries !== null && calPipe.retries !== '') {
+                execRows += calInfoRowHint('&#128257;', 'Retries', escapeHtml(String(calPipe.retries)), '');
+            }
+            if (isTestimStylePipeline(calPipe) && calPipe.browserTimeout) {
+                execRows += calInfoRowHint('&#128187;', 'Browser wait', escapeHtml(`${calPipe.browserTimeout} min`), 'If the Testim grid is full, how long to wait for a free browser');
+            }
+            if (calPipe.emailEnabled !== undefined && calPipe.emailEnabled !== null) {
+                const onOff = calPipe.emailEnabled ? 'On' : 'Off';
+                execRows += calInfoRowHint('&#128231;', 'Email results', escapeHtml(onOff), 'Results are emailed when the run finishes');
+            }
+        }
 
         document.getElementById('calModalHeader').style.borderLeft = `4px solid ${meta.color}`;
         document.getElementById('calModalTitle').innerHTML = `<span style="display:inline-flex; align-items:center; gap:9px;"><span style="width:11px;height:11px;border-radius:50%;background:${o.color};box-shadow:0 0 10px ${o.color};"></span>${escapeHtml(calShortName(o.name))}</span>`;
@@ -21424,6 +22025,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
                 ${repeatRow}
                 ${calInfoRow('&#128193;', 'Repository', escapeHtml(o.repo))}
                 ${calInfoRow('&#128196;', 'Workflow', `<code>${escapeHtml(o.filename || '')}</code>`)}
+                ${execRows}
                 ${o.status === 'run' && o.runsCount > 1 ? calInfoRow('&#128202;', 'Runs that day', `${o.runsCount}`) : ''}
             </div>`;
 
@@ -21434,10 +22036,11 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         const backBtn = calScheduleFrom
             ? `<button class="btn btn-secondary" onclick="calOpenDayModal('${calScheduleFrom}')">&#8592; Back</button>`
             : `<button class="btn btn-secondary" onclick="closeModal('calModal')">Close</button>`;
+        const editYamlBtn = (calPipe && isPrGatePipeline(calPipe)) ? '' : `<button class="btn btn-orange" onclick="calGotoPipelineByCid(${cid}, true)" title="Open the pipeline editor">&#9999; Edit YAML</button>`;
         footer.innerHTML = `
             ${backBtn}
             <button class="btn btn-secondary" onclick="calGotoPipelineByCid(${cid}, false)" title="Open the pipeline details (read-only)">&#128065; View YAML</button>
-            <button class="btn btn-orange" onclick="calGotoPipelineByCid(${cid}, true)" title="Open the pipeline editor">&#9999; Edit YAML</button>
+            ${editYamlBtn}
             ${runBtn}`;
 
         m.classList.add('show');
@@ -22850,6 +23453,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
         const noExecExcluded = loadDashExcludeNoExec()
             ? consideredRuns.filter(r => isDashboardNoExecExcluded(r)).length
             : 0;
+        const gateNoopExcluded = consideredRuns.filter(r => isGateNoopRun(r)).length;
         const metricsRuns = dropDashboardFilterRuns(consideredRuns);
 
         const outcomes = metricsRuns.map(getRunOutcome);
@@ -22874,6 +23478,7 @@ Runner: AUTO lets the axos-gh-qe-testim group assign a free runner; a specific h
             cancelled,
             cancelledExcluded,
             noExecExcluded,
+            gateNoopExcluded,
             skipped,
             actionable: agg.actionable,
             passRate: agg.passRate,
@@ -24230,6 +24835,72 @@ ${now} &nbsp;|&nbsp; Confidential - For Internal Use Only
             assert(!allureParsed?.grepEmpty, 'expected Allure-empty placeholder not to be GREP-empty');
             const grepLog = parseTestCountsFromText('Spec filter matched zero specs');
             assert(grepLog?.grepEmpty === true, 'expected log marker to classify GREP-empty');
+
+            const gateMatrixLog = 'Matrix: [{"project_name":"enr-web","parallels":3,"retries":1},{"project_name":"outsys","parallels":1,"retries":0}]\n';
+            const gateRows = parseGateMatrixFromDetectLog(gateMatrixLog);
+            assert(gateRows?.length === 2, 'expected gate detect log matrix parse');
+            const gateRunProbe = mkRun(9001, 'PR Test Gate - Web', 'success');
+            gateRunProbe.workflowFile = 'pr-changed-tests-gate.yml';
+            gateRunProbe.repo = 'Axos.QE.Web';
+            applyGateLaneInfoFromMatrix(gateRows, gateRunProbe);
+            assert(gateRunProbe.gateParallels === '1-3', `expected parallel range, got ${gateRunProbe.gateParallels}`);
+            assert(gateRunProbe.gateRetries === '0-1', `expected retry range, got ${gateRunProbe.gateRetries}`);
+            assert(getRunParallelLabel(gateRunProbe) === '1-3', 'expected gate parallels on label');
+            const gateNoopJobs = [
+                { name: 'detect / changed tests', conclusion: 'success' },
+                { name: 'run / enr-web / test', conclusion: 'skipped' },
+                { name: 'publish / junit', conclusion: 'skipped' }
+            ];
+            assert(isPrGateNoopFromJobs(gateNoopJobs, 'Axos.QE.Web') === true, 'expected gate noop when detect only');
+            const gateNoopRun = mkRun(9002, 'PR Test Gate - Web', 'success');
+            gateNoopRun.workflowFile = 'pr-changed-tests-gate.yml';
+            gateNoopRun.testCounts = prGateNoopTestCounts();
+            assert(isGateNoopRun(gateNoopRun) === true, 'expected gateNoop run flag');
+            assert(dropGateNoopRuns([gateNoopRun]).length === 0, 'expected gate noop runs dropped from dashboard');
+            gateNoopRun._testCountsDone = true;
+            assert(shouldEnrichRunTestCounts(gateNoopRun) === false, 'expected settled gateNoop not to re-enrich');
+            const gateTcView = getRunTestCounts(gateNoopRun);
+            assert(gateTcView.gateNoop === true, 'expected getRunTestCounts to keep gateNoop');
+
+            const laneParts = [
+                { passed: 15, failed: 0, skipped: 0, total: 15 },
+                { passed: 24, failed: 3, skipped: 0, total: 27 }
+            ];
+            const laneSum = sumParsedTestCountParts(laneParts);
+            assert(laneSum?.passed === 39 && laneSum?.failed === 3 && laneSum?.total === 42,
+                'expected gate lane JUnit parts to sum across artifacts');
+            const partialGateChecks = parseTestCountsFromCheckRunListForGate([
+                { name: 'lane-a - JUnit (run 1)', output: { summary: '3 passed, 1 failed and 0 skipped' } },
+                { name: 'lane-b - JUnit (run 1)', output: { summary: '' } }
+            ], 1);
+            assert(partialGateChecks === null, 'expected gate check-run sum to fail closed on missing lane');
+            const gateArts = pickAllGateLaneArtifacts([
+                { name: 'newman-reports_39510974161_abc', url: 'http://x', expired: false },
+                { name: 'newman-reports_39510974161_def', url: 'http://y', expired: false },
+                { name: 'playwright-report-39510974161', url: 'http://z', expired: false }
+            ], 39510974161);
+            assert(gateArts.length === 2, 'expected gate lane picker to keep every newman lane artifact');
+            const apiGateLabelRun = mkRun(9003, 'PR Test Gate - API', 'success');
+            apiGateLabelRun.workflowFile = 'pr-changed-tests-gate.yml';
+            apiGateLabelRun.repo = 'Axos.QE.API_OLB';
+            assert(getRunParallelLabel(apiGateLabelRun) === '1', 'expected API gate default parallels without catalog');
+            assert(getRunRetryLabel(apiGateLabelRun) === 'N/A', 'expected API gate default retries without catalog');
+            const gateCacheRun = mkRun(9004, 'PR Test Gate - API', 'success');
+            gateCacheRun.workflowFile = 'pr-changed-tests-gate.yml';
+            gateCacheRun.repo = 'Axos.QE.API_OLB';
+            gateCacheRun.id = 39510974161;
+            gateCacheRun.testCounts = { passed: 39, failed: 3, skipped: 0, total: 42, passPct: 93, fallback: false };
+            gateCacheRun._testCountsDone = true;
+            gateCacheRun.gateParallels = '1';
+            gateCacheRun.gateRetries = 'N/A';
+            saveDashTestCountsCacheEntry(gateCacheRun);
+            const gateCacheRestore = mkRun(9004, 'PR Test Gate - API', 'success');
+            gateCacheRestore.workflowFile = 'pr-changed-tests-gate.yml';
+            gateCacheRestore.repo = 'Axos.QE.API_OLB';
+            gateCacheRestore.id = 39510974161;
+            restoreDashTestCountsFromCache(gateCacheRestore);
+            assert(gateCacheRestore.gateParallels === '1' && gateCacheRestore.gateRetries === 'N/A',
+                'expected gate lane labels to survive dash test-count cache restore');
 
             const allSkipped = mkRun(401, 'Pipe A', 'success');
             allSkipped.testCounts = { passed: 0, failed: 0, skipped: 3, total: 3, passPct: null, fallback: false, noTests: false };
