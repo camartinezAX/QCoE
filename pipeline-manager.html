@@ -321,8 +321,25 @@
         }
         .copy-name-btn:hover { border-color: var(--axos-orange); color: var(--axos-orange); }
         .copy-name-btn.copied { border-color: var(--success); color: var(--success); }
-        .pipeline-card-meta { display: flex; gap: 16px; font-size: 12px; color: var(--text-muted); }
+        .pipeline-card-meta { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--text-muted); }
         .meta-item { display: flex; align-items: center; gap: 4px; }
+        .meta-item-filter { color: var(--text-secondary); min-width: 0; }
+        .meta-filter-label { font-weight: 700; color: var(--text-muted); }
+        .meta-filter-value { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; overflow-wrap: anywhere; }
+        .meta-filter-hit { background: rgba(250,167,74,0.30); color: inherit; border-radius: 3px; padding: 0 1px; }
+        .meta-filter-empty { font-style: italic; color: var(--text-muted); }
+        .overlap-hint {
+            margin-top: 8px; padding: 8px 10px; border-radius: 8px; font-size: 12px; line-height: 1.45;
+            background: rgba(250,167,74,0.10); border: 1px solid rgba(250,167,74,0.38); color: var(--text-secondary);
+            font-family: var(--font-b);
+        }
+        .overlap-hint-title { font-weight: 700; color: var(--orange-dark); margin-bottom: 4px; }
+        .overlap-hint ul { margin: 0; padding-left: 18px; }
+        .overlap-hint li { margin: 2px 0; }
+        .overlap-hint a { color: var(--text-primary); font-weight: 600; text-decoration: none; }
+        .overlap-hint a:hover { text-decoration: underline; }
+        .overlap-hint .overlap-why { color: var(--text-muted); }
+        .overlap-hint .overlap-note { margin-top: 4px; color: var(--text-muted); }
         .test-badge {
             padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
             flex-shrink: 0; white-space: nowrap;
@@ -6740,7 +6757,7 @@ ${os.map(n => `- ${n}`).join('\n')}
         if (filtered.length === 0) {
             html += `<div class="empty-state"><div class="empty-icon">&#128270;</div><h3>No pipelines match</h3><p>Try a different search or filter.</p></div>`;
         } else {
-            for (const p of filtered) { html += pipelineCard(p); }
+            for (const p of filtered) { html += pipelineCard(p, adv); }
         }
         area.innerHTML = html;
     }
@@ -7009,7 +7026,43 @@ ${os.map(n => `- ${n}`).join('\n')}
         return '';
     }
 
-    function pipelineCard(p) {
+    // Advanced-filter fields whose value is not otherwise visible on a pipeline card.
+    const ADV_FILTER_CARD_FIELDS = {
+        grep: { icon: '&#127991;&#65039;', label: 'Grep' },
+        brand: { icon: '&#127970;', label: 'Brand' },
+        feature: { icon: '&#129513;', label: 'Feature' },
+        filename: { icon: '&#128221;', label: 'File' }
+    };
+    const ADV_FILTER_HIGHLIGHT_OPS = new Set(['contains', 'equals', 'startsWith', 'endsWith']);
+
+    function highlightFilterTerm(text, term) {
+        const s = String(text || '');
+        const t = String(term || '').trim().toLowerCase();
+        const i = t ? s.toLowerCase().indexOf(t) : -1;
+        if (i < 0) return escapeHtml(s);
+        return `${escapeHtml(s.slice(0, i))}<mark class="meta-filter-hit">${escapeHtml(s.slice(i, i + t.length))}</mark>${escapeHtml(s.slice(i + t.length))}`;
+    }
+
+    function advFilterCardChips(p, adv, alreadyShown) {
+        const seen = new Set();
+        let html = '';
+        for (const r of (adv?.rows || [])) {
+            const meta = ADV_FILTER_CARD_FIELDS[r.field];
+            if (!meta || seen.has(r.field)) continue;
+            seen.add(r.field);
+            const value = String(getPipelineFieldValue(p, r.field) || '').trim();
+            if (value && alreadyShown.has(value.toLowerCase())) continue;
+            const term = ADV_FILTER_HIGHLIGHT_OPS.has(r.op) ? r.value : '';
+            const shown = value.length > 80 ? `${value.slice(0, 80)}…` : value;
+            const body = value
+                ? `<span class="meta-filter-value">${highlightFilterTerm(shown, term)}</span>`
+                : '<span class="meta-filter-empty">(none)</span>';
+            html += `<div class="meta-item meta-item-filter" title="${escapeHtml(`${meta.label}: ${value || '(none)'}`)}">${meta.icon} <span class="meta-filter-label">${meta.label}:</span> ${body}</div>`;
+        }
+        return html;
+    }
+
+    function pipelineCard(p, adv = null) {
         // Orchestrators always show the Orchestrator badge (even when their Test Type is a real
         // type like Regression), since orchestrator mode is driven by the Feature.
         const isOrch = isOrchestratorPipeline(p);
@@ -7068,6 +7121,7 @@ ${os.map(n => `- ${n}`).join('\n')}
                 <div class="meta-item">&#128196; ${suiteOrFeature.substring(0, 50)}${suiteOrFeature.length > 50 ? '...' : ''}</div>
                 ${p.scheduleEnabled ? `<div class="meta-item" style="color:var(--success);">&#128337; Scheduled</div>` : ''}
                 ${p.emailEnabled ? `<div class="meta-item" style="color:var(--axos-orange);">&#128231; Email</div>` : ''}
+                ${adv ? advFilterCardChips(p, adv, new Set([String(suiteOrFeature).trim().toLowerCase()])) : ''}
             </div>
         </div>`;
     }
@@ -9879,6 +9933,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         // toggleRunnerStrategyUI(): BlazeMeter must keep the self-hosted runner controls
         // hidden on load (toggleRunnerStrategyUI alone would re-show them by strategy).
         if (repoName === 'Axos.QE.Performance.Automation') onPerfBrandChange();
+        initTestOverlapHint();
     }
 
     function initScheduleFromCron(cronStr) {
@@ -11173,6 +11228,7 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
         const ready = isFormValid();
 
         updateOrchSetNameFieldHint();
+        updateTestOverlapHint();
 
         dot.classList.toggle('ready', ready);
         dot.style.background = (nameDuplicate || setNameDuplicate) ? 'var(--error)' : '';
@@ -11288,6 +11344,229 @@ Apply this update to every copy of pipeline-manager.html your team uses.`;
             if (hint) hint.remove();
             input.style.borderColor = '';
         }
+    }
+
+    // ── Test coverage overlap (informational, never blocks save) ──
+    // Compares what the form will run against synced pipelines of the same kind in the same repo:
+    //   grep       → Web (Playwright) / Mobile (Appium) grep tags
+    //   api        → Newman collection file + --folder subfolders
+    //   testim     → Testim Test Suite Name
+    //   jmeter     → JMX script name
+    //   blazemeter → BlazeMeter Test ID
+    // PR test gates, orchestrators and TCMS (Web "Other") workflows are excluded: they select
+    // tests at dispatch time or fan out to other pipelines, so overlap is expected.
+    const TEST_OVERLAP_PERF_REPO = 'Axos.QE.Performance.Automation';
+    const TEST_OVERLAP_HINT_ID = 'testOverlapHint';
+    const TEST_OVERLAP_MAX_ITEMS = 6;
+    const TEST_OVERLAP_WATCH_IDS = ['fGrep', 'fProjectDir', 'fTestSuite', 'fCollectionId', 'fCollectionSubfolder', 'fJmxName', 'fBzTestId', 'fBrand', 'fEnv', 'fFeature', 'fTestType'];
+
+    function isWebOtherPipeline(p) {
+        return isWebOtherMonorepoBrand(p?.brand) || /^web_other_/i.test(String(p?.filename || ''));
+    }
+
+    function testOverlapKindForPipeline(p) {
+        if (!p || isPrGatePipeline(p) || isOrchestratorPipeline(p)) return '';
+        const repo = normRepoForPipeline(p);
+        if (isApiRepo(repo)) return 'api';
+        if (repo === TEST_OVERLAP_PERF_REPO || isPerfPipeline(p)) return p.brand === 'BlazeMeter' ? 'blazemeter' : 'jmeter';
+        if (isMobilePipeline(p)) return 'grep';
+        if (repo === 'Axos.QE.Web' || isWebMonorepoPipeline(p) || isCryptoPipeline(p)) return isWebOtherPipeline(p) ? '' : 'grep';
+        return 'testim';
+    }
+
+    function testOverlapKindForForm() {
+        if (viewOnlyMode || isOrchestratorForm()) return '';
+        if ((document.getElementById('fTestType')?.value || '') === 'Orchestrator') return '';
+        const repo = getFormRepo();
+        const brand = document.getElementById('fBrand')?.value || '';
+        if (isApiRepo(repo)) return 'api';
+        if (repo === TEST_OVERLAP_PERF_REPO) return brand === 'BlazeMeter' ? 'blazemeter' : 'jmeter';
+        if (document.getElementById('fGrep')) return (repo === 'Axos.QE.Web' && isWebOtherMonorepoBrand(brand)) ? '' : 'grep';
+        if (document.getElementById('fTestSuite')) return 'testim';
+        return '';
+    }
+
+    function overlapTextKey(s) {
+        return String(s || '').trim().replace(/\s+/g, ' ').toLowerCase();
+    }
+
+    // "@Sanity|@Smoke", "@Sanity, @Regression_Login", "(?=.*@Smoke)(?=.*@Login)" → tags.
+    // Falls back to plain words when the grep has no @tags.
+    function grepTagTokens(grep) {
+        const parts = String(grep || '').split(/[^A-Za-z0-9_@.\-]+/).filter(Boolean);
+        const tags = parts.filter(t => t.startsWith('@') && t.length > 1);
+        const picked = tags.length ? tags : parts.filter(t => t.length >= 3 && !t.startsWith('-'));
+        const byKey = new Map();
+        picked.forEach(t => { if (!byKey.has(t.toLowerCase())) byKey.set(t.toLowerCase(), t); });
+        return [...byKey].map(([key, label]) => ({ key, label }));
+    }
+
+    // "projects/Axos.OLB_3.0.Web/wfo" → "axos.olb_3.0.web". Tags are only comparable inside one project.
+    function webProjectRootKey(dir) {
+        const m = String(dir || '').match(/Axos\.[A-Za-z0-9_.]+?\.Web/i);
+        return m ? m[0].toLowerCase() : '';
+    }
+
+    function newmanCollectionKey(collection) {
+        const base = String(collection || '').trim().split(/[\\/]/).pop() || '';
+        return base.replace(/\.postman_collection\.json$/i, '').replace(/\.json$/i, '').trim().toLowerCase();
+    }
+
+    // Extracts --folder values from the "Collection Subfolder / Extra Args" field. A bare value
+    // with no flags is treated as a folder name.
+    function newmanFolders(args) {
+        const raw = String(args || '').replace(/\\"/g, '"').trim();
+        if (!raw) return [];
+        const out = [];
+        const re = /--folder[=\s]+(?:"([^"]*)"|'([^']*)'|(\S+))/gi;
+        let m;
+        while ((m = re.exec(raw))) {
+            const f = String(m[1] ?? m[2] ?? m[3] ?? '').trim();
+            if (f) out.push(f);
+        }
+        if (!out.length && !raw.startsWith('-')) out.push(raw.replace(/^["']|["']$/g, ''));
+        return out;
+    }
+
+    function formatFolderList(folders) {
+        return `folder${folders.length > 1 ? 's' : ''} ${folders.map(f => `"${f}"`).join(', ')}`;
+    }
+
+    function findTestOverlaps() {
+        const kind = testOverlapKindForForm();
+        if (!kind) return null;
+        const val = id => String(document.getElementById(id)?.value || '').trim();
+        const repo = getFormRepo();
+        const candidates = (pipelines || []).filter(p =>
+            pipelineKey(p) !== editingPipeline &&
+            normRepoForPipeline(p) === repo &&
+            testOverlapKindForPipeline(p) === kind);
+
+        if (kind === 'grep') {
+            const tags = grepTagTokens(val('fGrep'));
+            if (!tags.length) return null;
+            const projectDirField = document.getElementById('fProjectDir');
+            const formRoot = (repo === 'Axos.QE.Web' && projectDirField)
+                ? webProjectRootKey(val('fProjectDir'))
+                : '';
+            if (repo === 'Axos.QE.Web' && projectDirField && !formRoot) return null;
+            const items = [];
+            for (const p of candidates) {
+                if (repo === 'Axos.QE.Web') {
+                    if (projectDirField) {
+                        const theirRoot = webProjectRootKey(resolveWebMonorepoProjectDirForForm(p));
+                        if (theirRoot !== formRoot) continue;
+                    } else if (isWebMonorepoPipeline(p)) {
+                        continue;
+                    }
+                }
+                const theirs = new Set(grepTagTokens(p.grep).map(t => t.key));
+                const shared = tags.filter(t => theirs.has(t.key)).map(t => t.label);
+                if (shared.length) items.push({ p, why: `also greps ${shared.join(', ')}` });
+            }
+            return { anchorId: 'fGrep', title: 'This grep/tag is already used by other pipelines', items };
+        }
+
+        if (kind === 'testim') {
+            const suite = overlapTextKey(val('fTestSuite'));
+            if (!suite) return null;
+            const items = candidates
+                .filter(p => overlapTextKey(p.testSuite) === suite)
+                .map(p => ({ p, why: 'runs the same Testim suite' }));
+            return { anchorId: 'fTestSuite', title: 'This Testim suite already runs in other pipelines', items };
+        }
+
+        if (kind === 'api') {
+            const collection = newmanCollectionKey(val('fCollectionId'));
+            if (!collection) return null;
+            const mine = newmanFolders(val('fCollectionSubfolder'));
+            const mineKeys = new Set(mine.map(f => f.toLowerCase()));
+            const items = [];
+            for (const p of candidates) {
+                if (newmanCollectionKey(p.collectionId) !== collection) continue;
+                const theirs = newmanFolders(p.collectionSubfolder);
+                let why = '';
+                if (!mine.length) {
+                    why = theirs.length ? `runs ${formatFolderList(theirs)} of this collection` : 'runs this full collection';
+                } else if (!theirs.length) {
+                    why = 'runs this full collection (includes your subfolder)';
+                } else {
+                    const shared = theirs.filter(f => mineKeys.has(f.toLowerCase()));
+                    if (!shared.length) continue;
+                    why = `already runs ${formatFolderList(shared)}`;
+                }
+                items.push({ p, why });
+            }
+            return {
+                anchorId: 'fCollectionSubfolder',
+                title: mine.length ? 'This collection subfolder is already covered elsewhere' : 'This collection is already used by other pipelines',
+                note: mine.length ? '' : 'No subfolder is set, so this pipeline runs the whole collection.',
+                items
+            };
+        }
+
+        if (kind === 'jmeter') {
+            const jmx = overlapTextKey(val('fJmxName')).replace(/\.jmx$/, '');
+            if (!jmx) return null;
+            const items = candidates
+                .filter(p => overlapTextKey(p.jmxName).replace(/\.jmx$/, '') === jmx)
+                .map(p => ({ p, why: 'runs the same JMX script' }));
+            return { anchorId: 'fJmxName', title: 'This JMX script already runs in other pipelines', items };
+        }
+
+        if (kind === 'blazemeter') {
+            const testId = val('fBzTestId');
+            if (!testId) return null;
+            const items = candidates
+                .filter(p => String(p.bzTestId || '').trim() === testId)
+                .map(p => ({ p, why: 'runs the same BlazeMeter test' }));
+            return { anchorId: 'fBzTestId', title: 'This BlazeMeter Test ID already runs in other pipelines', items };
+        }
+        return null;
+    }
+
+    function renderTestOverlapItem({ p, why }) {
+        const repo = normRepoForPipeline(p);
+        const url = getGhWorkflowFileUrl(repo, p.filename);
+        const name = escapeHtml(p.name || p.filename || '');
+        const link = url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" title="Open workflow file in GitHub">${name}</a>` : name;
+        const tags = [p.env, isMobilePipeline(p) ? p.brand : ''].filter(Boolean).map(escapeHtml).join(' · ');
+        return `<li>${link} <span class="overlap-why">${tags ? `· ${tags} ` : ''}· ${escapeHtml(why)}</span></li>`;
+    }
+
+    function updateTestOverlapHint() {
+        const result = findTestOverlaps();
+        const anchor = result && result.items.length ? document.getElementById(result.anchorId) : null;
+        let hint = document.getElementById(TEST_OVERLAP_HINT_ID);
+        const group = anchor ? (anchor.closest('.form-group') || anchor.parentElement) : null;
+        if (!group) { if (hint) hint.remove(); return; }
+        if (!hint || hint.parentElement !== group) {
+            if (hint) hint.remove();
+            hint = document.createElement('div');
+            hint.id = TEST_OVERLAP_HINT_ID;
+            hint.className = 'overlap-hint';
+            hint.setAttribute('role', 'status');
+            group.appendChild(hint);
+        }
+        const formEnv = String(document.getElementById('fEnv')?.value || '').trim();
+        const items = result.items.slice().sort((a, b) =>
+            (Number(b.p.env === formEnv) - Number(a.p.env === formEnv)) || String(a.p.name || '').localeCompare(String(b.p.name || '')));
+        const extra = items.length - TEST_OVERLAP_MAX_ITEMS;
+        hint.innerHTML = `<div class="overlap-hint-title">&#9432; FYI: ${escapeHtml(result.title)}</div>
+            <ul>${items.slice(0, TEST_OVERLAP_MAX_ITEMS).map(renderTestOverlapItem).join('')}</ul>
+            ${extra > 0 ? `<div class="overlap-note">+${extra} more</div>` : ''}
+            ${result.note ? `<div class="overlap-note">${escapeHtml(result.note)}</div>` : ''}
+            <div class="overlap-note">Informational only. You can still save.</div>`;
+    }
+
+    function initTestOverlapHint() {
+        TEST_OVERLAP_WATCH_IDS.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('input', updateTestOverlapHint);
+            el.addEventListener('change', updateTestOverlapHint);
+        });
+        updateTestOverlapHint();
     }
 
     // Returns the human-readable labels of required fields that are still empty,
